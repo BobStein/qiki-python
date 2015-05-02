@@ -144,6 +144,14 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual(124, Number('0qFD_01').qexponent())
         self.assertEqual(125, Number('0qFE_01').qexponent())
 
+    def test_alias_one(self):
+        self.assertEqual(1.0, float(Number('0q82_01')))
+        self.assertEqual(1.0, float(Number('0q82')))
+
+    def test_alias_one_neg(self):
+        self.assertEqual(-1.0, float(Number('0q7D_FF')))
+        self.assertEqual(-1.0, float(Number('0q7E')))
+
     def test_alias_positive(self):
         self.assertEqual(256.0, float(Number('0q83_01')))
         self.assertEqual(256.0, float(Number('0q83')))
