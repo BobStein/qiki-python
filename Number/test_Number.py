@@ -84,6 +84,7 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
         self.assertEqual((0x0101,2), Number('0q83_0101').qantissa())
         self.assertEqual((  0x01,1), Number('0q83_01').qantissa())
+        self.assertEqual((  0x00,0), Number('0q83').qantissa())
         self.assertEqual((  0xFF,1), Number('0q82_FF').qantissa())
         self.assertEqual((  0xFA,1), Number('0q7D_FA').qantissa())
 
@@ -142,6 +143,18 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual(6, Number('0q87_01').qexponent())
         self.assertEqual(124, Number('0qFD_01').qexponent())
         self.assertEqual(125, Number('0qFE_01').qexponent())
+
+    def test_alias_positive(self):
+        self.assertEqual(256.0, float(Number('0q83_01')))
+        self.assertEqual(256.0, float(Number('0q83')))
+        self.assertEqual(65536.0, float(Number('0q84_01')))
+        self.assertEqual(65536.0, float(Number('0q84')))
+
+    def test_alias_negative(self):
+        self.assertEqual(-256.0, float(Number('0q7C_FF')))
+        self.assertEqual(-256.0, float(Number('0q7D')))
+        self.assertEqual(-65536.0, float(Number('0q7B_FF')))
+        self.assertEqual(-65536.0, float(Number('0q7C')))
 
     def test_ints_and_strings(self):
 
@@ -458,7 +471,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         1.0                , '0q82_01',              '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
         zone_boundary()
         f__s(         1.0,                '0q82_01')
-        f__s(         1.0,                '0q82_01',  '0q82')   # 0q82 is an alias for +1, but it is officially 0q82_01
+        f__s(         1.0,                '0q82_01',  '0q82')   # 0q82 is an alias for +1, which is officially 0q82_01
         zone_boundary()
         f__s(         0.99999237060546875,'0q81FF_FFFF80')
         f__s(         0.9998779296875,    '0q81FF_FFF8')
