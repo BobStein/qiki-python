@@ -508,6 +508,9 @@ class Number(object):
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
             qan -= (2 ** (qanlength*8))
+        else:
+            if qan == 0:   # TODO: find a less crude way to alias e.g. 0q83 for 0q83_01, i.e. for 256**n where n>=1
+                (qan, qanlength) = (1,1)
         return float(qan) * math.pow(256, (qexp - qanlength))
 
     def __obsolete_to_int(self):

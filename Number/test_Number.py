@@ -401,6 +401,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(       1e25,                 '0q8C_0845951614014880')
         f__s(       1e10,                 '0q86_02540BE4')
         f__s(4294967296.0,                '0q86_01')
+        f__s(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for 0q86_01, the official code for 256**4
         f__s(  16777216.0,                '0q85_01')
         f__s(     65536.0,                '0q84_01')
         f__s(     32768.0,                '0q83_80')
@@ -423,7 +424,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(       257.0,                '0q83_0101')
 
         f__s(       256.0,                '0q83_01')
-        # f__s(       256.0,                '0q83_01', '0q83')   # TODO: make 0q83 an alias for 0q83_01
+        f__s(       256.0,                '0q83_01', '0q83')   # 0q83 an alias for 0q83_01
 
         f__s(       255.5,                '0q82_FF80')
         f__s(       255.0,                '0q82_FF')
