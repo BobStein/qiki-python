@@ -526,6 +526,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(-math.pow(256, -124),        '0q7E7B_FF')
         f__s(-math.pow(2, -992),          '0q7E7B_FF')
         f__s(-math.pow(2, -991),          '0q7E7B_FE')
+        f__s(-math.pow(256, -100),        '0q7E63_FF', '0q7E64')   # alias for -256**-100
         f__s(-math.pow(256, -100),        '0q7E63_FF')
         f__s(-math.pow(256, -10),         '0q7E09_FF')
         f__s(-math.pow(256, -4),          '0q7E03_FF')
