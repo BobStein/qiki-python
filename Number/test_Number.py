@@ -497,7 +497,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         0.003936767578125,  '0q81FF_0102')
         f__s(         0.0039215087890625, '0q81FF_0101') # 257/65536
         f__s(         0.00390625,         '0q81FF_01')   # 256/65536
-        # f__s(         0.00390625,         '0q81FF_01', '0q81FF')   # TODO: make 0q81FF an alias for 1/256?
+        f__s(         0.00390625,         '0q81FF_01', '0q81FF')   # 0q81FF an alias for 1/256
         f__s(         0.0038909912109375, '0q81FE_FF')   # 255/65536
         f__s(         0.003875732421875,  '0q81FE_FE')
         f__s(         0.0038604736328125, '0q81FE_FD')
@@ -515,6 +515,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(math.pow(256, -4),           '0q81FC_01')
         f__s(math.pow(256, -10),          '0q81F6_01')
         f__s(math.pow(256, -100),         '0q819C_01')
+        f__s(math.pow(256, -100),         '0q819C_01', '0q819C')   # alias for 256**-100
         f__s(math.pow(2, -991),           '0q8184_02')
         f__s(math.pow(2, -992),           '0q8184_01')
         f__s(math.pow(256, -124),         '0q8184_01')
