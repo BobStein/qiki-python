@@ -329,24 +329,6 @@ class NumberTestCase(django.test.TestCase):
             if s_in is None:
                 s_in = s_out
 
-            if not context.the_first:
-                float_oos =       x_in       >        context.x_in_last
-                qin_oos  = Number(s_in ).raw > Number(context.s_in_last ).raw
-                qout_oos = Number(s_out).raw > Number(context.s_out_last).raw
-                if float_oos: self.fail("Float out of sequence: %.17e should be less than %.17e" % (x_in, context.x_in_last))
-                if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
-                if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
-
-                if not context.after_zone_boundary and Number(s_in).zone != Number(context.s_in_last).zone:
-                    self.fail("%s is in a different zone than %s -- need ZONE_BOUNDARY?" % (context.s_in_last, s_in))
-
-                if context.after_zone_boundary and Number(s_in).zone == Number(context.s_in_last).zone:
-                    self.fail("%s is in the same zone as %s -- remove ZONE_BOUNDARY?" % (context.s_in_last, s_in))
-
-            context.x_in_last = x_in
-            context.s_in_last = s_in
-            context.s_out_last = s_out
-
             try:
                 x_new = float(Number(s_in))
             except Exception as e:
@@ -379,6 +361,24 @@ class NumberTestCase(django.test.TestCase):
                     s_out,
                 )
                 self.fail(report)
+
+            if not context.the_first:
+                float_oos =       x_in       >        context.x_in_last
+                qin_oos  = Number(s_in ).raw > Number(context.s_in_last ).raw
+                qout_oos = Number(s_out).raw > Number(context.s_out_last).raw
+                if float_oos: self.fail("Float out of sequence: %.17e should be less than %.17e" % (x_in, context.x_in_last))
+                if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
+                if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
+
+                if not context.after_zone_boundary and Number(s_in).zone != Number(context.s_in_last).zone:
+                    self.fail("%s is in a different zone than %s -- need ZONE_BOUNDARY?" % (context.s_in_last, s_in))
+
+                if context.after_zone_boundary and Number(s_in).zone == Number(context.s_in_last).zone:
+                    self.fail("%s is in the same zone as %s -- remove ZONE_BOUNDARY?" % (context.s_in_last, s_in))
+
+            context.x_in_last = x_in
+            context.s_in_last = s_in
+            context.s_out_last = s_out
 
             context.the_first = False
             context.after_zone_boundary = False
@@ -445,12 +445,16 @@ class NumberTestCase(django.test.TestCase):
         f__s(         1.0625,             '0q82_0110')
         f__s(         1.03125,            '0q82_0108')
         f__s(         1.015625,           '0q82_0104')
+        f__s(         1.01,               '0q82_01028F5C28F5C290')
         f__s(         1.0078125,          '0q82_0102')
         f__s(         1.00390625,         '0q82_0101')
         f__s(         1.001953125,        '0q82_010080')
+        f__s(         1.001,              '0q82_01004189374BC6A0')
         f__s(         1.0009765625,       '0q82_010040')
         f__s(         1.00048828125,      '0q82_010020')
         f__s(         1.000244140625,     '0q82_010010')
+        f__s(         1.0001,             '0q82_0100068DB8BAC710')
+        f__s(         1.00001,            '0q82_010000A7C5AC4720')
         f__s(         1.000001,           '0q82_01000010C6F7A0B0')
         f__s(         1.0000001,          '0q82_01000001AD7F29B0')
         f__s(         1.00000001,         '0q82_010000002AF31DC0')
