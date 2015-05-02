@@ -308,7 +308,7 @@ class NumberTestCase(django.test.TestCase):
 
     def test_floats_and_strings(self):
 
-        def f__s(x_in, s_out, s_in=None, enforce_sequence=True):
+        def f__s(x_in, s_out, s_in=None):
             assert isinstance(x_in, float), "f__s(%s,_) but it should be a float" % type(x_in).__name__
             assert isinstance(s_out, six.string_types), "f__s(_,%s) but it should be a string" % type(s_out).__name__
             assert isinstance(s_in, six.string_types + (type(None),)), "f__s(_,_,%s) but it should be a string" % type(s_in).__name__
@@ -317,13 +317,12 @@ class NumberTestCase(django.test.TestCase):
                 s_in = s_out
 
             if not context.the_first:
-                if enforce_sequence:
-                    float_oos =       x_in       >        context.x_in_last
-                    qin_oos  = Number(s_in ).raw > Number(context.s_in_last ).raw
-                    qout_oos = Number(s_out).raw > Number(context.s_out_last).raw
-                    if float_oos: self.fail("Float out of sequence: %.17e should be less than %.17e" % (x_in, context.x_in_last))
-                    if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
-                    if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
+                float_oos =       x_in       >        context.x_in_last
+                qin_oos  = Number(s_in ).raw > Number(context.s_in_last ).raw
+                qout_oos = Number(s_out).raw > Number(context.s_out_last).raw
+                if float_oos: self.fail("Float out of sequence: %.17e should be less than %.17e" % (x_in, context.x_in_last))
+                if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
+                if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
 
                 if not context.after_zone_boundary and Number(s_in).zone != Number(context.s_in_last).zone:
                     self.fail("%s is in a different zone than %s -- need ZONE_BOUNDARY?" % (context.s_in_last, s_in))
