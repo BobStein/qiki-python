@@ -48,9 +48,9 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'qiki_take_one.urls'
+ROOT_URLCONF = 'qiki-python.urls'
 
-WSGI_APPLICATION = 'qiki_take_one.wsgi.application'
+WSGI_APPLICATION = 'qiki-python.wsgi.application'
 
 
 # Database

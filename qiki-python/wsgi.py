@@ -8,7 +8,7 @@ https://docs.djangoproject.com/en/1.7/howto/deployment/wsgi/
 """
 
 import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "qiki_take_one.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "qiki-python.settings")
 
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
