@@ -146,10 +146,23 @@ class NumberTestCase(django.test.TestCase):
 
     def test_alias_one(self):
         self.assertEqual(1.0, float(Number('0q82_01')))
+        self.assertEqual(1.0, float(Number('0q82_00FFFFFF')))
+        self.assertEqual(1.0, float(Number('0q82_00C0')))
+        self.assertEqual(1.0, float(Number('0q82_0080')))
+        self.assertEqual(1.0, float(Number('0q82_0040')))
+        self.assertEqual(1.0, float(Number('0q82_00000000')))
+        self.assertEqual(1.0, float(Number('0q82_00')))
         self.assertEqual(1.0, float(Number('0q82')))
 
     def test_alias_one_neg(self):
         self.assertEqual(-1.0, float(Number('0q7D_FF')))
+        self.assertEqual(-1.0, float(Number('0q7D_FF00')))
+        self.assertEqual(-1.0, float(Number('0q7D_FF3C7A38A1F250DE7E9071')))
+        self.assertEqual(-1.0, float(Number('0q7D_FF40')))
+        self.assertEqual(-1.0, float(Number('0q7D_FF80')))
+        self.assertEqual(-1.0, float(Number('0q7D_FFC0')))
+        self.assertEqual(-1.0, float(Number('0q7D_FFF0')))
+        self.assertEqual(-1.0, float(Number('0q7D_FFFF')))
         self.assertEqual(-1.0, float(Number('0q7E')))
 
     def test_alias_positive(self):
