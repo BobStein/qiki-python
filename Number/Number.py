@@ -116,6 +116,8 @@ class Number(object):
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
 
+    # TODO: __neg__ (and take advantage of two's complement encoding)
+
     @classmethod
     def from_raw(cls, value):
         """
@@ -547,15 +549,6 @@ class Number(object):
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
 
-    def __obsolete_to_int(self):
-        if '\x85\x7F\xFF\xFF\xFF' < self.raw:
-            return sys.maxint
-        elif self.raw <= '\x7A\x80':
-            return -sys.maxint - 1
-        else:
-            return long(self)
-
-
 
 Number.NAN = Number(None)
 
@@ -617,7 +610,9 @@ Number.ZONE_NEGATIVE = {
     Number.Zone.LUDICROUS_LARGE_NEG,
     Number.Zone.TRANSFINITE_NEG,
 }
-Number.ZONE_ZERO = {Number.Zone.ZERO}
+Number.ZONE_ZERO = {
+    Number.Zone.ZERO
+}
 Number.ZONE_ALL_BY_POSITIVITY = Number.ZONE_POSITIVE | Number.ZONE_NEGATIVE | Number.ZONE_ZERO
 
 Number.ZONE_ALL = {zone for zone in Number.Zone if zone != Number.Zone.NAN}

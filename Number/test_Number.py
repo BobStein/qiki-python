@@ -61,10 +61,25 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual("0q83_03E8", str(n))
 
     def test_nan(self):
-        nan = Number(None)
+        self.assertEqual('0q', str(Number.NAN))
+        self.assertEqual('', Number.NAN.raw)
+        self.assertEqual('', Number.NAN.hex())
+        self.assertEqual('nan', str(float(Number.NAN)))
+        self.assertTrue(Number._floats_really_same(float('nan'), float(Number.NAN)))
+
+    def test_nan_equality(self):
+        nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
+        self.assertEqual(nan, Number(None))
         self.assertEqual(nan, Number('0q'))
         self.assertEqual(nan, Number(float('nan')))
+        self.assertEqual(nan, float('nan'))
+
+    def test_nan_inequality(self):
+        nan = Number.NAN
+        self.assertNotEqual(nan, Number(0))
+        self.assertNotEqual(nan, 0)
+        self.assertNotEqual(nan, float('inf'))
 
     def test_qantissa_fractional(self):
         self.assertEqual(  (0x80,1), Number('0q81FF_80').qantissa())
