@@ -27,6 +27,10 @@ class NumberTestCase(django.test.TestCase):
         n = Number('0q82')
         self.assertEqual('82', n.hex())
 
+    def test_str(self):
+        n = Number('0q83_03E8')
+        self.assertEqual("0q83_03E8", str(n))
+
     def test_qstring(self):
         n = Number('0q82')
         self.assertEqual('0q82', n.qstring())
@@ -53,12 +57,8 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual('0q', Number('0q').qstring())
 
     def test_repr(self):
-        n = Number('0q83_03E8')
+        n =               Number('0q83_03E8')
         self.assertEqual("Number('0q83_03E8')", repr(n))
-
-    def test_str(self):
-        n = Number('0q83_03E8')
-        self.assertEqual("0q83_03E8", str(n))
 
     def test_nan(self):
         self.assertEqual('0q', str(Number.NAN))
@@ -81,19 +81,6 @@ class NumberTestCase(django.test.TestCase):
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
-    def test_qantissa_fractional(self):
-        self.assertEqual(  (0x80,1), Number('0q81FF_80').qantissa())
-        self.assertEqual(  (0x40,1), Number('0q81FF_40').qantissa())
-        self.assertEqual((0x4220,2), Number('0q81FF_4220').qantissa())
-
-    def test_qantissa_fractional_neg(self):
-        self.assertEqual(  (0x01,1), Number('0q7E00_01').qantissa())
-        self.assertEqual(  (0x80,1), Number('0q7E00_80').qantissa())
-        self.assertEqual(  (0xC0,1), Number('0q7E00_C0').qantissa())
-        self.assertEqual(  (0xFF,1), Number('0q7E00_FF').qantissa())
-        self.assertEqual(  (0xFF,1), Number('0q7E01_FF').qantissa())
-        self.assertEqual((0xFF80,2), Number('0q7E01_FF80').qantissa())
-
     def test_qantissa_positive(self):
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
@@ -109,6 +96,19 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual((0xFEFFFFFA,4), Number('0q7A_FEFFFFFA').qantissa())
         self.assertEqual((0x00000001,4), Number('0q7A_00000001').qantissa())
 
+    def test_qantissa_fractional(self):
+        self.assertEqual(  (0x80,1), Number('0q81FF_80').qantissa())
+        self.assertEqual(  (0x40,1), Number('0q81FF_40').qantissa())
+        self.assertEqual((0x4220,2), Number('0q81FF_4220').qantissa())
+
+    def test_qantissa_fractional_neg(self):
+        self.assertEqual(  (0x01,1), Number('0q7E00_01').qantissa())
+        self.assertEqual(  (0x80,1), Number('0q7E00_80').qantissa())
+        self.assertEqual(  (0xC0,1), Number('0q7E00_C0').qantissa())
+        self.assertEqual(  (0xFF,1), Number('0q7E00_FF').qantissa())
+        self.assertEqual(  (0xFF,1), Number('0q7E01_FF').qantissa())
+        self.assertEqual((0xFF80,2), Number('0q7E01_FF80').qantissa())
+
     def test_qantissa_unsupported(self):
         number_has_no_qantissa = Number(0)
         with self.assertRaises(ValueError):
@@ -118,34 +118,6 @@ class NumberTestCase(django.test.TestCase):
         number_has_no_qexponent = Number(0)
         with self.assertRaises(ValueError):
             number_has_no_qexponent.qexponent()
-
-    def test_qexponent_fractional_neg(self):
-        self.assertEqual(   0, Number('0q7E00_01').qexponent())   # -.996
-        self.assertEqual(   0, Number('0q7E00_80').qexponent())   # -.5
-        self.assertEqual(   0, Number('0q7E00_FF').qexponent())   # -.004
-        self.assertEqual(  -1, Number('0q7E01_FF').qexponent())
-        self.assertEqual(  -2, Number('0q7E02_FF').qexponent())
-        self.assertEqual(-123, Number('0q7E7B_FF').qexponent())
-        self.assertEqual(-124, Number('0q7E7C_FF').qexponent())
-
-    def test_qexponent_fractional(self):
-        self.assertEqual(   0, Number('0q81FF_80').qexponent())
-        self.assertEqual(   0, Number('0q81FF_01').qexponent())
-        self.assertEqual(  -1, Number('0q81FE_01').qexponent())
-        self.assertEqual(  -2, Number('0q81FD_01').qexponent())
-        self.assertEqual(-123, Number('0q8184_01').qexponent())
-        self.assertEqual(-124, Number('0q8183_01').qexponent())
-
-    def test_qexponent_negative(self):
-        self.assertEqual(6, Number('0q78').qexponent())
-        self.assertEqual(5, Number('0q79').qexponent())
-        self.assertEqual(4, Number('0q7A').qexponent())
-        self.assertEqual(3, Number('0q7B').qexponent())
-        self.assertEqual(2, Number('0q7C').qexponent())
-        self.assertEqual(1, Number('0q7D').qexponent())
-
-        self.assertEqual(125, Number('0q01').qexponent())
-        self.assertEqual(124, Number('0q02').qexponent())
 
     def test_qexponent_positive(self):
         self.assertEqual(1, Number('0q82_01000001').qexponent())
@@ -158,6 +130,34 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual(6, Number('0q87_01').qexponent())
         self.assertEqual(124, Number('0qFD_01').qexponent())
         self.assertEqual(125, Number('0qFE_01').qexponent())
+
+    def test_qexponent_negative(self):
+        self.assertEqual(6, Number('0q78').qexponent())
+        self.assertEqual(5, Number('0q79').qexponent())
+        self.assertEqual(4, Number('0q7A').qexponent())
+        self.assertEqual(3, Number('0q7B').qexponent())
+        self.assertEqual(2, Number('0q7C').qexponent())
+        self.assertEqual(1, Number('0q7D').qexponent())
+
+        self.assertEqual(125, Number('0q01').qexponent())
+        self.assertEqual(124, Number('0q02').qexponent())
+
+    def test_qexponent_fractional(self):
+        self.assertEqual(   0, Number('0q81FF_80').qexponent())
+        self.assertEqual(   0, Number('0q81FF_01').qexponent())
+        self.assertEqual(  -1, Number('0q81FE_01').qexponent())
+        self.assertEqual(  -2, Number('0q81FD_01').qexponent())
+        self.assertEqual(-123, Number('0q8184_01').qexponent())
+        self.assertEqual(-124, Number('0q8183_01').qexponent())
+
+    def test_qexponent_fractional_neg(self):
+        self.assertEqual(   0, Number('0q7E00_01').qexponent())   # -.996
+        self.assertEqual(   0, Number('0q7E00_80').qexponent())   # -.5
+        self.assertEqual(   0, Number('0q7E00_FF').qexponent())   # -.004
+        self.assertEqual(  -1, Number('0q7E01_FF').qexponent())
+        self.assertEqual(  -2, Number('0q7E02_FF').qexponent())
+        self.assertEqual(-123, Number('0q7E7B_FF').qexponent())
+        self.assertEqual(-124, Number('0q7E7C_FF').qexponent())
 
     def test_alias_one(self):
         self.assertEqual(1.0, float(Number('0q82_01')))
@@ -270,12 +270,6 @@ class NumberTestCase(django.test.TestCase):
             self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
             self.assertEqual(s_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       s_new, s))
 
-        # Why is pow(2,999) sometimes a float?
-        # Is it pow() versus math.pow()??
-        # So can either of these work consistently?
-        # i__s( math.pow(2,999), '0qFE_80')
-        # i__s( pow(2,999), '0qFE_80')
-
         i__s(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
         i__s(   2**999+1, '0qFE_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
@@ -371,8 +365,9 @@ class NumberTestCase(django.test.TestCase):
             ))
 
     def test_zone_sets(self):
-        self.assertEqualSets(Number.ZONE_ALL, Number.ZONE_ALL_BY_FINITY)
-        self.assertEqualSets(Number.ZONE_ALL, Number.ZONE_ALL_BY_POSITIVITY)
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
 
     def test_zone(self):
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)

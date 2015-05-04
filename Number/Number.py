@@ -521,9 +521,9 @@ class Number(object):
         _zone = self.zone
         if _zone == self.Zone.ONE:
             return 1.0
-        elif _zone in self.ZONE_REASONABLY_POSITIVE_ZERO:
+        elif _zone in self.ZONE_ESSENTIALLY_POSITIVE_ZERO:
             return 0.0
-        elif _zone in self.ZONE_REASONABLY_NEGATIVE_ZERO:
+        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
         elif _zone == self.Zone.ONE_NEG:
             return -1.0
@@ -550,8 +550,28 @@ class Number(object):
         return math.ldexp(float(qan), exponent_base_2)
 
 
+
+# Float
+# -----
+# Number(float) defaults to 8 qigits, for lossless representation of a Python float.
+# A "qigit" is a base-256 digit.
+# IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
+# source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+# So 8 qigits are needed to store 57-64 bits.
+# 57 if the MSQigit were '\x01', 64 if '\xFF'.
+# 7 qigits would only store 49-56.
+Number.qigits_precision(8)
+Number.QIGITS_PRECISION_DEFAULT = 8
+Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
+
+
+# Constants
+# ---------
 Number.NAN = Number(None)
 
+
+# Sets   TODO: draw a Venn Diagram or table or something
+# ----
 Number.ZONE_REASONABLE = {
     Number.Zone.POSITIVE,
     Number.Zone.ONE,
@@ -574,7 +594,14 @@ Number.ZONE_NONFINITE = {
     Number.Zone.TRANSFINITE_NEG,
 }
 Number.ZONE_FINITE = Number.ZONE_LUDICROUS | Number.ZONE_REASONABLE
-Number.ZONE_ALL_BY_FINITY = Number.ZONE_FINITE | Number.ZONE_NONFINITE
+Number.ZONE_NAN = {
+    Number.Zone.NAN
+}
+Number._ZONE_ALL_BY_FINITENESS = (
+    Number.ZONE_FINITE |
+    Number.ZONE_NONFINITE |
+    Number.ZONE_NAN
+)
 
 Number.ZONE_POSITIVE = {
     Number.Zone.TRANSFINITE,
@@ -585,22 +612,6 @@ Number.ZONE_POSITIVE = {
     Number.Zone.LUDICROUS_SMALL,
     Number.Zone.INFINITESIMAL,
 }
-Number.ZONE_REASONABLY_ZERO = {
-    Number.Zone.INFINITESIMAL,
-    Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.ZERO,
-    Number.Zone.INFINITESIMAL_NEG,
-    Number.Zone.LUDICROUS_SMALL_NEG,
-}
-Number.ZONE_REASONABLY_POSITIVE_ZERO = {
-    Number.Zone.INFINITESIMAL,
-    Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.ZERO,
-}
-Number.ZONE_REASONABLY_NEGATIVE_ZERO = {
-    Number.Zone.INFINITESIMAL_NEG,
-    Number.Zone.LUDICROUS_SMALL_NEG,
-}
 Number.ZONE_NEGATIVE = {
     Number.Zone.INFINITESIMAL_NEG,
     Number.Zone.LUDICROUS_SMALL_NEG,
@@ -610,25 +621,51 @@ Number.ZONE_NEGATIVE = {
     Number.Zone.LUDICROUS_LARGE_NEG,
     Number.Zone.TRANSFINITE_NEG,
 }
+Number.ZONE_NONZERO = Number.ZONE_POSITIVE | Number.ZONE_NEGATIVE
 Number.ZONE_ZERO = {
     Number.Zone.ZERO
 }
-Number.ZONE_ALL_BY_POSITIVITY = Number.ZONE_POSITIVE | Number.ZONE_NEGATIVE | Number.ZONE_ZERO
+Number._ZONE_ALL_BY_ZERONESS = (
+    Number.ZONE_NONZERO |
+    Number.ZONE_ZERO |
+    Number.ZONE_NAN
+)
 
-Number.ZONE_ALL = {zone for zone in Number.Zone if zone != Number.Zone.NAN}
+Number.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
+    Number.Zone.INFINITESIMAL,
+    Number.Zone.LUDICROUS_SMALL,
+    Number.Zone.ZERO,
+}
+Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
+    Number.Zone.INFINITESIMAL_NEG,
+    Number.Zone.LUDICROUS_SMALL_NEG,
+}
+Number.ZONE_ESSENTIALLY_ZERO = Number.ZONE_ESSENTIALLY_POSITIVE_ZERO | Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO
+Number.ZONE_REASONABLY_POSITIVE = {
+    Number.Zone.POSITIVE,
+    Number.Zone.ONE,
+    Number.Zone.FRACTIONAL,
+}
+Number.ZONE_REASONABLY_NEGATIVE = {
+    Number.Zone.FRACTIONAL_NEG,
+    Number.Zone.ONE_NEG,
+    Number.Zone.NEGATIVE,
+}
+Number.ZONE_REASONABLY_NONZERO = Number.ZONE_REASONABLY_POSITIVE | Number.ZONE_REASONABLY_NEGATIVE
+Number.ZONE_UNREASONABLY_BIG = {
+    Number.Zone.TRANSFINITE,
+    Number.Zone.LUDICROUS_LARGE,
+    Number.Zone.LUDICROUS_LARGE_NEG,
+    Number.Zone.TRANSFINITE_NEG,
+}
+Number._ZONE_ALL_BY_REASONABLENESS = (
+    Number.ZONE_ESSENTIALLY_ZERO |
+    Number.ZONE_REASONABLY_NONZERO |
+    Number.ZONE_UNREASONABLY_BIG |
+    Number.ZONE_NAN
+)
 
-
-
-# Number(float) defaults to 8 qigits, for lossless representation of a Python float.
-# A "qigit" is a base-256 digit.
-# IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-# source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
-# So 8 qigits are needed to store 57-64 bits.
-# 57 if the MSQigit were '\x01', 64 if '\xFF'.
-# 7 qigits would only store 49-56.
-Number.qigits_precision(8)
-Number.QIGITS_PRECISION_DEFAULT = 8
-Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
+Number.ZONE_ALL = {zone for zone in Number.Zone}
 
 
 if __name__ == '__main__':
