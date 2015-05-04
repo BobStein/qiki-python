@@ -160,7 +160,7 @@ class Number(object):
 
         if math.isnan(x):          self.raw =          self.RAW_NAN
         elif x >= float('+inf'):   self.raw =          self.RAW_INF
-        elif x >=  1.0:            self.raw =          self._raw_from_float(x, lambda e: 0x81+e)
+        elif x >=  1.0:            self.raw =          self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- exp256
         elif x >   0.0:            self.raw = '\x81' + self._raw_from_float(x, lambda e: 0xFF+e)
         elif x ==  0.0:            self.raw =          self.RAW_ZERO
         elif x >  -1.0:            self.raw = '\x7E' + self._raw_from_float(x, lambda e: 0x00-e)
@@ -174,7 +174,10 @@ class Number(object):
 
     @classmethod
     def _raw_from_float(cls, x, qex_encoder):
-        """ Convert float to raw, for nonzero finite (and reasonable) numbers """
+        """
+        Convert float to raw, for nonzero finite (and reasonable) numbers
+        qex_encoder() converts to internal qex format from a base-256-exponent
+        """
         (significand_base_2, exponent_base_2) = math.frexp(x)
         assert x == significand_base_2 * 2.0**exponent_base_2
         assert 0.5 <= abs(significand_base_2) < 1.0
@@ -310,13 +313,12 @@ class Number(object):
         number_qantissa = self._unpack_big_integer(self.raw[qan_offset:])
         return (number_qantissa, len(self.raw) - qan_offset)
 
-    __qan_offset_dict ={   # TODO: ludicrous numbers
+    __qan_offset_dict ={
         Zone.POSITIVE:       1,
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
-    }
-
+    }   # TODO: ludicrous numbers
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
@@ -343,12 +345,12 @@ class Number(object):
         except KeyError:
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
-    __qexponent_dict = {   # TODO: ludicrous numbers
-        Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,
+    __qexponent_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+        Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,   # exp256 <-- qex
         Zone.FRACTIONAL:     lambda self:         ord(self.raw[1]) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - ord(self.raw[1]),
         Zone.NEGATIVE:       lambda self:  0x7E - ord(self.raw[0]),
-    }
+    }   # TODO: ludicrous numbers
 
     def __long__(self):
        return long(self.__int__())
