@@ -280,22 +280,56 @@ class NumberTestCase(django.test.TestCase):
         i__s(   2**998-1, '0qFE_3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s( 256**124,   '0qFE_01')
         i__s( 256**123,   '0qFD_01')
+
+        i__s(   2**500,   '0qC0_10')
+        i__s(   2**496,   '0qC0_01')
+
         i__s(  10**100+1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol + 1
         i__s(  10**100,   '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')                           # googol
         i__s(  10**100-1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F0FFFFFFFFFFFFFFFFFFFFFFFFF')   # googol - 1
+        i__s(1766847064778384329583297500742918515827483896875618958121606201292619776L,'0qA0_01')
+        i__s(5192296858534827628530496329220096,'0q90_01')
+        i__s(20282409603651670423947251286016,'0q8F_01')
         i__s(  10**25+1,  '0q8C_084595161401484A000001')
         i__s(  10**25,    '0q8C_084595161401484A')
+        i__s(18446744073709551617,'0q8A_010000000000000001')
+        i__s(18446744073709551616,'0q8A_01')
+        i__s(18446744073709551615,'0q89_FFFFFFFFFFFFFFFF')
+        i__s(72057594037927936,'0q89_01')
+        i__s(281474976710656,'0q88_01')
+        i__s(1099511627776,'0q87_01')
+        i__s(68719476736, '0q86_10')
+        i__s(68719476735, '0q86_0FFFFFFFFF')
         i__s(  10**10+1,  '0q86_02540BE401')
         i__s(  10**10,    '0q86_02540BE4')
+        i__s( 4294967299, '0q86_0100000003')
+        i__s( 4294967298, '0q86_0100000002')
         i__s( 4294967297, '0q86_0100000001')
         i__s( 4294967296, '0q86_01')
         i__s( 4294967295, '0q85_FFFFFFFF')
+        i__s( 2147483649, '0q85_80000001')
+        i__s( 2147483648, '0q85_80')
+        i__s( 2147483647, '0q85_7FFFFFFF')
+        i__s(  268435457, '0q85_10000001')
+        i__s(  268435456, '0q85_10')
+        i__s(  268435455, '0q85_0FFFFFFF')
         i__s(   16777217, '0q85_01000001')
         i__s(   16777216, '0q85_01')
         i__s(   16777215, '0q84_FFFFFF')
+        i__s(    1048577, '0q84_100001')
+        i__s(    1048576, '0q84_10')
+        i__s(    1048575, '0q84_0FFFFF')
+        i__s(      65538, '0q84_010002')
         i__s(      65537, '0q84_010001')
         i__s(      65536, '0q84_01')
         i__s(      65535, '0q83_FFFF')
+        i__s(       4097, '0q83_1001')
+        i__s(       4096, '0q83_10')
+        i__s(       4095, '0q83_0FFF')
+        i__s(        257, '0q83_0101')
+        i__s(        256, '0q83_01')
+        i__s(        255, '0q82_FF')
+        i__s(          3, '0q82_03')
         i__s(          2, '0q82_02')
         i__s(          1, '0q82_01')
         i__s(          0, '0q80')
@@ -303,6 +337,11 @@ class NumberTestCase(django.test.TestCase):
         i__s(         -2, '0q7D_FE')
         i__s(         -3, '0q7D_FD')
         i__s(         -4, '0q7D_FC')
+        i__s(         -8, '0q7D_F8')
+        i__s(        -16, '0q7D_F0')
+        i__s(        -32, '0q7D_E0')
+        i__s(        -64, '0q7D_C0')
+        i__s(       -128, '0q7D_80')
         i__s(       -252, '0q7D_04')
         i__s(       -253, '0q7D_03')
         i__s(       -254, '0q7D_02')
@@ -312,6 +351,12 @@ class NumberTestCase(django.test.TestCase):
         i__s(       -258, '0q7C_FEFE')
         i__s(       -259, '0q7C_FEFD')
         i__s(       -260, '0q7C_FEFC')
+        i__s(       -511, '0q7C_FE01')
+        i__s(       -512, '0q7C_FE')
+        i__s(       -513, '0q7C_FDFF')
+        i__s(      -1023, '0q7C_FC01')
+        i__s(      -1024, '0q7C_FC')
+        i__s(      -1025, '0q7C_FBFF')
         i__s(     -65534, '0q7C_0002')
         i__s(     -65535, '0q7C_0001')
         i__s(     -65536, '0q7B_FF')
@@ -322,6 +367,9 @@ class NumberTestCase(django.test.TestCase):
         i__s(  -16777216, '0q7A_FF')
         i__s(  -16777217, '0q7A_FEFFFFFF')
         i__s(  -16777218, '0q7A_FEFFFFFE')
+        i__s(-2147483647, '0q7A_80000001')
+        i__s(-2147483648, '0q7A_80')
+        i__s(-2147483649L,'0q7A_7FFFFFFF')
         i__s(-4294967294, '0q7A_00000002')
         i__s(-4294967295, '0q7A_00000001')
         i__s(-4294967296, '0q79_FF')
@@ -330,12 +378,23 @@ class NumberTestCase(django.test.TestCase):
         i__s(  -2**125,   '0q6E_E0')
         i__s(  -2**250,   '0q5E_FC')
         i__s(  -2**375,   '0q4F_80')
+        i__s(  -204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336L,
+                          '0q3F_FF')
+        i__s(  -2**496,   '0q3F_FF')
+        i__s(  -3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376L,
+                          '0q3F_F0')
         i__s(  -2**500,   '0q3F_F0')
         i__s(  -2**625,   '0q2F_FE')
         i__s(  -2**750,   '0q20_C0')
         i__s(  -2**875,   '0q10_F8')
+        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034687L,
+                          '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(  -2**999+1, '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688L,
+                          '0q01_80')
         i__s(  -2**999,   '0q01_80')
+        i__s(  -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L,
+                          '0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(  -2**1000+1,'0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
 
     def test_integer_nan(self):
@@ -421,13 +480,12 @@ class NumberTestCase(django.test.TestCase):
 
     def test_floats_and_strings(self):
 
-        def f__s(x_in, s_out, s_in=None):
-            assert isinstance(x_in, float), "f__s(%s,_) but it should be a float" % type(x_in).__name__
-            assert isinstance(s_out, six.string_types), "f__s(_,%s) but it should be a string" % type(s_out).__name__
-            assert isinstance(s_in, six.string_types + (type(None),)), "f__s(_,_,%s) but it should be a string" % type(s_in).__name__
+        def f__s(x_in, s_out, s_in_opt=None):
+            assert isinstance(x_in,      float),                                 "f__s(%s,_) should be a float"  % type(x_in).__name__
+            assert isinstance(s_out,    six.string_types),                       "f__s(_,%s) should be a string" % type(s_out).__name__
+            assert isinstance(s_in_opt, six.string_types) or s_in_opt is None, "f__s(_,_,%s) should be a string" % type(s_in_opt).__name__
             x_out = x_in
-            if s_in is None:
-                s_in = s_out
+            s_in = s_out if s_in_opt is None else s_in_opt
 
             try:
                 x_new = float(Number(s_in))
@@ -470,11 +528,12 @@ class NumberTestCase(django.test.TestCase):
                 if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
                 if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
 
-                if not context.after_zone_boundary and Number(s_in).zone != Number(context.s_in_last).zone:
-                    self.fail("%s is in a different zone than %s -- need ZONE_BOUNDARY?" % (context.s_in_last, s_in))
-
-                if context.after_zone_boundary and Number(s_in).zone == Number(context.s_in_last).zone:
-                    self.fail("%s is in the same zone as %s -- remove ZONE_BOUNDARY?" % (context.s_in_last, s_in))
+                this_zone = Number(s_in).zone
+                last_zone =  Number(context.s_in_last).zone
+                if not context.after_zone_boundary and this_zone != last_zone:
+                    self.fail("%s is in a different zone than %s -- need zone_boundary()?" % (context.s_in_last, s_in))
+                if context.after_zone_boundary and this_zone == last_zone:
+                    self.fail("%s is in the same zone as %s -- remove zone_boundary()?" % (context.s_in_last, s_in))
 
             context.x_in_last = x_in
             context.s_in_last = s_in
@@ -500,8 +559,10 @@ class NumberTestCase(django.test.TestCase):
         f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol
         f__s(       1e25,                 '0q8C_0845951614014880')
         f__s(       1e10,                 '0q86_02540BE4')
+
         f__s(4294967296.0,                '0q86_01')
-        f__s(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for 0q86_01, the official code for 256**4
+        f__s(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for +256**4, the official code being 0q86_01
+
         f__s(  16777216.0,                '0q85_01')
         f__s(     65536.0,                '0q84_01')
         f__s(     32768.0,                '0q83_80')
@@ -522,10 +583,8 @@ class NumberTestCase(django.test.TestCase):
         f__s(       512.0,                '0q83_02')
         f__s(       258.0,                '0q83_0102')
         f__s(       257.0,                '0q83_0101')
-
         f__s(       256.0,                '0q83_01')
-        f__s(       256.0,                '0q83_01', '0q83')   # 0q83 an alias for 0q83_01
-
+        f__s(       256.0,                '0q83_01', '0q83')   # alias for +256
         f__s(       255.5,                '0q82_FF80')
         f__s(       255.0,                '0q82_FF')
         f__s(       254.0,                '0q82_FE')
@@ -576,7 +635,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         1.0                , '0q82_01',              '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
         zone_boundary()
         f__s(         1.0,                '0q82_01')
-        f__s(         1.0,                '0q82_01',  '0q82')   # 0q82 is an alias for +1, which is officially 0q82_01
+        f__s(         1.0,                '0q82_01',  '0q82')   # alias for +1
         zone_boundary()
         f__s(         0.99999237060546875,'0q81FF_FFFF80')
         f__s(         0.9998779296875,    '0q81FF_FFF8')
@@ -597,7 +656,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         0.003936767578125,  '0q81FF_0102')
         f__s(         0.0039215087890625, '0q81FF_0101') # 257/65536
         f__s(         0.00390625,         '0q81FF_01')   # 256/65536
-        f__s(         0.00390625,         '0q81FF_01', '0q81FF')   # 0q81FF an alias for 1/256
+        f__s(         0.00390625,         '0q81FF_01', '0q81FF')   # 0q81FF is an alias for 1/256
         f__s(         0.0038909912109375, '0q81FE_FF')   # 255/65536
         f__s(         0.003875732421875,  '0q81FE_FE')
         f__s(         0.0038604736328125, '0q81FE_FD')
@@ -686,7 +745,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(        -0.9998779296875,    '0q7E00_0008')
         f__s(        -0.99999237060546875,'0q7E00_000080')
         zone_boundary()
-        f__s(        -1.0,                '0q7D_FF', '0q7E')   # 0q7E is an alias for -1.0, but it is officially 0q7D_FF
+        f__s(        -1.0,                '0q7D_FF', '0q7E')   # alias for -1
         f__s(        -1.0,                '0q7D_FF')
         zone_boundary()
         f__s(        -1.000001,           '0q7D_FEFFFFEF39085F50')
@@ -731,7 +790,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(      -255.98828125,         '0q7D_0003')
         f__s(      -255.9921875,          '0q7D_0002')
         f__s(      -255.99609375,         '0q7D_0001')
-        f__s(      -256.0,                '0q7C_FF', '0q7D')
+        f__s(      -256.0,                '0q7C_FF', '0q7D')   # alias for -256
         f__s(      -256.0,                '0q7C_FF')
         f__s(      -256.00390625,         '0q7C_FEFFFF')
         f__s(      -256.0078125,          '0q7C_FEFFFE')
@@ -746,80 +805,23 @@ class NumberTestCase(django.test.TestCase):
         f__s(     -8192.0,                '0q7C_E0')
         f__s(    -16384.0,                '0q7C_C0')
         f__s(    -32768.0,                '0q7C_80')
-        f__s(    -65536.0,                '0q7B_FF', '0q7C')
+        f__s(    -65536.0,                '0q7B_FF', '0q7C')   # alias for -256**2
         f__s(    -65536.0,                '0q7B_FF')
         f__s(   -131072.0,                '0q7B_FE')
         f__s(-4294967296.0,               '0q79_FF')
-        f__s(-math.pow(2,992),            '0q01_FF', '0q02')
+        f__s(-math.pow(2,992),            '0q01_FF', '0q02')   # alias for -256**124
         f__s(-math.pow(2,992),            '0q01_FF')
         f__s(-math.pow(2,996),            '0q01_F0')
         f__s(-math.pow(2,997),            '0q01_E0')
         f__s(-math.pow(2,998),            '0q01_C0')
         f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-math.pow(2,1000),           '0q00_FF', '0q01')   # this bug goes over the edge -- until Ludicrous Numbers are supported
+        f__s(-math.pow(2,1000),           '0q00_FF', '0q01')   # this bug goes over the edge -- until TODO: Ludicrous Numbers are supported
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F')
         zone_boundary()
         f__s(float('nan'),                '0q')
-
-        # for float_and_string in FLOATS_AND_STRINGS:
-        #     if float_and_string == ZONE_BOUNDARY:
-        #         continue
-        #     x  = float_and_string[0]
-        #     s  = float_and_string[1]
-        #     (m,e) = math.frexp(x)
-        #     # print("%30.17f  %-14s  %7.2f  %20.17f %3d" % (x, s, m*256.0, m, e))
-
-    def test_python_int_floors_toward_zero(self):
-        self.assertEqual(2, int(2.1))
-        self.assertEqual(2, int(2.9))
-        self.assertEqual(-2, int(-2.1))
-        self.assertEqual(-2, int(-2.9))
-
-    def test_bug_float_qigits(self):
-        def negative_two_behaves(self):
-            self.assertEqual(   -2, int(Number(-2)))
-            self.assertNotEqual(-1, int(Number(-2.0)))
-            self.assertEqual(   -2, int(Number(-2.0)))
-            self.assertEqual(   '0q7D_FE',             str(Number(-2)))
-            self.assertNotEqual('0q7D_FE000000000001', str(Number(-2.0)))
-            self.assertNotEqual('0q7D_FE0000000001',   str(Number(-2.0)))
-            self.assertEqual(   '0q7D_FE',             str(Number(-2.0)))
-
-        Number(0.0, qigits=None)
-        negative_two_behaves(self)
-
-        Number(0.0, qigits=7)
-        negative_two_behaves(self)
-
-        Number(0.0, qigits=None)
-        negative_two_behaves(self)
-
-        Number(0.0, qigits=6)
-        negative_two_behaves(self)
-
-        Number(0.0, qigits=None)
-        negative_two_behaves(self)
-
-        Number(0.0, qigits=15)
-        negative_two_behaves(self)
-
-    def test_int_floors_toward_zero(self):
-        self.assertEqual(2, int(Number(2.0)))
-        self.assertEqual(2, int(Number(2.000001)))
-        self.assertEqual(2, int(Number(2.1)))
-        self.assertEqual(2, int(Number(2.9)))
-        self.assertEqual(2, int(Number(2.999999)))
-        self.assertEqual(3, int(Number(3.0)))
-
-        self.assertEqual(-2, int(Number(-2.0)))
-        self.assertEqual(-2, int(Number(-2.000001)))
-        self.assertEqual(-2, int(Number(-2.1)))
-        self.assertEqual(-2, int(Number(-2.9)))
-        self.assertEqual(-2, int(Number(-2.999999)))
-        self.assertEqual(-3, int(Number(-3.0)))
 
     def test_copy_constructor(self):
         self.assertEqual('0q83_03E8', str(Number(Number('0q83_03E8'))))
@@ -946,167 +948,6 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual('',             Number.from_raw('').raw)
         self.assertEqual('\x80',         Number.from_raw('\x80').raw)
         self.assertEqual('\x83\x03\xE8', Number.from_raw('\x83\x03\xE8').raw)
-
-    def test_int_negative(self):
-        self.assertEqual(         -1, int(Number('0q7D_FF')))
-        self.assertEqual(         -2, int(Number('0q7D_FE')))
-        self.assertEqual(         -3, int(Number('0q7D_FD')))
-        self.assertEqual(         -4, int(Number('0q7D_FC')))
-
-        self.assertEqual(         -8, int(Number('0q7D_F8')))
-        self.assertEqual(        -16, int(Number('0q7D_F0')))
-        self.assertEqual(        -32, int(Number('0q7D_E0')))
-        self.assertEqual(        -64, int(Number('0q7D_C0')))
-        self.assertEqual(       -128, int(Number('0q7D_80')))
-
-        self.assertEqual(       -255, int(Number('0q7D_01')))
-        self.assertEqual(       -256, int(Number('0q7D')))
-        self.assertEqual(       -257, int(Number('0q7C_FEFF')))
-
-        self.assertEqual(       -511, int(Number('0q7C_FE01')))
-        self.assertEqual(       -512, int(Number('0q7C_FE')))
-        self.assertEqual(       -513, int(Number('0q7C_FDFF')))
-
-        self.assertEqual(      -1023, int(Number('0q7C_FC01')))
-        self.assertEqual(      -1024, int(Number('0q7C_FC')))
-        self.assertEqual(      -1025, int(Number('0q7C_FBFF')))
-
-        self.assertEqual(     -65535, int(Number('0q7C_0001')))
-        self.assertEqual(     -65536, int(Number('0q7C')))
-        self.assertEqual(     -65537, int(Number('0q7B_FEFFFF')))
-        self.assertEqual(     -65538, int(Number('0q7B_FEFFFE')))
-
-        self.assertEqual(  -16777215, int(Number('0q7B_000001')))
-        self.assertEqual(  -16777216, int(Number('0q7B')))
-        self.assertEqual(  -16777217, int(Number('0q7A_FEFFFFFF')))
-
-        self.assertEqual(-2147483647, int(Number('0q7A_80000001')))
-        self.assertEqual(-2147483648, int(Number('0q7A_80000000')))
-        self.assertEqual(-2147483649L,int(Number('0q7A_7FFFFFFF')))
-
-        self.assertEqual(-4294967296L,int(Number('0q7A')))
-
-        self.assertEqual(-pow(2,62*8),int(Number('0q40')))
-        self.assertEqual(-204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336L,
-                                      int(Number('0q40')))
-
-        self.assertEqual(-pow(2,62.5*8),
-                                      int(Number('0q3F_F0')))
-        self.assertEqual(-pow(2,500), int(Number('0q3F_F0')))
-        self.assertEqual(-3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376L,
-                                      int(Number('0q3F_F0')))
-
-        self.assertEqual(-pow(2,999),int(Number('0q01_80')))
-        self.assertEqual(-5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688L,
-                                      int(Number('0q01_80')))
-
-        # Most extreme reasonable negative number
-        self.assertEqual(-pow(2,1000),int(Number('0q01')))
-        self.assertEqual(-10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376L,
-                                      int(Number('0q01')))
-
-    def test_long(self):
-        self.assertEqual(         0L, long(Number('0q80')))
-        self.assertEqual(         1L, long(Number('0q82')))
-        self.assertEqual(2147483647L, long(Number('0q85_7FFFFFFF')))
-        self.assertEqual(4294967296L, long(Number('0q86_01')))
-
-    def test_int(self):
-        self.assertEqual(         0, int(Number('0q80')))
-        self.assertEqual(         1, int(Number('0q82')))
-        self.assertEqual(         2, int(Number('0q82_02')))
-        self.assertEqual(         3, int(Number('0q82_03')))
-
-        self.assertEqual(       255, int(Number('0q82_FF')))
-        self.assertEqual(       256, int(Number('0q83_01')))
-        self.assertEqual(       257, int(Number('0q83_0101')))
-
-        self.assertEqual(      4095, int(Number('0q83_0FFF')))
-        self.assertEqual(      4096, int(Number('0q83_10')))
-        self.assertEqual(      4097, int(Number('0q83_1001')))
-
-        self.assertEqual(     65535, int(Number('0q83_FFFF')))
-        self.assertEqual(     65536, int(Number('0q84_01')))
-        self.assertEqual(     65537, int(Number('0q84_010001')))
-        self.assertEqual(     65538, int(Number('0q84_010002')))
-
-        self.assertEqual(   1048575, int(Number('0q84_0FFFFF')))
-        self.assertEqual(   1048576, int(Number('0q84_10')))
-        self.assertEqual(   1048577, int(Number('0q84_100001')))
-
-        self.assertEqual(  16777215, int(Number('0q84_FFFFFF')))
-        self.assertEqual(  16777216, int(Number('0q85_01')))
-        self.assertEqual(  16777217, int(Number('0q85_01000001')))
-
-        self.assertEqual( 268435455, int(Number('0q85_0FFFFFFF')))
-        self.assertEqual( 268435456, int(Number('0q85_10')))
-        self.assertEqual( 268435457, int(Number('0q85_10000001')))
-
-        self.assertEqual(2147483645, int(Number('0q85_7FFFFFFD')))
-        self.assertEqual(2147483646, int(Number('0q85_7FFFFFFE')))
-        self.assertEqual(2147483647, int(Number('0q85_7FFFFFFF')))
-        self.assertEqual(2147483648L, int(Number('0q85_80000000')))
-        self.assertEqual(2147483649L, int(Number('0q85_80000001')))
-
-        self.assertEqual(4294967295L, int(Number('0q85_FFFFFFFF')))
-        self.assertEqual(4294967296L, int(Number('0q86_01')))
-        self.assertEqual(4294967297L, int(Number('0q86_0100000001')))
-        self.assertEqual(4294967298L, int(Number('0q86_0100000002')))
-
-        self.assertEqual(10L**10,      int(Number('0q86_02540BE4')))
-        self.assertEqual(10000000000L, int(Number('0q86_02540BE4')))
-        self.assertEqual(10000000001L, int(Number('0q86_02540BE401')))
-
-        self.assertEqual(68719476735L, int(Number('0q86_0FFFFFFFFF')))
-        self.assertEqual(68719476736L, int(Number('0q86_1000000000')))
-
-        self.assertEqual(1099511627776L, int(Number('0q87_01')))
-        self.assertEqual(281474976710656L, int(Number('0q88_01')))
-        self.assertEqual(72057594037927936L, int(Number('0q89_01')))
-
-        self.assertEqual(18446744073709551615L, int(Number('0q89_FFFFFFFFFFFFFFFF')))
-        self.assertEqual(18446744073709551616L, int(Number('0q8A_01')))
-        self.assertEqual(18446744073709551617L, int(Number('0q8A_010000000000000001')))
-
-        self.assertEqual(10L**25,                     int(Number('0q8C_084595161401484A')))
-        self.assertEqual(10000000000000000000000000L, int(Number('0q8C_084595161401484A')))
-        self.assertEqual(10000000000000000000000001L, int(Number('0q8C_084595161401484A000001')))
-
-        self.assertEqual(20282409603651670423947251286016L,
-                                               int(Number('0q8F_01')))
-        self.assertEqual(5192296858534827628530496329220096L,
-                                               int(Number('0q90_01')))
-        self.assertEqual(1766847064778384329583297500742918515827483896875618958121606201292619776L,
-                                               int(Number('0qA0_01')))
-        self.assertEqual(10L**100,             int(Number('0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')))
-
-        self.assertEqual(pow(2,496),           int(Number('0qC0_01')))
-        self.assertEqual(204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336L,
-                                               int(Number('0qC0_01')))
-
-        self.assertEqual(pow(2,500),           int(Number('0qC0_10')))
-        self.assertEqual(3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376L,
-                                               int(Number('0qC0_10')))
-
-        self.assertEqual(pow(2,992),           int(Number('0qFE_01')))
-        self.assertEqual(1L << 992,            int(Number('0qFE_01')))
-        self.assertEqual(1L << 124*8,          int(Number('0qFE_01')))
-        self.assertEqual(41855804968213567224547853478906320725054875457247406540771499545716837934567817284890561672488119458109166910841919797858872862722356017328064756151166307827869405370407152286801072676024887272960758524035337792904616958075776435777990406039363527010043736240963055342423554029893064011082834640896L,
-                                               int(Number('0qFE_01')))
-
-        self.assertEqual(pow(2,999),           int(Number('0qFE_80')))
-        self.assertEqual(1L << 999,            int(Number('0qFE_80')))
-        self.assertEqual(5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688L,
-                                               int(Number('0qFE_80')))
-
-        self.assertEqual((1L << 1000)-2L,      10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069374L)
-        self.assertEqual((1L << 1000)-2L,      int(Number('0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')))
-
-        # Biggest reasonable number
-        self.assertEqual((1L << 1000)-1L,      10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
-        self.assertEqual((1L << 1000)-1L,      int(Number('0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')))
-        self.assertEqual(10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L,
-                                               int(Number('0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')))
 
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
@@ -1400,11 +1241,26 @@ class NumberTestCase(django.test.TestCase):
 
     ################## checking python assumptions ###########################
 
+    def test_python_int_floors_toward_zero(self):
+        self.assertEqual(2, int(Number(2.0)))
+        self.assertEqual(2, int(Number(2.000001)))
+        self.assertEqual(2, int(Number(2.1)))
+        self.assertEqual(2, int(Number(2.9)))
+        self.assertEqual(2, int(Number(2.999999)))
+        self.assertEqual(3, int(Number(3.0)))
+
+        self.assertEqual(-2, int(Number(-2.0)))
+        self.assertEqual(-2, int(Number(-2.000001)))
+        self.assertEqual(-2, int(Number(-2.1)))
+        self.assertEqual(-2, int(Number(-2.9)))
+        self.assertEqual(-2, int(Number(-2.999999)))
+        self.assertEqual(-3, int(Number(-3.0)))
+
     def test_python_weird_big_math(self):
         self.assertEqual((1L << 1000),             1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
         self.assertEqual((1L << 1000)-1L,           10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
 
-        self.assertEqual(    pow(2,1000),          1.0715086071862673e+301)
+        self.assertEqual(     pow(2,1000),          1.0715086071862673e+301)
         self.assertEqual(math.pow(2,1000),          1.0715086071862673e+301)
 
         self.assertEqual(    pow(2,1000)-1L,        10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
