@@ -211,7 +211,7 @@ class Number(object):
     @classmethod
     def _pack_integer(cls, theinteger, nbytes=None):
         """
-        Pack an integer into a base-256 string.
+        Pack an integer into a binary string, which is like a base-256, big-endian string.
         :param theinteger:  an arbitrarily large integer
         :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
         :return:  an unsigned two's complement string, MSB first
@@ -327,6 +327,10 @@ class Number(object):
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
+        """
+        Convert a binary byte string into an integer
+        Akin to a base-256 decode, big-endian
+        """
         if len(binary_string) <= 8:
             return cls._unpack_big_integer_by_struct((binary_string))
         else:
@@ -361,6 +365,7 @@ class Number(object):
        return long(self.__int__())
 
     def __int__(self):
+        # TODO: use self.zone to break down the cases, maybe a dict
         if '\xFF' <= self.raw:
             raise OverflowError("Positive Infinity can't be represented by integers")
         elif '\x82\x01' < self.raw:
@@ -399,29 +404,29 @@ class Number(object):
     def zone(self):
         try:
             return self._zone
-        except AttributeError:
+        except AttributeError:   # (benign, _zone missing from __slots__)
             return self._zone_from_scratch()
 
     def _zone_refresh(self):
         try:
             self._zone = self._zone_from_scratch()
-        except AttributeError:
+        except AttributeError:   # (benign, _zone missing from __slots__)
             pass
 
     def _zone_from_scratch(self):
-        retval_tree = self._zone_tree()
-        assert retval_tree == self._zone_scan(), "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
+        zone_by_tree = self._find_zone_by_if_else_tree()
+        assert zone_by_tree == self._find_zone_by_for_loop_scan(), "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
             repr(self), retval_tree, self._zone_scan()
         )
-        return retval_tree
+        return zone_by_tree
 
-    def _zone_scan(self):
+    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's enum values
         for z in self.Zone:
             if z.value <= self.raw:
                 return z
-        raise ValueError("Number._zone_scan() fell through!  How can anything be less than Zone.NAN? '%s'" % repr(self))
+        raise ValueError("Number._find_zone_by_for_loop_scan() fell through!  How can anything be less than Zone.NAN? '%s'" % repr(self))
 
-    def _zone_tree(self):
+    def _find_zone_by_if_else_tree(self):  # likely faster than a scan, for most values
         if self.raw > self.RAW_ZERO:
             if self.raw > self.RAW_ONE:
                 if self.raw >= self.Zone.LUDICROUS_LARGE.value:
@@ -466,9 +471,10 @@ class Number(object):
     @staticmethod
     def _floats_really_same(f1,f2):
         """
-        Same as == with a few exceptions.
-        Equal if both NAN.
-        Not equal if one is +0.0 and the other -0.0.
+        Are these floats really the same value?
+        Similar to == except:
+         1. same if both NAN.
+         2. not same if one is +0.0 and the other -0.0.
         """
         assert type(f1) is float
         assert type(f2) is float
@@ -480,7 +486,7 @@ class Number(object):
 
     def __float__(self):
         float_by_dictionary = self.__float__by_zone_dictionary()
-        assert self._floats_really_same(float_by_dictionary, self.__float__by_ifs()), (
+        assert self._floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
                 repr(self), float_by_dictionary, self.__float__by_ifs()
             )
@@ -488,9 +494,9 @@ class Number(object):
         return float_by_dictionary
 
     def __float__by_zone_dictionary(self):
-        return self.__float__dict[self.zone](self)
+        return self.__float__zone_dict[self.zone](self)
 
-    __float__dict =  {
+    __float__zone_dict =  {
         Zone.TRANSFINITE:         lambda self: float('+inf'),
         Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
         Zone.POSITIVE:            lambda self: self._to_float(),
@@ -509,7 +515,7 @@ class Number(object):
         Zone.NAN:                 lambda self: float('nan')
     }
 
-    def __float__by_ifs(self):
+    def __float__by_zone_ifs(self):
         _zone = self.zone
         if _zone == self.Zone.ONE:
             return 1.0
