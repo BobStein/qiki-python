@@ -1336,6 +1336,14 @@ class NumberTestCase(django.test.TestCase):
         with self.assertRaises(Exception):
             Number._unpack_big_integer_by_struct('ninebytes')
 
+    def test_exp256(self):
+        self.assertEqual(1, Number._exp256(0))
+        self.assertEqual(256, Number._exp256(1))
+        self.assertEqual(65536, Number._exp256(2))
+        self.assertEqual(4294967296L, Number._exp256(4))
+        self.assertEqual(1208925819614629174706176L, Number._exp256(10))
+        self.assertEqual(2**800, Number._exp256(100))
+
     def test_hex_even(self):
         self.assertEqual('05', Number._hex_even(0x5))
         self.assertEqual('55', Number._hex_even(0x55))

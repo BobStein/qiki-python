@@ -150,7 +150,7 @@ class Number(object):
     def qigits_precision(cls, qigits):
         if qigits is not None and qigits >= 1 and qigits != cls._qigits_precision:
             cls._qigits_precision = qigits
-            cls._qigits_scaler = 256**qigits
+            cls._qigits_scaler = cls._exp256(qigits)
         else:
             cls._qigits_precision = Number.QIGITS_PRECISION_DEFAULT
             cls._qigits_scaler = Number.QIGITS_SCALER_DEFAULT
@@ -160,7 +160,7 @@ class Number(object):
 
         if math.isnan(x):          self.raw =          self.RAW_NAN
         elif x >= float('+inf'):   self.raw =          self.RAW_INF
-        elif x >=  1.0:            self.raw =          self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- exp256
+        elif x >=  1.0:            self.raw =          self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- e256
         elif x >   0.0:            self.raw = '\x81' + self._raw_from_float(x, lambda e: 0xFF+e)
         elif x ==  0.0:            self.raw =          self.RAW_ZERO
         elif x >  -1.0:            self.raw = '\x7E' + self._raw_from_float(x, lambda e: 0x00-e)
@@ -244,7 +244,7 @@ class Number(object):
         if num >= 0:
             num_twos_complement = num
         else:
-            num_twos_complement = num + 256**nbytes   # two's complement of big negative integers
+            num_twos_complement = num + cls._exp256(nbytes)   # two's complement of big negative integers
         return cls._left_pad00(
             cls._hex_even(
                 num_twos_complement
@@ -272,6 +272,11 @@ class Number(object):
     @staticmethod
     def _right_strip00(qan):
         return qan.rstrip('\x00')
+
+    @staticmethod
+    def _exp256(e):
+        # TODO: make more efficient, e.g. table-lookup smaller numbers
+        return 2**(8*e)
 
     def qstring(self, underscore=1):
         """
@@ -346,7 +351,7 @@ class Number(object):
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
     __qexponent_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,   # exp256 <-- qex
+        Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,   # e <-- qex
         Zone.FRACTIONAL:     lambda self:         ord(self.raw[1]) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - ord(self.raw[1]),
         Zone.NEGATIVE:       lambda self:  0x7E - ord(self.raw[0]),
@@ -373,7 +378,7 @@ class Number(object):
             return -1
         elif '\x01' <= self.raw:   # <= '\x7D'
             (qan,qanlength) = self.qantissa()
-            offset = (2 ** (qanlength*8))
+            offset = self._exp256(qanlength)
             qan -= offset
             qexp = self.qexponent() - qanlength
             if qexp < 0:
@@ -527,13 +532,14 @@ class Number(object):
         qexp = self.qexponent()
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
-            qan -= (2 ** (qanlength*8))
-            if qan >= -(2 ** ((qanlength-1)*8)):
+            qan -= self._exp256(qanlength)
+            if qan >= - self._exp256(qanlength-1):
                 (qan, qanlength) = (-1,1)
         else:
-            if qan <= (2 ** ((qanlength-1)*8)):
+            if qan <=  self._exp256(qanlength-1):
                 (qan, qanlength) = (1,1)
-        return float(qan) * math.pow(256, (qexp - qanlength))
+        exponent_base_2 = 8 * (qexp-qanlength)
+        return math.ldexp(float(qan), exponent_base_2)
 
     def __obsolete_to_int(self):
         if '\x85\x7F\xFF\xFF\xFF' < self.raw:
@@ -621,7 +627,7 @@ Number.ZONE_ALL = {zone for zone in Number.Zone if zone != Number.Zone.NAN}
 # 7 qigits would only store 49-56.
 Number.qigits_precision(8)
 Number.QIGITS_PRECISION_DEFAULT = 8
-Number.QIGITS_SCALER_DEFAULT = 256**Number.QIGITS_PRECISION_DEFAULT
+Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
 
 
 if __name__ == '__main__':
