@@ -304,16 +304,19 @@ class Number(object):
         Returns a tuple: (integer value, number of qigits)
         """
         try:
-            qan_offset = {
-                self.Zone.POSITIVE:       1,
-                self.Zone.FRACTIONAL:     2,
-                self.Zone.FRACTIONAL_NEG: 2,
-                self.Zone.NEGATIVE:       1,
-            }[self.zone]
+            qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
-            raise ValueError('qantissa() not defined for %s' % repr(self))   # TODO: ludicrous numbers
+            raise ValueError('qantissa() not defined for %s' % repr(self))
         number_qantissa = self._unpack_big_integer(self.raw[qan_offset:])
         return (number_qantissa, len(self.raw) - qan_offset)
+
+    __qan_offset_dict ={   # TODO: ludicrous numbers
+        Zone.POSITIVE:       1,
+        Zone.FRACTIONAL:     2,
+        Zone.FRACTIONAL_NEG: 2,
+        Zone.NEGATIVE:       1,
+    }
+
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
@@ -340,7 +343,7 @@ class Number(object):
         except KeyError:
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
-    __qexponent_dict = {
+    __qexponent_dict = {   # TODO: ludicrous numbers
         Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,
         Zone.FRACTIONAL:     lambda self:         ord(self.raw[1]) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - ord(self.raw[1]),
