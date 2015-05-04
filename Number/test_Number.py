@@ -1310,7 +1310,31 @@ class NumberTestCase(django.test.TestCase):
 
     def test_unpack_big_integer(self):
         self.assertEqual(0L, Number._unpack_big_integer(''))
-        self.assertEqual(0x807F99DEADBEEF00L, Number._unpack_big_integer('\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
+        self.assertEqual(0x1234L, Number._unpack_big_integer('\x12\x34'))
+        self.assertEqual( 0x807F99DEADBEEF00L, Number._unpack_big_integer(    '\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
+        self.assertEqual( 0xFFFFFFFFFFFFFF77L, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x77'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFEL, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFFL, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        self.assertEqual(0x10000000000000000L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
+        self.assertEqual(0x10000000000000001L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
+        self.assertEqual(0x10000000000000022L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00L, Number._unpack_big_integer('\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+
+    def test_unpack_big_integer_by_brute(self):
+        self.assertEqual(0L, Number._unpack_big_integer_by_brute(''))
+        self.assertEqual(0x1234L, Number._unpack_big_integer_by_brute('\x12\x34'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00L, Number._unpack_big_integer_by_brute('\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+
+    def test_unpack_big_integer_by_struct(self):
+        self.assertEqual(0L, Number._unpack_big_integer_by_struct(''))
+        self.assertEqual(0x00L, Number._unpack_big_integer_by_struct('\x00'))
+        self.assertEqual(0x1234L, Number._unpack_big_integer_by_struct('\x12\x34'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFEL, Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFFL, Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        with self.assertRaises(Exception):
+            Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
+        with self.assertRaises(Exception):
+            Number._unpack_big_integer_by_struct('ninebytes')
 
     def test_hex_even(self):
         self.assertEqual('05', Number._hex_even(0x5))

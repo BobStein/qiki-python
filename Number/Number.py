@@ -95,7 +95,7 @@ class Number(object):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        elif isinstance(content, type(self)):  # ala C++ copy-constructor
+        elif isinstance(content, type(self)):  # copy-constructor
             self.raw = content.raw
         else:
             typename = type(content).__name__
@@ -200,8 +200,8 @@ class Number(object):
         qan = cls._right_strip00(qan00)
 
         exponent_base_256 = len(qan00)
-        qex_number = qex_encoder(exponent_base_256)
-        qex = chr(qex_number)
+        qex_integer = qex_encoder(exponent_base_256)
+        qex = chr(qex_integer)
 
         return qex + qan
 
@@ -277,7 +277,7 @@ class Number(object):
 
         Q-string is the raw text representation of a qiki number
         Similar to 0x12AB for hexadecimal
-        Except q for x, underscores optional, and meaning differs
+        Except q for x, underscores optional, and value interpretation differs
         """
         if underscore == 0:
             return '0q' + self.hex()
@@ -299,6 +299,10 @@ class Number(object):
         return self.raw.encode('hex').upper()
 
     def qantissa(self):
+        """
+        Extract the base-256 significand in its raw form
+        Returns a tuple: (integer value, number of qigits)
+        """
         try:
             qan_offset = {
                 self.Zone.POSITIVE:       1,
@@ -313,6 +317,17 @@ class Number(object):
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
+        if len(binary_string) <= 8:
+            return cls._unpack_big_integer_by_struct((binary_string))
+        else:
+            return cls._unpack_big_integer_by_brute(binary_string)
+
+    @classmethod
+    def _unpack_big_integer_by_struct(cls, binary_string):   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
+        return struct.unpack('>Q', cls._left_pad00(binary_string, 8))[0]
+
+    @classmethod
+    def _unpack_big_integer_by_brute(cls, binary_string):
         retval = 0L
         for i in range(len(binary_string)):
             retval <<= 8
