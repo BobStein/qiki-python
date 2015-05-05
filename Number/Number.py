@@ -277,8 +277,31 @@ class Number(object):
 
     @staticmethod
     def _exp256(e):
-        # TODO: make more efficient, e.g. table-lookup smaller numbers
-        return 2**(8*e)
+        """Compute 256**e for nonnegative integer e"""
+        assert e >= 0
+        try:
+            return Number._exp256_dict[e]
+        except KeyError:
+            return 2**(8*e)
+
+    _exp256_dict = {
+        0: 1,
+        1: 256,
+        2: 65536,
+        3: 16777216,
+        4: 4294967296,
+        5: 1099511627776,
+        6: 281474976710656,
+        7: 72057594037927936,
+        8: 18446744073709551616,
+        9: 4722366482869645213696,
+        10: 1208925819614629174706176,
+        11: 309485009821345068724781056,
+        12: 79228162514264337593543950336,
+        13: 20282409603651670423947251286016,
+        14: 5192296858534827628530496329220096,
+        15: 1329227995784915872903807060280344576,
+    }
 
     def qstring(self, underscore=1):
         """
@@ -541,10 +564,10 @@ class Number(object):
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
             qan -= self._exp256(qanlength)
-            if qan >= - self._exp256(qanlength-1):
+            if qanlength != 0 and qan >= - self._exp256(qanlength-1):
                 (qan, qanlength) = (-1,1)
         else:
-            if qan <=  self._exp256(qanlength-1):
+            if qanlength == 0 or qan <=  self._exp256(qanlength-1):
                 (qan, qanlength) = (1,1)
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
