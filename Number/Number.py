@@ -13,6 +13,23 @@ import struct
 
 class Number(object):
 
+    def __init__(self, content, qigits = None):
+        if content is None:
+            self.raw = ''
+        elif isinstance(content, six.string_types):
+            self._from_string(content)
+        elif isinstance(content, (int, long)):
+            self._from_int(content)
+        elif isinstance(content, float):
+            self._from_float(content, qigits)
+        elif isinstance(content, type(self)):  # copy-constructor
+            self.raw = content.raw
+        else:
+            typename = type(content).__name__
+            if typename == 'instance':
+                typename = content.__class__.__name__
+            raise TypeError('Number(%s) not yet supported' % typename)
+
     __slots__ = ('__raw', )   # less memory
     # __slots__ = ('__raw', '_zone')   # faster
 
@@ -23,6 +40,9 @@ class Number(object):
     RAW_INF_NEG = '\x00\x7F'
     RAW_NAN     = ''
 
+
+    # Zones
+    # -----
     # qiki Numbers fall into zones.
     # Zone enumeration names have values that are *between* zones.
     # Raw, internal binary strings are represented.
@@ -86,23 +106,6 @@ class Number(object):
     def __setstate__(self, d):
         self.raw = d
 
-    def __init__(self, content, qigits = None):
-        if content is None:
-            self.raw = ''
-        elif isinstance(content, six.string_types):
-            self._from_string(content)
-        elif isinstance(content, (int, long)):
-            self._from_int(content)
-        elif isinstance(content, float):
-            self._from_float(content, qigits)
-        elif isinstance(content, type(self)):  # copy-constructor
-            self.raw = content.raw
-        else:
-            typename = type(content).__name__
-            if typename == 'instance':
-                typename = content.__class__.__name__
-            raise TypeError('Number(%s) not yet supported' % typename)
-
     def __repr__(self):
         return "Number('%s')" % self.qstring()
 
@@ -117,6 +120,11 @@ class Number(object):
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
 
     # TODO: __neg__ (and take advantage of two's complement encoding)
+
+    # TODO: math operators (phase 1: use float or int, phase 2: native computations)
+
+    # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
+    # ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
 
     @classmethod
     def from_raw(cls, value):
@@ -143,13 +151,14 @@ class Number(object):
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '%s'" % s)
             self.raw = sdecoded
         else:
-            # TODO:  assert Number('1') == Number(1)
+            # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
             raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
 
     _qigits_precision = None
 
     @classmethod
     def qigits_precision(cls, qigits):
+        """Set how many qigits (base-256 digits) will be used when converting from float"""
         if qigits is not None and qigits >= 1 and qigits != cls._qigits_precision:
             cls._qigits_precision = qigits
             cls._qigits_scaler = cls._exp256(qigits)
@@ -280,7 +289,7 @@ class Number(object):
         """Compute 256**e for nonnegative integer e"""
         assert isinstance(e, (int, long))
         assert e >= 0
-        return 1<<(e<<3)   # which is the same as 2**(e*8) or 256**e
+        return 1 << (e<<3)   # which is the same as 2**(e*8) or 256**e
 
     def qstring(self, underscore=1):
         """
@@ -523,9 +532,9 @@ class Number(object):
         _zone = self.zone
         if _zone == self.Zone.ONE:
             return 1.0
-        elif _zone in self.ZONE_ESSENTIALLY_POSITIVE_ZERO:
+        elif _zone in self._ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
             return 0.0
-        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
+        elif _zone in self._ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
         elif _zone == self.Zone.ONE_NEG:
             return -1.0
@@ -553,8 +562,8 @@ class Number(object):
 
 
 
-# Float
-# -----
+# float precision
+# ---------------
 # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
 # A "qigit" is a base-256 digit.
 # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
@@ -572,8 +581,8 @@ Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
 Number.NAN = Number(None)
 
 
-# Sets   TODO: draw a Venn Diagram or table or something
-# ----
+# Sets of Zones   TODO: draw a Venn Diagram or table or something
+# -------------
 Number.ZONE_REASONABLE = {
     Number.Zone.POSITIVE,
     Number.Zone.ONE,
@@ -596,14 +605,6 @@ Number.ZONE_NONFINITE = {
     Number.Zone.TRANSFINITE_NEG,
 }
 Number.ZONE_FINITE = Number.ZONE_LUDICROUS | Number.ZONE_REASONABLE
-Number.ZONE_NAN = {
-    Number.Zone.NAN
-}
-Number._ZONE_ALL_BY_FINITENESS = (
-    Number.ZONE_FINITE |
-    Number.ZONE_NONFINITE |
-    Number.ZONE_NAN
-)
 
 Number.ZONE_POSITIVE = {
     Number.Zone.TRANSFINITE,
@@ -627,22 +628,21 @@ Number.ZONE_NONZERO = Number.ZONE_POSITIVE | Number.ZONE_NEGATIVE
 Number.ZONE_ZERO = {
     Number.Zone.ZERO
 }
-Number._ZONE_ALL_BY_ZERONESS = (
-    Number.ZONE_NONZERO |
-    Number.ZONE_ZERO |
-    Number.ZONE_NAN
-)
 
-Number.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-    Number.Zone.INFINITESIMAL,
+Number._ZONE_ESSENTIALLY_POSITIVE_ZERO = {
     Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.ZERO,
+    Number.Zone.INFINITESIMAL,
 }
-Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
+Number._ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = Number._ZONE_ESSENTIALLY_POSITIVE_ZERO | Number.ZONE_ZERO
+Number._ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
     Number.Zone.INFINITESIMAL_NEG,
     Number.Zone.LUDICROUS_SMALL_NEG,
 }
-Number.ZONE_ESSENTIALLY_ZERO = Number.ZONE_ESSENTIALLY_POSITIVE_ZERO | Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO
+Number.ZONE_ESSENTIALLY_ZERO = (
+    Number._ZONE_ESSENTIALLY_POSITIVE_ZERO |
+    Number.ZONE_ZERO |
+    Number._ZONE_ESSENTIALLY_NEGATIVE_ZERO
+)
 Number.ZONE_REASONABLY_POSITIVE = {
     Number.Zone.POSITIVE,
     Number.Zone.ONE,
@@ -660,6 +660,22 @@ Number.ZONE_UNREASONABLY_BIG = {
     Number.Zone.LUDICROUS_LARGE_NEG,
     Number.Zone.TRANSFINITE_NEG,
 }
+
+Number.ZONE_ALL = {zone for zone in Number.Zone}
+Number.ZONE_NAN = {
+    Number.Zone.NAN
+}
+
+Number._ZONE_ALL_BY_FINITENESS = (
+    Number.ZONE_FINITE |
+    Number.ZONE_NONFINITE |
+    Number.ZONE_NAN
+)
+Number._ZONE_ALL_BY_ZERONESS = (
+    Number.ZONE_NONZERO |
+    Number.ZONE_ZERO |
+    Number.ZONE_NAN
+)
 Number._ZONE_ALL_BY_REASONABLENESS = (
     Number.ZONE_ESSENTIALLY_ZERO |
     Number.ZONE_REASONABLY_NONZERO |
@@ -667,9 +683,7 @@ Number._ZONE_ALL_BY_REASONABLENESS = (
     Number.ZONE_NAN
 )
 
-Number.ZONE_ALL = {zone for zone in Number.Zone}
-
 
 if __name__ == '__main__':
     import unittest
-    unittest.main()   # TODO: why 0 tests?
+    unittest.main()   # FIXME: why 0 tests?

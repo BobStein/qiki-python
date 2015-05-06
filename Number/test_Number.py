@@ -428,6 +428,8 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
+        # TODO: check that these _ZONE_ALL_XXX subsets are MECE (instead of merely CE)
+        # TODO: check the ME part of MECE (they shouldn't be CE) for all the other zone sets formed by or'ing:  zs = zs | zs | ...
 
     def test_zone(self):
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
@@ -581,6 +583,7 @@ class NumberTestCase(django.test.TestCase):
 
         f__s(      1111.1111111,          '0q83_04571C71C6ECB9')
         f__s(      1024.0,                '0q83_04')
+        f__s(      1000.0,                '0q83_03E8')
         f__s(       512.0,                '0q83_02')
         f__s(       258.0,                '0q83_0102')
         f__s(       257.0,                '0q83_0101')
@@ -590,6 +593,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(       255.0,                '0q82_FF')
         f__s(       254.0,                '0q82_FE')
         f__s(       128.0,                '0q82_80')
+        f__s(       100.0,                '0q82_64')
         f__s(         2.5,                '0q82_0280')
         f__s(         2.4,                '0q82_0266666666666660')
         f__s(         2.3,                '0q82_024CCCCCCCCCCCC0')
@@ -640,7 +644,13 @@ class NumberTestCase(django.test.TestCase):
         zone_boundary()
         f__s(         0.99999237060546875,'0q81FF_FFFF80')
         f__s(         0.9998779296875,    '0q81FF_FFF8')
+        f__s(         0.999,              '0q81FF_FFBE76C8B43958')     # 999/1000
         f__s(         0.998046875,        '0q81FF_FF80')
+        f__s(         0.998,              '0q81FF_FF7CED916872B0')     # 998/1000
+        f__s(         0.9972222222222222, '0q81FF_FF49F49F49F4A0')     # 359/360
+        f__s(         0.9944444444444445, '0q81FF_FE93E93E93E940')     # 358/360
+        f__s(         0.99,               '0q81FF_FD70A3D70A3D70')     # 99/100
+        f__s(         0.98,               '0q81FF_FAE147AE147AE0')     # 98/100
         f__s(         0.96875,            '0q81FF_F8')
         f__s(         0.9375,             '0q81FF_F0')
         f__s(         0.875,              '0q81FF_E0')
@@ -650,18 +660,24 @@ class NumberTestCase(django.test.TestCase):
         f__s(         0.125,              '0q81FF_20')
         f__s(         0.0625,             '0q81FF_10')
         f__s(         0.03125,            '0q81FF_08')
+        f__s(         0.02,               '0q81FF_051EB851EB851EC0')   # 2/200
         f__s(         0.015625,           '0q81FF_04')
         f__s(         0.01171875,         '0q81FF_03')
+        f__s(         0.01,               '0q81FF_028F5C28F5C28F60')   # 1/100
         f__s(         0.0078125,          '0q81FF_02')
-        f__s(         0.0039520263671875, '0q81FF_0103') # 259/65536
-        f__s(         0.003936767578125,  '0q81FF_0102') # 258/65536
-        f__s(         0.0039215087890625, '0q81FF_0101') # 257/65536
-        f__s(         0.00390625,         '0q81FF_01')   # 256/65536       aka 1/256
-        f__s(         0.00390625,         '0q81FF_01', '0q81FF')   # alias for 1/256
-        f__s(         0.0038909912109375, '0q81FE_FF')   # 255/65536
-        f__s(         0.003875732421875,  '0q81FE_FE')   # 254/65536
-        f__s(         0.0038604736328125, '0q81FE_FD')   # 253/65536
+        f__s(         0.005555555555555556,'0q81FF_016C16C16C16C170')  # 2/360
+        f__s(         0.0039520263671875, '0q81FF_0103')               # 259/65536
+        f__s(         0.003936767578125,  '0q81FF_0102')               # 258/65536
+        f__s(         0.0039215087890625, '0q81FF_0101')               # 257/65536
+        f__s(         0.00390625,         '0q81FF_01')                 # 256/65536 aka 1/256
+        f__s(         0.00390625,         '0q81FF_01', '0q81FF')       # 1/256 alias
+        f__s(         0.0038909912109375, '0q81FE_FF')                 # 255/65536
+        f__s(         0.003875732421875,  '0q81FE_FE')                 # 254/65536
+        f__s(         0.0038604736328125, '0q81FE_FD')                 # 253/65536
+        f__s(         0.002777777777777778,'0q81FE_B60B60B60B60B8')    # 1/360
+        f__s(         0.002,              '0q81FE_83126E978D4FE0')     # 2/1000
         f__s(         0.001953125,        '0q81FE_80')
+        f__s(         0.001,              '0q81FE_4189374BC6A7F0')     # 1/1000
         f__s(         0.0009765625,       '0q81FE_40')
         f__s(         0.00048828125,      '0q81FE_20')
         f__s(         0.000244140625,     '0q81FE_10')
@@ -1367,4 +1383,4 @@ class NumberTestCase(django.test.TestCase):
 
 if __name__ == '__main__':
     import unittest
-    unittest.main()   # TODO: why 0 tests?
+    unittest.main()   # FIXME: why 0 tests?
