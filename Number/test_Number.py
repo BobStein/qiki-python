@@ -1192,9 +1192,12 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual(1, Number._exp256(0))
         self.assertEqual(256, Number._exp256(1))
         self.assertEqual(65536, Number._exp256(2))
+        self.assertEqual(16777216, Number._exp256(3))
         self.assertEqual(4294967296L, Number._exp256(4))
         self.assertEqual(1208925819614629174706176L, Number._exp256(10))
+        self.assertEqual(1461501637330902918203684832716283019655932542976L, Number._exp256(20))
         self.assertEqual(2**800, Number._exp256(100))
+        self.assertEqual(2**8000, Number._exp256(1000))
 
     def test_hex_even(self):
         self.assertEqual('05', Number._hex_even(0x5))

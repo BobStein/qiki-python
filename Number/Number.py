@@ -278,30 +278,9 @@ class Number(object):
     @staticmethod
     def _exp256(e):
         """Compute 256**e for nonnegative integer e"""
+        assert isinstance(e, (int, long))
         assert e >= 0
-        try:
-            return Number._exp256_dict[e]
-        except KeyError:
-            return 2**(8*e)
-
-    _exp256_dict = {
-        0: 1,
-        1: 256,
-        2: 65536,
-        3: 16777216,
-        4: 4294967296,
-        5: 1099511627776,
-        6: 281474976710656,
-        7: 72057594037927936,
-        8: 18446744073709551616,
-        9: 4722366482869645213696,
-        10: 1208925819614629174706176,
-        11: 309485009821345068724781056,
-        12: 79228162514264337593543950336,
-        13: 20282409603651670423947251286016,
-        14: 5192296858534827628530496329220096,
-        15: 1329227995784915872903807060280344576,
-    }
+        return 1<<(e<<3)   # which is the same as 2**(e*8) or 256**e
 
     def qstring(self, underscore=1):
         """
@@ -393,7 +372,7 @@ class Number(object):
         # TODO: use self.zone to break down the cases, maybe a dict
         if '\xFF' <= self.raw:
             raise OverflowError("Positive Infinity can't be represented by integers")
-        elif '\x82\x01' < self.raw:
+        elif '\x82\x01' < self.raw:   # positive...
             (qan, qanlength) = self.qantissa()
             qexp = self.qexponent() - qanlength
             if qexp < 0:
@@ -406,13 +385,13 @@ class Number(object):
             return 0
         elif '\x7D\xFF' <= self.raw:
             return -1
-        elif '\x01' <= self.raw:   # <= '\x7D'
+        elif '\x01' <= self.raw:   # negative...
             (qan,qanlength) = self.qantissa()
             offset = self._exp256(qanlength)
             qan -= offset
             qexp = self.qexponent() - qanlength
             if qexp < 0:
-                extraneous_mask = (1 << (-qexp*8)) - 1   # TODO: more graceful way to floor toward 0 instead of -inf
+                extraneous_mask = self._exp256(-qexp) - 1   # TODO: more graceful way to floor toward 0 instead of -inf
                 extraneous = qan & extraneous_mask
                 if extraneous == 0:
                     return qan >> (-qexp*8)
