@@ -409,7 +409,6 @@ class Number(object):
     }
 
     def __int__by_zone_ifs(self):
-        # TODO: use self.zone to break down the cases, maybe a dict
         if '\xFF' <= self.raw:
             return self._int_cant_be_positive_infinity
         elif '\x82\x01' < self.raw:   # positive...
