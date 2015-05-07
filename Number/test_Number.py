@@ -280,9 +280,11 @@ class NumberTestCase(django.test.TestCase):
         i__s(   2**998-1, '0qFE_3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s( 256**124,   '0qFE_01')
         i__s( 256**123,   '0qFD_01')
+        i__s(   2**504,   '0qC1_01')
+        i__s(   2**503,   '0qC0_80')
         i__s(   2**500,   '0qC0_10')
         i__s(   2**496,   '0qC0_01')
-        i__s(  10**100+1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol + 1
+        i__s(  10**100+1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol + 1  (integers can distinguish these)
         i__s(  10**100,   '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')                           # googol
         i__s(  10**100-1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F0FFFFFFFFFFFFFFFFFFFFFFFFF')   # googol - 1
         i__s(1766847064778384329583297500742918515827483896875618958121606201292619777,'0qA0_01000000000000000000000000000000000000000000000000000000000001')
@@ -562,10 +564,8 @@ class NumberTestCase(django.test.TestCase):
         f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol
         f__s(       1e25,                 '0q8C_0845951614014880')
         f__s(       1e10,                 '0q86_02540BE4')
-
         f__s(4294967296.0,                '0q86_01')
         f__s(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for +256**4, the official code being 0q86_01
-
         f__s(  16777216.0,                '0q85_01')
         f__s(     65536.0,                '0q84_01')
         f__s(     32768.0,                '0q83_80')
@@ -577,10 +577,8 @@ class NumberTestCase(django.test.TestCase):
         f__s(      1234.5678901234,       '0q83_04D291613F43B980')
         f__s(      1234.56789,            '0q83_04D291613D31B9C0')
         f__s(      1111.1111112,          '0q83_04571C71C89A3840')
-
-        f__s(      1111.111111111111313,  '0q83_04571C71C71C72')
-        f__s(      1111.111111111111111,  '0q83_04571C71C71C71C0')   # float has about 17 significant digits
-
+        f__s(      1111.111111111111313,  '0q83_04571C71C71C72')   # float has just under 17 significant digits
+        f__s(      1111.111111111111111,  '0q83_04571C71C71C71C0')
         f__s(      1111.1111111,          '0q83_04571C71C6ECB9')
         f__s(      1024.0,                '0q83_04')
         f__s(      1000.0,                '0q83_03E8')
@@ -589,14 +587,18 @@ class NumberTestCase(django.test.TestCase):
         f__s(       257.0,                '0q83_0101')
         f__s(       256.0,                '0q83_01')
         f__s(       256.0,                '0q83_01', '0q83')   # alias for +256
+        f__s(       256.0,                '0q83_01', '0q82_FFFFFFFFFFFFFC')
+        f__s(       255.9999999999999801, '0q82_FFFFFFFFFFFFF8')     # 53 bits in the float mantissa
         f__s(       255.5,                '0q82_FF80')
         f__s(       255.0,                '0q82_FF')
         f__s(       254.0,                '0q82_FE')
+        f__s(       216.0,                '0q82_D8')
         f__s(       128.0,                '0q82_80')
         f__s(       100.0,                '0q82_64')
-        f__s(     math.pi,                '0q82_03243F6A8885A3')
+        f__s(math.pi*2,                   '0q82_06487ED5110B46')
+        f__s(math.pi,                     '0q82_03243F6A8885A3')
         f__s(         3.0,                '0q82_03')
-        f__s( math.exp(1),                '0q82_02B7E151628AED20')
+        f__s(math.exp(1),                 '0q82_02B7E151628AED20')
         f__s(         2.5,                '0q82_0280')
         f__s(         2.4,                '0q82_0266666666666660')
         f__s(         2.3,                '0q82_024CCCCCCCCCCCC0')
@@ -605,15 +607,15 @@ class NumberTestCase(django.test.TestCase):
         f__s(         2.0,                '0q82_02')
         f__s(         1.875,              '0q82_01E0')
         f__s(         1.75,               '0q82_01C0')
-        f__s( math.sqrt(3),               '0q82_01BB67AE8584CAA0')
+        f__s(math.sqrt(3),                '0q82_01BB67AE8584CAA0')
         f__s((1+math.sqrt(5))/2,          '0q82_019E3779B97F4A80')   # golden ratio
         f__s(         1.5,                '0q82_0180')
-        f__s( math.sqrt(2),               '0q82_016A09E667F3BCD0')
+        f__s(math.sqrt(2),                '0q82_016A09E667F3BCD0')
         f__s(         1.25,               '0q82_0140')
         f__s(         1.125,              '0q82_0120')
         f__s(         1.1,                '0q82_01199999999999A0')
         f__s(         1.0625,             '0q82_0110')
-        f__s(math.pow(2.0,1/12.0),        '0q82_010F38F92D979630')   # semitone (twelfth of an octave)
+        f__s(math.pow(2, 1/12.0),         '0q82_010F38F92D979630')   # semitone (twelfth of an octave)
         f__s(         1.03125,            '0q82_0108')
         f__s(         1.015625,           '0q82_0104')
         f__s(         1.01,               '0q82_01028F5C28F5C290')
@@ -662,6 +664,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         0.9375,             '0q81FF_F0')
         f__s(         0.875,              '0q81FF_E0')
         f__s(         0.75,               '0q81FF_C0')
+        f__s(math.sqrt(0.5),              '0q81FF_B504F333F9DE68')
         f__s(         0.5,                '0q81FF_80')
         f__s(         0.25,               '0q81FF_40')
         f__s(         0.125,              '0q81FF_20')
@@ -684,7 +687,7 @@ class NumberTestCase(django.test.TestCase):
         f__s(         0.002777777777777778,'0q81FE_B60B60B60B60B8')    # 1/360
         f__s(         0.002,              '0q81FE_83126E978D4FE0')     # 2/1000
         f__s(         0.001953125,        '0q81FE_80')
-        f__s(         0.001,              '0q81FE_4189374BC6A7F0')     # 1/1000
+        f__s(         0.001,              '0q81FE_4189374BC6A7F0')     # 1/1000 = 0x0.004189374BC6A7EF9DB22D0E560 4189374BC6A7EF9DB22D0E560 ...
         f__s(         0.0009765625,       '0q81FE_40')
         f__s(         0.00048828125,      '0q81FE_20')
         f__s(         0.000244140625,     '0q81FE_10')
@@ -1267,6 +1270,14 @@ class NumberTestCase(django.test.TestCase):
 
 
     ################## checking python assumptions ###########################
+
+    def test_ldexp(self):
+        self.assertEqual(1.0, math.ldexp(.5, 1))
+        self.assertEqual(-1.0, math.ldexp(-.5, 1))
+        self.assertEqual(3.0, math.ldexp(.75, 2))
+        self.assertEqual(100.0, math.ldexp(25, 2))   # ldexp() does more than invert frexp() -- it doesn't require a normalized mantissa
+        self.assertEqual(625.0, math.ldexp(2500, -2))
+        self.assertEqual(-625.0, math.ldexp(-2500, -2))
 
     def test_python_int_floors_toward_zero(self):
         self.assertEqual(2, int(Number(2.0)))
