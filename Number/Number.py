@@ -56,7 +56,7 @@ class Number(object):
         TRANSFINITE         = '\xFF\x80'
         LUDICROUS_LARGE     = '\xFF'
         POSITIVE            = '\x82\x01\x00'
-        ONE                 = '\x82'
+        ONE                 = '\x82'   # TODO: absorb ONE into POSITIVE zone?
         FRACTIONAL          = '\x81'
         LUDICROUS_SMALL     = '\x80\x80'
         INFINITESIMAL       = '\x80\x00'
@@ -378,16 +378,42 @@ class Number(object):
        return long(self.__int__())
 
     def __int__(self):
+        int_by_dictionary = self.__int__by_zone_dictionary()
+        assert int_by_dictionary == self.__int__by_zone_ifs(), (
+            "Mismatched int encoding for %s:  tree method=%s, scan method=%s" % (
+                repr(self), int_by_dictionary, self.__int__by_ifs()
+            )
+        )
+        return int_by_dictionary
+
+    def __int__by_zone_dictionary(self):
+        return self.__int__zone_dict[self.zone](self)
+
+    __int__zone_dict =  {
+        Zone.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
+        Zone.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
+        Zone.POSITIVE:            lambda self: self._to_int_positive(),
+        Zone.ONE:                 lambda self: 1,
+        Zone.FRACTIONAL:          lambda self: 0,
+        Zone.LUDICROUS_SMALL:     lambda self: 0,
+        Zone.INFINITESIMAL:       lambda self: 0,
+        Zone.ZERO:                lambda self: 0,
+        Zone.INFINITESIMAL_NEG:   lambda self: 0,
+        Zone.LUDICROUS_SMALL_NEG: lambda self: 0,
+        Zone.FRACTIONAL_NEG:      lambda self: 0,
+        Zone.ONE_NEG:             lambda self: -1,
+        Zone.NEGATIVE:            lambda self: self._to_int_negative(),
+        Zone.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
+        Zone.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
+        Zone.NAN:                 lambda self: self._int_cant_be_nan(),
+    }
+
+    def __int__by_zone_ifs(self):
         # TODO: use self.zone to break down the cases, maybe a dict
         if '\xFF' <= self.raw:
-            raise OverflowError("Positive Infinity can't be represented by integers")
+            return self._int_cant_be_positive_infinity
         elif '\x82\x01' < self.raw:   # positive...
-            (qan, qanlength) = self.qantissa()
-            qexp = self.qexponent() - qanlength
-            if qexp < 0:
-                return qan >> (-qexp*8)
-            else:
-                return qan << (qexp*8)
+            return self._to_int_positive()
         elif '\x82' <= self.raw:
             return 1
         elif '\x7E' < self.raw:
@@ -395,6 +421,30 @@ class Number(object):
         elif '\x7D\xFF' <= self.raw:
             return -1
         elif '\x01' <= self.raw:   # negative...
+            return self._to_int_negative()
+        elif self.RAW_NAN < self.raw:
+            return _int_cant_be_negative_infinity()
+        else:
+            return self._int_cant_be_nan()
+
+    def _int_cant_be_positive_infinity(self):
+        raise OverflowError("Positive Infinity can't be represented by integers")
+
+    def _int_cant_be_negative_infinity(self):
+        raise OverflowError("Negative Infinity can't be represented by integers")
+
+    def _int_cant_be_nan(self):
+        raise ValueError("Not-A-Number can't be represented by integers")
+
+    def _to_int_positive(self):
+        (qan, qanlength) = self.qantissa()
+        qexp = self.qexponent() - qanlength
+        if qexp < 0:
+            return qan >> (-qexp*8)
+        else:
+            return qan << (qexp*8)
+
+    def _to_int_negative(self):
             (qan,qanlength) = self.qantissa()
             offset = self._exp256(qanlength)
             qan -= offset
@@ -408,10 +458,6 @@ class Number(object):
                     return (qan >> (-qexp*8)) + 1
             else:
                 return qan << (qexp*8)
-        elif self.RAW_NAN < self.raw:
-            raise OverflowError("Negative Infinity can't be represented by integers")
-        else:
-            raise ValueError("Not-A-Number can't be represented by integers")
 
     @property
     def zone(self):
