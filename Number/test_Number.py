@@ -419,6 +419,17 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual(0, int(Number('0q7F81')))
         self.assertEqual('0q80', Number(0).qstring())
 
+    def test_sets_exclusive(self):
+        self.assertTrue (Number._sets_exclusive({1,2,3}, {4,5,6}))
+        self.assertFalse(Number._sets_exclusive({1,2,3}, {3,5,6}))
+        self.assertTrue (Number._sets_exclusive({1,2,3}, {4,5,6}, {7,8,9}))
+        self.assertFalse(Number._sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
+
+    def test_zone_union(self):
+        self.assertEqual({1,2,3,4,5,6}, Number._zone_union({1,2,3}, {4,5,6}))
+        with self.assertRaises(AssertionError):
+            Number._zone_union({1,2,3}, {3,5,6})
+
     def assertEqualSets(self, s1, s2):
         if s1 != s2:
             self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
@@ -428,10 +439,9 @@ class NumberTestCase(django.test.TestCase):
 
     def test_zone_sets(self):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
-        # TODO: check that these _ZONE_ALL_XXX subsets are MECE (instead of merely CE)
-        # TODO: check the ME part of MECE (they shouldn't be CE) for all the other zone sets formed by or'ing:  zs = zs | zs | ...
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_BIGNESS)
 
     def test_zone(self):
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)

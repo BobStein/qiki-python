@@ -449,7 +449,7 @@ class Number(object):
             qan -= offset
             qexp = self.qexponent() - qanlength
             if qexp < 0:
-                extraneous_mask = self._exp256(-qexp) - 1   # TODO: more graceful way to floor toward 0 instead of -inf
+                extraneous_mask = self._exp256(-qexp) - 1   # TODO: a more graceful way to floor toward 0 instead of toward -inf
                 extraneous = qan & extraneous_mask
                 if extraneous == 0:
                     return qan >> (-qexp*8)
@@ -577,9 +577,9 @@ class Number(object):
         _zone = self.zone
         if _zone == self.Zone.ONE:
             return 1.0
-        elif _zone in self._ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
+        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
             return 0.0
-        elif _zone in self._ZONE_ESSENTIALLY_NEGATIVE_ZERO:
+        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
         elif _zone == self.Zone.ONE_NEG:
             return -1.0
@@ -605,6 +605,21 @@ class Number(object):
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
 
+    @classmethod
+    def _sets_exclusive(cls, *sets):
+        for i in range(len(sets)):
+            for j in range(i):
+                if set(sets[i]).intersection(sets[j]):
+                    return False
+        return True
+
+    @classmethod
+    def _zone_union(cls, *zonesets):
+        assert cls._sets_exclusive(*zonesets), "Sets not mutually exclusive: %s" % repr(zonesets)
+        retval = set()
+        for zoneset in zonesets:
+            retval |= zoneset
+        return retval
 
 
 # float precision
@@ -649,7 +664,14 @@ Number.ZONE_NONFINITE = {
     Number.Zone.INFINITESIMAL_NEG,
     Number.Zone.TRANSFINITE_NEG,
 }
-Number.ZONE_FINITE = Number.ZONE_LUDICROUS | Number.ZONE_REASONABLE
+Number.ZONE_FINITE = Number._zone_union(
+    Number.ZONE_LUDICROUS,
+    Number.ZONE_REASONABLE,
+)
+Number.ZONE_UNREASONABLE = Number._zone_union(
+    Number.ZONE_LUDICROUS,
+    Number.ZONE_NONFINITE,
+)
 
 Number.ZONE_POSITIVE = {
     Number.Zone.TRANSFINITE,
@@ -669,24 +691,29 @@ Number.ZONE_NEGATIVE = {
     Number.Zone.LUDICROUS_LARGE_NEG,
     Number.Zone.TRANSFINITE_NEG,
 }
-Number.ZONE_NONZERO = Number.ZONE_POSITIVE | Number.ZONE_NEGATIVE
+Number.ZONE_NONZERO = Number._zone_union(
+    Number.ZONE_POSITIVE,
+    Number.ZONE_NEGATIVE,
+)
 Number.ZONE_ZERO = {
     Number.Zone.ZERO
 }
 
-Number._ZONE_ESSENTIALLY_POSITIVE_ZERO = {
+Number.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
     Number.Zone.LUDICROUS_SMALL,
     Number.Zone.INFINITESIMAL,
 }
-Number._ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = Number._ZONE_ESSENTIALLY_POSITIVE_ZERO | Number.ZONE_ZERO
-Number._ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
+Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
     Number.Zone.INFINITESIMAL_NEG,
     Number.Zone.LUDICROUS_SMALL_NEG,
 }
-Number.ZONE_ESSENTIALLY_ZERO = (
-    Number._ZONE_ESSENTIALLY_POSITIVE_ZERO |
-    Number.ZONE_ZERO |
-    Number._ZONE_ESSENTIALLY_NEGATIVE_ZERO
+Number.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = Number._zone_union(
+    Number.ZONE_ESSENTIALLY_POSITIVE_ZERO,
+    Number.ZONE_ZERO,
+)
+Number.ZONE_ESSENTIALLY_ZERO = Number._zone_union(
+    Number.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
+    Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
 )
 Number.ZONE_REASONABLY_POSITIVE = {
     Number.Zone.POSITIVE,
@@ -698,7 +725,10 @@ Number.ZONE_REASONABLY_NEGATIVE = {
     Number.Zone.ONE_NEG,
     Number.Zone.NEGATIVE,
 }
-Number.ZONE_REASONABLY_NONZERO = Number.ZONE_REASONABLY_POSITIVE | Number.ZONE_REASONABLY_NEGATIVE
+Number.ZONE_REASONABLY_NONZERO = Number._zone_union(
+    Number.ZONE_REASONABLY_POSITIVE,
+    Number.ZONE_REASONABLY_NEGATIVE,
+)
 Number.ZONE_UNREASONABLY_BIG = {
     Number.Zone.TRANSFINITE,
     Number.Zone.LUDICROUS_LARGE,
@@ -706,27 +736,31 @@ Number.ZONE_UNREASONABLY_BIG = {
     Number.Zone.TRANSFINITE_NEG,
 }
 
-Number.ZONE_ALL = {zone for zone in Number.Zone}
 Number.ZONE_NAN = {
     Number.Zone.NAN
 }
-
-Number._ZONE_ALL_BY_FINITENESS = (
-    Number.ZONE_FINITE |
-    Number.ZONE_NONFINITE |
-    Number.ZONE_NAN
+Number._ZONE_ALL_BY_REASONABLENESS = Number._zone_union(
+    Number.ZONE_REASONABLE,
+    Number.ZONE_UNREASONABLE,
+    Number.ZONE_NAN,
 )
-Number._ZONE_ALL_BY_ZERONESS = (
-    Number.ZONE_NONZERO |
-    Number.ZONE_ZERO |
-    Number.ZONE_NAN
+Number._ZONE_ALL_BY_FINITENESS = Number._zone_union(
+    Number.ZONE_FINITE,
+    Number.ZONE_NONFINITE,
+    Number.ZONE_NAN,
 )
-Number._ZONE_ALL_BY_REASONABLENESS = (
-    Number.ZONE_ESSENTIALLY_ZERO |
-    Number.ZONE_REASONABLY_NONZERO |
-    Number.ZONE_UNREASONABLY_BIG |
-    Number.ZONE_NAN
+Number._ZONE_ALL_BY_ZERONESS = Number._zone_union(
+    Number.ZONE_NONZERO,
+    Number.ZONE_ZERO,
+    Number.ZONE_NAN,
 )
+Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
+    Number.ZONE_ESSENTIALLY_ZERO,
+    Number.ZONE_REASONABLY_NONZERO,
+    Number.ZONE_UNREASONABLY_BIG,
+    Number.ZONE_NAN,
+)
+Number.ZONE_ALL = {zone for zone in Number.Zone}
 
 
 if __name__ == '__main__':
