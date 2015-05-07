@@ -1335,18 +1335,23 @@ class NumberTestCase(django.test.TestCase):
         self.assertEqual( -1, -16 >> 4)
         self.assertEqual( -1, -16 >> 5)
         self.assertEqual( -1, -16 >> 6)
+        self.assertEqual( -1, -16 >> 7)
 
         self.assertEqual(-2, -65536 >> 15)
         self.assertEqual(-1, -65536 >> 16)
+        self.assertEqual(-1, -65536 >> 17)
 
         self.assertEqual(-2, -16777216 >> 23)
         self.assertEqual(-1, -16777216 >> 24)
+        self.assertEqual(-1, -16777216 >> 25)
 
         self.assertEqual(-2L, -4294967296L >> 31)
         self.assertEqual(-1L, -4294967296L >> 32)
+        self.assertEqual(-1L, -4294967296L >> 33)
 
         self.assertEqual(-2L, -1267650600228229401496703205376L >> 99)
         self.assertEqual(-1L, -1267650600228229401496703205376L >> 100)
+        self.assertEqual(-1L, -1267650600228229401496703205376L >> 101)
 
     def test_python_binary_shift_left(self):
         self.assertEqual(256, 1 << 8)

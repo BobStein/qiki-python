@@ -289,7 +289,7 @@ class Number(object):
         """Compute 256**e for nonnegative integer e"""
         assert isinstance(e, (int, long))
         assert e >= 0
-        return 1 << (e<<3)   # which is the same as 2**(e*8) or 256**e
+        return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
 
     def qstring(self, underscore=1):
         """
