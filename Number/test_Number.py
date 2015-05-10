@@ -986,6 +986,10 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('\x80',         Number.from_raw('\x80').raw)
         self.assertEqual('\x83\x03\xE8', Number.from_raw('\x83\x03\xE8').raw)
 
+    def test_from_raw_unicode(self):
+        with self.assertRaises(ValueError):
+            Number.from_raw(u'\x80')
+
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
         self.assertFalse(Number(0.0) == Number(1.0))

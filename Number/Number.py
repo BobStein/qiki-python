@@ -9,12 +9,23 @@ import six
 import math
 import struct
 
+# TODO: test in Python 3.X
+# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
+# TODO: __neg__ (take advantage of two's complement encoding)
+# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
+# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
+
+# TODO: Ludicrous Numbers
+# TODO: Transfinite Numbers
+# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
+# ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
+
 
 class Number(object):
 
     def __init__(self, content, qigits = None):
         if content is None:
-            self.raw = ''
+            self.raw = self.RAW_NAN
         elif isinstance(content, six.string_types):
             self._from_string(content)
         elif isinstance(content, (int, long)):
@@ -32,42 +43,42 @@ class Number(object):
     __slots__ = ('__raw', )   # less memory
     # __slots__ = ('__raw', '_zone')   # faster
 
-    RAW_INF     = '\xFF\x81'
-    RAW_ONE     = '\x82\x01'
-    RAW_ZERO    = '\x80'
-    RAW_ONE_NEG = '\x7D\xFF'
-    RAW_INF_NEG = '\x00\x7F'
-    RAW_NAN     = ''
+    RAW_INF     = b'\xFF\x81'
+    RAW_ONE     = b'\x82\x01'
+    RAW_ZERO    = b'\x80'
+    RAW_ONE_NEG = b'\x7D\xFF'
+    RAW_INF_NEG = b'\x00\x7F'
+    RAW_NAN     = b''
 
 
     # Zones
     # -----
     # qiki Numbers fall into zones.
-    # The Zone class serves as an enumeration.  Its members have values that are *between* zones.
+    # The internal Number.Zone class serves as an enumeration.  Its members have values that are *between* zones.
     # Raw, internal binary strings are represented.
     # They are less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
-    # (So some zone values are valid raw values, others are among the invalid inter-zone values.)
+    # (So actually, some zone values are valid raw values, others are among the invalid inter-zone values.)
     # The valid raw string for 1 is '\x82\x01' but Number.Zone.ONE is '\x82'.
     # Anything between '\x82' and '\x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string '\x82\x01'.
     class Zone:
-        TRANSFINITE         = '\xFF\x80'
-        LUDICROUS_LARGE     = '\xFF'
-        POSITIVE            = '\x82\x01\x00'
-        ONE                 = '\x82'   # TODO: absorb ONE into POSITIVE zone?
-        FRACTIONAL          = '\x81'
-        LUDICROUS_SMALL     = '\x80\x80'
-        INFINITESIMAL       = '\x80\x00'
-        ZERO                = '\x80'
-        INFINITESIMAL_NEG   = '\x7F\x80'
-        LUDICROUS_SMALL_NEG = '\x7F\x00'
-        FRACTIONAL_NEG      = '\x7E\x00'
-        ONE_NEG             = '\x7D\xFF'
-        NEGATIVE            = '\x01'
-        LUDICROUS_LARGE_NEG = '\x00\x80'
-        TRANSFINITE_NEG     = '\x00'
-        NAN                 = ''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Null.
+        TRANSFINITE         = b'\xFF\x80'
+        LUDICROUS_LARGE     = b'\xFF'
+        POSITIVE            = b'\x82\x01\x00'
+        ONE                 = b'\x82'   # TODO: absorb ONE into POSITIVE zone?
+        FRACTIONAL          = b'\x81'
+        LUDICROUS_SMALL     = b'\x80\x80'
+        INFINITESIMAL       = b'\x80\x00'
+        ZERO                = b'\x80'
+        INFINITESIMAL_NEG   = b'\x7F\x80'
+        LUDICROUS_SMALL_NEG = b'\x7F\x00'
+        FRACTIONAL_NEG      = b'\x7E\x00'
+        ONE_NEG             = b'\x7D\xFF'
+        NEGATIVE            = b'\x01'
+        LUDICROUS_LARGE_NEG = b'\x00\x80'
+        TRANSFINITE_NEG     = b'\x00'
+        NAN                 = b''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Null.
 
     @property
     def raw(self):
@@ -75,7 +86,7 @@ class Number(object):
 
     @raw.setter
     def raw(self, value):
-        assert(isinstance(value, six.string_types))
+        assert(isinstance(value, six.binary_type))
         self.__raw = value
         self._zone_refresh()
 
@@ -98,13 +109,6 @@ class Number(object):
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
 
-    # TODO: __neg__ (and take advantage of two's complement encoding)
-
-    # TODO: math operators (phase 1: use float or int, phase 2: native computations)
-
-    # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
-    # ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
-
     @classmethod
     def from_raw(cls, value):
         """
@@ -112,6 +116,8 @@ class Number(object):
         Wrong:  assert Number(1) == Number('\x82\x01')
         Right:  assert Number(1) == Number.from_raw('\x82\x01')
         """
+        if not isinstance(value, six.binary_type):
+            raise ValueError("Number.from_raw(binary string, e.g. b'\\x82\\x01')")
         retval = Number(None)
         retval.raw = value
         return retval
@@ -130,7 +136,6 @@ class Number(object):
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '%s'" % s)
             self.raw = sdecoded
         else:
-            # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
             raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
 
     _qigits_precision = None
@@ -148,14 +153,14 @@ class Number(object):
     def _from_float(self, x, qigits = None):
         self.qigits_precision(qigits)
 
-        if math.isnan(x):          self.raw =          self.RAW_NAN
-        elif x >= float('+inf'):   self.raw =          self.RAW_INF
-        elif x >=  1.0:            self.raw =          self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- e256
-        elif x >   0.0:            self.raw = '\x81' + self._raw_from_float(x, lambda e: 0xFF+e)
-        elif x ==  0.0:            self.raw =          self.RAW_ZERO
-        elif x >  -1.0:            self.raw = '\x7E' + self._raw_from_float(x, lambda e: 0x00-e)
-        elif x > float('-inf'):    self.raw =          self._raw_from_float(x, lambda e: 0x7E-e)
-        else:                      self.raw =          self.RAW_INF_NEG
+        if math.isnan(x):          self.raw =           self.RAW_NAN
+        elif x >= float('+inf'):   self.raw =           self.RAW_INF
+        elif x >=  1.0:            self.raw =           self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- e256
+        elif x >   0.0:            self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e)
+        elif x ==  0.0:            self.raw =           self.RAW_ZERO
+        elif x >  -1.0:            self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e)
+        elif x > float('-inf'):    self.raw =           self._raw_from_float(x, lambda e: 0x7E-e)
+        else:                      self.raw =           self.RAW_INF_NEG
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
@@ -217,9 +222,9 @@ class Number(object):
         if nbytes is None:
             nbytes = len(cls._hex_even(abs(theinteger)))/2   # nbytes default = 1 + floor(log(abs(theinteger), 256))
 
-        if (nbytes <= 8 and 0 <= theinteger < 4294967296):
+        if nbytes <= 8 and 0 <= theinteger < 4294967296:
             return struct.pack('>Q', theinteger)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
-        elif (nbytes <= 8 and -2147483648 <= theinteger < 2147483648):
+        elif nbytes <= 8 and -2147483648 <= theinteger < 2147483648:
             return struct.pack('>q', theinteger)[8-nbytes:]
         else:
             return cls._pack_big_integer_Mike_Boers(theinteger, nbytes)
@@ -257,11 +262,11 @@ class Number(object):
     @staticmethod
     def _left_pad00(thestring, nbytes):
         """ Thanks Jeff Mercado http://stackoverflow.com/a/5773669/673991 """
-        return thestring.rjust(nbytes, '\x00')
+        return thestring.rjust(nbytes, b'\x00')
 
     @staticmethod
     def _right_strip00(qan):
-        return qan.rstrip('\x00')
+        return qan.rstrip(b'\x00')
 
     @staticmethod
     def _exp256(e):
@@ -388,19 +393,19 @@ class Number(object):
     }
 
     def __int__by_zone_ifs(self):
-        if '\xFF' <= self.raw:
+        if self.Zone.LUDICROUS_LARGE <= self.raw:
             return self._int_cant_be_positive_infinity
-        elif '\x82\x01' < self.raw:   # positive...
+        elif self.Zone.POSITIVE <= self.raw:
             return self._to_int_positive()
-        elif '\x82' <= self.raw:
+        elif self.Zone.ONE <= self.raw:
             return 1
-        elif '\x7E' < self.raw:
+        elif self.Zone.FRACTIONAL_NEG <= self.raw:
             return 0
-        elif '\x7D\xFF' <= self.raw:
+        elif self.Zone.ONE_NEG <= self.raw:
             return -1
-        elif '\x01' <= self.raw:   # negative...
+        elif self.Zone.NEGATIVE <= self.raw:
             return self._to_int_negative()
-        elif self.RAW_NAN < self.raw:
+        elif self.Zone.NAN < self.raw:
             return _int_cant_be_negative_infinity()
         else:
             return self._int_cant_be_nan()
