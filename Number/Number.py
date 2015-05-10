@@ -6,7 +6,6 @@ And more
 
 import sys
 import six
-from enum import Enum
 import math
 import struct
 
@@ -44,7 +43,7 @@ class Number(object):
     # Zones
     # -----
     # qiki Numbers fall into zones.
-    # Zone enumeration names have values that are *between* zones.
+    # The Zone class serves as an enumeration.  Its members have values that are *between* zones.
     # Raw, internal binary strings are represented.
     # They are less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
@@ -52,7 +51,7 @@ class Number(object):
     # The valid raw string for 1 is '\x82\x01' but Number.Zone.ONE is '\x82'.
     # Anything between '\x82' and '\x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string '\x82\x01'.
-    class Zone(Enum):
+    class Zone:
         TRANSFINITE         = '\xFF\x80'
         LUDICROUS_LARGE     = '\xFF'
         POSITIVE            = '\x82\x01\x00'
@@ -69,26 +68,6 @@ class Number(object):
         LUDICROUS_LARGE_NEG = '\x00\x80'
         TRANSFINITE_NEG     = '\x00'
         NAN                 = ''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Null.
-
-        # the following is an enum34 provision:  http://stackoverflow.com/a/25982264/673991
-        __order__ = '''
-            TRANSFINITE
-            LUDICROUS_LARGE
-            POSITIVE
-            ONE
-            FRACTIONAL
-            LUDICROUS_SMALL
-            INFINITESIMAL
-            ZERO
-            INFINITESIMAL_NEG
-            LUDICROUS_SMALL_NEG
-            FRACTIONAL_NEG
-            ONE_NEG
-            NEGATIVE
-            LUDICROUS_LARGE_NEG
-            TRANSFINITE_NEG
-            NAN
-        '''
 
     @property
     def raw(self):
@@ -474,41 +453,41 @@ class Number(object):
     def _zone_from_scratch(self):
         zone_by_tree = self._find_zone_by_if_else_tree()
         assert zone_by_tree == self._find_zone_by_for_loop_scan(), "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
-            repr(self), retval_tree, self._zone_scan()
+            repr(self), self.name_of_zone[zone_by_tree], self.name_of_zone[self._find_zone_by_for_loop_scan()]
         )
         return zone_by_tree
 
-    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's enum values
-        for z in self.Zone:
-            if z.value <= self.raw:
+    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's values
+        for z in self.sorted_zones:
+            if z <= self.raw:
                 return z
         raise ValueError("Number._find_zone_by_for_loop_scan() fell through!  How can anything be less than Zone.NAN? '%s'" % repr(self))
 
     def _find_zone_by_if_else_tree(self):  # likely faster than a scan, for most values
         if self.raw > self.RAW_ZERO:
             if self.raw > self.RAW_ONE:
-                if self.raw >= self.Zone.LUDICROUS_LARGE.value:
-                    if self.raw >= self.Zone.TRANSFINITE.value:
+                if self.raw >= self.Zone.LUDICROUS_LARGE:
+                    if self.raw >= self.Zone.TRANSFINITE:
                         return                  self.Zone.TRANSFINITE
                     else:
                         return                  self.Zone.LUDICROUS_LARGE
                 else:
                     return                      self.Zone.POSITIVE
-            elif self.raw >= self.Zone.ONE.value:
+            elif self.raw >= self.Zone.ONE:
                 return                          self.Zone.ONE
             else:
-                if self.raw >= self.Zone.FRACTIONAL.value:
+                if self.raw >= self.Zone.FRACTIONAL:
                     return                      self.Zone.FRACTIONAL
-                elif self.raw >= self.Zone.LUDICROUS_SMALL.value:
+                elif self.raw >= self.Zone.LUDICROUS_SMALL:
                     return                      self.Zone.LUDICROUS_SMALL
                 else:
                     return                      self.Zone.INFINITESIMAL
         elif self.raw == self.RAW_ZERO:
             return                              self.Zone.ZERO
         else:
-            if self.raw > self.Zone.FRACTIONAL_NEG.value:
-                if self.raw >= self.Zone.LUDICROUS_SMALL_NEG.value:
-                    if self.raw >= self.Zone.INFINITESIMAL_NEG.value:
+            if self.raw > self.Zone.FRACTIONAL_NEG:
+                if self.raw >= self.Zone.LUDICROUS_SMALL_NEG:
+                    if self.raw >= self.Zone.INFINITESIMAL_NEG:
                         return                  self.Zone.INFINITESIMAL_NEG
                     else:
                         return                  self.Zone.LUDICROUS_SMALL_NEG
@@ -517,11 +496,11 @@ class Number(object):
             elif self.raw >= self.RAW_ONE_NEG:
                 return                          self.Zone.ONE_NEG
             else:
-                if self.raw >= self.Zone.NEGATIVE.value:
+                if self.raw >= self.Zone.NEGATIVE:
                     return                      self.Zone.NEGATIVE
-                elif self.raw >= self.Zone.LUDICROUS_LARGE_NEG.value:
+                elif self.raw >= self.Zone.LUDICROUS_LARGE_NEG:
                     return                      self.Zone.LUDICROUS_LARGE_NEG
-                elif self.raw >= self.Zone.TRANSFINITE_NEG.value:
+                elif self.raw >= self.Zone.TRANSFINITE_NEG:
                     return                      self.Zone.TRANSFINITE_NEG
                 else:
                     return                      self.Zone.NAN
@@ -634,6 +613,9 @@ class Number(object):
 Number.qigits_precision(8)
 Number.QIGITS_PRECISION_DEFAULT = 8
 Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
+
+Number.name_of_zone = {getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")}
+Number.sorted_zones = sorted(Number.name_of_zone.keys(), None, None, True)
 
 
 # Constants
@@ -760,7 +742,8 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
     Number.ZONE_UNREASONABLY_BIG,
     Number.ZONE_NAN,
 )
-Number.ZONE_ALL = {zone for zone in Number.Zone}
+
+Number.ZONE_ALL = {zone for zone in Number.sorted_zones}
 
 
 if __name__ == '__main__':
