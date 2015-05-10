@@ -67,6 +67,9 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('nan', str(float(Number.NAN)))
         self.assertTrue(Number._floats_really_same(float('nan'), float(Number.NAN)))
 
+    def test_nan_default(self):
+        self.assertEqual('0q', Number().qstring())
+
     def test_nan_equality(self):
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
@@ -1280,8 +1283,10 @@ class NumberTestCase(unittest.TestCase):
 
     def test_name_of_zone(self):
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
         self.assertEqual('NAN', Number.name_of_zone[Number.Zone.NAN])
         self.assertEqual('NAN', Number.name_of_zone[Number.NAN.zone])
+        self.assertEqual('NAN', Number.name_of_zone[Number().zone])
         self.assertEqual('ZERO', Number.name_of_zone[Number.Zone.ZERO])
         self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
 

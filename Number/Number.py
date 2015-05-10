@@ -11,7 +11,7 @@ import struct
 
 class Number(object):
 
-    def __init__(self, content, qigits = None):
+    def __init__(self, content=None, qigits = None):
         if content is None:
             self.raw = self.RAW_NAN
         elif isinstance(content, six.string_types):
