@@ -1278,14 +1278,21 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number._floats_really_same(-0.0, +0.0))
         self.assertTrue (Number._floats_really_same(-0.0, -0.0))
 
-    def test_python_float_equality_weirdnesses(self):
-        self.assertEqual(+0.0, -0.0)
-        self.assertNotEqual(float('nan'), float('nan'))
+    def test_name_of_zone(self):
+        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
+        self.assertEqual('NAN', Number.name_of_zone[Number.Zone.NAN])
+        self.assertEqual('NAN', Number.name_of_zone[Number.NAN.zone])
+        self.assertEqual('ZERO', Number.name_of_zone[Number.Zone.ZERO])
+        self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
 
 
     ################## checking python assumptions ###########################
 
-    def test_ldexp(self):
+    def test_python_float_equality_weirdnesses(self):
+        self.assertEqual(+0.0, -0.0)
+        self.assertNotEqual(float('nan'), float('nan'))
+
+    def test_python_ldexp(self):
         self.assertEqual(1.0, math.ldexp(.5, 1))
         self.assertEqual(-1.0, math.ldexp(-.5, 1))
         self.assertEqual(3.0, math.ldexp(.75, 2))

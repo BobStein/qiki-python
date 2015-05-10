@@ -8,17 +8,6 @@ import six
 import math
 import struct
 
-# TODO: test in Python 3.X
-# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
-# TODO: __neg__ (take advantage of two's complement encoding)
-# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
-# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
-
-# TODO: Ludicrous Numbers
-# TODO: Transfinite Numbers
-# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
-# ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
-
 
 class Number(object):
 
@@ -124,10 +113,9 @@ class Number(object):
     def _from_string(self, s):
         assert(isinstance(s, six.string_types))
         if s.startswith('0q'):
-            s = str(s)   # avoids u'0q80' giving TypeError: translate() takes exactly one argument (2 given)
+            s = str(s)   # avoid u'0q80' translate() raising TypeError
             sdigits = s[2:].translate(None, '_')
             if len(sdigits) % 2 != 0:
-                # raise ValueError("A qiki Number string must have an even number of digits, not '%s'" % s)
                 sdigits += '0'
             try:
                 sdecoded = sdigits.decode('hex')
@@ -462,7 +450,7 @@ class Number(object):
         return zone_by_tree
 
     def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's values
-        for z in self.sorted_zones:
+        for z in self._sorted_zones:
             if z <= self.raw:
                 return z
         raise ValueError("Number._find_zone_by_for_loop_scan() fell through!  How can anything be less than Zone.NAN? '%s'" % repr(self))
@@ -618,8 +606,12 @@ Number.qigits_precision(8)
 Number.QIGITS_PRECISION_DEFAULT = 8
 Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
 
-Number.name_of_zone = {getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")}
-Number.sorted_zones = sorted(Number.name_of_zone.keys(), None, None, True)
+
+Number.name_of_zone = {
+    getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")
+}
+
+Number._sorted_zones = sorted(Number.name_of_zone.keys(), None, None, True)
 
 
 # Constants
@@ -747,7 +739,19 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
     Number.ZONE_NAN,
 )
 
-Number.ZONE_ALL = {zone for zone in Number.sorted_zones}
+Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
+
+
+# TODO: test in Python 3.X
+# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
+# TODO: __neg__ (take advantage of two's complement encoding)
+# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
+# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
+
+# TODO: Ludicrous Numbers
+# TODO: Transfinite Numbers
+# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
+# ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
 
 
 if __name__ == '__main__':
