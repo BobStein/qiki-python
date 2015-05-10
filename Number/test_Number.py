@@ -3,14 +3,14 @@ Testing qiki Number.py
 """
 
 from Number import Number
-import django.test
+import unittest
 import math
 import sys
 import pickle
 import textwrap
 import six
 
-class NumberTestCase(django.test.TestCase):
+class NumberTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
