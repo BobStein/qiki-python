@@ -4,7 +4,6 @@ Both integers and floating point seamlessly
 And more
 """
 
-import sys
 import six
 import math
 import struct
