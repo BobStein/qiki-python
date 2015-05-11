@@ -1111,7 +1111,7 @@ class NumberTestCase(unittest.TestCase):
                 S%s
                 p5
                 b.""") % repr(x314.raw),
-            b'\x80\x03cNumber\nNumber\nq\x00)\x81q\x01C\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'   # Python 3.X
+            b'\x80\x03cNumber\nNumber\nq\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'   # Python 3.X
         ))
 
         y314 = pickle.loads(pickle.dumps(x314))
