@@ -7,8 +7,7 @@ And more
 import six
 import math
 import struct
-if six.PY3:
-    import codecs
+import codecs
 
 class Number(object):
 
@@ -33,9 +32,7 @@ class Number(object):
     # __slots__ = ('__raw', '_zone')   # faster
 
     RAW_INF     = b'\xFF\x81'
-    RAW_ONE     = b'\x82\x01'
     RAW_ZERO    = b'\x80'
-    RAW_ONE_NEG = b'\x7D\xFF'
     RAW_INF_NEG = b'\x00\x7F'
     RAW_NAN     = b''
 
@@ -48,14 +45,13 @@ class Number(object):
     # They are less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
     # (So actually, some zone values are valid raw values, others are among the invalid inter-zone values.)
-    # The valid raw string for 1 is '\x82\x01' but Number.Zone.ONE is '\x82'.
+    # The valid raw string for 1 is '\x82\x01' but Number.Zone.POSITIVE is '\x82'.
     # Anything between '\x82' and '\x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string '\x82\x01'.
     class Zone:
         TRANSFINITE         = b'\xFF\x80'
         LUDICROUS_LARGE     = b'\xFF'
-        POSITIVE            = b'\x82\x01\x00'
-        ONE                 = b'\x82'   # TODO: absorb ONE into POSITIVE zone?
+        POSITIVE            = b'\x82'
         FRACTIONAL          = b'\x81'
         LUDICROUS_SMALL     = b'\x80\x80'
         INFINITESIMAL       = b'\x80\x00'
@@ -63,7 +59,6 @@ class Number(object):
         INFINITESIMAL_NEG   = b'\x7F\x80'
         LUDICROUS_SMALL_NEG = b'\x7F\x00'
         FRACTIONAL_NEG      = b'\x7E\x00'
-        ONE_NEG             = b'\x7D\xFF'
         NEGATIVE            = b'\x01'
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
@@ -357,7 +352,7 @@ class Number(object):
         int_by_dictionary = self.__int__by_zone_dictionary()
         assert int_by_dictionary == self.__int__by_zone_ifs(), (
             "Mismatched int encoding for %s:  tree method=%s, scan method=%s" % (
-                repr(self), int_by_dictionary, self.__int__by_ifs()
+                repr(self), int_by_dictionary, self.__int__by_zone_ifs()
             )
         )
         return int_by_dictionary
@@ -369,7 +364,6 @@ class Number(object):
         Zone.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
         Zone.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
         Zone.POSITIVE:            lambda self: self._to_int_positive(),
-        Zone.ONE:                 lambda self: 1,
         Zone.FRACTIONAL:          lambda self: 0,
         Zone.LUDICROUS_SMALL:     lambda self: 0,
         Zone.INFINITESIMAL:       lambda self: 0,
@@ -377,7 +371,6 @@ class Number(object):
         Zone.INFINITESIMAL_NEG:   lambda self: 0,
         Zone.LUDICROUS_SMALL_NEG: lambda self: 0,
         Zone.FRACTIONAL_NEG:      lambda self: 0,
-        Zone.ONE_NEG:             lambda self: -1,
         Zone.NEGATIVE:            lambda self: self._to_int_negative(),
         Zone.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
         Zone.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
@@ -389,12 +382,8 @@ class Number(object):
             return self._int_cant_be_positive_infinity
         elif self.Zone.POSITIVE <= self.raw:
             return self._to_int_positive()
-        elif self.Zone.ONE <= self.raw:
-            return 1
         elif self.Zone.FRACTIONAL_NEG <= self.raw:
             return 0
-        elif self.Zone.ONE_NEG <= self.raw:
-            return -1
         elif self.Zone.NEGATIVE <= self.raw:
             return self._to_int_negative()
         elif self.Zone.NAN < self.raw:
@@ -462,7 +451,7 @@ class Number(object):
 
     def _find_zone_by_if_else_tree(self):  # likely faster than a scan, for most values
         if self.raw > self.RAW_ZERO:
-            if self.raw > self.RAW_ONE:
+            if self.raw >= self.Zone.POSITIVE:
                 if self.raw >= self.Zone.LUDICROUS_LARGE:
                     if self.raw >= self.Zone.TRANSFINITE:
                         return                  self.Zone.TRANSFINITE
@@ -470,8 +459,6 @@ class Number(object):
                         return                  self.Zone.LUDICROUS_LARGE
                 else:
                     return                      self.Zone.POSITIVE
-            elif self.raw >= self.Zone.ONE:
-                return                          self.Zone.ONE
             else:
                 if self.raw >= self.Zone.FRACTIONAL:
                     return                      self.Zone.FRACTIONAL
@@ -490,8 +477,6 @@ class Number(object):
                         return                  self.Zone.LUDICROUS_SMALL_NEG
                 else:
                     return                      self.Zone.FRACTIONAL_NEG
-            elif self.raw >= self.RAW_ONE_NEG:
-                return                          self.Zone.ONE_NEG
             else:
                 if self.raw >= self.Zone.NEGATIVE:
                     return                      self.Zone.NEGATIVE
@@ -534,7 +519,6 @@ class Number(object):
         Zone.TRANSFINITE:         lambda self: float('+inf'),
         Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
         Zone.POSITIVE:            lambda self: self._to_float(),
-        Zone.ONE:                 lambda self: 1.0,
         Zone.FRACTIONAL:          lambda self: self._to_float(),
         Zone.LUDICROUS_SMALL:     lambda self: 0.0,
         Zone.INFINITESIMAL:       lambda self: 0.0,
@@ -542,7 +526,6 @@ class Number(object):
         Zone.INFINITESIMAL_NEG:   lambda self: -0.0,
         Zone.LUDICROUS_SMALL_NEG: lambda self: -0.0,
         Zone.FRACTIONAL_NEG:      lambda self: self._to_float(),
-        Zone.ONE_NEG:             lambda self: -1.0,
         Zone.NEGATIVE:            lambda self: self._to_float(),
         Zone.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
         Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
@@ -551,14 +534,10 @@ class Number(object):
 
     def __float__by_zone_ifs(self):
         _zone = self.zone
-        if _zone == self.Zone.ONE:
-            return 1.0
-        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
+        if _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
             return 0.0
         elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
-        elif _zone == self.Zone.ONE_NEG:
-            return -1.0
         elif _zone in (self.Zone.POSITIVE, self.Zone.FRACTIONAL, self.Zone.FRACTIONAL_NEG, self.Zone.NEGATIVE):
             return self._to_float()
         elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
@@ -628,11 +607,9 @@ Number.NAN = Number(None)
 # -------------
 Number.ZONE_REASONABLE = {
     Number.Zone.POSITIVE,
-    Number.Zone.ONE,
     Number.Zone.FRACTIONAL,
     Number.Zone.ZERO,
     Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.ONE_NEG,
     Number.Zone.NEGATIVE,
 }
 Number.ZONE_LUDICROUS = {
@@ -660,7 +637,6 @@ Number.ZONE_POSITIVE = {
     Number.Zone.TRANSFINITE,
     Number.Zone.LUDICROUS_LARGE,
     Number.Zone.POSITIVE,
-    Number.Zone.ONE,
     Number.Zone.FRACTIONAL,
     Number.Zone.LUDICROUS_SMALL,
     Number.Zone.INFINITESIMAL,
@@ -669,7 +645,6 @@ Number.ZONE_NEGATIVE = {
     Number.Zone.INFINITESIMAL_NEG,
     Number.Zone.LUDICROUS_SMALL_NEG,
     Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.ONE_NEG,
     Number.Zone.NEGATIVE,
     Number.Zone.LUDICROUS_LARGE_NEG,
     Number.Zone.TRANSFINITE_NEG,
@@ -700,12 +675,10 @@ Number.ZONE_ESSENTIALLY_ZERO = Number._zone_union(
 )
 Number.ZONE_REASONABLY_POSITIVE = {
     Number.Zone.POSITIVE,
-    Number.Zone.ONE,
     Number.Zone.FRACTIONAL,
 }
 Number.ZONE_REASONABLY_NEGATIVE = {
     Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.ONE_NEG,
     Number.Zone.NEGATIVE,
 }
 Number.ZONE_REASONABLY_NONZERO = Number._zone_union(
@@ -754,9 +727,11 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 
 # TODO: Ludicrous Numbers
 # TODO: Transfinite Numbers
-# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
-# ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
-# TODO: Numpy types support -- http://docs.scipy.org/doc/numpy/user/basics.types.html
+# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
+# ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
+# TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
+# TODO: other Numpy compatibilities?\
+# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, for small values anyway (less than 2**52)
 
 
 

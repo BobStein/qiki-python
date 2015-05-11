@@ -451,8 +451,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
         self.assertEqual(Number.Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
         self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_2A').zone)
-        self.assertEqual(Number.Zone.ONE,                 Number('0q82_01').zone)
-        self.assertEqual(Number.Zone.ONE,                 Number('0q82').zone)
+        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_01').zone)
+        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82').zone)
         self.assertEqual(Number.Zone.FRACTIONAL,          Number('0q81FF_80').zone)
         self.assertEqual(Number.Zone.LUDICROUS_SMALL,     Number('0q80FF0000_FA0A1F01').zone)
         self.assertEqual(Number.Zone.INFINITESIMAL,       Number('0q807F').zone)
@@ -460,8 +460,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(Number.Zone.INFINITESIMAL_NEG,   Number('0q7F81').zone)
         self.assertEqual(Number.Zone.LUDICROUS_SMALL_NEG, Number('0q7F00FFFF_5F5E00FF').zone)
         self.assertEqual(Number.Zone.FRACTIONAL_NEG,      Number('0q7E00_80').zone)
-        self.assertEqual(Number.Zone.ONE_NEG,             Number('0q7E').zone)
-        self.assertEqual(Number.Zone.ONE_NEG,             Number('0q7D_FF').zone)
+        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7E').zone)
+        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_FF').zone)
         self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_D6').zone)
         self.assertEqual(Number.Zone.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
         self.assertEqual(Number.Zone.TRANSFINITE_NEG,     Number('0q007F').zone)
@@ -661,7 +661,6 @@ class NumberTestCase(unittest.TestCase):
         f__s(         1.00000000000000022,'0q82_0100000000000010')
         f__s(         1.00000000000000022,'0q82_0100000000000010', '0q82_01000000000000080001')
         f__s(         1.0                ,'0q82_01',               '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
-        zone_boundary()
         f__s(         1.0,                '0q82_01')
         f__s(         1.0,                '0q82_01',  '0q82')   # alias for +1
         zone_boundary()
@@ -788,7 +787,6 @@ class NumberTestCase(unittest.TestCase):
         zone_boundary()
         f__s(        -1.0,                '0q7D_FF', '0q7E')   # alias for -1
         f__s(        -1.0,                '0q7D_FF')
-        zone_boundary()
         f__s(        -1.000001,           '0q7D_FEFFFFEF39085F50')
         f__s(        -1.00000762939453125,'0q7D_FEFFFF80')
         f__s(        -1.0001220703125,    '0q7D_FEFFF8')
