@@ -171,9 +171,6 @@ class Number(object):
         qex_integer = qex_encoder(exponent_base_256)
         qex = six.int2byte(qex_integer)
 
-        retval = qex
-        retval += qan
-        return retval
         return qex + qan
 
     @classmethod
@@ -507,7 +504,7 @@ class Number(object):
         float_by_dictionary = self.__float__by_zone_dictionary()
         assert self._floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
-                repr(self), float_by_dictionary, self.__float__by_ifs()
+                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
@@ -534,12 +531,12 @@ class Number(object):
 
     def __float__by_zone_ifs(self):
         _zone = self.zone
-        if _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
+        if _zone in self.ZONE_REASONABLY_NONZERO:
+            return self._to_float()
+        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
             return 0.0
         elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
-        elif _zone in (self.Zone.POSITIVE, self.Zone.FRACTIONAL, self.Zone.FRACTIONAL_NEG, self.Zone.NEGATIVE):
-            return self._to_float()
         elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
             return float('+inf')
         elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
@@ -720,20 +717,20 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
 Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 
 
+# TODO: Ludicrous Numbers
+# TODO: Transfinite Numbers
+# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
+# ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 # TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
 # TODO: __neg__ (take advantage of two's complement encoding)
 # TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
 
-# TODO: Ludicrous Numbers
-# TODO: Transfinite Numbers
-# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
-# ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
-# TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
-# TODO: other Numpy compatibilities?\
 # TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, for small values anyway (less than 2**52)
 # TODO: hooks to add features modularly
 
+# TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
+# TODO: other Numpy compatibilities?\
 
 
 # hex_decode(), hex_encode()
