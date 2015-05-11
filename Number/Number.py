@@ -732,6 +732,7 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?\
 # TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, for small values anyway (less than 2**52)
+# TODO: hooks to add features modularly
 
 
 
