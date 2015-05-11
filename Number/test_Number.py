@@ -17,11 +17,11 @@ class NumberTestCase(unittest.TestCase):
 
     def test_raw(self):
         n = Number('0q82')
-        self.assertEqual('\x82', n.raw)
+        self.assertEqual(b'\x82', n.raw)
 
     def test_raw_unicode(self):
         n = Number(u'0q82')
-        self.assertEqual('\x82', n.raw)
+        self.assertEqual(b'\x82', n.raw)
 
     def test_hex(self):
         n = Number('0q82')
@@ -62,7 +62,7 @@ class NumberTestCase(unittest.TestCase):
 
     def test_nan(self):
         self.assertEqual('0q', str(Number.NAN))
-        self.assertEqual('', Number.NAN.raw)
+        self.assertEqual(b'', Number.NAN.raw)
         self.assertEqual('', Number.NAN.hex())
         self.assertEqual('nan', str(float(Number.NAN)))
         self.assertTrue(Number._floats_really_same(float('nan'), float(Number.NAN)))
@@ -266,7 +266,7 @@ class NumberTestCase(unittest.TestCase):
     def test_ints_and_strings(self):
 
         def i__s(i,s):   # why a buncha calls to i__s() is superior to a 2D tuple:  so the stack trace identifies the line with the failing data
-            assert isinstance(i, (int, long))
+            assert isinstance(i, six.integer_types)
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
             s_new = str(Number(i))
@@ -375,7 +375,7 @@ class NumberTestCase(unittest.TestCase):
         i__s(  -16777218, '0q7A_FEFFFFFE')
         i__s(-2147483647, '0q7A_80000001')
         i__s(-2147483648, '0q7A_80')
-        i__s(-2147483649L,'0q7A_7FFFFFFF')
+        i__s(-2147483649, '0q7A_7FFFFFFF')
         i__s(-4294967294, '0q7A_00000002')
         i__s(-4294967295, '0q7A_00000001')
         i__s(-4294967296, '0q79_FF')
@@ -384,22 +384,22 @@ class NumberTestCase(unittest.TestCase):
         i__s(  -2**125,   '0q6E_E0')
         i__s(  -2**250,   '0q5E_FC')
         i__s(  -2**375,   '0q4F_80')
-        i__s(  -204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336L,
+        i__s(  -204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336,
                           '0q3F_FF')
         i__s(  -2**496,   '0q3F_FF')
-        i__s(  -3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376L,
+        i__s(  -3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376,
                           '0q3F_F0')
         i__s(  -2**500,   '0q3F_F0')
         i__s(  -2**625,   '0q2F_FE')
         i__s(  -2**750,   '0q20_C0')
         i__s(  -2**875,   '0q10_F8')
-        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034687L,
+        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034687,
                           '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(  -2**999+1, '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688L,
+        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688,
                           '0q01_80')
         i__s(  -2**999,   '0q01_80')
-        i__s(  -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L,
+        i__s(  -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
                           '0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(  -2**1000+1,'0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
 
@@ -874,18 +874,18 @@ class NumberTestCase(unittest.TestCase):
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
 
-        self.assertEqual(21, sys.getsizeof(Number('0q').raw))
-        self.assertEqual(22, sys.getsizeof(Number('0q80').raw))
-        self.assertEqual(23, sys.getsizeof(Number('0q82_01').raw))
-        self.assertEqual(24, sys.getsizeof(Number('0q83_03E8').raw))
-        self.assertEqual(25, sys.getsizeof(Number('0q82_018888').raw))
-        self.assertEqual(45, sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
-        self.assertEqual(144,sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        self.assertEqual(py23( 21, 17), sys.getsizeof(Number('0q').raw))
+        self.assertEqual(py23( 22, 18), sys.getsizeof(Number('0q80').raw))
+        self.assertEqual(py23( 23, 19), sys.getsizeof(Number('0q82_01').raw))
+        self.assertEqual(py23( 24, 20), sys.getsizeof(Number('0q83_03E8').raw))
+        self.assertEqual(py23( 25, 21), sys.getsizeof(Number('0q82_018888').raw))
+        self.assertEqual(py23( 45, 41), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        self.assertEqual(py23(144,140), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
 
-        self.assertEqual(21, sys.getsizeof(''))
-        self.assertEqual(22, sys.getsizeof('\x80'))
-        self.assertEqual(24, sys.getsizeof('\x83\x03\xE8'))
-        self.assertEqual(45, sys.getsizeof('\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
+        self.assertEqual(py23(21, 25), sys.getsizeof(''))
+        self.assertEqual(py23(22, 38), sys.getsizeof('\x80'))
+        self.assertEqual(py23(24, 40), sys.getsizeof('\x83\x03\xE8'))
+        self.assertEqual(py23(45, 61), sys.getsizeof('\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
         number = Number(number_able)
@@ -980,14 +980,14 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q8C_0100000000000000000001', str(Number(256*256*256*256*256*256*256*256*256*256+1)))
 
     def test_from_raw_docstring_example(self):
-        with self.assertRaises(ValueError):
-             Number('\x82\x01')
-        self.assertEqual(Number(1), Number.from_raw('\x82\x01'))
+        with self.assertRaises((ValueError, TypeError)):
+             Number(b'\x82\x01')
+        self.assertEqual(Number(1), Number.from_raw(b'\x82\x01'))
 
     def test_from_raw(self):
-        self.assertEqual('',             Number.from_raw('').raw)
-        self.assertEqual('\x80',         Number.from_raw('\x80').raw)
-        self.assertEqual('\x83\x03\xE8', Number.from_raw('\x83\x03\xE8').raw)
+        self.assertEqual(b'',             Number.from_raw(b'').raw)
+        self.assertEqual(b'\x80',         Number.from_raw(b'\x80').raw)
+        self.assertEqual(b'\x83\x03\xE8', Number.from_raw(b'\x83\x03\xE8').raw)
 
     def test_from_raw_unicode(self):
         with self.assertRaises(ValueError):
@@ -1076,6 +1076,7 @@ class NumberTestCase(unittest.TestCase):
                 Number
                 p0
                 ."""),   # when run via number_playground
+            b"\x80\x03cNumber\nNumber\nq\x00.",   # when Python 3.X
         ))
 
         x314 = Number(3.14)
@@ -1110,6 +1111,7 @@ class NumberTestCase(unittest.TestCase):
                 S%s
                 p5
                 b.""") % repr(x314.raw),
+            b'\x80\x03cNumber\nNumber\nq\x00)\x81q\x01C\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'   # Python 3.X
         ))
 
         y314 = pickle.loads(pickle.dumps(x314))
@@ -1126,119 +1128,119 @@ class NumberTestCase(unittest.TestCase):
             self.assertEqual(packed_bytes, Number._pack_big_integer_Mike_Boers(number,nbytes))
             self.assertEqual(packed_bytes, Number._pack_integer(number,nbytes))
 
-        test_both_methods(                '\x00', 0,1)
-        test_both_methods(    '\x00\x00\x00\x00', 0,4)
-        test_both_methods(    '\x00\x00\x00\x01', 1,4)
-        test_both_methods(    '\x00\x00\x00\x64', 100,4)
-        test_both_methods(    '\x00\x00\xFF\xFE', 65534L,4)
-        test_both_methods(    '\xFF\xFF\xFF\xFE', 4294967294,4)
+        test_both_methods(                b'\x00', 0,1)
+        test_both_methods(    b'\x00\x00\x00\x00', 0,4)
+        test_both_methods(    b'\x00\x00\x00\x01', 1,4)
+        test_both_methods(    b'\x00\x00\x00\x64', 100,4)
+        test_both_methods(    b'\x00\x00\xFF\xFE', 65534,4)
+        test_both_methods(    b'\xFF\xFF\xFF\xFE', 4294967294,4)
 
-        test_both_methods('\x00\xFF\xFF\xFF\xFE', 4294967294,5)
-        test_both_methods('\x00\xFF\xFF\xFF\xFF', 4294967295,5)
-        test_both_methods('\x01\x00\x00\x00\x00', 4294967296,5)
-        test_both_methods('\x01\x00\x00\x00\x01', 4294967297,5)
-        test_both_methods('\x01\x00\x00\x00\x02', 4294967298,5)
+        test_both_methods(b'\x00\xFF\xFF\xFF\xFE', 4294967294,5)
+        test_both_methods(b'\x00\xFF\xFF\xFF\xFF', 4294967295,5)
+        test_both_methods(b'\x01\x00\x00\x00\x00', 4294967296,5)
+        test_both_methods(b'\x01\x00\x00\x00\x01', 4294967297,5)
+        test_both_methods(b'\x01\x00\x00\x00\x02', 4294967298,5)
 
-        test_both_methods(    '\xFF\xFF\xFF\xFF', -1,4)
-        test_both_methods('\xFF\xFF\xFF\xFF\xFF', -1,5)
+        test_both_methods(    b'\xFF\xFF\xFF\xFF', -1,4)
+        test_both_methods(b'\xFF\xFF\xFF\xFF\xFF', -1,5)
 
-        test_both_methods('\xFF\xFF\xFF\x00\x02', -65534,5)
+        test_both_methods(b'\xFF\xFF\xFF\x00\x02', -65534,5)
 
-        test_both_methods('\xFF\x80\x00\x00\x01', -2147483647,5)
-        test_both_methods('\xFF\x80\x00\x00\x00', -2147483648,5)
-        test_both_methods('\xFF\x7F\xFF\xFF\xFF', -2147483649,5)
-        test_both_methods('\xFF\x7F\xFF\xFF\xFE', -2147483650,5)
+        test_both_methods(b'\xFF\x80\x00\x00\x01', -2147483647,5)
+        test_both_methods(b'\xFF\x80\x00\x00\x00', -2147483648,5)
+        test_both_methods(b'\xFF\x7F\xFF\xFF\xFF', -2147483649,5)
+        test_both_methods(b'\xFF\x7F\xFF\xFF\xFE', -2147483650,5)
 
-        test_both_methods('\xFF\x00\x00\x00\x01', -4294967295,5)
-        test_both_methods('\xFF\x00\x00\x00\x00', -4294967296,5)
-        test_both_methods('\xFE\xFF\xFF\xFF\xFF', -4294967297,5)
-        test_both_methods('\xFE\xFF\xFF\xFF\xFE', -4294967298,5)
+        test_both_methods(b'\xFF\x00\x00\x00\x01', -4294967295,5)
+        test_both_methods(b'\xFF\x00\x00\x00\x00', -4294967296,5)
+        test_both_methods(b'\xFE\xFF\xFF\xFF\xFF', -4294967297,5)
+        test_both_methods(b'\xFE\xFF\xFF\xFF\xFE', -4294967298,5)
 
     def test_pack_small_integer_not_enough_nbytes(self):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual('\x11', Number._pack_integer(0x1111,1))
-        self.assertEqual('\x11\x11', Number._pack_integer(0x1111,2))
-        self.assertEqual('\x00\x11\x11', Number._pack_integer(0x1111,3))
-        self.assertEqual('\x00\x00\x11\x11', Number._pack_integer(0x1111,4))
-        self.assertEqual('\x00\x00\x00\x11\x11', Number._pack_integer(0x1111,5))
+        self.assertEqual(b'\x11', Number._pack_integer(0x1111,1))
+        self.assertEqual(b'\x11\x11', Number._pack_integer(0x1111,2))
+        self.assertEqual(b'\x00\x11\x11', Number._pack_integer(0x1111,3))
+        self.assertEqual(b'\x00\x00\x11\x11', Number._pack_integer(0x1111,4))
+        self.assertEqual(b'\x00\x00\x00\x11\x11', Number._pack_integer(0x1111,5))
 
     def test_pack_integer_not_enough_nbytes_negative(self):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual('\xAB', Number._pack_integer(-0x5555,1))
-        self.assertEqual('\xAA\xAB', Number._pack_integer(-0x5555,2))
-        self.assertEqual('\xFF\xAA\xAB', Number._pack_integer(-0x5555,3))
-        self.assertEqual('\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,4))
-        self.assertEqual('\xFF\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,5))
+        self.assertEqual(b'\xAB', Number._pack_integer(-0x5555,1))
+        self.assertEqual(b'\xAA\xAB', Number._pack_integer(-0x5555,2))
+        self.assertEqual(b'\xFF\xAA\xAB', Number._pack_integer(-0x5555,3))
+        self.assertEqual(b'\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,4))
+        self.assertEqual(b'\xFF\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,5))
 
     def test_pack_big_integer_not_enough_nbytes(self):
         """
         big int, ignores low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual('\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,4))
-        self.assertEqual('\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,5))
-        self.assertEqual('\x00\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,6))
+        self.assertEqual(b'\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,4))
+        self.assertEqual(b'\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,5))
+        self.assertEqual(b'\x00\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,6))
 
     def test_pack_integer_auto_nbytes(self):
-        self.assertEqual('\x01', Number._pack_integer(0x01))
-        self.assertEqual('\x04', Number._pack_integer(0x04))
-        self.assertEqual('\xFF', Number._pack_integer(0xFF))
-        self.assertEqual('\x01\x00', Number._pack_integer(0x100))
-        self.assertEqual('\x01\x01', Number._pack_integer(0x101))
-        self.assertEqual('\xFF\xFF', Number._pack_integer(0xFFFF))
-        self.assertEqual('\x01\x00\x00', Number._pack_integer(0x10000))
-        self.assertEqual('\x01\x00\x01', Number._pack_integer(0x10001))
+        self.assertEqual(b'\x01', Number._pack_integer(0x01))
+        self.assertEqual(b'\x04', Number._pack_integer(0x04))
+        self.assertEqual(b'\xFF', Number._pack_integer(0xFF))
+        self.assertEqual(b'\x01\x00', Number._pack_integer(0x100))
+        self.assertEqual(b'\x01\x01', Number._pack_integer(0x101))
+        self.assertEqual(b'\xFF\xFF', Number._pack_integer(0xFFFF))
+        self.assertEqual(b'\x01\x00\x00', Number._pack_integer(0x10000))
+        self.assertEqual(b'\x01\x00\x01', Number._pack_integer(0x10001))
 
     def test_pack_integer_auto_nbytes_negative(self):
-        self.assertEqual('\xFF', Number._pack_integer(-0x01))
-        self.assertEqual('\xFC', Number._pack_integer(-0x04))
-        self.assertEqual('\x01', Number._pack_integer(-0xFF))  # an UNSIGNED negative number in two's complement
-        self.assertEqual('\xFF\x01', Number._pack_integer(-0xFF,2))  # (nbytes+=1 to get a sign bit)
-        self.assertEqual('\xFF\x00', Number._pack_integer(-0x100))
-        self.assertEqual('\xFE\xFF', Number._pack_integer(-0x101))
-        self.assertEqual('\x00\x01', Number._pack_integer(-0xFFFF))
-        self.assertEqual('\xFF\x00\x00', Number._pack_integer(-0x10000))
-        self.assertEqual('\xFE\xFF\xFF', Number._pack_integer(-0x10001))
+        self.assertEqual(b'\xFF', Number._pack_integer(-0x01))
+        self.assertEqual(b'\xFC', Number._pack_integer(-0x04))
+        self.assertEqual(b'\x01', Number._pack_integer(-0xFF))  # an UNSIGNED negative number in two's complement
+        self.assertEqual(b'\xFF\x01', Number._pack_integer(-0xFF,2))  # (nbytes+=1 to get a sign bit)
+        self.assertEqual(b'\xFF\x00', Number._pack_integer(-0x100))
+        self.assertEqual(b'\xFE\xFF', Number._pack_integer(-0x101))
+        self.assertEqual(b'\x00\x01', Number._pack_integer(-0xFFFF))
+        self.assertEqual(b'\xFF\x00\x00', Number._pack_integer(-0x10000))
+        self.assertEqual(b'\xFE\xFF\xFF', Number._pack_integer(-0x10001))
 
     def test_unpack_big_integer(self):
-        self.assertEqual(0L, Number._unpack_big_integer(''))
-        self.assertEqual(0x1234L, Number._unpack_big_integer('\x12\x34'))
-        self.assertEqual( 0x807F99DEADBEEF00L, Number._unpack_big_integer(    '\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
-        self.assertEqual( 0xFFFFFFFFFFFFFF77L, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x77'))
-        self.assertEqual( 0xFFFFFFFFFFFFFFFEL, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
-        self.assertEqual( 0xFFFFFFFFFFFFFFFFL, Number._unpack_big_integer(    '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
-        self.assertEqual(0x10000000000000000L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
-        self.assertEqual(0x10000000000000001L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
-        self.assertEqual(0x10000000000000022L, Number._unpack_big_integer('\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00L, Number._unpack_big_integer('\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0, Number._unpack_big_integer(b''))
+        self.assertEqual(0x1234, Number._unpack_big_integer(b'\x12\x34'))
+        self.assertEqual( 0x807F99DEADBEEF00, Number._unpack_big_integer(    b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
+        self.assertEqual( 0xFFFFFFFFFFFFFF77, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x77'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFE, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFF, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        self.assertEqual(0x10000000000000000, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
+        self.assertEqual(0x10000000000000001, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
+        self.assertEqual(0x10000000000000022, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
     def test_unpack_big_integer_by_brute(self):
-        self.assertEqual(0L, Number._unpack_big_integer_by_brute(''))
-        self.assertEqual(0x1234L, Number._unpack_big_integer_by_brute('\x12\x34'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00L, Number._unpack_big_integer_by_brute('\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0, Number._unpack_big_integer_by_brute(b''))
+        self.assertEqual(0x1234, Number._unpack_big_integer_by_brute(b'\x12\x34'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer_by_brute(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
     def test_unpack_big_integer_by_struct(self):
-        self.assertEqual(0L, Number._unpack_big_integer_by_struct(''))
-        self.assertEqual(0x00L, Number._unpack_big_integer_by_struct('\x00'))
-        self.assertEqual(0x1234L, Number._unpack_big_integer_by_struct('\x12\x34'))
-        self.assertEqual(0xFFFFFFFFFFFFFFFEL, Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
-        self.assertEqual(0xFFFFFFFFFFFFFFFFL, Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        self.assertEqual(0, Number._unpack_big_integer_by_struct(b''))
+        self.assertEqual(0x00, Number._unpack_big_integer_by_struct(b'\x00'))
+        self.assertEqual(0x1234, Number._unpack_big_integer_by_struct(b'\x12\x34'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFE, Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFF, Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
         with self.assertRaises(Exception):
-            Number._unpack_big_integer_by_struct('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
+            Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
         with self.assertRaises(Exception):
-            Number._unpack_big_integer_by_struct('ninebytes')
+            Number._unpack_big_integer_by_struct(b'ninebytes')
 
     def test_exp256(self):
         self.assertEqual(1, Number._exp256(0))
         self.assertEqual(256, Number._exp256(1))
         self.assertEqual(65536, Number._exp256(2))
         self.assertEqual(16777216, Number._exp256(3))
-        self.assertEqual(4294967296L, Number._exp256(4))
-        self.assertEqual(1208925819614629174706176L, Number._exp256(10))
-        self.assertEqual(1461501637330902918203684832716283019655932542976L, Number._exp256(20))
+        self.assertEqual(4294967296, Number._exp256(4))
+        self.assertEqual(1208925819614629174706176, Number._exp256(10))
+        self.assertEqual(1461501637330902918203684832716283019655932542976, Number._exp256(20))
         self.assertEqual(2**800, Number._exp256(100))
         self.assertEqual(2**8000, Number._exp256(1000))
 
@@ -1256,18 +1258,18 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('AAAAAAAA', Number._hex_even(0xAAAAAAAA).upper())
 
     def test_left_pad00(self):
-        self.assertEqual('abc', Number._left_pad00('abc', 1))
-        self.assertEqual('abc', Number._left_pad00('abc', 2))
-        self.assertEqual('abc', Number._left_pad00('abc', 3))
-        self.assertEqual('\x00abc', Number._left_pad00('abc', 4))
-        self.assertEqual('\x00\x00abc', Number._left_pad00('abc', 5))
-        self.assertEqual('\x00\x00\x00abc', Number._left_pad00('abc', 6))
+        self.assertEqual(b'abc', Number._left_pad00(b'abc', 1))
+        self.assertEqual(b'abc', Number._left_pad00(b'abc', 2))
+        self.assertEqual(b'abc', Number._left_pad00(b'abc', 3))
+        self.assertEqual(b'\x00abc', Number._left_pad00(b'abc', 4))
+        self.assertEqual(b'\x00\x00abc', Number._left_pad00(b'abc', 5))
+        self.assertEqual(b'\x00\x00\x00abc', Number._left_pad00(b'abc', 6))
 
     def test_right_strip00(self):
-        self.assertEqual('abc', Number._right_strip00('abc'))
-        self.assertEqual('abc', Number._right_strip00('abc\x00'))
-        self.assertEqual('abc', Number._right_strip00('abc\x00\x00'))
-        self.assertEqual('abc', Number._right_strip00('abc\x00\x00\x00'))
+        self.assertEqual(b'abc', Number._right_strip00(b'abc'))
+        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00'))
+        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00'))
+        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00\x00'))
 
     def test_floats_really_same(self):
         self.assertTrue (Number._floats_really_same(1.0, 1.0))
@@ -1321,17 +1323,14 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(-3, int(Number(-3.0)))
 
     def test_python_weird_big_math(self):
-        self.assertEqual((1L << 1000),             1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
-        self.assertEqual((1L << 1000)-1L,           10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
-
-        self.assertEqual(     pow(2,1000),          1.0715086071862673e+301)
-        self.assertEqual(math.pow(2,1000),          1.0715086071862673e+301)
-
-        self.assertEqual(    pow(2,1000)-1L,        10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
-        self.assertEqual(math.pow(2,1000)-1L,       1.0715086071862673e+301)
-
-        self.assertTrue (    pow(2,1000)-1L      == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375L)
-        self.assertTrue (math.pow(2,1000)-1L     == 1.0715086071862673e+301)
+        self.assertEqual((1 << 1000),              1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
+        self.assertEqual((1 << 1000)-1,             10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertEqual(     pow(2,1000),         1.0715086071862673e+301)
+        self.assertEqual(math.pow(2,1000),         1.0715086071862673e+301)
+        self.assertEqual(     pow(2,1000)-1,        10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertEqual(math.pow(2,1000)-1,       1.0715086071862673e+301)
+        self.assertTrue (     pow(2,1000)-1      == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertTrue (math.pow(2,1000)-1     == 1.0715086071862673e+301)
 
     def test_python_binary_shift_negative_left(self):
         self.assertEqual( -2, -2 << 0)
@@ -1346,7 +1345,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(-4, -1 << 2)
         self.assertEqual(-8, -1 << 3)
 
-        self.assertEqual(-1267650600228229401496703205376L, -1 << 100)
+        self.assertEqual(-1267650600228229401496703205376, -1 << 100)
 
     def test_python_binary_shift_negative_right(self):
         self.assertEqual(-1, -1 >> 0)
@@ -1371,13 +1370,13 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(-1, -16777216 >> 24)
         self.assertEqual(-1, -16777216 >> 25)
 
-        self.assertEqual(-2L, -4294967296L >> 31)
-        self.assertEqual(-1L, -4294967296L >> 32)
-        self.assertEqual(-1L, -4294967296L >> 33)
+        self.assertEqual(-2, -4294967296 >> 31)
+        self.assertEqual(-1, -4294967296 >> 32)
+        self.assertEqual(-1, -4294967296 >> 33)
 
-        self.assertEqual(-2L, -1267650600228229401496703205376L >> 99)
-        self.assertEqual(-1L, -1267650600228229401496703205376L >> 100)
-        self.assertEqual(-1L, -1267650600228229401496703205376L >> 101)
+        self.assertEqual(-2, -1267650600228229401496703205376 >> 99)
+        self.assertEqual(-1, -1267650600228229401496703205376 >> 100)
+        self.assertEqual(-1, -1267650600228229401496703205376 >> 101)
 
     def test_python_binary_shift_left(self):
         self.assertEqual(256, 1 << 8)
@@ -1386,49 +1385,55 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(256*256*256*256, 1 << 8*4)
         self.assertEqual(256*256*256*256*256, 1 << 8*5)
         self.assertEqual(256*256*256*256*256*256, 1 << 8*6)
-        self.assertEqual(       281474976710656L, 1 << 8*6)
+        self.assertEqual(        281474976710656, 1 << 8*6)
         self.assertEqual(256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256, 1 << 8*20)
-        self.assertEqual(                             1461501637330902918203684832716283019655932542976L, 1 << 8*20)
+        self.assertEqual(                              1461501637330902918203684832716283019655932542976, 1 << 8*20)
 
     def test_python_binary_string_comparison(self):
-        self.assertTrue('\x81' < '\x82')
-        self.assertTrue('\x80' < '\x81')
-        self.assertTrue('\x7F' < '\x80')
-        self.assertTrue('\x7E' < '\x7F')
+        self.assertTrue(b'\x81' < b'\x82')
+        self.assertTrue(b'\x80' < b'\x81')
+        self.assertTrue(b'\x7F' < b'\x80')
+        self.assertTrue(b'\x7E' < b'\x7F')
 
-        self.assertFalse('\x80' < '\x80')
-        self.assertFalse('\x7F' < '\x7F')
-        self.assertFalse('\x82' < '\x82')
-        self.assertTrue( '\x82' < '\x82\x00')
-        self.assertFalse('\x82\x00' < '\x82')
+        self.assertFalse(b'\x80' < b'\x80')
+        self.assertFalse(b'\x7F' < b'\x7F')
+        self.assertFalse(b'\x82' < b'\x82')
+        self.assertTrue( b'\x82' < b'\x82\x00')
+        self.assertFalse(b'\x82\x00' < b'\x82')
 
-        self.assertTrue( '\x00' == '\x00')
-        self.assertFalse('\x00' <  '\x00')
+        self.assertTrue( b'\x00' == b'\x00')
+        self.assertFalse(b'\x00' <  b'\x00')
 
-        self.assertFalse('\x00' == '\x00\x00')
-        self.assertTrue( '\x00' <  '\x00\x00')
+        self.assertFalse(b'\x00' == b'\x00\x00')
+        self.assertTrue( b'\x00' <  b'\x00\x00')
 
-        self.assertFalse('\x00' == '\x00\x01')
-        self.assertTrue( '\x00' <  '\x00\x01')
+        self.assertFalse(b'\x00' == b'\x00\x01')
+        self.assertTrue( b'\x00' <  b'\x00\x01')
 
-        self.assertFalse('\x00' == '\x00\xFF')
-        self.assertTrue( '\x00' <  '\x00\xFF')
+        self.assertFalse(b'\x00' == b'\x00\xFF')
+        self.assertTrue( b'\x00' <  b'\x00\xFF')
 
-        self.assertTrue( '\x00\x41' == '\x00\x41')
-        self.assertFalse('\x00\x41' <  '\x00\x41')
+        self.assertTrue( b'\x00\x41' == b'\x00\x41')
+        self.assertFalse(b'\x00\x41' <  b'\x00\x41')
 
-        self.assertFalse('\x00\x41' == '\x00\x42')
-        self.assertTrue( '\x00\x41' <  '\x00\x42')
+        self.assertFalse(b'\x00\x41' == '\x00\x42b')
+        self.assertTrue( b'\x00\x41' <  b'\x00\x42')
 
-        self.assertTrue('\x82' == '\x82')
-        self.assertTrue('\x81' == '\x81')
-        self.assertTrue('\x80' == '\x80')
-        self.assertTrue('\x7F' == '\x7F')
+        self.assertTrue(b'\x82' == b'\x82')
+        self.assertTrue(b'\x81' == b'\x81')
+        self.assertTrue(b'\x80' == b'\x80')
+        self.assertTrue(b'\x7F' == b'\x7F')
 
-        self.assertFalse('' == '\x00')
-        self.assertFalse('' == '\x80')
-        self.assertFalse('\x80' == '\x81')
-        self.assertFalse('\x82' == '\x82\x00')
+        self.assertFalse(b'' == b'\x00')
+        self.assertFalse(b'' == b'\x80')
+        self.assertFalse(b'\x80' == b'\x81')
+        self.assertFalse(b'\x82' == b'\x82\x00')
+
+def py23(if2, if3):
+    if six.PY3:
+        return if3
+    else:
+        return if2
 
 if __name__ == '__main__':
     import unittest

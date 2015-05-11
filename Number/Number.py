@@ -7,7 +7,20 @@ And more
 import six
 import math
 import struct
+if six.PY3:
+    import codecs
 
+def hex_decode(s):
+    if six.PY3:
+        return bytes.fromhex(s)
+    else:
+        return s.decode('hex')
+
+def hex_encode(s):
+    if six.PY3:
+        return codecs.encode(s, 'hex').decode(encoding='UTF-8').upper()
+    else:
+        return s.encode('hex').upper()
 
 class Number(object):
 
@@ -16,7 +29,7 @@ class Number(object):
             self.raw = self.RAW_NAN
         elif isinstance(content, six.string_types):
             self._from_string(content)
-        elif isinstance(content, (int, long)):
+        elif isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
@@ -105,23 +118,22 @@ class Number(object):
         Right:  assert Number(1) == Number.from_raw('\x82\x01')
         """
         if not isinstance(value, six.binary_type):
-            raise ValueError("Number.from_raw(binary string, e.g. b'\\x82\\x01')")
+            raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
         retval = Number(None)
         retval.raw = value
         return retval
 
     def _from_string(self, s):
         assert(isinstance(s, six.string_types))
-        if s.startswith('0q'):
-            s = str(s)   # avoid u'0q80' translate() raising TypeError
-            sdigits = s[2:].translate(None, '_')
+        if s[:2] == '0q':
+            sdigits = s[2:].replace('_', '')
             if len(sdigits) % 2 != 0:
                 sdigits += '0'
             try:
-                sdecoded = sdigits.decode('hex')
+                sdecoded = hex_decode(sdigits)
             except TypeError:
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '%s'" % s)
-            self.raw = sdecoded
+            self.raw = six.binary_type(sdecoded)
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
 
@@ -169,13 +181,16 @@ class Number(object):
         assert x == significand_base_256 * 256.0**exponent_base_256
         assert 0.00390625 <= abs(significand_base_256) < 1.0
 
-        qan_integer = long(significand_base_256 * cls._qigits_scaler + 0.5)
+        qan_integer = int(significand_base_256 * cls._qigits_scaler + 0.5)
         qan00 = cls._pack_integer(qan_integer, cls._qigits_precision)
         qan = cls._right_strip00(qan00)
 
         qex_integer = qex_encoder(exponent_base_256)
-        qex = chr(qex_integer)
+        qex = six.int2byte(qex_integer)
 
+        retval = qex
+        retval += qan
+        return retval
         return qex + qan
 
     @classmethod
@@ -186,7 +201,7 @@ class Number(object):
 
         exponent_base_256 = len(qan00)
         qex_integer = qex_encoder(exponent_base_256)
-        qex = chr(qex_integer)
+        qex = six.int2byte(qex_integer)
 
         return qex + qan
 
@@ -207,9 +222,12 @@ class Number(object):
         """
 
         if nbytes is None:
-            nbytes = len(cls._hex_even(abs(theinteger)))/2   # nbytes default = 1 + floor(log(abs(theinteger), 256))
+            nbytes = len(cls._hex_even(abs(theinteger)))//2   # nbytes default = 1 + floor(log(abs(theinteger), 256))
 
         if nbytes <= 8 and 0 <= theinteger < 4294967296:
+            r = struct.pack('>Q', theinteger)
+            assert isinstance(nbytes, int), type(nbytes).__name__
+            rr = r[8-nbytes:]
             return struct.pack('>Q', theinteger)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
         elif nbytes <= 8 and -2147483648 <= theinteger < 2147483648:
             return struct.pack('>q', theinteger)[8-nbytes:]
@@ -228,9 +246,11 @@ class Number(object):
         else:
             num_twos_complement = num + cls._exp256(nbytes)   # two's complement of big negative integers
         return cls._left_pad00(
-            cls._hex_even(
-                num_twos_complement
-            ).decode('hex'),
+            hex_decode(
+                cls._hex_even(
+                    num_twos_complement
+                )
+            ),
             nbytes
         )
 
@@ -258,7 +278,7 @@ class Number(object):
     @staticmethod
     def _exp256(e):
         """Compute 256**e for nonnegative integer e"""
-        assert isinstance(e, (int, long))
+        assert isinstance(e, six.integer_types)
         assert e >= 0
         return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
 
@@ -277,7 +297,7 @@ class Number(object):
             length = len(self.raw)
             if length == 0:
                 offset = 0
-            elif ord(self.raw[0]) in (0x7E, 0x7F, 0x80, 0x81):
+            elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
                 offset = 1   # TODO: ludicrous numbers have bigger offsets (for googolplex it's 64)
@@ -288,7 +308,7 @@ class Number(object):
                 return '0q' + h[:2*offset] + '_' + h[2*offset:]
 
     def hex(self):
-        return self.raw.encode('hex').upper()
+        return hex_encode(self.raw)
 
     def qantissa(self):
         """
@@ -326,10 +346,10 @@ class Number(object):
 
     @classmethod
     def _unpack_big_integer_by_brute(cls, binary_string):
-        retval = 0L
+        retval = 0
         for i in range(len(binary_string)):
             retval <<= 8
-            retval |= ord(binary_string[i])
+            retval |= six.indexbytes(binary_string, i)
         return retval
 
     def qexponent(self):
@@ -339,10 +359,10 @@ class Number(object):
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
     __qexponent_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         ord(self.raw[0]) - 0x81,   # e <-- qex
-        Zone.FRACTIONAL:     lambda self:         ord(self.raw[1]) - 0xFF,
-        Zone.FRACTIONAL_NEG: lambda self:  0x00 - ord(self.raw[1]),
-        Zone.NEGATIVE:       lambda self:  0x7E - ord(self.raw[0]),
+        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e <-- qex
+        Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
+        Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
+        Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
     }   # TODO: ludicrous numbers
 
     def __long__(self):
@@ -611,7 +631,7 @@ Number.name_of_zone = {
     getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")
 }
 
-Number._sorted_zones = sorted(Number.name_of_zone.keys(), None, None, True)
+Number._sorted_zones = sorted(Number.name_of_zone.keys(), reverse=True)
 
 
 # Constants
@@ -742,7 +762,6 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
 Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 
 
-# TODO: test in Python 3.X
 # TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
 # TODO: __neg__ (take advantage of two's complement encoding)
 # TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
