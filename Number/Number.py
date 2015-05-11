@@ -759,6 +759,7 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 # TODO: Transfinite Numbers
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)
 # ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
+# TODO: Numpy types support -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 
 
 
