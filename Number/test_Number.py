@@ -628,7 +628,7 @@ class NumberTestCase(unittest.TestCase):
         f__s(      1234.5678901234,       '0q83_04D291613F43B980')
         f__s(      1234.56789,            '0q83_04D291613D31B9C0')
         f__s(      1111.1111112,          '0q83_04571C71C89A3840')
-        f__s(      1111.111111111111313,  '0q83_04571C71C71C72')    # TODO: use numpy.nextafter(1111.111111111111111, 1) or something -- http://stackoverflow.com/a/6163157/673991
+        f__s(      1111.111111111111313,  '0q83_04571C71C71C72')    # XXX: use numpy.nextafter(1111.111111111111111, 1) or something -- http://stackoverflow.com/a/6163157/673991
         f__s(      1111.111111111111111,  '0q83_04571C71C71C71C0')  # float has just under 17 significant digits
         f__s(      1111.1111111,          '0q83_04571C71C6ECB9')
         f__s(      1024.0,                '0q83_04')

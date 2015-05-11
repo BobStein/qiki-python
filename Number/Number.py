@@ -412,7 +412,7 @@ class Number(object):
             qexp = self.qexponent() - qanlength
             if qexp < 0:
                 extraneous_mask = self._exp256(-qexp) - 1
-                extraneous = qan & extraneous_mask   # TODO: a more graceful way to floor toward 0 instead of toward -inf
+                extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor toward 0 instead of toward -inf
                 if extraneous == 0:
                     return qan >> (-qexp*8)
                 else:
@@ -717,20 +717,20 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
 Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 
 
-# TODO: Ludicrous Numbers
-# TODO: Transfinite Numbers
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
 # ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
+# TODO: Ludicrous Numbers
+# TODO: Transfinite Numbers
 # TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
 # TODO: __neg__ (take advantage of two's complement encoding)
 # TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
-
 # TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, for small values anyway (less than 2**52)
 # TODO: hooks to add features modularly
 
+# TODO: decimal.Decimal
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
-# TODO: other Numpy compatibilities?\
+# TODO: other Numpy compatibilities?
 
 
 # hex_decode(), hex_encode()
