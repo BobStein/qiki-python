@@ -767,13 +767,13 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 # These belong in the "six" module
 # https://bitbucket.org/gutworth/six
 def hex_decode(s):
-    if six.PY3:
-        return bytes.fromhex(s)
-    else:
+    if six.PY2:
         return s.decode('hex')
+    else:
+        return bytes.fromhex(s)
 
 def hex_encode(s):
-    if six.PY3:
-        return codecs.encode(s, 'hex').decode().upper()
-    else:
+    if six.PY2:
         return s.encode('hex').upper()
+    else:
+        return codecs.encode(s, 'hex').decode().upper()

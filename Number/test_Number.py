@@ -1076,7 +1076,7 @@ class NumberTestCase(unittest.TestCase):
                 Number
                 p0
                 ."""),   # when run via number_playground
-            b"\x80\x03cNumber\nNumber\nq\x00.",   # when Python 3.X
+            b"\x80\x03cNumber\nNumber\nq\x00.",   # Python 3.X
         ))
 
         x314 = Number(3.14)
