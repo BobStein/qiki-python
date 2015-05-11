@@ -490,12 +490,49 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q82_0119999A', str(Number(1.1, qigits=4)))
         self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
 
+    def test_float_qigits_fractional(self):
+        self.assertEqual('0q81FF_199999999A', str(Number(0.1, qigits=5)))
+        self.assertEqual('0q81FF_19999999999A', str(Number(0.1, qigits=6)))
+        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=7)))
+        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=8)))
+        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=9)))
+
+        self.assertEqual('0q81FF_3333333333', str(Number(0.2, qigits=5)))
+        self.assertEqual('0q81FF_333333333333', str(Number(0.2, qigits=6)))
+        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=7)))
+        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=8)))
+        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=9)))
+        # Ending in 34 is not a bug.
+        # The 7th qigit above rounded to 34, not in Number, but when float originally decoded 0.2.
+        # That's because the 53-bit float significand can only fit 7 of those bits.
+        # The 1st qigit uses 6 bits.  Middle 5 qigits use all 8 bits.  So 6+(5*8)+7 = 53.
+        # So Number faithfully stored all 53 bits from the float.
+
+    def test_float_qigits_fractional_neg(self):
+        self.assertEqual('0q7E00_E666666667', str(Number(-0.1, qigits=5)))
+        self.assertEqual('0q7E00_E66666666667', str(Number(-0.1, qigits=6)))
+        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=7)))
+        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=8)))
+        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=9)))
+
+        self.assertEqual('0q7E00_CCCCCCCCCE', str(Number(-0.2, qigits=5)))   # FIXME: this should be 0q7E00_CCCCCCCCCD
+        self.assertEqual('0q7E00_CCCCCCCCCCCE', str(Number(-0.2, qigits=6)))
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=7)))
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=8)))
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=9)))
+
     def test_float_qigits_neg(self):
-        self.assertEqual('0q7D_FEE6666667', str(Number(-1.1, qigits=5)))
+        self.assertEqual('0q7D_FEE6666667', str(Number(-1.1, qigits=5)))   # FIXME: sometimes* this is 0q7D_FEE6666666666660 ?!?!  *change -0.2 test above to 0q7E00_CCCCCCCCCD
         self.assertEqual('0q7D_FEE666666667', str(Number(-1.1, qigits=6)))
         self.assertEqual('0q7D_FEE66666666667', str(Number(-1.1, qigits=7)))
-        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=8)))   # float's 52-bit significand
-        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=9)))   # TODO: test rounding for negatives
+        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=8)))   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
+        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=9)))
+
+        self.assertEqual('0q7D_FECCCCCCCE', str(Number(-1.2, qigits=5)))   # FIXME: this should be 0q7D_FECCCCCCCD
+        self.assertEqual('0q7D_FECCCCCCCCCE', str(Number(-1.2, qigits=6)))
+        self.assertEqual('0q7D_FECCCCCCCCCCCE', str(Number(-1.2, qigits=7)))
+        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=8)))
+        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=9)))
 
     def test_floats_and_strings(self):
 

@@ -414,8 +414,8 @@ class Number(object):
             qan -= offset
             qexp = self.qexponent() - qanlength
             if qexp < 0:
-                extraneous_mask = self._exp256(-qexp) - 1   # TODO: a more graceful way to floor toward 0 instead of toward -inf
-                extraneous = qan & extraneous_mask
+                extraneous_mask = self._exp256(-qexp) - 1
+                extraneous = qan & extraneous_mask   # TODO: a more graceful way to floor toward 0 instead of toward -inf
                 if extraneous == 0:
                     return qan >> (-qexp*8)
                 else:
