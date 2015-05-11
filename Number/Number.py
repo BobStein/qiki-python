@@ -384,7 +384,7 @@ class Number(object):
         elif self.Zone.NEGATIVE <= self.raw:
             return self._to_int_negative()
         elif self.Zone.NAN < self.raw:
-            return _int_cant_be_negative_infinity()
+            return self._int_cant_be_negative_infinity()
         else:
             return self._int_cant_be_nan()
 
