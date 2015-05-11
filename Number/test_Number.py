@@ -1429,12 +1429,13 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(b'\x80' == b'\x81')
         self.assertFalse(b'\x82' == b'\x82\x00')
 
+
 def py23(if2, if3):
-    if six.PY3:
-        return if3
-    else:
+    if six.PY2:
         return if2
+    else:
+        return if3
 
 if __name__ == '__main__':
     import unittest
-    unittest.main()   # FIXME: why 0 tests?
+    unittest.main()

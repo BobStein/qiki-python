@@ -10,18 +10,6 @@ import struct
 if six.PY3:
     import codecs
 
-def hex_decode(s):
-    if six.PY3:
-        return bytes.fromhex(s)
-    else:
-        return s.decode('hex')
-
-def hex_encode(s):
-    if six.PY3:
-        return codecs.encode(s, 'hex').decode(encoding='UTF-8').upper()
-    else:
-        return s.encode('hex').upper()
-
 class Number(object):
 
     def __init__(self, content=None, qigits = None):
@@ -773,6 +761,19 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 # ...versus 0q81FF_028F5C28F5C28F60 for 0.0100000000000000002, the closest float gets, and 2 bytes bigger
 
 
-if __name__ == '__main__':
-    import unittest
-    unittest.main()   # FIXME: why 0 tests?
+
+# hex_decode(), hex_encode()
+# --------------------------
+# These belong in the "six" module
+# https://bitbucket.org/gutworth/six
+def hex_decode(s):
+    if six.PY3:
+        return bytes.fromhex(s)
+    else:
+        return s.decode('hex')
+
+def hex_encode(s):
+    if six.PY3:
+        return codecs.encode(s, 'hex').decode().upper()
+    else:
+        return s.encode('hex').upper()
