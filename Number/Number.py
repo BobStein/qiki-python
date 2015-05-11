@@ -213,9 +213,6 @@ class Number(object):
             nbytes = len(cls._hex_even(abs(theinteger)))//2   # nbytes default = 1 + floor(log(abs(theinteger), 256))
 
         if nbytes <= 8 and 0 <= theinteger < 4294967296:
-            r = struct.pack('>Q', theinteger)
-            assert isinstance(nbytes, int), type(nbytes).__name__
-            rr = r[8-nbytes:]
             return struct.pack('>Q', theinteger)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
         elif nbytes <= 8 and -2147483648 <= theinteger < 2147483648:
             return struct.pack('>q', theinteger)[8-nbytes:]
