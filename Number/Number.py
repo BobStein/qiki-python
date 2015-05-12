@@ -45,9 +45,9 @@ class Number(object):
     # They are less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
     # (So actually, some zone values are valid raw values, others are among the invalid inter-zone values.)
-    # The valid raw string for 1 is '\x82\x01' but Number.Zone.POSITIVE is '\x82'.
-    # Anything between '\x82' and '\x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
-    # But any Number Producer (NumberPro) that generates a 1 should generate the raw string '\x82\x01'.
+    # The valid raw string for 1 is b'x82\x01' but Number.Zone.POSITIVE is b'x82'.
+    # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
+    # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
     class Zone:
         TRANSFINITE         = b'\xFF\x80'
         LUDICROUS_LARGE     = b'\xFF'
@@ -97,8 +97,8 @@ class Number(object):
     def from_raw(cls, value):
         """
         Construct a Number from its raw, internal binary string
-        Wrong:  assert Number(1) == Number('\x82\x01')
-        Right:  assert Number(1) == Number.from_raw('\x82\x01')
+        Wrong:  assert Number(1) == Number(b'x82\x01')
+        Right:  assert Number(1) == Number.from_raw(b'x82\x01')
         """
         if not isinstance(value, six.binary_type):
             raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
@@ -194,10 +194,10 @@ class Number(object):
         :return:  an unsigned two's complement string, MSB first
 
         Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
-            assert     '\xFF' == _pack_integer(255)
-            assert '\x00\xFF' == _pack_integer(255,2)
-            assert     '\x01' == _pack_integer(-255)
-            assert '\xFF\x01' == _pack_integer(-255,2)
+            assert     b'xFF' == _pack_integer(255)
+            assert b'x00\xFF' == _pack_integer(255,2)
+            assert     b'x01' == _pack_integer(-255)
+            assert b'xFF\x01' == _pack_integer(-255,2)
         Caution, nbytes lower than minimum may or may not be enforced, see unit tests
         """
 
@@ -581,7 +581,7 @@ class Number(object):
 # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
 # source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
 # So 8 qigits are needed to store 57-64 bits.
-# 57 if the MSQigit were '\x01', 64 if '\xFF'.
+# 57 if the MSQigit were b'x01', 64 if b'xFF'.
 # 7 qigits would only store 49-56.
 Number.qigits_precision(8)
 Number.QIGITS_PRECISION_DEFAULT = 8

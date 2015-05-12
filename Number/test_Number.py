@@ -764,11 +764,11 @@ class NumberTestCase(unittest.TestCase):
         zone_boundary()
         f__s(         0.0,                '0q80',  '0q80FF0000_FA0A1F01_01')   # 2**-99999999, a ludicrously small positive number
         zone_boundary()
-        f__s(         0.0,                '0q80',  '0q807F')   # +infinitessimal
+        f__s(         0.0,                '0q80',  '0q807F')   # +infinitesimal
         zone_boundary()
         f__s(         0.0,                '0q80')
         zone_boundary()
-        f__s(         -0.0,               '0q80',  '0q7F81')   # -infinitessimal
+        f__s(         -0.0,               '0q80',  '0q7F81')   # -infinitesimal
         zone_boundary()
         f__s(         -0.0,               '0q80',  '0q7F00FFFF_5F5E00FF_01')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
@@ -918,10 +918,10 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(py23( 45, 41), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
         self.assertEqual(py23(144,140), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
 
-        self.assertEqual(py23(21, 25), sys.getsizeof(''))
-        self.assertEqual(py23(22, 38), sys.getsizeof('\x80'))
-        self.assertEqual(py23(24, 40), sys.getsizeof('\x83\x03\xE8'))
-        self.assertEqual(py23(45, 61), sys.getsizeof('\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
+        self.assertEqual(py23(21, 17), sys.getsizeof(b''))
+        self.assertEqual(py23(22, 18), sys.getsizeof(b'\x80'))
+        self.assertEqual(py23(24, 20), sys.getsizeof(b'\x83\x03\xE8'))
+        self.assertEqual(py23(45, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
         number = Number(number_able)
@@ -1059,30 +1059,35 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number(0.0) >= Number(1.0))
 
     def test_rich_comparison_number_op_float(self):
-        self.assertFalse(Number(1.0) ==        (0.0))
-        self.assertTrue (Number(0.0) ==        (0.0))
-        self.assertFalse(Number(0.0) ==        (1.0))
-        self.assertTrue (Number(1.0) !=        (0.0))
-        self.assertFalse(Number(0.0) !=        (0.0))
-        self.assertTrue (Number(0.0) !=        (1.0))
+        self.assertFalse(Number(1.0) ==        0.0)
+        self.assertTrue (Number(0.0) ==        0.0)
+        self.assertFalse(Number(0.0) ==        1.0)
 
-        self.assertFalse(Number(1.0) <        (0.0))
-        self.assertFalse(Number(0.0) <        (0.0))
-        self.assertTrue (Number(0.0) <        (1.0))
-        self.assertFalse(Number(1.0) <=       (0.0))
-        self.assertTrue (Number(0.0) <=       (0.0))
-        self.assertTrue (Number(0.0) <=       (1.0))
-        self.assertTrue (Number(1.0) >        (0.0))
-        self.assertFalse(Number(0.0) >        (0.0))
-        self.assertFalse(Number(0.0) >        (1.0))
-        self.assertTrue (Number(1.0) >=       (0.0))
-        self.assertTrue (Number(0.0) >=       (0.0))
-        self.assertFalse(Number(0.0) >=       (1.0))
+        self.assertTrue (Number(1.0) !=        0.0)
+        self.assertFalse(Number(0.0) !=        0.0)
+        self.assertTrue (Number(0.0) !=        1.0)
+
+        self.assertFalse(Number(1.0) <         0.0)
+        self.assertFalse(Number(0.0) <         0.0)
+        self.assertTrue (Number(0.0) <         1.0)
+
+        self.assertFalse(Number(1.0) <=        0.0)
+        self.assertTrue (Number(0.0) <=        0.0)
+        self.assertTrue (Number(0.0) <=        1.0)
+
+        self.assertTrue (Number(1.0) >         0.0)
+        self.assertFalse(Number(0.0) >         0.0)
+        self.assertFalse(Number(0.0) >         1.0)
+
+        self.assertTrue (Number(1.0) >=        0.0)
+        self.assertTrue (Number(0.0) >=        0.0)
+        self.assertFalse(Number(0.0) >=        1.0)
 
     def test_rich_comparison_float_op_number(self):
         self.assertFalse(      (1.0) == Number(0.0))
         self.assertTrue (      (0.0) == Number(0.0))
         self.assertFalse(      (0.0) == Number(1.0))
+
         self.assertTrue (      (1.0) != Number(0.0))
         self.assertFalse(      (0.0) != Number(0.0))
         self.assertTrue (      (0.0) != Number(1.0))
@@ -1090,12 +1095,15 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(      (1.0) <  Number(0.0))
         self.assertFalse(      (0.0) <  Number(0.0))
         self.assertTrue (      (0.0) <  Number(1.0))
+
         self.assertFalse(      (1.0) <= Number(0.0))
         self.assertTrue (      (0.0) <= Number(0.0))
         self.assertTrue (      (0.0) <= Number(1.0))
+
         self.assertTrue (      (1.0) >  Number(0.0))
         self.assertFalse(      (0.0) >  Number(0.0))
         self.assertFalse(      (0.0) >  Number(1.0))
+
         self.assertTrue (      (1.0) >= Number(0.0))
         self.assertTrue (      (0.0) >= Number(0.0))
         self.assertFalse(      (0.0) >= Number(1.0))
@@ -1452,7 +1460,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue( b'\x00\x41' == b'\x00\x41')
         self.assertFalse(b'\x00\x41' <  b'\x00\x41')
 
-        self.assertFalse(b'\x00\x41' == '\x00\x42b')
+        self.assertFalse(b'\x00\x41' == b'\x00\x42')
         self.assertTrue( b'\x00\x41' <  b'\x00\x42')
 
         self.assertTrue(b'\x82' == b'\x82')
