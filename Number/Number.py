@@ -62,7 +62,7 @@ class Number(object):
         NEGATIVE            = b'\x01'
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
-        NAN                 = b''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Null.
+        NAN                 = b''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
 
     @property
     def raw(self):
@@ -152,8 +152,8 @@ class Number(object):
     @classmethod
     def _raw_from_float(cls, x, qex_encoder):
         """
-        Convert float to raw, for nonzero finite (and reasonable) numbers
-        qex_encoder() converts to internal qex format from a base-256-exponent
+        Convert nonzero float to raw
+        qex_encoder() converts a base-256 exponent to internal qex format
         """
         (significand_base_2, exponent_base_2) = math.frexp(x)
         assert x == significand_base_2 * 2.0**exponent_base_2
@@ -175,7 +175,10 @@ class Number(object):
 
     @classmethod
     def _raw_from_int(cls, i, qex_encoder):
-        """ Convert integer to raw, for nonzero (and reasonable) numbers """
+        """
+        Convert nonzero integer to raw
+        qex_encoder() converts a base-256 exponent to internal qex format
+        """
         qan00 = cls._pack_integer(i)
         qan = cls._right_strip00(qan00)
 
@@ -574,6 +577,7 @@ class Number(object):
         return retval
 
 
+
 # float precision
 # ---------------
 # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
@@ -588,11 +592,11 @@ Number.QIGITS_PRECISION_DEFAULT = 8
 Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
 
 
-Number.name_of_zone = {
+Number.name_of_zone = {   # dictionary translating zone codes to zone names
     getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")
 }
 
-Number._sorted_zones = sorted(Number.name_of_zone.keys(), reverse=True)
+Number._sorted_zones = sorted(Number.name_of_zone.keys(), reverse=True)   # zone codes in descending order (same as defined order)
 
 
 # Constants
@@ -717,6 +721,7 @@ Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
 Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 
 
+# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and int is an add-on!
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
 # ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 # TODO: Ludicrous Numbers
