@@ -113,7 +113,7 @@ class Number(object):
             if len(sdigits) % 2 != 0:
                 sdigits += '0'
             try:
-                sdecoded = hex_decode(sdigits)
+                sdecoded = self.hex_decode(sdigits)
             except TypeError:
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '%s'" % s)
             self.raw = six.binary_type(sdecoded)
@@ -123,7 +123,7 @@ class Number(object):
     _qigits_precision = None
 
     @classmethod
-    def qigits_precision(cls, qigits):
+    def _set_qigits_precision(cls, qigits):   # FIXME: these class-variables make this not thread-safe
         """Set how many qigits (base-256 digits) will be used when converting from float"""
         if qigits is not None and qigits >= 1 and qigits != cls._qigits_precision:
             cls._qigits_precision = qigits
@@ -132,8 +132,14 @@ class Number(object):
             cls._qigits_precision = Number.QIGITS_PRECISION_DEFAULT
             cls._qigits_scaler = Number.QIGITS_SCALER_DEFAULT
 
+    @classmethod
+    def _qigits_precision_default(cls, qigits_default):
+        cls._set_qigits_precision(qigits_default)
+        cls.QIGITS_PRECISION_DEFAULT = cls._qigits_precision
+        cls.QIGITS_SCALER_DEFAULT =  cls._qigits_scaler
+
     def _from_float(self, x, qigits = None):
-        self.qigits_precision(qigits)
+        self._set_qigits_precision(qigits)
 
         if math.isnan(x):          self.raw =           self.RAW_NAN
         elif x >= float('+inf'):   self.raw =           self.RAW_INF
@@ -226,7 +232,7 @@ class Number(object):
         else:
             num_twos_complement = num + cls._exp256(nbytes)   # two's complement of big negative integers
         return cls._left_pad00(
-            hex_decode(
+            cls.hex_decode(
                 cls._hex_even(
                     num_twos_complement
                 )
@@ -237,7 +243,7 @@ class Number(object):
     @staticmethod
     def _hex_even(theinteger):
         """
-        Hexadecimal string from a big integer
+        Encode a hexadecimal string from a big integer
         like hex() but even number of digits, no '0x' prefix, no 'L' suffix
         Also derived from Mike Boers code http://stackoverflow.com/a/777774/673991
         """
@@ -288,7 +294,30 @@ class Number(object):
                 return '0q' + h[:2*offset] + '_' + h[2*offset:]
 
     def hex(self):
-        return hex_encode(self.raw)
+        return self.hex_encode(self.raw)
+
+    @staticmethod
+    def hex_decode(s):
+        """
+        Decode a hexadecimal string into an 8-bit binary (base-256) string.
+        This should really be in module "six":  https://bitbucket.org/gutworth/six
+        """
+        if six.PY2:
+            return s.decode('hex')
+        else:
+            return bytes.fromhex(s)
+
+    @staticmethod
+    def hex_encode(s):
+        """
+        Encode an 8-bit binary (base-256) string into a hexadecimal string.
+        This should really be in module "six":  https://bitbucket.org/gutworth/six
+        This sole need for the "codecs" module is unfortunate.
+        """
+        if six.PY2:
+            return s.encode('hex').upper()
+        else:
+            return codecs.encode(s, 'hex').decode().upper()
 
     def qantissa(self):
         """
@@ -577,148 +606,154 @@ class Number(object):
         return retval
 
 
+    @classmethod
+    def _setup(cls):
+        """class variables and settings made after the class is defined"""
 
-# float precision
-# ---------------
-# Number(float) defaults to 8 qigits, for lossless representation of a Python float.
-# A "qigit" is a base-256 digit.
-# IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-# source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
-# So 8 qigits are needed to store 57-64 bits.
-# 57 if the MSQigit were b'x01', 64 if b'xFF'.
-# 7 qigits would only store 49-56.
-Number.qigits_precision(8)
-Number.QIGITS_PRECISION_DEFAULT = 8
-Number.QIGITS_SCALER_DEFAULT =  Number._exp256(Number.QIGITS_PRECISION_DEFAULT)
+        # float precision
+        # ---------------
+        # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
+        # A "qigit" is a base-256 digit.
+        # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
+        # source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+        # So 8 qigits are needed to store 57-64 bits.
+        # 57 if the MSQigit were b'x01', 64 if b'xFF'.
+        # 7 qigits would only store 49-56.
 
-
-Number.name_of_zone = {   # dictionary translating zone codes to zone names
-    getattr(Number.Zone, attr):attr for attr in dir(Number.Zone) if not callable(attr) and not attr.startswith("__")
-}
-
-Number._sorted_zones = sorted(Number.name_of_zone.keys(), reverse=True)   # zone codes in descending order (same as defined order)
+        cls._qigits_precision_default(8)
 
 
-# Constants
-# ---------
-Number.NAN = Number(None)
+        cls.name_of_zone = {   # dictionary translating zone codes to zone names
+            getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
+        }
+
+        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes in descending order (same as defined order)
 
 
-# Sets of Zones   TODO: draw a Venn Diagram or table or something
-# -------------
-Number.ZONE_REASONABLE = {
-    Number.Zone.POSITIVE,
-    Number.Zone.FRACTIONAL,
-    Number.Zone.ZERO,
-    Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.NEGATIVE,
-}
-Number.ZONE_LUDICROUS = {
-    Number.Zone.LUDICROUS_LARGE,
-    Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.LUDICROUS_SMALL_NEG,
-    Number.Zone.LUDICROUS_LARGE_NEG,
-}
-Number.ZONE_NONFINITE = {
-    Number.Zone.TRANSFINITE,
-    Number.Zone.INFINITESIMAL,
-    Number.Zone.INFINITESIMAL_NEG,
-    Number.Zone.TRANSFINITE_NEG,
-}
-Number.ZONE_FINITE = Number._zone_union(
-    Number.ZONE_LUDICROUS,
-    Number.ZONE_REASONABLE,
-)
-Number.ZONE_UNREASONABLE = Number._zone_union(
-    Number.ZONE_LUDICROUS,
-    Number.ZONE_NONFINITE,
-)
+        # Constants
+        # ---------
+        cls.NAN = cls(None)
 
-Number.ZONE_POSITIVE = {
-    Number.Zone.TRANSFINITE,
-    Number.Zone.LUDICROUS_LARGE,
-    Number.Zone.POSITIVE,
-    Number.Zone.FRACTIONAL,
-    Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.INFINITESIMAL,
-}
-Number.ZONE_NEGATIVE = {
-    Number.Zone.INFINITESIMAL_NEG,
-    Number.Zone.LUDICROUS_SMALL_NEG,
-    Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.NEGATIVE,
-    Number.Zone.LUDICROUS_LARGE_NEG,
-    Number.Zone.TRANSFINITE_NEG,
-}
-Number.ZONE_NONZERO = Number._zone_union(
-    Number.ZONE_POSITIVE,
-    Number.ZONE_NEGATIVE,
-)
-Number.ZONE_ZERO = {
-    Number.Zone.ZERO
-}
 
-Number.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-    Number.Zone.LUDICROUS_SMALL,
-    Number.Zone.INFINITESIMAL,
-}
-Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
-    Number.Zone.INFINITESIMAL_NEG,
-    Number.Zone.LUDICROUS_SMALL_NEG,
-}
-Number.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = Number._zone_union(
-    Number.ZONE_ESSENTIALLY_POSITIVE_ZERO,
-    Number.ZONE_ZERO,
-)
-Number.ZONE_ESSENTIALLY_ZERO = Number._zone_union(
-    Number.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
-    Number.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
-)
-Number.ZONE_REASONABLY_POSITIVE = {
-    Number.Zone.POSITIVE,
-    Number.Zone.FRACTIONAL,
-}
-Number.ZONE_REASONABLY_NEGATIVE = {
-    Number.Zone.FRACTIONAL_NEG,
-    Number.Zone.NEGATIVE,
-}
-Number.ZONE_REASONABLY_NONZERO = Number._zone_union(
-    Number.ZONE_REASONABLY_POSITIVE,
-    Number.ZONE_REASONABLY_NEGATIVE,
-)
-Number.ZONE_UNREASONABLY_BIG = {
-    Number.Zone.TRANSFINITE,
-    Number.Zone.LUDICROUS_LARGE,
-    Number.Zone.LUDICROUS_LARGE_NEG,
-    Number.Zone.TRANSFINITE_NEG,
-}
+        # Sets of Zones   TODO: draw a Venn Diagram or table or something
+        # -------------
+        cls.ZONE_REASONABLE = {
+            cls.Zone.POSITIVE,
+            cls.Zone.FRACTIONAL,
+            cls.Zone.ZERO,
+            cls.Zone.FRACTIONAL_NEG,
+            cls.Zone.NEGATIVE,
+        }
+        cls.ZONE_LUDICROUS = {
+            cls.Zone.LUDICROUS_LARGE,
+            cls.Zone.LUDICROUS_SMALL,
+            cls.Zone.LUDICROUS_SMALL_NEG,
+            cls.Zone.LUDICROUS_LARGE_NEG,
+        }
+        cls.ZONE_NONFINITE = {
+            cls.Zone.TRANSFINITE,
+            cls.Zone.INFINITESIMAL,
+            cls.Zone.INFINITESIMAL_NEG,
+            cls.Zone.TRANSFINITE_NEG,
+        }
+        cls.ZONE_FINITE = cls._zone_union(
+            cls.ZONE_LUDICROUS,
+            cls.ZONE_REASONABLE,
+        )
+        cls.ZONE_UNREASONABLE = cls._zone_union(
+            cls.ZONE_LUDICROUS,
+            cls.ZONE_NONFINITE,
+        )
 
-Number.ZONE_NAN = {
-    Number.Zone.NAN
-}
-Number._ZONE_ALL_BY_REASONABLENESS = Number._zone_union(
-    Number.ZONE_REASONABLE,
-    Number.ZONE_UNREASONABLE,
-    Number.ZONE_NAN,
-)
-Number._ZONE_ALL_BY_FINITENESS = Number._zone_union(
-    Number.ZONE_FINITE,
-    Number.ZONE_NONFINITE,
-    Number.ZONE_NAN,
-)
-Number._ZONE_ALL_BY_ZERONESS = Number._zone_union(
-    Number.ZONE_NONZERO,
-    Number.ZONE_ZERO,
-    Number.ZONE_NAN,
-)
-Number._ZONE_ALL_BY_BIGNESS = Number._zone_union(
-    Number.ZONE_ESSENTIALLY_ZERO,
-    Number.ZONE_REASONABLY_NONZERO,
-    Number.ZONE_UNREASONABLY_BIG,
-    Number.ZONE_NAN,
-)
+        cls.ZONE_POSITIVE = {
+            cls.Zone.TRANSFINITE,
+            cls.Zone.LUDICROUS_LARGE,
+            cls.Zone.POSITIVE,
+            cls.Zone.FRACTIONAL,
+            cls.Zone.LUDICROUS_SMALL,
+            cls.Zone.INFINITESIMAL,
+        }
+        cls.ZONE_NEGATIVE = {
+            cls.Zone.INFINITESIMAL_NEG,
+            cls.Zone.LUDICROUS_SMALL_NEG,
+            cls.Zone.FRACTIONAL_NEG,
+            cls.Zone.NEGATIVE,
+            cls.Zone.LUDICROUS_LARGE_NEG,
+            cls.Zone.TRANSFINITE_NEG,
+        }
+        cls.ZONE_NONZERO = cls._zone_union(
+            cls.ZONE_POSITIVE,
+            cls.ZONE_NEGATIVE,
+        )
+        cls.ZONE_ZERO = {
+            cls.Zone.ZERO
+        }
 
-Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
+        cls.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
+            cls.Zone.LUDICROUS_SMALL,
+            cls.Zone.INFINITESIMAL,
+        }
+        cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
+            cls.Zone.INFINITESIMAL_NEG,
+            cls.Zone.LUDICROUS_SMALL_NEG,
+        }
+        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = cls._zone_union(
+            cls.ZONE_ESSENTIALLY_POSITIVE_ZERO,
+            cls.ZONE_ZERO,
+        )
+        cls.ZONE_ESSENTIALLY_ZERO = cls._zone_union(
+            cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
+            cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
+        )
+        cls.ZONE_REASONABLY_POSITIVE = {
+            cls.Zone.POSITIVE,
+            cls.Zone.FRACTIONAL,
+        }
+        cls.ZONE_REASONABLY_NEGATIVE = {
+            cls.Zone.FRACTIONAL_NEG,
+            cls.Zone.NEGATIVE,
+        }
+        cls.ZONE_REASONABLY_NONZERO = cls._zone_union(
+            cls.ZONE_REASONABLY_POSITIVE,
+            cls.ZONE_REASONABLY_NEGATIVE,
+        )
+        cls.ZONE_UNREASONABLY_BIG = {
+            cls.Zone.TRANSFINITE,
+            cls.Zone.LUDICROUS_LARGE,
+            cls.Zone.LUDICROUS_LARGE_NEG,
+            cls.Zone.TRANSFINITE_NEG,
+        }
+
+        cls.ZONE_NAN = {
+            cls.Zone.NAN
+        }
+        cls._ZONE_ALL_BY_REASONABLENESS = cls._zone_union(
+            cls.ZONE_REASONABLE,
+            cls.ZONE_UNREASONABLE,
+            cls.ZONE_NAN,
+        )
+        cls._ZONE_ALL_BY_FINITENESS = cls._zone_union(
+            cls.ZONE_FINITE,
+            cls.ZONE_NONFINITE,
+            cls.ZONE_NAN,
+        )
+        cls._ZONE_ALL_BY_ZERONESS = cls._zone_union(
+            cls.ZONE_NONZERO,
+            cls.ZONE_ZERO,
+            cls.ZONE_NAN,
+        )
+        cls._ZONE_ALL_BY_BIGNESS = cls._zone_union(
+            cls.ZONE_ESSENTIALLY_ZERO,
+            cls.ZONE_REASONABLY_NONZERO,
+            cls.ZONE_UNREASONABLY_BIG,
+            cls.ZONE_NAN,
+        )
+
+        cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
+
+
+Number._setup()
+
 
 
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and int is an add-on!
@@ -738,18 +773,3 @@ Number.ZONE_ALL = {zone for zone in Number._sorted_zones}
 # TODO: other Numpy compatibilities?
 
 
-# hex_decode(), hex_encode()
-# --------------------------
-# These belong in the "six" module
-# https://bitbucket.org/gutworth/six
-def hex_decode(s):
-    if six.PY2:
-        return s.decode('hex')
-    else:
-        return bytes.fromhex(s)
-
-def hex_encode(s):
-    if six.PY2:
-        return s.encode('hex').upper()
-    else:
-        return codecs.encode(s, 'hex').decode().upper()
