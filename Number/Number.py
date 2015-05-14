@@ -12,16 +12,16 @@ import codecs
 class Number(object):
 
     def __init__(self, content=None, qigits = None):
-        if content is None:
-            self.raw = self.RAW_NAN
-        elif isinstance(content, six.string_types):
-            self._from_string(content)
-        elif isinstance(content, six.integer_types):
+        if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
         elif isinstance(content, type(self)):  # copy-constructor
             self.raw = content.raw
+        elif isinstance(content, six.string_types):
+            self._from_string(content)
+        elif content is None:
+            self.raw = self.RAW_NAN
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -444,7 +444,7 @@ class Number(object):
             qexp = self.qexponent() - qanlength
             if qexp < 0:
                 extraneous_mask = self._exp256(-qexp) - 1
-                extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor toward 0 instead of toward -inf
+                extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
                 if extraneous == 0:
                     return qan >> (-qexp*8)
                 else:
@@ -467,16 +467,19 @@ class Number(object):
 
     def _zone_from_scratch(self):
         zone_by_tree = self._find_zone_by_if_else_tree()
-        assert zone_by_tree == self._find_zone_by_for_loop_scan(), "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
-            repr(self), self.name_of_zone[zone_by_tree], self.name_of_zone[self._find_zone_by_for_loop_scan()]
-        )
+        assert zone_by_tree == self._find_zone_by_for_loop_scan(), \
+            "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
+                repr(self),
+                self.name_of_zone[zone_by_tree],
+                self.name_of_zone[self._find_zone_by_for_loop_scan()]
+            )
         return zone_by_tree
 
     def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's values
         for z in self._sorted_zones:
             if z <= self.raw:
                 return z
-        raise ValueError("Number._find_zone_by_for_loop_scan() fell through!  How can anything be less than Zone.NAN? '%s'" % repr(self))
+        raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
 
     def _find_zone_by_if_else_tree(self):  # likely faster than a scan, for most values
         if self.raw > self.RAW_ZERO:
@@ -627,7 +630,7 @@ class Number(object):
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
         }
 
-        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes in descending order (same as defined order)
+        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone code list in desc order, as defined
 
 
         # Constants
@@ -756,8 +759,9 @@ Number._setup()
 
 
 
-# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and int is an add-on!
-# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient), 8 bytes, same as float64, ...
+# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int?!
+# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
+# ... would be 8 bytes, same as float64, ...
 # ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 # TODO: Ludicrous Numbers
 # TODO: Transfinite Numbers
@@ -765,9 +769,9 @@ Number._setup()
 # TODO: __neg__ (take advantage of two's complement encoding)
 # TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
-# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, for small values anyway (less than 2**52)
+# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
 # TODO: hooks to add features modularly
-
+# TODO: change % to .format()
 # TODO: decimal.Decimal
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?
