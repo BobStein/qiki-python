@@ -365,11 +365,11 @@ class Number(object):
 
     def qexponent(self):
         try:
-            return self.__qexponent_dict[self.zone](self)
+            return self.__qexponent_encode_dict[self.zone](self)
         except KeyError:
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
-    __qexponent_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+    __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
         Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
@@ -437,25 +437,27 @@ class Number(object):
     def _to_int_positive(self):
         (qan, qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
-        if qexp < 0:
-            return qan >> (-qexp*8)
-        else:
-            return qan << (qexp*8)
+        return self._shift_left(qan, qexp*8)
 
     def _to_int_negative(self):
-            (qan,qanlength) = self.qantissa()
-            offset = self._exp256(qanlength)
-            qan -= offset
-            qexp = self.qexponent() - qanlength
-            if qexp < 0:
-                extraneous_mask = self._exp256(-qexp) - 1
-                extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
-                if extraneous == 0:
-                    return qan >> (-qexp*8)
-                else:
-                    return (qan >> (-qexp*8)) + 1
-            else:
-                return qan << (qexp*8)
+        (qan,qanlength) = self.qantissa()
+        qexp = self.qexponent() - qanlength
+        qan -= self._exp256(qanlength)
+        the_int = self._shift_left(qan, qexp*8)
+        if qexp < 0:
+            extraneous_mask = self._exp256(-qexp) - 1
+            extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
+            if extraneous != 0:
+                the_int += 1
+        return the_int
+
+    @staticmethod
+    def _shift_left(n, nbits):
+        """shift positive left or negative right"""
+        if nbits < 0:
+            return n >> -nbits
+        else:
+            return n << nbits
 
     @property
     def zone(self):

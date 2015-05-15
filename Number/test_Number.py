@@ -1179,6 +1179,11 @@ class NumberTestCase(unittest.TestCase):
 
     ################## testing internal methods ###########################
 
+    def test_shift_left(self):
+        self.assertEqual(0b000010000, Number._shift_left(0b000010000, 0))
+        self.assertEqual(0b000100000, Number._shift_left(0b000010000, 1))
+        self.assertEqual(0b000001000, Number._shift_left(0b000010000,-1))
+
     def test_pack_integer(self):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers
         """
