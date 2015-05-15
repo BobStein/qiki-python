@@ -442,11 +442,11 @@ class Number(object):
     def _to_int_negative(self):
         (qan,qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
-        qan -= self._exp256(qanlength)
-        the_int = self._shift_left(qan, qexp*8)
+        qan_negative = qan - self._exp256(qanlength)
+        the_int = self._shift_left(qan_negative, qexp*8)
         if qexp < 0:
             extraneous_mask = self._exp256(-qexp) - 1
-            extraneous = qan & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
+            extraneous = qan_negative & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
             if extraneous != 0:
                 the_int += 1
         return the_int
