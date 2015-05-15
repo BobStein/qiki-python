@@ -9,6 +9,7 @@ import math
 import struct
 import codecs
 
+# noinspection PyUnresolvedReferences
 class Number(object):
 
     def __init__(self, content=None, qigits = None):
@@ -26,7 +27,9 @@ class Number(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            raise TypeError('Number(%s) not yet supported' % typename)
+            raise TypeError('Number(%s) is not supported' % typename)
+
+        assert(isinstance(self.__raw, six.binary_type))
 
     __slots__ = ('__raw', )   # less memory
     # __slots__ = ('__raw', '_zone')   # faster
@@ -48,6 +51,8 @@ class Number(object):
     # The valid raw string for 1 is b'x82\x01' but Number.Zone.POSITIVE is b'x82'.
     # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
+
+    # noinspection PyClassHasNoInit
     class Zone:
         TRANSFINITE         = b'\xFF\x80'
         LUDICROUS_LARGE     = b'\xFF'
@@ -64,6 +69,19 @@ class Number(object):
         TRANSFINITE_NEG     = b'\x00'
         NAN                 = b''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
 
+
+    # float precision
+    # ---------------
+    # A "qigit" is a base-256 digit.
+    # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
+    # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
+    # Source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+    # Why are 8 qigits needed to store 53 bits, not 7?
+    # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
+    # So 8 qigits can store 57-64 bits, and that may be needed to store 53.
+    # For example 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits
+    QIGITS_PRECISION_DEFAULT = 8
+
     @property
     def raw(self):
         return self.__raw
@@ -71,6 +89,7 @@ class Number(object):
     @raw.setter
     def raw(self, value):
         assert(isinstance(value, six.binary_type))
+        # noinspection PyAttributeOutsideInit
         self.__raw = value
         self._zone_refresh()
 
@@ -120,35 +139,18 @@ class Number(object):
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
 
-    _qigits_precision = None
-
-    @classmethod
-    def _set_qigits_precision(cls, qigits):   # FIXME: these class-variables make this not thread-safe
-        """Set how many qigits (base-256 digits) will be used when converting from float"""
-        if qigits is not None and qigits >= 1 and qigits != cls._qigits_precision:
-            cls._qigits_precision = qigits
-            cls._qigits_scaler = cls._exp256(qigits)
-        else:
-            cls._qigits_precision = Number.QIGITS_PRECISION_DEFAULT
-            cls._qigits_scaler = Number.QIGITS_SCALER_DEFAULT
-
-    @classmethod
-    def _qigits_precision_default(cls, qigits_default):
-        cls._set_qigits_precision(qigits_default)
-        cls.QIGITS_PRECISION_DEFAULT = cls._qigits_precision
-        cls.QIGITS_SCALER_DEFAULT =  cls._qigits_scaler
-
     def _from_float(self, x, qigits = None):
-        self._set_qigits_precision(qigits)
+        if qigits is None or qigits <= 0:
+            qigits = self.QIGITS_PRECISION_DEFAULT
 
-        if math.isnan(x):          self.raw =           self.RAW_NAN
-        elif x >= float('+inf'):   self.raw =           self.RAW_INF
-        elif x >=  1.0:            self.raw =           self._raw_from_float(x, lambda e: 0x81+e)   # qex <-- e256
-        elif x >   0.0:            self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e)
-        elif x ==  0.0:            self.raw =           self.RAW_ZERO
-        elif x >  -1.0:            self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e)
-        elif x > float('-inf'):    self.raw =           self._raw_from_float(x, lambda e: 0x7E-e)
-        else:                      self.raw =           self.RAW_INF_NEG
+        if math.isnan(x):        self.raw =           self.RAW_NAN
+        elif x >= float('+inf'): self.raw =           self.RAW_INF
+        elif x >=  1.0:          self.raw =           self._raw_from_float(x, lambda e: 0x81+e, qigits)   # qex <-- e256
+        elif x >   0.0:          self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e, qigits)
+        elif x ==  0.0:          self.raw =           self.RAW_ZERO
+        elif x >  -1.0:          self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e, qigits)
+        elif x > float('-inf'):  self.raw =           self._raw_from_float(x, lambda e: 0x7E-e, qigits)
+        else:                    self.raw =           self.RAW_INF_NEG
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
@@ -156,7 +158,7 @@ class Number(object):
         else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
 
     @classmethod
-    def _raw_from_float(cls, x, qex_encoder):
+    def _raw_from_float(cls, x, qex_encoder, qigits):
         """
         Convert nonzero float to raw
         qex_encoder() converts a base-256 exponent to internal qex format
@@ -170,8 +172,8 @@ class Number(object):
         assert x == significand_base_256 * 256.0**exponent_base_256
         assert 0.00390625 <= abs(significand_base_256) < 1.0
 
-        qan_integer = int(significand_base_256 * cls._qigits_scaler + 0.5)
-        qan00 = cls._pack_integer(qan_integer, cls._qigits_precision)
+        qan_integer = int(significand_base_256 * cls._exp256(qigits) + 0.5)
+        qan00 = cls._pack_integer(qan_integer, qigits)
         qan = cls._right_strip00(qan00)
 
         qex_integer = qex_encoder(exponent_base_256)
@@ -218,14 +220,14 @@ class Number(object):
         elif nbytes <= 8 and -2147483648 <= theinteger < 2147483648:
             return struct.pack('>q', theinteger)[8-nbytes:]
         else:
-            return cls._pack_big_integer_Mike_Boers(theinteger, nbytes)
+            return cls._pack_big_integer_via_hex(theinteger, nbytes)
 
     @classmethod
-    def _pack_big_integer_Mike_Boers(cls, num, nbytes):
+    def _pack_big_integer_via_hex(cls, num, nbytes):
         """
         Pack an integer into a binary string
         Akin to base-256 encode
-        Derived from code by Mike Boers http://stackoverflow.com/a/777774/673991
+        Idea from http://stackoverflow.com/a/777774/673991
         """
         if num >= 0:
             num_twos_complement = num
@@ -329,7 +331,7 @@ class Number(object):
         except KeyError:
             raise ValueError('qantissa() not defined for %s' % repr(self))
         number_qantissa = self._unpack_big_integer(self.raw[qan_offset:])
-        return (number_qantissa, len(self.raw) - qan_offset)
+        return tuple((number_qantissa, len(self.raw) - qan_offset))
 
     __qan_offset_dict ={
         Zone.POSITIVE:       1,
@@ -345,7 +347,7 @@ class Number(object):
         Akin to a base-256 decode, big-endian
         """
         if len(binary_string) <= 8:
-            return cls._unpack_big_integer_by_struct((binary_string))
+            return cls._unpack_big_integer_by_struct(binary_string)
         else:
             return cls._unpack_big_integer_by_brute(binary_string)
 
@@ -368,7 +370,7 @@ class Number(object):
             raise ValueError('qexponent() not defined for %s' % repr(self))
 
     __qexponent_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e <-- qex
+        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
         Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
@@ -420,13 +422,16 @@ class Number(object):
         else:
             return self._int_cant_be_nan()
 
-    def _int_cant_be_positive_infinity(self):
+    @staticmethod
+    def _int_cant_be_positive_infinity():
         raise OverflowError("Positive Infinity can't be represented by integers")
 
-    def _int_cant_be_negative_infinity(self):
+    @staticmethod
+    def _int_cant_be_negative_infinity():
         raise OverflowError("Negative Infinity can't be represented by integers")
 
-    def _int_cant_be_nan(self):
+    @staticmethod
+    def _int_cant_be_nan():
         raise ValueError("Not-A-Number can't be represented by integers")
 
     def _to_int_positive(self):
@@ -613,19 +618,6 @@ class Number(object):
     def _setup(cls):
         """class variables and settings made after the class is defined"""
 
-        # float precision
-        # ---------------
-        # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
-        # A "qigit" is a base-256 digit.
-        # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-        # source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
-        # So 8 qigits are needed to store 57-64 bits.
-        # 57 if the MSQigit were b'x01', 64 if b'xFF'.
-        # 7 qigits would only store 49-56.
-
-        cls._qigits_precision_default(8)
-
-
         cls.name_of_zone = {   # dictionary translating zone codes to zone names
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
         }
@@ -754,24 +746,27 @@ class Number(object):
 
         cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
 
-
+# noinspection PyProtectedMember
 Number._setup()
 
 
 
-# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int?!
+# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
+# TODO: __neg__ (take advantage of two's complement encoding)
+# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
+# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
+
+# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
+# TODO: hooks to add features modularly
+# TODO: change % to .format()
+
+# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
 # ... would be 8 bytes, same as float64, ...
 # ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 # TODO: Ludicrous Numbers
 # TODO: Transfinite Numbers
-# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
-# TODO: __neg__ (take advantage of two's complement encoding)
-# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
-# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
-# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
-# TODO: hooks to add features modularly
-# TODO: change % to .format()
+
 # TODO: decimal.Decimal
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?

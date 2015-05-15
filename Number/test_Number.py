@@ -399,9 +399,15 @@ class NumberTestCase(unittest.TestCase):
         i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688,
                           '0q01_80')
         i__s(  -2**999,   '0q01_80')
-        i__s(  -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
-                          '0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  -2**1000+1,'0q01_0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__s(int('-1071508607186267320948425049060001810561404811705533607443750388370351051124936122493198378815695858'
+                 '12759467291755314682518714528569231404359845775746985748039345677748242309854210746050623711418779541'
+                 '82153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375'
+                 ),       '0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+                          '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+                          '00000000000000000000000000000000000000000000000000000000000000000000001')
+        i__s(  -2**1000+1,'0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+                          '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+                          '00000000000000000000000000000000000000000000000000000000000000000000001')
 
     def test_integer_nan(self):
         nan = Number(float('nan'))
@@ -503,8 +509,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=8)))
         self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=9)))
         # Ending in 34 is not a bug.
-        # The 7th qigit above rounded to 34, not in Number, but when float originally decoded 0.2.
-        # That's because the 53-bit float significand can only fit 7 of those bits.
+        # The 7th qigit above gets rounded to 34, not in Number, but when float was originally decoded from 0.2.
+        # That's because the IEEE 53-bit (double precision) float significand can only fit 7 of those bits there.
         # The 1st qigit uses 6 bits.  Middle 5 qigits use all 8 bits.  So 6+(5*8)+7 = 53.
         # So Number faithfully stored all 53 bits from the float.
 
@@ -522,7 +528,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=9)))
 
     def test_float_qigits_neg(self):
-        self.assertEqual('0q7D_FEE6666667', str(Number(-1.1, qigits=5)))   # FIXME: sometimes* this is 0q7D_FEE6666666666660 ?!?!  *change -0.2 test above to 0q7E00_CCCCCCCCCD
+        self.assertEqual('0q7D_FEE6666667', str(Number(-1.1, qigits=5)))   # FIXME: sometimes* this is 0q7D_FEE6666666666660 ?!?!  *change -0.2 test above to 0q7E00_CCCCCCCCCD  -- may be fixed with qigits a function parameter only
         self.assertEqual('0q7D_FEE666666667', str(Number(-1.1, qigits=6)))
         self.assertEqual('0q7D_FEE66666666667', str(Number(-1.1, qigits=7)))
         self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=8)))   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
@@ -598,6 +604,7 @@ class NumberTestCase(unittest.TestCase):
             context.the_first = False
             context.after_zone_boundary = False
 
+        # noinspection PyClassHasNoInit,PyPep8Naming
         class context:   # variables that are local to test_floats_and_strings(), but global to f__s()
             the_first = True
             after_zone_boundary = False
@@ -891,7 +898,7 @@ class NumberTestCase(unittest.TestCase):
         f__s(-math.pow(2,997),            '0q01_E0')
         f__s(-math.pow(2,998),            '0q01_C0')
         f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-math.pow(2,1000),           '0q00_FF', '0q01')   # this bug goes over the edge -- until TODO: Ludicrous Numbers are supported
+        f__s(-math.pow(2,1000),           '0q00_FF', '0q01')   # FIXME: this is actually a ludicrous number
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
         zone_boundary()
@@ -1169,7 +1176,7 @@ class NumberTestCase(unittest.TestCase):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers
         """
         def test_both_methods(packed_bytes, number, nbytes):
-            self.assertEqual(packed_bytes, Number._pack_big_integer_Mike_Boers(number,nbytes))
+            self.assertEqual(packed_bytes, Number._pack_big_integer_via_hex(number,nbytes))
             self.assertEqual(packed_bytes, Number._pack_integer(number,nbytes))
 
         test_both_methods(                b'\x00', 0,1)
