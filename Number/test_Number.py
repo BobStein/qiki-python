@@ -60,6 +60,7 @@ class NumberTestCase(unittest.TestCase):
         n =               Number('0q83_03E8')
         self.assertEqual("Number('0q83_03E8')", repr(n))
 
+    # noinspection PyUnresolvedReferences
     def test_nan(self):
         self.assertEqual('0q', str(Number.NAN))
         self.assertEqual(b'', Number.NAN.raw)
@@ -70,6 +71,7 @@ class NumberTestCase(unittest.TestCase):
     def test_nan_default(self):
         self.assertEqual('0q', Number().qstring())
 
+    # noinspection PyUnresolvedReferences
     def test_nan_equality(self):
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
@@ -78,6 +80,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(nan, Number(float('nan')))
         self.assertEqual(nan, float('nan'))
 
+    # noinspection PyUnresolvedReferences
     def test_nan_inequality(self):
         nan = Number.NAN
         self.assertNotEqual(nan, Number(0))
@@ -415,12 +418,12 @@ class NumberTestCase(unittest.TestCase):
             int(nan)
 
     def test_integer_infinity(self):
-        pinf = Number(float('+inf'))
+        positive_infinity = Number(float('+inf'))
         with self.assertRaises(OverflowError):
-            int(pinf)
-        ninf = Number(float('-inf'))
+            int(positive_infinity)
+        negative_infinity = Number(float('-inf'))
         with self.assertRaises(OverflowError):
-            int(ninf)
+            int(negative_infinity)
 
     def test_integer_infinitesimal(self):
         self.assertEqual(0, int(Number('0q807F')))
@@ -447,6 +450,7 @@ class NumberTestCase(unittest.TestCase):
                 '\n\t'.join((str(z) for z in (s2-s1))),
             ))
 
+    # noinspection PyUnresolvedReferences
     def test_zone_sets(self):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
@@ -491,7 +495,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=-1)))
         self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=0)))
 
-    def test_float_qigits_default_nonsticky(self):
+    def test_float_qigits_default_not_sticky(self):
         self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
         self.assertEqual('0q82_0119999A', str(Number(1.1, qigits=4)))
         self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
@@ -930,17 +934,19 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(py23(24, 20), sys.getsizeof(b'\x83\x03\xE8'))
         self.assertEqual(py23(45, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
+    # noinspection PyUnresolvedReferences,PyUnusedLocal
     def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
         number = Number(number_able)
         if is_zero is not None:
             self.assertEqual(is_zero, number.is_zero())
 
+    # noinspection PyUnresolvedReferences
     def someday_test_is(self):
         self.assertTrue(Number('0q80').iszero())
         self.assertFalse(Number('0q80').nonzero())
-        self.assertIses('0q80', is_zero=True,  all_true=('zero'),     all_false=('infinite', 'negative', 'positive'))
-        self.assertIses('0q82', is_zero=False, all_true=('positive'), all_false=('infinite', 'negative', 'zero'))
-        self.assertIses('0q7E', is_zero=False, all_true=('negative'), all_false=('infinite', 'zero', 'positive'))
+        self.assertIses('0q80', is_zero=True,  all_true=('zero',),     all_false=('infinite', 'negative', 'positive'))
+        self.assertIses('0q82', is_zero=False, all_true=('positive',), all_false=('infinite', 'negative', 'zero'))
+        self.assertIses('0q7E', is_zero=False, all_true=('negative',), all_false=('infinite', 'zero', 'positive'))
         self.assertAllAre('zero', ('0q80',))
         self.assertAllAreNot('zero', ('0q82','0q7E'))
         self.assertAllAre('positive', ('0q82',))
@@ -1090,6 +1096,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (Number(0.0) >=        0.0)
         self.assertFalse(Number(0.0) >=        1.0)
 
+    # noinspection PyRedundantParentheses
     def test_rich_comparison_float_op_number(self):
         self.assertFalse(      (1.0) == Number(0.0))
         self.assertTrue (      (0.0) == Number(0.0))
@@ -1334,6 +1341,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number._floats_really_same(-0.0, +0.0))
         self.assertTrue (Number._floats_really_same(-0.0, -0.0))
 
+    # noinspection PyUnresolvedReferences
     def test_name_of_zone(self):
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
