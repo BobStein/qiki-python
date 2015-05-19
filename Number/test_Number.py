@@ -2,13 +2,13 @@
 Testing qiki Number.py
 """
 
-from Number import Number
 import unittest
 import math
 import sys
 import pickle
 import textwrap
 import six
+from Number import Number
 
 class NumberTestCase(unittest.TestCase):
 
@@ -30,6 +30,11 @@ class NumberTestCase(unittest.TestCase):
     def test_str(self):
         n = Number('0q83_03E8')
         self.assertEqual("0q83_03E8", str(n))
+
+    def test_isinstance(self):
+        n = Number(1)
+        self.assertIsInstance(n, Number)
+        assert isinstance(n, Number)
 
     def test_qstring(self):
         n = Number('0q82')

@@ -12,7 +12,7 @@ import codecs
 # noinspection PyUnresolvedReferences
 class Number(object):
 
-    def __init__(self, content=None, qigits = None):
+    def __init__(self, content=None, qigits=None):
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
@@ -121,7 +121,7 @@ class Number(object):
         """
         if not isinstance(value, six.binary_type):
             raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
-        retval = Number(None)
+        retval = cls()
         retval.raw = value
         return retval
 
