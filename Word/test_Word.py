@@ -29,7 +29,7 @@ class WordTestCase(unittest.TestCase):
 
     def test_00_word(self):
         define = Word('define')
-        self.assertEqual(define.verb, define.id)
+        self.assertEqual(define.vrb, define.id)
 
     def test_id_unsettable(self):
         define = Word('define')
@@ -38,11 +38,11 @@ class WordTestCase(unittest.TestCase):
 
     def test_triple_self_evident(self):
         define = Word('define')
-        self.assertEqual(define.subject, define.id)
+        self.assertEqual(define.sbj, define.id)
         noun = Word('noun')
-        self.assertEqual(noun.subject, noun.id)
+        self.assertEqual(noun.sbj, noun.id)
         verb = Word('verb')
-        self.assertEqual(verb.subject, verb.id)
+        self.assertEqual(verb.sbj, verb.id)
 
 
 if __name__ == '__main__':

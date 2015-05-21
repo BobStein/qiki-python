@@ -12,11 +12,11 @@ from Number import Number
 class Word(object):
     """
     :type __id: Number | None
-    :type subject: Number
-    :type verb: Number
-    :type object: Number
-    :type number: Number
-    :type text: six.string_types
+    :type sbj: Number
+    :type vrb: Number
+    :type obj: Number
+    :type num: Number
+    :type txt: six.string_types
 
     :type _ID_DEFINE: Number
     :type _connection: mysql.connector.ySQLConnection
@@ -24,17 +24,22 @@ class Word(object):
     _connection = None
     _table = None
 
-    def __init__(self, content=None, subject=None, verb=None, object=None, number=None, text=None):
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
         assert self._connection is not None, "Call Word.setup(database path)"
         if isinstance(content, six.string_types):
             self._from_name(content)
+        elif isinstance(content, type(self)):
+            pass
+        elif isinstance(content, type(self._define)):   # instancemethod
+            # TODO: look up a vrb by its txt field being content.__name__
+            pass
         elif content is None:
             self.__id = None
-            self.subject = subject
-            self.verb    = verb
-            self.object  = object
-            self.number  = number
-            self.text    = text
+            self.sbj = sbj
+            self.vrb = vrb
+            self.obj = obj
+            self.num = num
+            self.txt = txt
 
     @classmethod
     def connect(cls, connection_specs, table=None):
@@ -50,35 +55,44 @@ class Word(object):
     @classmethod
     def install_from_scratch(cls):
         define = Word(
-            subject=cls._ID_DEFINE,
-            verb   =cls._ID_DEFINE,
-            object =cls._ID_VERB,
-            number=Number(1),
-            text=u'define'
+            sbj = cls._ID_DEFINE,
+            vrb = cls._ID_DEFINE,
+            obj = cls._ID_VERB,
+            num = Number(1),
+            txt = u'define'
         )
         noun = Word(
-            subject=cls._ID_NOUN,
-            verb   =cls._ID_DEFINE,
-            object =cls._ID_NOUN,
-            number=Number(1),
-            text=u'noun'
+            sbj = cls._ID_NOUN,
+            vrb = cls._ID_DEFINE,
+            obj = cls._ID_NOUN,
+            num = Number(1),
+            txt = u'noun'
         )
         verb = Word(
-            subject=cls._ID_VERB,
-            verb   =cls._ID_DEFINE,
-            object =cls._ID_NOUN,
-            number=Number(1),
-            text=u'verb'
+            sbj = cls._ID_VERB,
+            vrb = cls._ID_DEFINE,
+            obj = cls._ID_NOUN,
+            num = Number(1),
+            txt = u'verb'
         )
         define.__id = cls._ID_DEFINE
-        noun  .__id = cls._ID_NOUN
-        verb  .__id = cls._ID_VERB
+        noun.__id = cls._ID_NOUN
+        verb.__id = cls._ID_VERB
         try:
             define.save()
             noun.save()
             verb.save()
         except mysql.connector.IntegrityError:
             pass
+
+    def _define(self, obj, txt, vrb_def=None):
+        if vrb_def is not None:
+            def vrb_method(self, obj, txt, vrb_def=None):
+                pass
+            return vrb_method
+        else:
+            return Word(self, sbj=self, vrb=self._define, obj=obj, txt=txt)
+
 
     @classmethod
     def uninstall(cls):
@@ -92,7 +106,7 @@ class Word(object):
     def _from_name(self, name):
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
-            "SELECT * FROM `{table}` WHERE `text` = ?"
+            "SELECT * FROM `{table}` WHERE `txt` = ?"
             .format(
                 table=self._table,
             ),
@@ -100,9 +114,9 @@ class Word(object):
         )
         row = dict(zip(cursor.column_names, cursor.fetchone()))
         self.__id = row['id']
-        self.subject = row['subject']
-        self.verb = row['verb']
-        self.object = row['object']
+        self.sbj = row['sbj']
+        self.vrb = row['vrb']
+        self.obj = row['obj']
         cursor.close()
 
 
@@ -119,26 +133,26 @@ class Word(object):
 
     def save(self):
         assert isinstance(self.__id,    Number)
-        assert isinstance(self.subject, Number)
-        assert isinstance(self.verb,    Number)
-        assert isinstance(self.object,  Number)
-        assert isinstance(self.number,  Number)
-        assert isinstance(self.text, six.string_types)
+        assert isinstance(self.sbj, Number)
+        assert isinstance(self.vrb,    Number)
+        assert isinstance(self.obj,  Number)
+        assert isinstance(self.num,  Number)
+        assert isinstance(self.txt, six.string_types)
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
-            "       (  `id`,    `subject`,    `verb`,    `object`,    `number`,`text`,   `when`) "
-            "VALUES (x'{id}', x'{subject}', x'{verb}', x'{object}', x'{number}',    ?, x'{when}')"
+            "       (  `id`,    `sbj`,    `vrb`,    `obj`,    `num`, `txt`,   `whn`) "
+            "VALUES (x'{id}', x'{sbj}', x'{vrb}', x'{obj}', x'{num}',    ?, x'{whn}')"
             .format(
-                table=self._table,
-                id     =self.__id   .hex(),
-                subject=self.subject.hex(),
-                verb   =self.verb   .hex(),
-                object =self.object .hex(),
-                number =self.number .hex(),
-                when=Number(time.time()).hex(),
+                table = self._table,
+                id = self.__id.hex(),
+                sbj = self.sbj.hex(),
+                vrb = self.vrb.hex(),
+                obj = self.obj.hex(),
+                num = self.num.hex(),
+                whn = Number(time.time()).hex(),
             ),
-            (self.text, )
+            (self.txt, )
         )
         self._connection.commit()
         cursor.close()
