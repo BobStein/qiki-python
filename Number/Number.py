@@ -1,7 +1,11 @@
 """
 Qiki Numbers
-Both integers and floating point seamlessly
-And more
+
+Both integers and floating point seamlessly represented
+Features:
+ - arbitrary precision
+ - arbitrary range
+ - monotonicity (memcmp() order)
 """
 
 import six
@@ -114,12 +118,13 @@ class Number(object):
 
     @classmethod
     def from_raw(cls, value):
-        """
-        Construct a Number from its raw, internal binary string
+        """Construct a Number from its raw, internal binary string
+
         Wrong:  assert Number(1) == Number(b'x82\x01')
         Right:  assert Number(1) == Number.from_raw(b'x82\x01')
+        Right:  assert Number(1) == Number.from_raw(bytearray(b'x82\x01'))
         """
-        if not isinstance(value, six.binary_type):
+        if not isinstance(value, (six.binary_type)):
             raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
         retval = cls()
         retval.raw = value
@@ -159,8 +164,8 @@ class Number(object):
 
     @classmethod
     def _raw_from_float(cls, x, qex_encoder, qigits):
-        """
-        Convert nonzero float to raw
+        """Convert nonzero float to internal raw format
+
         qex_encoder() converts a base-256 exponent to internal qex format
         """
         (significand_base_2, exponent_base_2) = math.frexp(x)
@@ -183,8 +188,8 @@ class Number(object):
 
     @classmethod
     def _raw_from_int(cls, i, qex_encoder):
-        """
-        Convert nonzero integer to raw
+        """Convert nonzero integer to internal raw format.
+
         qex_encoder() converts a base-256 exponent to internal qex format
         """
         qan00 = cls._pack_integer(i)
@@ -198,8 +203,8 @@ class Number(object):
 
     @classmethod
     def _pack_integer(cls, theinteger, nbytes=None):
-        """
-        Pack an integer into a binary string, which is like a base-256, big-endian string.
+        """Pack an integer into a binary string, which is like a base-256, big-endian string.
+
         :param theinteger:  an arbitrarily large integer
         :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
         :return:  an unsigned two's complement string, MSB first
@@ -209,7 +214,7 @@ class Number(object):
             assert b'x00\xFF' == _pack_integer(255,2)
             assert     b'x01' == _pack_integer(-255)
             assert b'xFF\x01' == _pack_integer(-255,2)
-        Caution, nbytes lower than minimum may or may not be enforced, see unit tests
+        Caution, nbytes lower than minimum may not be enforced, see unit tests
         """
 
         if nbytes is None:
@@ -224,8 +229,8 @@ class Number(object):
 
     @classmethod
     def _pack_big_integer_via_hex(cls, num, nbytes):
-        """
-        Pack an integer into a binary string
+        """Pack an integer into a binary string.
+
         Akin to base-256 encode
         Idea from http://stackoverflow.com/a/777774/673991
         """
@@ -244,8 +249,8 @@ class Number(object):
 
     @staticmethod
     def _hex_even(theinteger):
-        """
-        Encode a hexadecimal string from a big integer
+        """Encode a hexadecimal string from a big integer.
+
         like hex() but even number of digits, no '0x' prefix, no 'L' suffix
         Also derived from Mike Boers code http://stackoverflow.com/a/777774/673991
         """
@@ -256,7 +261,10 @@ class Number(object):
 
     @staticmethod
     def _left_pad00(thestring, nbytes):
-        """ Thanks Jeff Mercado http://stackoverflow.com/a/5773669/673991 """
+        """Make a string nbytes long by padding '\x00's on the left.
+
+        Thanks Jeff Mercado http://stackoverflow.com/a/5773669/673991
+        """
         return thestring.rjust(nbytes, b'\x00')
 
     @staticmethod
@@ -265,19 +273,18 @@ class Number(object):
 
     @staticmethod
     def _exp256(e):
-        """Compute 256**e for nonnegative integer e"""
+        """Compute 256**e for nonnegative integer e."""
         assert isinstance(e, six.integer_types)
         assert e >= 0
         return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
 
     def qstring(self, underscore=1):
-        """
-        Outputs Number in '0qHHHHHH' string form
-        assert '0q85_1234ABCD' == Number(0x1234ABCD).qstring()
+        """Output Number in '0qHHHHHH' string form.
 
-        Q-string is the raw text representation of a qiki number
+        assert '0q85_1234ABCD' == Number(0x1234ABCD).qstring()
+        Q-string is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
-        Except q for x, underscores optional, and value interpretation differs
+        Except q for x, underscores optional, and the value interpretation differs.
         """
         if underscore == 0:
             return '0q' + self.hex()
@@ -300,8 +307,8 @@ class Number(object):
 
     @staticmethod
     def hex_decode(s):
-        """
-        Decode a hexadecimal string into an 8-bit binary (base-256) string.
+        """Decode a hexadecimal string into an 8-bit binary (base-256) string.
+
         This should really be in module "six":  https://bitbucket.org/gutworth/six
         """
         if six.PY2:
@@ -311,8 +318,8 @@ class Number(object):
 
     @staticmethod
     def hex_encode(s):
-        """
-        Encode an 8-bit binary (base-256) string into a hexadecimal string.
+        """Encode an 8-bit binary (base-256) string into a hexadecimal string.
+
         This should really be in module "six":  https://bitbucket.org/gutworth/six
         This sole need for the "codecs" module is unfortunate.
         """
@@ -322,8 +329,8 @@ class Number(object):
             return codecs.encode(s, 'hex').decode().upper()
 
     def qantissa(self):
-        """
-        Extract the base-256 significand in its raw form
+        """Extract the base-256 significand in its raw form.
+
         Returns a tuple: (integer value, number of qigits)
         """
         try:
@@ -342,9 +349,9 @@ class Number(object):
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
-        """
-        Convert a binary byte string into an integer
-        Akin to a base-256 decode, big-endian
+        """Convert a byte string into an integer.
+
+        Akin to a base-256 decode, big-endian.
         """
         if len(binary_string) <= 8:
             return cls._unpack_big_integer_by_struct(binary_string)
@@ -453,7 +460,7 @@ class Number(object):
 
     @staticmethod
     def _shift_left(n, nbits):
-        """shift positive left or negative right"""
+        """Shift positive left, or negative right."""
         if nbits < 0:
             return n >> -nbits
         else:
@@ -528,8 +535,8 @@ class Number(object):
 
     @staticmethod
     def _floats_really_same(f1,f2):
-        """
-        Are these floats really the same value?
+        """Compare floating point numbers, a little differently.
+
         Similar to == except:
          1. same if both NAN.
          2. not same if one is +0.0 and the other -0.0.
@@ -618,7 +625,7 @@ class Number(object):
 
     @classmethod
     def _setup(cls):
-        """class variables and settings made after the class is defined"""
+        """Initialize some class properties after the class is defined."""
 
         cls.name_of_zone = {   # dictionary translating zone codes to zone names
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
@@ -761,6 +768,7 @@ Number._setup()
 # TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
 # TODO: hooks to add features modularly
 # TODO: change % to .format()
+# TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
 
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...

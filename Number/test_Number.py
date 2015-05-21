@@ -1047,6 +1047,12 @@ class NumberTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             Number.from_raw(u'\x80')
 
+    # def test_from_bytearray(self):
+    #     self.assertEqual(six.binary_type, type(                          Number(2)      .raw))
+    #     self.assertEqual(six.binary_type, type(Number.from_raw(bytearray(Number(2).raw)).raw))
+    #     self.assertEqual('0q82_42', Number.from_raw(          b'\x82\x42' ).qstring())
+    #     self.assertEqual('0q82_42', Number.from_raw(bytearray(b'\x82\x42')).qstring())
+
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
         self.assertFalse(Number(0.0) == Number(1.0))

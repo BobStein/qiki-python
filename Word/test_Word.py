@@ -7,6 +7,8 @@ import os
 from Number import Number
 from Word import Word
 
+LET_DATABASE_RECORDS_REMAIN = True
+
 
 class WordTestCase(unittest.TestCase):
 
@@ -21,6 +23,8 @@ class WordTestCase(unittest.TestCase):
         Word.install_from_scratch()
 
     def tearDown(self):
+        if not LET_DATABASE_RECORDS_REMAIN:
+            Word.uninstall()
         Word.disconnect()
 
     def test_00_number(self):
@@ -36,14 +40,37 @@ class WordTestCase(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             define.id = -1
 
-    def test_triple_self_evident(self):
+    def test_quintuple_self_evident(self):
         define = Word('define')
-        self.assertEqual(define.sbj, define.id)
+        self.assertEqual(define.vrb, define.id)
         noun = Word('noun')
-        self.assertEqual(noun.sbj, noun.id)
+        self.assertEqual(noun.obj, noun.id)
         verb = Word('verb')
-        self.assertEqual(verb.sbj, verb.id)
+        self.assertEqual(verb.obj, noun.id)
+        agent = Word('agent')
+        self.assertEqual(agent.obj, noun.id)
+        system = Word('system')
+        self.assertEqual(system.sbj, system.id)
+        self.assertEqual(system.obj, agent.id)
 
+    def test_by_wawa(self):
+        class unexpected:
+            pass
+        with self.assertRaises(TypeError):
+            Word(unexpected)
+
+    def test_by_id(self):
+        define = Word('define')
+        define2 = Word(define.id)
+        self.assertEqual('define', define2.txt)
+        self.assertEqual(define.id, define2.id)
+
+    def test_repr(self):
+        define = Word('define')
+        self.assertIn('define', repr(define))
+
+    def test_define_method(self):
+        pass
 
 if __name__ == '__main__':
     import unittest
