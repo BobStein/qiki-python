@@ -68,9 +68,22 @@ class WordTestCase(unittest.TestCase):
     def test_repr(self):
         define = Word('define')
         self.assertIn('define', repr(define))
+        self.assertEqual("Word('define')", repr(define))
+
+    def test_defined_verb(self):
+        self.assertTrue(Word('define').exists)
+
+    def test_undefined_verb(self):
+        u = Word('_undefined_verb_')
+        self.assertFalse(u.exists)
 
     def test_define_method(self):
-        pass
+        system = Word('system')
+        self.assertEqual('system', system.txt)
+        noun = Word('noun')
+        human = system.define(noun, 'human')
+        self.assertTrue(human.exists)
+        self.assertEqual('human', human.txt)
 
 if __name__ == '__main__':
     import unittest

@@ -340,6 +340,7 @@ class NumberTestCase(unittest.TestCase):
         i__s(       4097, '0q83_1001')
         i__s(       4096, '0q83_10')
         i__s(       4095, '0q83_0FFF')
+        i__s(       1729, '0q83_06C1')
         i__s(        257, '0q83_0101')
         i__s(        256, '0q83_01')
         i__s(        255, '0q82_FF')
@@ -1132,6 +1133,12 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (      (1.0) >= Number(0.0))
         self.assertTrue (      (0.0) >= Number(0.0))
         self.assertFalse(      (0.0) >= Number(1.0))
+
+    def test_inc(self):
+        n = Number(1)
+        self.assertEqual(Number(1), n)
+        n.inc()
+        self.assertEqual(Number(2), n)
 
     def test_pickle(self):
         self.assertIn(pickle.dumps(Number), (

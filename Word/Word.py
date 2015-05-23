@@ -5,6 +5,7 @@ A qiki Word is defined by a three-word subject-verb-object
 
 import six
 import time
+import types
 # import sqlite3
 import mysql.connector
 from Number import Number
@@ -26,6 +27,8 @@ class Word(object):
     _table = None
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
+        self.exists = False
+        self.__id = None
         assert self._connection is not None, "Call Word.setup(database path)"
         if isinstance(content, six.string_types):
             self._from_txt(content)
@@ -37,7 +40,6 @@ class Word(object):
             # TODO: look up a vrb by its txt field being content.__name__
             pass
         elif content is None:
-            self.__id = None
             self.sbj = sbj
             self.vrb = vrb
             self.obj = obj
@@ -121,11 +123,13 @@ class Word(object):
             raise
 
     def define(self, obj, txt, meta_verb=None):
-        word_object = Word(self, sbj=self, vrb=self.define, obj=obj, txt=txt)
+        word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=Number(1), txt=txt)
         if meta_verb is not None:
             def verb_method(self, obj, txt, meta_verb=None):   # or something
+                # TODO: load fields and then self.save()
                 pass
             word_object._as_if_method = verb_method
+        word_object.save()
         return word_object
 
 
@@ -164,12 +168,14 @@ class Word(object):
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(sql, params)
         tuple_row = cursor.fetchone()
-        dict_row = dict(zip(cursor.column_names, tuple_row))
-        self.__id = Number.from_raw(six.binary_type(dict_row['id']))
-        self.sbj = Number.from_raw(six.binary_type(dict_row['sbj']))
-        self.vrb = Number.from_raw(six.binary_type(dict_row['vrb']))
-        self.obj = Number.from_raw(six.binary_type(dict_row['obj']))
-        self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
+        if tuple_row is not None:
+            self.exists = True
+            dict_row = dict(zip(cursor.column_names, tuple_row))
+            self.__id = Number.from_raw(six.binary_type(dict_row['id']))
+            self.sbj = Number.from_raw(six.binary_type(dict_row['sbj']))
+            self.vrb = Number.from_raw(six.binary_type(dict_row['vrb']))
+            self.obj = Number.from_raw(six.binary_type(dict_row['obj']))
+            self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
         cursor.close()
 
 
@@ -182,15 +188,15 @@ class Word(object):
         raise RuntimeError("Cannot set a Word's id")
 
     def __repr__(self):
-        return self.txt
+        return "Word('{0}')".format(self.txt)
 
 
     def save(self):
-        assert isinstance(self.__id,    Number)
+        assert isinstance(self.__id, (Number, types.NoneType))
         assert isinstance(self.sbj, Number)
-        assert isinstance(self.vrb,    Number)
-        assert isinstance(self.obj,  Number)
-        assert isinstance(self.num,  Number)
+        assert isinstance(self.vrb, Number)
+        assert isinstance(self.obj, Number)
+        assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
