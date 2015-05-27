@@ -35,7 +35,7 @@ class WordTestCase(unittest.TestCase):
         define = Word('define')
         self.assertEqual(define.vrb, define.id)
 
-    def test_id_unsettable(self):
+    def test_id_cannot_set_id(self):
         define = Word('define')
         with self.assertRaises(RuntimeError):
             define.id = -1
@@ -53,11 +53,12 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(system.sbj, system.id)
         self.assertEqual(system.obj, agent.id)
 
-    def test_by_wawa(self):
-        class unexpected:
+    def test_word_cant_construct_unfamiliar_class(self):
+        # noinspection PyClassHasNoInit
+        class UnExpected:
             pass
         with self.assertRaises(TypeError):
-            Word(unexpected)
+            Word(UnExpected)
 
     def test_number_from_mysql(self):
         mysql_42 = bytearray(b'\x82\x2A')
