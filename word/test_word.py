@@ -1,11 +1,11 @@
 """
-Testing qiki Word.py
+Testing qiki word.py
 """
 
 import unittest
 import os
-from Number import Number
-from Word import Word
+from number import Number
+from word import Word
 
 LET_DATABASE_RECORDS_REMAIN = True
 

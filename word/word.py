@@ -5,10 +5,8 @@ A qiki Word is defined by a three-word subject-verb-object
 
 import six
 import time
-import types
-# import sqlite3
 import mysql.connector
-from Number import Number
+from number import Number
 
 class Word(object):
     """
@@ -29,6 +27,7 @@ class Word(object):
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
         self.exists = False
         self.__id = None
+        self._as_if_method = self.null_verb_method
         assert self._connection is not None, "Call Word.setup(database path)"
         if isinstance(content, six.string_types):
             self._from_txt(content)
@@ -53,7 +52,6 @@ class Word(object):
 
     @classmethod
     def connect(cls, connection_specs, table=None):
-        # cls._connection = sqlite3.connect(database)
         assert table is not None
         cls._connection = mysql.connector.connect(**connection_specs)
         cls._table = table
@@ -119,21 +117,20 @@ class Word(object):
             pass
 
     def __call__(self, *args, **kwargs):
-        try:
-            return self._as_if_method(*args, **kwargs)
-        except:
-            raise
+        return self._as_if_method(*args, **kwargs)
+
+    def null_verb_method(*args, **kwargs):
+        pass
 
     def define(self, obj, txt, meta_verb=None):
         word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=Number(1), txt=txt)
         if meta_verb is not None:
-            def verb_method(self, obj, txt, meta_verb=None):   # or something
+            def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
                 # TODO: load fields and then self.save()
                 pass
             word_object._as_if_method = verb_method
         word_object.save()
         return word_object
-
 
     @classmethod
     def uninstall(cls):
@@ -145,20 +142,24 @@ class Word(object):
     def disconnect(cls):
         cls._connection.close()
 
-    def _from_id(self, id):
-        assert isinstance(id, Number)
-        self._loadrow(
+    def _from_id(self, _id):
+        """Construct a Word from its id
+        :type _id: Number
+        """
+        assert isinstance(_id, Number)
+        self._load_row(
             "SELECT * FROM `{table}` WHERE `id` = x'{id}'"
             .format(
                 table=self._table,
-                id=id.hex(),
+                id=_id.hex(),
             )
         )
 
     # TODO: _from_txt() should only be used on definitions, i.e. vrb = define.id
     def _from_txt(self, txt):
+        """Construct a Word from its txt"""
         assert isinstance(txt, six.string_types)
-        self._loadrow(
+        self._load_row(
             "SELECT * FROM `{table}` WHERE `txt` = ?"
             .format(
                 table=self._table,
@@ -166,7 +167,7 @@ class Word(object):
             (txt,)
         )
 
-    def _loadrow(self, sql, params=()):
+    def _load_row(self, sql, params=()):
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(sql, params)
         tuple_row = cursor.fetchone()
@@ -209,23 +210,23 @@ class Word(object):
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
         assert not self.exists
-        id = self.__id
-        if id is None:
-            id = self.max_id().inc()   # AUTO sorta INCREMENT
-        assert isinstance(id, Number)
+        _id = self.__id
+        if _id is None:
+            _id = self.max_id().inc()   # AUTO sorta INCREMENT
+        assert isinstance(_id, Number)
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
             "       (  `id`,    `sbj`,    `vrb`,    `obj`,    `num`, `txt`,   `whn`) "
             "VALUES (x'{id}', x'{sbj}', x'{vrb}', x'{obj}', x'{num}',    ?, x'{whn}')"
             .format(
-                table = self._table,
-                id = id.hex(),
-                sbj = self.sbj.hex(),
-                vrb = self.vrb.hex(),
-                obj = self.obj.hex(),
-                num = self.num.hex(),
-                whn = Number(time.time()).hex(),
+                table=self._table,
+                id=_id.hex(),
+                sbj=self.sbj.hex(),
+                vrb=self.vrb.hex(),
+                obj=self.obj.hex(),
+                num=self.num.hex(),
+                whn=Number(time.time()).hex(),
             ),
             (self.txt, )
         )
@@ -234,4 +235,4 @@ class Word(object):
         cursor.close()
 
 
-# TODO: raise subclassed built-in exceptions
+# TODO: raise subclass of built-in exceptions

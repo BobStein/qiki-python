@@ -47,11 +47,12 @@ class Number(object):
     # Zones
     # -----
     # qiki Numbers fall into zones.
-    # The internal Number.Zone class serves as an enumeration.  Its members have values that are *between* zones.
+    # The internal Number.Zone class serves as an enumeration.
+    # Its members have values that are *between* zones.
     # Raw, internal binary strings are represented.
     # They are less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
-    # (So actually, some zone values are valid raw values, others are among the invalid inter-zone values.)
+    # (So actually, some zone values are valid raw values, others are among the inter-zone values.)
     # The valid raw string for 1 is b'x82\x01' but Number.Zone.POSITIVE is b'x82'.
     # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
@@ -71,12 +72,12 @@ class Number(object):
         NEGATIVE            = b'\x01'
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
-        NAN                 = b''   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
+        NAN                 = b''   # NAN means Not-a-number, Ass-is-out-of-range, or Nullificationalized.
 
 
     # float precision
     # ---------------
-    # A "qigit" is a base-256 digit.
+    # A "qigit" is a qiki Number byte, or base-256 digit.
     # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
     # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
     # Source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
@@ -778,8 +779,8 @@ Number._setup()
 # TODO: change % to .format()
 # TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
 # TODO: raise subclass of built-in exceptions
-# TODO: combine qantissa() and qexponent() into qunpack() that extracts all three pieces
-# TODO: qpack() opposite of qunpack() -- and use it in _from_float(), _from_int()
+# TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...

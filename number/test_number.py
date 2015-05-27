@@ -1,5 +1,5 @@
 """
-Testing qiki Number.py
+Testing qiki number.py
 """
 
 import unittest
@@ -8,7 +8,7 @@ import sys
 import pickle
 import textwrap
 import six
-from Number import Number
+from number import Number
 
 class NumberTestCase(unittest.TestCase):
 
@@ -1145,23 +1145,23 @@ class NumberTestCase(unittest.TestCase):
         self.assert_inc_works(1)
 
     def test_unittest_equality(self):
-        googol   = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
-        googolp1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
-        self.assertEqual   (googol  , googol)
-        self.assertNotEqual(googol  , googolp1)
-        self.assertNotEqual(googolp1, googol)
-        self.assertEqual   (googolp1, googolp1)
+        googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
+        googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
+        self.assertEqual   (googol       , googol)
+        self.assertNotEqual(googol       , googol_plus_1)
+        self.assertNotEqual(googol_plus_1, googol)
+        self.assertEqual   (googol_plus_1, googol_plus_1)
 
     def test_op_equality(self):
-        googol   = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
-        googolp1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
-        self.assertTrue (googol   == googol)
-        self.assertFalse(googol   == googolp1)
-        self.assertFalse(googolp1 == googol)
-        self.assertTrue (googolp1 == googolp1)
+        googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
+        googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
+        self.assertTrue (googol        == googol)
+        self.assertFalse(googol        == googol_plus_1)
+        self.assertFalse(googol_plus_1 == googol)
+        self.assertTrue (googol_plus_1 == googol_plus_1)
 
     def test_inc_googol(self):
-        googol   = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         self.assert_inc_works(googol)
 
     def test_inc_powers_of_2(self):
@@ -1182,11 +1182,11 @@ class NumberTestCase(unittest.TestCase):
                 p0
                 ."""),   # when run via qiki_take_one
             textwrap.dedent("""\
-                cNumber
+                cnumber
                 Number
                 p0
                 ."""),   # when run via number_playground
-            b"\x80\x03cNumber\nNumber\nq\x00.",   # Python 3.X
+            b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
         ))
 
         x314 = Number(3.14)
@@ -1210,7 +1210,7 @@ class NumberTestCase(unittest.TestCase):
                 ccopy_reg
                 _reconstructor
                 p0
-                (cNumber
+                (cnumber
                 Number
                 p1
                 c__builtin__
@@ -1221,7 +1221,7 @@ class NumberTestCase(unittest.TestCase):
                 S%s
                 p5
                 b.""") % repr(x314.raw),
-            b'\x80\x03cNumber\nNumber\nq\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'   # Python 3.X
+            b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'   # Python 3.X
         ))
 
         y314 = pickle.loads(pickle.dumps(x314))
