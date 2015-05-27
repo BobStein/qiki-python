@@ -27,7 +27,7 @@ class WordTestCase(unittest.TestCase):
             Word.uninstall()
         Word.disconnect()
 
-    def test_00_number(self):
+    def test_000_number(self):
         n = Number(1)
         self.assertEqual(1, int(n))
 
@@ -59,6 +59,11 @@ class WordTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             Word(unexpected)
 
+    def test_number_from_mysql(self):
+        mysql_42 = bytearray(b'\x82\x2A')
+        num_42 = Number(42)
+        self.assertEqual(num_42, Word.number_from_mysql(mysql_42))
+
     def test_by_id(self):
         define = Word('define')
         define2 = Word(define.id)
@@ -77,7 +82,12 @@ class WordTestCase(unittest.TestCase):
         u = Word('_undefined_verb_')
         self.assertFalse(u.exists)
 
-    def test_define_method(self):
+    def test_max_id(self):
+        num_max_id = Word.max_id()
+        int_max_id = int(num_max_id)
+        self.assertEqual(Word._ID_MAX_FIXED, int_max_id)
+
+    def test_zzz_define_method(self):
         system = Word('system')
         self.assertEqual('system', system.txt)
         noun = Word('noun')

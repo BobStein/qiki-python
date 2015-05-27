@@ -124,11 +124,11 @@ class Number(object):
         Right:  assert Number(1) == Number.from_raw(b'x82\x01')
         Right:  assert Number(1) == Number.from_raw(bytearray(b'x82\x01'))
         """
-        if not isinstance(value, (six.binary_type)):
+        if not isinstance(value, six.binary_type):
             raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
-        retval = cls()
-        retval.raw = value
-        return retval
+        return_value = cls()
+        return_value.raw = value
+        return return_value
 
     def _from_string(self, s):
         assert(isinstance(s, six.string_types))
@@ -331,7 +331,9 @@ class Number(object):
     def qantissa(self):
         """Extract the base-256 significand in its raw form.
 
-        Returns a tuple: (integer value, number of qigits)
+        Returns a tuple: (integer value of significand, number of qigits)
+        The number of qigits is the amount stored in the qantissa,
+        and is unrelated to the location of the decimal point.
         """
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
@@ -364,11 +366,11 @@ class Number(object):
 
     @classmethod
     def _unpack_big_integer_by_brute(cls, binary_string):
-        retval = 0
+        return_value = 0
         for i in range(len(binary_string)):
-            retval <<= 8
-            retval |= six.indexbytes(binary_string, i)
-        return retval
+            return_value <<= 8
+            return_value |= six.indexbytes(binary_string, i)
+        return return_value
 
     def qexponent(self):
         try:
@@ -617,11 +619,17 @@ class Number(object):
     @classmethod
     def _zone_union(cls, *zonesets):
         assert cls._sets_exclusive(*zonesets), "Sets not mutually exclusive: %s" % repr(zonesets)
-        retval = set()
+        return_value = set()
         for zoneset in zonesets:
-            retval |= zoneset
-        return retval
+            return_value |= zoneset
+        return return_value
 
+    def inc(self):
+        self.raw = self._inc_via_integer()
+        return self
+
+    def _inc_via_integer(self):
+        return Number(int(self) + 1).raw
 
     @classmethod
     def _setup(cls):
@@ -769,6 +777,9 @@ Number._setup()
 # TODO: hooks to add features modularly
 # TODO: change % to .format()
 # TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
+# TODO: raise subclass of built-in exceptions
+# TODO: combine qantissa() and qexponent() into qunpack() that extracts all three pieces
+# TODO: qpack() opposite of qunpack() -- and use it in _from_float(), _from_int()
 
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...

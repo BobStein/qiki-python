@@ -64,6 +64,8 @@ class Word(object):
     _ID_AGENT  = Number(4)
     _ID_SYSTEM = Number(5)
 
+    _ID_MAX_FIXED = Number(5)
+
     @classmethod
     def install_from_scratch(cls):
         cls.uninstall()
@@ -171,13 +173,16 @@ class Word(object):
         if tuple_row is not None:
             self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
-            self.__id = Number.from_raw(six.binary_type(dict_row['id']))
-            self.sbj = Number.from_raw(six.binary_type(dict_row['sbj']))
-            self.vrb = Number.from_raw(six.binary_type(dict_row['vrb']))
-            self.obj = Number.from_raw(six.binary_type(dict_row['obj']))
+            self.__id = self.number_from_mysql(dict_row['id'])
+            self.sbj = self.number_from_mysql(dict_row['sbj'])
+            self.vrb = self.number_from_mysql(dict_row['vrb'])
+            self.obj = self.number_from_mysql(dict_row['obj'])
             self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
         cursor.close()
 
+    @staticmethod
+    def number_from_mysql(mysql_blob):
+        return Number.from_raw(six.binary_type(mysql_blob))
 
     @property
     def id(self):
@@ -190,14 +195,24 @@ class Word(object):
     def __repr__(self):
         return "Word('{0}')".format(self.txt)
 
+    @classmethod
+    def max_id(cls):
+        cursor = cls._connection.cursor()
+        cursor.execute("SELECT MAX(id) FROM `{table}`".format(table=cls._table))
+        return cls.number_from_mysql(cursor.fetchone()[0])
 
     def save(self):
-        assert isinstance(self.__id, (Number, types.NoneType))
+        assert isinstance(self.__id, (Number, type(None)))
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
+        assert not self.exists
+        id = self.__id
+        if id is None:
+            id = self.max_id().inc()   # AUTO sorta INCREMENT
+        assert isinstance(id, Number)
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
@@ -205,7 +220,7 @@ class Word(object):
             "VALUES (x'{id}', x'{sbj}', x'{vrb}', x'{obj}', x'{num}',    ?, x'{whn}')"
             .format(
                 table = self._table,
-                id = self.__id.hex(),
+                id = id.hex(),
                 sbj = self.sbj.hex(),
                 vrb = self.vrb.hex(),
                 obj = self.obj.hex(),
@@ -215,4 +230,8 @@ class Word(object):
             (self.txt, )
         )
         self._connection.commit()
+        self.exists = True
         cursor.close()
+
+
+# TODO: raise subclassed built-in exceptions

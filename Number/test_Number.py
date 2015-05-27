@@ -1134,11 +1134,45 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (      (0.0) >= Number(0.0))
         self.assertFalse(      (0.0) >= Number(1.0))
 
+    def assert_inc_works(self, integer):
+        n = Number(integer)
+        n_plus_one = n
+        n_plus_one.inc()
+        self.assertEqual(integer+1, int(n_plus_one))
+
     def test_inc(self):
-        n = Number(1)
-        self.assertEqual(Number(1), n)
-        n.inc()
-        self.assertEqual(Number(2), n)
+        self.assert_inc_works(0)
+        self.assert_inc_works(1)
+
+    def test_unittest_equality(self):
+        googol   = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
+        googolp1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
+        self.assertEqual   (googol  , googol)
+        self.assertNotEqual(googol  , googolp1)
+        self.assertNotEqual(googolp1, googol)
+        self.assertEqual   (googolp1, googolp1)
+
+    def test_op_equality(self):
+        googol   = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
+        googolp1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
+        self.assertTrue (googol   == googol)
+        self.assertFalse(googol   == googolp1)
+        self.assertFalse(googolp1 == googol)
+        self.assertTrue (googolp1 == googolp1)
+
+    def test_inc_googol(self):
+        googol   = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        self.assert_inc_works(googol)
+
+    def test_inc_powers_of_2(self):
+        power_of_two = 1
+        for binary_exponent in range(0,1000):
+            self.assert_inc_works(power_of_two-2)
+            self.assert_inc_works(power_of_two-1)
+            self.assert_inc_works(power_of_two)
+            self.assert_inc_works(power_of_two+1)
+            self.assert_inc_works(power_of_two+2)
+            power_of_two *= 2
 
     def test_pickle(self):
         self.assertIn(pickle.dumps(Number), (
