@@ -30,7 +30,7 @@ class Word(object):
         self._as_if_method = self.null_verb_method
         assert self._connection is not None, "Call Word.setup(database path)"
         if isinstance(content, six.string_types):
-            self._from_txt(content)
+            self._from_definition(content)
         elif isinstance(content, Number):
             self._from_id(content)
         elif isinstance(content, type(self)):
@@ -155,14 +155,14 @@ class Word(object):
             )
         )
 
-    # TODO: _from_txt() should only be used on definitions, i.e. vrb = define.id
-    def _from_txt(self, txt):
+    def _from_definition(self, txt):
         """Construct a Word from its txt"""
         assert isinstance(txt, six.string_types)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `txt` = ?"
+            "SELECT * FROM `{table}` WHERE `vrb` = x'{define}' AND `txt` = ?"
             .format(
                 table=self._table,
+                define=self._ID_DEFINE.hex(),
             ),
             (txt,)
         )
