@@ -88,13 +88,34 @@ class WordTestCase(unittest.TestCase):
         int_max_id = int(num_max_id)
         self.assertEqual(Word._ID_MAX_FIXED, int_max_id)
 
-    def test_zzz_define_method(self):
+    def test_zzz_define_noun(self):
         system = Word('system')
         self.assertEqual('system', system.txt)
         noun = Word('noun')
         human = system.define(noun, 'human')
         self.assertTrue(human.exists)
         self.assertEqual('human', human.txt)
+
+    def test_zzz_define_collision(self):
+        system = Word('system')
+        self.assertEqual('system', system.txt)
+        noun = Word('noun')
+        human = system.define(noun, 'human')
+        self.assertTrue(human.exists)
+        self.assertEqual('human', human.txt)
+        with self.assertRaises(Word.DefineDuplicateException):
+            human_too = system.define(noun, 'human')
+
+    def test_zzz_define_verb(self):
+        system = Word('system')
+        self.assertEqual('system', system.txt)
+        verb = Word('verb')
+        rate = system.define(verb, 'rate')
+        self.assertTrue(rate.exists)
+        self.assertEqual('rate', rate.txt)
+        rating = system.rate(system, 'loving myself', 100)
+        self.assertEqual(Number(100), rating.num)
+        self.assertEqual('loving myself', rating.txt)
 
 if __name__ == '__main__':
     import unittest
