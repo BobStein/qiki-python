@@ -11,6 +11,7 @@ import textwrap
 import six
 from number import Number
 
+
 class NumberTestCase(unittest.TestCase):
 
     def setUp(self):

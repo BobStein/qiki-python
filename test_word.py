@@ -4,6 +4,7 @@ Testing qiki word.py
 
 import unittest
 import os
+
 from number import Number
 from word import Word
 
