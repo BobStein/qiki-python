@@ -34,7 +34,7 @@ class Word(object):
         elif isinstance(content, Number):
             self._from_id(content)
         elif isinstance(content, type(self)):
-            pass
+            self._from_word(content)
         elif isinstance(content, type(self.define)):   # instancemethod
             # TODO: look up a vrb by its txt field being content.__name__
             pass
@@ -122,13 +122,16 @@ class Word(object):
     def null_verb_method(*args, **kwargs):
         pass
 
-    def define(self, obj, txt, meta_verb=None):
-        word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=Number(1), txt=txt)
-        if meta_verb is not None:
-            def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
-                # TODO: load fields and then self.save()
-                pass
-            word_object._as_if_method = verb_method
+    def noun(self, txt, num=Number(1)):
+        return self.define(Word('noun'), txt, num)
+
+    def define(self, obj, txt, num=Number(1), meta_verb=None):
+        word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=num, txt=txt)
+        # if meta_verb is not None:
+        #     def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
+        #         # TODO: load fields and then self.save()
+        #         pass
+        #     word_object._as_if_method = verb_method
         word_object.save()
         return word_object
 
@@ -166,6 +169,14 @@ class Word(object):
             ),
             (txt,)
         )
+        if not self.exists:
+            self.txt = txt
+
+    def _from_word(self, word):
+        if word.exists:
+            self._from_id(word.id)
+        else:
+            self._from_definition(word.txt)
 
     def _load_row(self, sql, params=()):
         cursor = self._connection.cursor(prepared=True)
@@ -178,8 +189,24 @@ class Word(object):
             self.sbj = self.number_from_mysql(dict_row['sbj'])
             self.vrb = self.number_from_mysql(dict_row['vrb'])
             self.obj = self.number_from_mysql(dict_row['obj'])
+            self.num = self.number_from_mysql(dict_row['num'])
             self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
         cursor.close()
+
+    def is_a(self, word):
+        return self.vrb == self._ID_DEFINE and self.obj == word.id
+
+    def description(self):
+        sbj = Word(self.sbj)
+        vrb = Word(self.vrb)
+        obj = Word(self.obj)
+        return "{sbj}.{vrb}({obj}, {txt}{maybe_num})".format(
+            sbj=sbj.txt,
+            vrb=vrb.txt,
+            obj=obj.txt,
+            txt=repr(self.txt),
+            maybe_num=(", " + str(self.num)) if self.num != 1 else "",
+        )
 
     @staticmethod
     def number_from_mysql(mysql_blob):
@@ -194,7 +221,10 @@ class Word(object):
         raise RuntimeError("Cannot set a Word's id")
 
     def __repr__(self):
-        return "Word('{0}')".format(self.txt)
+        if hasattr(self, 'txt'):
+            return "Word('{0}')".format(self.txt)
+        elif hasattr(self, '__id'):
+            return "Word(Number('{id_qstring}'))".format(qstring=self.id.qstring())
 
     @classmethod
     def max_id(cls):

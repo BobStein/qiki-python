@@ -755,19 +755,6 @@ Number.internal_setup()
 
 
 
-# TODO: Number.increment()   (phase 1: use float or int, phase 2: native computation)
-# TODO: __neg__ (take advantage of two's complement encoding)
-# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
-# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
-
-# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
-# TODO: hooks to add features modularly
-# TODO: change % to .format()
-# TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
-# TODO: raise subclass of built-in exceptions
-# TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
-# TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
-
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
 # ... would be 8 bytes, same as float64, ...
@@ -779,4 +766,17 @@ Number.internal_setup()
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?
 
+# TODO: Number.inc()   (use native computation)
+# TODO: __neg__ (take advantage of two's complement encoding)
+# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
+# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
+
+# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
+# TODO: hooks to add features modularly
+# TODO: change % to .format()
+# TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
+# TODO: raise subclass of built-in exceptions
+# TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
+# TODO: str(Number('0q80')) should be '0'.  78 changes in test_word.py
 

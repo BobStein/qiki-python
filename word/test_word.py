@@ -45,9 +45,9 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual('define', define_too.txt)
 
     def test_02_word_by_word(self):
+        """Word copy constructor."""
         define = Word('define')
         define_too = Word(define)
-        print(repr(define_too))
         self.assertEqual('define', define_too.txt)
 
     def test_id_cannot_set_id(self):
@@ -107,14 +107,31 @@ class WordTestCase(unittest.TestCase):
         noun = Word('noun')
         noun_description = noun.description()
         self.assertIn('noun', noun_description)
+        print(noun_description)
+
+    def test_is_a(self):
+        self.assertTrue( Word('verb').is_a(Word('noun')))
+        self.assertFalse(Word('noun').is_a(Word('verb')))
 
     def test_zz1_define_noun(self):
         system = Word('system')
-        self.assertEqual('system', system.txt)
         noun = Word('noun')
         human = system.define(noun, 'human')
         self.assertTrue(human.exists)
         self.assertEqual('human', human.txt)
+
+    def test_zz1_define_by_id(self):
+        system = Word('system')
+        noun = Word('noun')
+        human = system.define(noun, 'human')
+        self.assertTrue(human.exists)
+        self.assertEqual('human', human.txt)
+
+    def test_zz1_noun_method(self):
+        system = Word('system')
+        thing = system.noun('thing')
+        self.assertTrue(thing.exists)
+        self.assertEqual('thing', thing.txt)
 
     def test_zz2_define_collision(self):
         system = Word('system')
@@ -130,7 +147,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(like.txt, 'like')
         Word.like = like
         rating = system.like(system, 'loving itself', 100)
-        print repr(rating)
+        print(rating.description())
         self.assertEqual(Number(100), rating.num)
         self.assertEqual('loving itself', rating.txt)
 

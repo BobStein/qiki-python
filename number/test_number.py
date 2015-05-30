@@ -2,6 +2,7 @@
 Testing qiki number.py
 """
 
+from __future__ import print_function
 import unittest
 import math
 import sys
@@ -1134,15 +1135,18 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (      (0.0) >= Number(0.0))
         self.assertFalse(      (0.0) >= Number(1.0))
 
-    def assert_inc_works(self, integer):
+    def assert_inc_works_on(self, integer):
         n = Number(integer)
-        n_plus_one = n
+        n_plus_one = Number(integer)
         n_plus_one.inc()
-        self.assertEqual(integer+1, int(n_plus_one))
+        self.assertEqual(   integer+1, int(n_plus_one))
+        self.assertNotEqual(integer,   int(n_plus_one))
+        self.assertNotEqual(integer+1, int(n))
+        self.assertEqual(   integer,   int(n))
 
     def test_inc(self):
-        self.assert_inc_works(0)
-        self.assert_inc_works(1)
+        self.assert_inc_works_on(0)
+        self.assert_inc_works_on(1)
 
     def test_unittest_equality(self):
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
@@ -1162,16 +1166,16 @@ class NumberTestCase(unittest.TestCase):
 
     def test_inc_googol(self):
         googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-        self.assert_inc_works(googol)
+        self.assert_inc_works_on(googol)
 
     def test_inc_powers_of_2(self):
         power_of_two = 1
         for binary_exponent in range(0,1000):
-            self.assert_inc_works(power_of_two-2)
-            self.assert_inc_works(power_of_two-1)
-            self.assert_inc_works(power_of_two)
-            self.assert_inc_works(power_of_two+1)
-            self.assert_inc_works(power_of_two+2)
+            self.assert_inc_works_on(power_of_two-2)
+            self.assert_inc_works_on(power_of_two-1)
+            self.assert_inc_works_on(power_of_two)
+            self.assert_inc_works_on(power_of_two+1)
+            self.assert_inc_works_on(power_of_two+2)
             power_of_two *= 2
 
     def test_pickle(self):
