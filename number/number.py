@@ -11,7 +11,7 @@ Features:
 import six
 import math
 import struct
-import codecs
+import binascii
 
 # noinspection PyUnresolvedReferences
 class Number(object):
@@ -308,26 +308,13 @@ class Number(object):
 
     @staticmethod
     def hex_decode(s):
-        """Decode a hexadecimal string into an 8-bit binary (base-256) string.
-
-        This should really be in module "six":  https://bitbucket.org/gutworth/six
-        """
-        if six.PY2:
-            return s.decode('hex')
-        else:
-            return bytes.fromhex(s)
+        """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
+        return binascii.unhexlify(s)
 
     @staticmethod
     def hex_encode(s):
-        """Encode an 8-bit binary (base-256) string into a hexadecimal string.
-
-        This should really be in module "six":  https://bitbucket.org/gutworth/six
-        This sole need for the "codecs" module is unfortunate.
-        """
-        if six.PY2:
-            return s.encode('hex').upper()
-        else:
-            return codecs.encode(s, 'hex').decode().upper()
+        """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
+        return binascii.hexlify(s).upper().decode()
 
     def qantissa(self):
         """Extract the base-256 significand in its raw form.

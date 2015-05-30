@@ -562,14 +562,14 @@ class NumberTestCase(unittest.TestCase):
             try:
                 x_new = float(Number(s_in))
             except Exception as e:
-                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, e.message, s_in))
+                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, str(e), s_in))
                 raise
             match_x = Number._floats_really_same(x_new, x_out)
 
             try:
                 s_new = str(Number(x_in))
             except Exception as e:
-                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, e.message))
+                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, str(e)))
                 raise
             match_s = s_new == s_out
 
