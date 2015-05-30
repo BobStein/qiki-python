@@ -620,14 +620,14 @@ class Number(object):
         return Number(int(self) + 1).raw
 
     @classmethod
-    def _setup(cls):
+    def internal_setup(cls):
         """Initialize some class properties after the class is defined."""
 
-        cls.name_of_zone = {   # dictionary translating zone codes to zone names
+        cls.name_of_zone = {   # Translate zone code to zone name, e.g. name_of_zone[b'\x80'] == 'ZERO'
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
         }
 
-        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone code list in desc order, as defined
+        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes, desc order == defined order
 
 
         # Constants
@@ -751,8 +751,7 @@ class Number(object):
 
         cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
 
-# noinspection PyProtectedMember
-Number._setup()
+Number.internal_setup()
 
 
 

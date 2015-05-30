@@ -1231,47 +1231,47 @@ class NumberTestCase(unittest.TestCase):
 
     ################## testing internal methods ###########################
 
-    def test_shift_left(self):
+    def test_01_shift_left(self):
         self.assertEqual(0b000010000, Number._shift_left(0b000010000, 0))
         self.assertEqual(0b000100000, Number._shift_left(0b000010000, 1))
         self.assertEqual(0b000001000, Number._shift_left(0b000010000,-1))
 
-    def test_pack_integer(self):
+    def test_01_pack_integer(self):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers
         """
-        def test_both_methods(packed_bytes, number, nbytes):
+        def both_pack_methods(packed_bytes, number, nbytes):
             self.assertEqual(packed_bytes, Number._pack_big_integer_via_hex(number,nbytes))
             self.assertEqual(packed_bytes, Number._pack_integer(number,nbytes))
 
-        test_both_methods(                b'\x00', 0,1)
-        test_both_methods(    b'\x00\x00\x00\x00', 0,4)
-        test_both_methods(    b'\x00\x00\x00\x01', 1,4)
-        test_both_methods(    b'\x00\x00\x00\x64', 100,4)
-        test_both_methods(    b'\x00\x00\xFF\xFE', 65534,4)
-        test_both_methods(    b'\xFF\xFF\xFF\xFE', 4294967294,4)
+        both_pack_methods(                b'\x00', 0,1)
+        both_pack_methods(    b'\x00\x00\x00\x00', 0,4)
+        both_pack_methods(    b'\x00\x00\x00\x01', 1,4)
+        both_pack_methods(    b'\x00\x00\x00\x64', 100,4)
+        both_pack_methods(    b'\x00\x00\xFF\xFE', 65534,4)
+        both_pack_methods(    b'\xFF\xFF\xFF\xFE', 4294967294,4)
 
-        test_both_methods(b'\x00\xFF\xFF\xFF\xFE', 4294967294,5)
-        test_both_methods(b'\x00\xFF\xFF\xFF\xFF', 4294967295,5)
-        test_both_methods(b'\x01\x00\x00\x00\x00', 4294967296,5)
-        test_both_methods(b'\x01\x00\x00\x00\x01', 4294967297,5)
-        test_both_methods(b'\x01\x00\x00\x00\x02', 4294967298,5)
+        both_pack_methods(b'\x00\xFF\xFF\xFF\xFE', 4294967294,5)
+        both_pack_methods(b'\x00\xFF\xFF\xFF\xFF', 4294967295,5)
+        both_pack_methods(b'\x01\x00\x00\x00\x00', 4294967296,5)
+        both_pack_methods(b'\x01\x00\x00\x00\x01', 4294967297,5)
+        both_pack_methods(b'\x01\x00\x00\x00\x02', 4294967298,5)
 
-        test_both_methods(    b'\xFF\xFF\xFF\xFF', -1,4)
-        test_both_methods(b'\xFF\xFF\xFF\xFF\xFF', -1,5)
+        both_pack_methods(    b'\xFF\xFF\xFF\xFF', -1,4)
+        both_pack_methods(b'\xFF\xFF\xFF\xFF\xFF', -1,5)
 
-        test_both_methods(b'\xFF\xFF\xFF\x00\x02', -65534,5)
+        both_pack_methods(b'\xFF\xFF\xFF\x00\x02', -65534,5)
 
-        test_both_methods(b'\xFF\x80\x00\x00\x01', -2147483647,5)
-        test_both_methods(b'\xFF\x80\x00\x00\x00', -2147483648,5)
-        test_both_methods(b'\xFF\x7F\xFF\xFF\xFF', -2147483649,5)
-        test_both_methods(b'\xFF\x7F\xFF\xFF\xFE', -2147483650,5)
+        both_pack_methods(b'\xFF\x80\x00\x00\x01', -2147483647,5)
+        both_pack_methods(b'\xFF\x80\x00\x00\x00', -2147483648,5)
+        both_pack_methods(b'\xFF\x7F\xFF\xFF\xFF', -2147483649,5)
+        both_pack_methods(b'\xFF\x7F\xFF\xFF\xFE', -2147483650,5)
 
-        test_both_methods(b'\xFF\x00\x00\x00\x01', -4294967295,5)
-        test_both_methods(b'\xFF\x00\x00\x00\x00', -4294967296,5)
-        test_both_methods(b'\xFE\xFF\xFF\xFF\xFF', -4294967297,5)
-        test_both_methods(b'\xFE\xFF\xFF\xFF\xFE', -4294967298,5)
+        both_pack_methods(b'\xFF\x00\x00\x00\x01', -4294967295,5)
+        both_pack_methods(b'\xFF\x00\x00\x00\x00', -4294967296,5)
+        both_pack_methods(b'\xFE\xFF\xFF\xFF\xFF', -4294967297,5)
+        both_pack_methods(b'\xFE\xFF\xFF\xFF\xFE', -4294967298,5)
 
-    def test_pack_small_integer_not_enough_nbytes(self):
+    def test_01_pack_small_integer_not_enough_nbytes(self):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
@@ -1281,7 +1281,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\x00\x00\x11\x11', Number._pack_integer(0x1111,4))
         self.assertEqual(b'\x00\x00\x00\x11\x11', Number._pack_integer(0x1111,5))
 
-    def test_pack_integer_not_enough_nbytes_negative(self):
+    def test_01_pack_integer_not_enough_nbytes_negative(self):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
@@ -1291,7 +1291,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,4))
         self.assertEqual(b'\xFF\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,5))
 
-    def test_pack_big_integer_not_enough_nbytes(self):
+    def test_01_pack_big_integer_not_enough_nbytes(self):
         """
         big int, ignores low nbytes, but doesn't matter for Number's purposes
         """
@@ -1299,7 +1299,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,5))
         self.assertEqual(b'\x00\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,6))
 
-    def test_pack_integer_auto_nbytes(self):
+    def test_01_pack_integer_auto_nbytes(self):
         self.assertEqual(b'\x01', Number._pack_integer(0x01))
         self.assertEqual(b'\x04', Number._pack_integer(0x04))
         self.assertEqual(b'\xFF', Number._pack_integer(0xFF))
@@ -1309,7 +1309,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\x01\x00\x00', Number._pack_integer(0x10000))
         self.assertEqual(b'\x01\x00\x01', Number._pack_integer(0x10001))
 
-    def test_pack_integer_auto_nbytes_negative(self):
+    def test_01_pack_integer_auto_nbytes_negative(self):
         self.assertEqual(b'\xFF', Number._pack_integer(-0x01))
         self.assertEqual(b'\xFC', Number._pack_integer(-0x04))
         self.assertEqual(b'\x01', Number._pack_integer(-0xFF))  # an UNSIGNED negative number in two's complement
@@ -1320,7 +1320,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\xFF\x00\x00', Number._pack_integer(-0x10000))
         self.assertEqual(b'\xFE\xFF\xFF', Number._pack_integer(-0x10001))
 
-    def test_unpack_big_integer(self):
+    def test_01_unpack_big_integer(self):
         self.assertEqual(0, Number._unpack_big_integer(b''))
         self.assertEqual(0x1234, Number._unpack_big_integer(b'\x12\x34'))
         self.assertEqual( 0x807F99DEADBEEF00, Number._unpack_big_integer(    b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
@@ -1332,12 +1332,12 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(0x10000000000000022, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
         self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
-    def test_unpack_big_integer_by_brute(self):
+    def test_01_unpack_big_integer_by_brute(self):
         self.assertEqual(0, Number._unpack_big_integer_by_brute(b''))
         self.assertEqual(0x1234, Number._unpack_big_integer_by_brute(b'\x12\x34'))
         self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer_by_brute(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
-    def test_unpack_big_integer_by_struct(self):
+    def test_01_unpack_big_integer_by_struct(self):
         self.assertEqual(0, Number._unpack_big_integer_by_struct(b''))
         self.assertEqual(0x00, Number._unpack_big_integer_by_struct(b'\x00'))
         self.assertEqual(0x1234, Number._unpack_big_integer_by_struct(b'\x12\x34'))
@@ -1348,7 +1348,7 @@ class NumberTestCase(unittest.TestCase):
         with self.assertRaises(Exception):
             Number._unpack_big_integer_by_struct(b'ninebytes')
 
-    def test_exp256(self):
+    def test_01_exp256(self):
         self.assertEqual(1, Number._exp256(0))
         self.assertEqual(256, Number._exp256(1))
         self.assertEqual(65536, Number._exp256(2))
@@ -1359,7 +1359,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(2**800, Number._exp256(100))
         self.assertEqual(2**8000, Number._exp256(1000))
 
-    def test_hex_even(self):
+    def test_01_hex_even(self):
         self.assertEqual('05', Number._hex_even(0x5))
         self.assertEqual('55', Number._hex_even(0x55))
         self.assertEqual('0555', Number._hex_even(0x555))
@@ -1372,7 +1372,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('05555555555555555555', Number._hex_even(0x5555555555555555555))
         self.assertEqual('AAAAAAAA', Number._hex_even(0xAAAAAAAA).upper())
 
-    def test_left_pad00(self):
+    def test_01_left_pad00(self):
         self.assertEqual(b'abc', Number._left_pad00(b'abc', 1))
         self.assertEqual(b'abc', Number._left_pad00(b'abc', 2))
         self.assertEqual(b'abc', Number._left_pad00(b'abc', 3))
@@ -1380,13 +1380,13 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\x00\x00abc', Number._left_pad00(b'abc', 5))
         self.assertEqual(b'\x00\x00\x00abc', Number._left_pad00(b'abc', 6))
 
-    def test_right_strip00(self):
+    def test_01_right_strip00(self):
         self.assertEqual(b'abc', Number._right_strip00(b'abc'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00\x00'))
 
-    def test_floats_really_same(self):
+    def test_01_floats_really_same(self):
         self.assertTrue (Number._floats_really_same(1.0, 1.0))
         self.assertFalse(Number._floats_really_same(1.0, 0.0))
         self.assertFalse(Number._floats_really_same(1.0, float('nan')))
@@ -1399,7 +1399,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (Number._floats_really_same(-0.0, -0.0))
 
     # noinspection PyUnresolvedReferences
-    def test_name_of_zone(self):
+    def test_01_name_of_zone(self):
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
         self.assertEqual('NAN', Number.name_of_zone[Number.Zone.NAN])
@@ -1411,11 +1411,11 @@ class NumberTestCase(unittest.TestCase):
 
     ################## checking python assumptions ###########################
 
-    def test_python_float_equality_weirdnesses(self):
+    def test_00_python_float_equality_weirdnesses(self):
         self.assertEqual(+0.0, -0.0)
         self.assertNotEqual(float('nan'), float('nan'))
 
-    def test_python_ldexp(self):
+    def test_00_python_ldexp(self):
         self.assertEqual(1.0, math.ldexp(.5, 1))
         self.assertEqual(-1.0, math.ldexp(-.5, 1))
         self.assertEqual(3.0, math.ldexp(.75, 2))
@@ -1423,7 +1423,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(625.0, math.ldexp(2500, -2))
         self.assertEqual(-625.0, math.ldexp(-2500, -2))
 
-    def test_python_int_floors_toward_zero(self):
+    def test_00_python_int_floors_toward_zero(self):
         self.assertEqual(2, int(Number(2.0)))
         self.assertEqual(2, int(Number(2.000001)))
         self.assertEqual(2, int(Number(2.1)))
@@ -1438,7 +1438,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(-2, int(Number(-2.999999)))
         self.assertEqual(-3, int(Number(-3.0)))
 
-    def test_python_weird_big_math(self):
+    def test_00_python_weird_big_math(self):
         self.assertEqual((1 << 1000),              1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
         self.assertEqual((1 << 1000)-1,             10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
         self.assertEqual(     pow(2,1000),         1.0715086071862673e+301)
@@ -1448,7 +1448,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (     pow(2,1000)-1      == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
         self.assertTrue (math.pow(2,1000)-1     == 1.0715086071862673e+301)
 
-    def test_python_binary_shift_negative_left(self):
+    def test_00_python_binary_shift_negative_left(self):
         self.assertEqual( -2, -2 << 0)
         self.assertEqual( -4, -2 << 1)
         self.assertEqual( -8, -2 << 2)
@@ -1463,7 +1463,7 @@ class NumberTestCase(unittest.TestCase):
 
         self.assertEqual(-1267650600228229401496703205376, -1 << 100)
 
-    def test_python_binary_shift_negative_right(self):
+    def test_00_python_binary_shift_negative_right(self):
         self.assertEqual(-1, -1 >> 0)
         self.assertEqual(-1, -1 >> 1)
         self.assertEqual(-1, -1 >> 2)
@@ -1494,7 +1494,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(-1, -1267650600228229401496703205376 >> 100)
         self.assertEqual(-1, -1267650600228229401496703205376 >> 101)
 
-    def test_python_binary_shift_left(self):
+    def test_00_python_binary_shift_left(self):
         self.assertEqual(256, 1 << 8)
         self.assertEqual(256*256, 1 << 8*2)
         self.assertEqual(256*256*256, 1 << 8*3)
@@ -1505,7 +1505,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256*256, 1 << 8*20)
         self.assertEqual(                              1461501637330902918203684832716283019655932542976, 1 << 8*20)
 
-    def test_python_binary_string_comparison(self):
+    def test_00_python_binary_string_comparison(self):
         self.assertTrue(b'\x81' < b'\x82')
         self.assertTrue(b'\x80' < b'\x81')
         self.assertTrue(b'\x7F' < b'\x80')

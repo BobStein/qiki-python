@@ -27,13 +27,28 @@ class WordTestCase(unittest.TestCase):
             Word.uninstall()
         Word.disconnect()
 
-    def test_000_number(self):
+    def test_00_number(self):
         n = Number(1)
         self.assertEqual(1, int(n))
 
-    def test_00_word(self):
+    def test_01_word(self):
         define = Word('define')
         self.assertEqual(define.vrb, define.id)
+
+    def test_02_word_by_name(self):
+        define = Word('define')
+        self.assertEqual('define', define.txt)
+
+    def test_02_word_by_id(self):
+        define = Word('define')
+        define_too = Word(define.id)
+        self.assertEqual('define', define_too.txt)
+
+    def test_02_word_by_word(self):
+        define = Word('define')
+        define_too = Word(define)
+        print(repr(define_too))
+        self.assertEqual('define', define_too.txt)
 
     def test_id_cannot_set_id(self):
         define = Word('define')
@@ -88,7 +103,12 @@ class WordTestCase(unittest.TestCase):
         int_max_id = int(num_max_id)
         self.assertEqual(Word._ID_MAX_FIXED, int_max_id)
 
-    def test_zzz_define_noun(self):
+    def test_describe(self):
+        noun = Word('noun')
+        noun_description = noun.description()
+        self.assertIn('noun', noun_description)
+
+    def test_zz1_define_noun(self):
         system = Word('system')
         self.assertEqual('system', system.txt)
         noun = Word('noun')
@@ -96,26 +116,23 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(human.exists)
         self.assertEqual('human', human.txt)
 
-    def test_zzz_define_collision(self):
+    def test_zz2_define_collision(self):
         system = Word('system')
-        self.assertEqual('system', system.txt)
         noun = Word('noun')
-        human = system.define(noun, 'human')
-        self.assertTrue(human.exists)
-        self.assertEqual('human', human.txt)
+        system.define(noun, 'human')
         with self.assertRaises(Word.DefineDuplicateException):
-            human_too = system.define(noun, 'human')
+            system.define(noun, 'human')
 
-    def test_zzz_define_verb(self):
+    def test_zz3_define_verb(self):
         system = Word('system')
-        self.assertEqual('system', system.txt)
         verb = Word('verb')
-        rate = system.define(verb, 'rate')
-        self.assertTrue(rate.exists)
-        self.assertEqual('rate', rate.txt)
-        rating = system.rate(system, 'loving myself', 100)
+        like = system.define(verb, 'like')
+        self.assertEqual(like.txt, 'like')
+        Word.like = like
+        rating = system.like(system, 'loving itself', 100)
+        print repr(rating)
         self.assertEqual(Number(100), rating.num)
-        self.assertEqual('loving myself', rating.txt)
+        self.assertEqual('loving itself', rating.txt)
 
 if __name__ == '__main__':
     import unittest
