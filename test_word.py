@@ -134,7 +134,7 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
 
-    def test_zz2_define_collision(self):
+    def test_zz4_define_collision(self):
         system = Word('system')
         noun = Word('noun')
         system.define(noun, 'human')

@@ -125,6 +125,8 @@ class Word(object):
         return self.define(Word('noun'), txt, num)
 
     def define(self, obj, txt, num=Number(1), meta_verb=None):
+        if Word(txt).exists:
+            raise self.DefineDuplicateException
         word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=num, txt=txt)
         # if meta_verb is not None:
         #     def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
@@ -262,6 +264,10 @@ class Word(object):
         self._connection.commit()
         self.exists = True
         cursor.close()
+
+    # noinspection PyClassHasNoInit
+    class DefineDuplicateException:
+        pass
 
 
 # TODO: raise subclass of built-in exceptions
