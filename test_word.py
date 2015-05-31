@@ -35,10 +35,26 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(1, int(n))
 
     def test_01_word(self):
+       self.assertTrue(self.system.is_system())
+
+    def test_02_word(self):
         noun = self.system('noun')
+        self.assertTrue(noun.exists)
+        self.assertTrue(noun.is_noun())
         self.assertEqual('noun', noun.txt)
 
-    class OldTests:
+    def test_03_word(self):
+        noun = self.system('noun')
+        thing = noun('thing')
+        self.assertTrue(thing.exists)
+        self.assertEqual('thing', thing.txt)
+
+    def test_03b_word(self):
+        thing = self.system('noun')('thing')
+        self.assertTrue(thing.exists)
+        self.assertEqual('thing', thing.txt)
+
+    if False:
         def test_02_word_by_name(self):
             define = Word('define')
             self.assertEqual('define', define.txt)

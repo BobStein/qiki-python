@@ -28,7 +28,7 @@ class Word(object):
         self.exists = False
         self.__id = None
         self._as_if_method = self.null_verb_method
-        assert self._connection is not None, "Call Word.connect(database credentials)"
+        assert self._connection is not None, "Not connected, call Word.system()"
         if isinstance(content, six.string_types):
             self._from_definition(content)
         elif isinstance(content, Number):
@@ -56,6 +56,7 @@ class Word(object):
         assert service == 'MySQL'
         table = kwargs.pop('table')
         connection = mysql.connector.connect(**kwargs)
+        # TODO:  Combine connection and table?  We could subclass like so:  Word.System(MySQLConnection)
         this_system = cls(cls._ID_SYSTEM, table=table, connection=connection)
         return this_system
 
@@ -69,50 +70,40 @@ class Word(object):
 
     def install_from_scratch(self):
         self.uninstall_to_scratch()
-        define = Word(
+        define = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
             obj = self._ID_VERB,
             num = Number(1),
             txt = u'define',
-            connection=self._connection,
-            table=self._table,
         )
-        noun = Word(
+        noun = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
             obj = self._ID_NOUN,
             num = Number(1),
             txt = u'noun',
-            connection=self._connection,
-            table=self._table,
         )
-        verb = Word(
+        verb = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
             obj = self._ID_NOUN,
             num = Number(1),
             txt = u'verb',
-            connection=self._connection,
-            table=self._table,
         )
-        agent = Word(
+        agent = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
             obj = self._ID_NOUN,
             num = Number(1),
             txt = u'agent',
-            connection=self._connection,
-            table=self._table,
         )
-        system = Word(
+        system = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
             obj = self._ID_AGENT,
             num = Number(1),
             txt = u'system',
-            connection=self._connection,
-            table=self._table,
         )
         define.__id = self._ID_DEFINE
         noun.__id = self._ID_NOUN
@@ -133,14 +124,23 @@ class Word(object):
         cursor.execute("DELETE FROM `{table}`".format(table=self._table))
         cursor.close()
 
-    def __call__(self, *args, **kwargs):
+    def spawn(self, *args, **kwargs):
+        """Word() for the same connection and table"""
         kwargs['table'] = self._table
         kwargs['connection'] = self._connection
         the_word = self.__class__(*args, **kwargs)
-        if the_word.exists:
+        return the_word
+
+    def __call__(self, *args, **kwargs):
+        if self.is_system():
+            the_word = self.spawn(*args, **kwargs)
+            assert the_word.exists
+            assert the_word.sbj == self.id
+            the_word._system = self
             return the_word
-        else:
-            raise
+        elif self.is_noun():
+            assert self._system.exists and self._system.is_system()
+            return self._system.define(self, *args, **kwargs)
 
         # In the case of person.like(obj), self points to like, not person.  There is no way to know person here.
         # This answer comes close:
@@ -157,30 +157,33 @@ class Word(object):
         return self.define(Word('noun'), txt, num)
 
     def define(self, obj, txt, num=Number(1)):
-        self.sentence(self, vrb, obj)
+        already = self.spawn(txt)
+        if already.exists:
+            raise self.DefineDuplicateException("'{txt}' already defined, as a {obj_txt}.".format(
+                txt=txt,
+                obj_txt=self.spawn(already.obj).txt
+            ))
+        the_word = self.sentence(self, self.spawn('define'), obj, txt, num)
+        return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
+        assert isinstance(sbj, Word), "sbj can't be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, Word), "vrb can't be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, Word), "obj can't be a {type}".format(type=type(obj).__name__)
         assert isinstance(txt, six.string_types)
         assert isinstance(num, Number)
-        assert isinstance(vrb_txt, six.string_types)
-        if Word(txt).exists:
-            raise self.DefineDuplicateException
-        word_object = Word(sbj=self.id, vrb=Word(vrb_txt).id, obj=obj.id, num=num, txt=txt)
-        if word_object.is_a(Word('verb')):
-            def verb_method(_self, _obj, _txt, _num=Number(1)):
-                verb_object = _self.define(_obj, txt=_txt, num=_num, vrb_txt=word_object.txt)   # freaky how word_object works here
-                return verb_object
-            word_object._as_if_method = verb_method
+        word_object = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
+        # if word_object.is_a(Word('verb')):
+        #     def verb_method(_self, _obj, _txt, _num=Number(1)):
+        #         verb_object = _self.define(_obj, txt=_txt, num=_num, vrb_txt=word_object.txt)   # freaky how word_object works here
+        #         return verb_object
+        #     word_object._as_if_method = verb_method
         word_object.save()
         return word_object
 
     @classmethod
     def make_verb_a_method(cls, verb):
         setattr(cls, verb.txt, verb)
-
-    def __getattr__(self, item):
-        print("Word get {item}".format(item=item))
 
     def disconnect(self):
         self._connection.close()
@@ -234,7 +237,22 @@ class Word(object):
         cursor.close()
 
     def is_a(self, word):
-        return self.vrb == self._ID_DEFINE and self.obj == word.id
+        return self.vrb.is_define() and self.obj == word.id
+
+    def is_define(self):
+        return self.id == self._ID_DEFINE
+
+    def is_noun(self):
+        return self.id == self._ID_NOUN
+
+    def is_verb(self):
+        return self.id == self._ID_VERB
+
+    def is_agent(self):
+        return self.id == self._ID_AGENT
+
+    def is_system(self):
+        return self.id == self._ID_SYSTEM
 
     def description(self):
         sbj = Word(self.sbj)
@@ -266,11 +284,10 @@ class Word(object):
         elif hasattr(self, '__id'):
             return "Word(Number('{id_qstring}'))".format(qstring=self.id.qstring())
 
-    @classmethod
-    def max_id(cls):
-        cursor = cls._connection.cursor()
-        cursor.execute("SELECT MAX(id) FROM `{table}`".format(table=cls._table))
-        return cls.number_from_mysql(cursor.fetchone()[0])
+    def max_id(self):
+        cursor = self._connection.cursor()
+        cursor.execute("SELECT MAX(id) FROM `{table}`".format(table=self._table))
+        return self.number_from_mysql(cursor.fetchone()[0])
 
     def save(self):
         assert isinstance(self.__id, (Number, type(None)))
@@ -305,7 +322,7 @@ class Word(object):
         cursor.close()
 
     # noinspection PyClassHasNoInit
-    class DefineDuplicateException:
+    class DefineDuplicateException(BaseException):
         pass
 
 
