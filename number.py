@@ -755,12 +755,12 @@ Number.internal_setup()
 
 
 
+# TODO: Ludicrous Numbers
+# TODO: Transfinite Numbers
 # TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
 # TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
 # ... would be 8 bytes, same as float64, ...
 # ... versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
-# TODO: Ludicrous Numbers
-# TODO: Transfinite Numbers
 
 # TODO: decimal.Decimal
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html

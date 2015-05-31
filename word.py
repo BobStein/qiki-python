@@ -5,7 +5,6 @@ A qiki Word is defined by a three-word subject-verb-object
 
 import six
 import time
-import types
 import mysql.connector
 from number import Number
 
@@ -22,10 +21,10 @@ class Word(object):
     :type _ID_DEFINE: Number
     :type _connection: mysql.connector.ySQLConnection
     """
-    _connection = None
-    _table = None
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None,connection=None):
+        self._table = table
+        self._connection = connection
         self.exists = False
         self.__id = None
         self._as_if_method = self.null_verb_method
@@ -52,9 +51,13 @@ class Word(object):
             raise TypeError('Word(%s) is not supported' % typename)
 
     @classmethod
-    def connect(cls, **kwargs):
-        cls._table = kwargs.pop('table')
-        cls._connection = mysql.connector.connect(**kwargs)
+    def system(cls, **kwargs):
+        service = kwargs.pop('service')
+        assert service == 'MySQL'
+        table = kwargs.pop('table')
+        connection = mysql.connector.connect(**kwargs)
+        this_system = cls(cls._ID_SYSTEM, table=table, connection=connection)
+        return this_system
 
     _ID_DEFINE = Number(1)
     _ID_NOUN   = Number(2)
@@ -64,49 +67,58 @@ class Word(object):
 
     _ID_MAX_FIXED = Number(5)
 
-    @classmethod
-    def install_from_scratch(cls):
-        cls.uninstall()
+    def install_from_scratch(self):
+        self.uninstall_to_scratch()
         define = Word(
-            sbj = cls._ID_SYSTEM,
-            vrb = cls._ID_DEFINE,
-            obj = cls._ID_VERB,
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_VERB,
             num = Number(1),
-            txt = u'define'
+            txt = u'define',
+            connection=self._connection,
+            table=self._table,
         )
         noun = Word(
-            sbj = cls._ID_SYSTEM,
-            vrb = cls._ID_DEFINE,
-            obj = cls._ID_NOUN,
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
             num = Number(1),
-            txt = u'noun'
+            txt = u'noun',
+            connection=self._connection,
+            table=self._table,
         )
         verb = Word(
-            sbj = cls._ID_SYSTEM,
-            vrb = cls._ID_DEFINE,
-            obj = cls._ID_NOUN,
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
             num = Number(1),
-            txt = u'verb'
+            txt = u'verb',
+            connection=self._connection,
+            table=self._table,
         )
         agent = Word(
-            sbj = cls._ID_SYSTEM,
-            vrb = cls._ID_DEFINE,
-            obj = cls._ID_NOUN,
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
             num = Number(1),
-            txt = u'agent'
+            txt = u'agent',
+            connection=self._connection,
+            table=self._table,
         )
         system = Word(
-            sbj = cls._ID_SYSTEM,
-            vrb = cls._ID_DEFINE,
-            obj = cls._ID_AGENT,
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_AGENT,
             num = Number(1),
-            txt = u'system'
+            txt = u'system',
+            connection=self._connection,
+            table=self._table,
         )
-        define.__id = cls._ID_DEFINE
-        noun.__id = cls._ID_NOUN
-        verb.__id = cls._ID_VERB
-        agent.__id = cls._ID_AGENT
-        system.__id = cls._ID_SYSTEM
+        define.__id = self._ID_DEFINE
+        noun.__id = self._ID_NOUN
+        verb.__id = self._ID_VERB
+        agent.__id = self._ID_AGENT
+        system.__id = self._ID_SYSTEM
         try:
             define.save()
             noun.save()
@@ -116,7 +128,26 @@ class Word(object):
         except mysql.connector.IntegrityError:
             pass
 
+    def uninstall_to_scratch(self):
+        cursor = self._connection.cursor(prepared=True)
+        cursor.execute("DELETE FROM `{table}`".format(table=self._table))
+        cursor.close()
+
     def __call__(self, *args, **kwargs):
+        kwargs['table'] = self._table
+        kwargs['connection'] = self._connection
+        the_word = self.__class__(*args, **kwargs)
+        if the_word.exists:
+            return the_word
+        else:
+            raise
+
+        # In the case of person.like(obj), self points to like, not person.  There is no way to know person here.
+        # This answer comes close:
+        # http://stackoverflow.com/a/6575615/673991
+        # But it assigns the child object to an instance of the parent class
+        # I want it to work when the child is assigned to the parent class itself -- and to work for all past-or-future instantiations
+        print("HACK call " + self.txt)
         return self._as_if_method(*args, **kwargs)
 
     def null_verb_method(self, *args, **kwargs):
@@ -125,32 +156,34 @@ class Word(object):
     def noun(self, txt, num=Number(1)):
         return self.define(Word('noun'), txt, num)
 
-    def define(self, obj, txt, num=Number(1), vrb='define'):
+    def define(self, obj, txt, num=Number(1)):
+        self.sentence(self, vrb, obj)
+
+    def sentence(self, sbj, vrb, obj, txt, num):
+        assert isinstance(obj, Word), "obj can't be a {type}".format(type=type(obj).__name__)
+        assert isinstance(txt, six.string_types)
+        assert isinstance(num, Number)
+        assert isinstance(vrb_txt, six.string_types)
         if Word(txt).exists:
             raise self.DefineDuplicateException
-        word_object = Word(sbj=self.id, vrb=Word(vrb).id, obj=obj.id, num=num, txt=txt)
+        word_object = Word(sbj=self.id, vrb=Word(vrb_txt).id, obj=obj.id, num=num, txt=txt)
         if word_object.is_a(Word('verb')):
             def verb_method(_self, _obj, _txt, _num=Number(1)):
-                verb_object = _self.define(_obj, _txt, num=_num, vrb=word_object.txt)
+                verb_object = _self.define(_obj, txt=_txt, num=_num, vrb_txt=word_object.txt)   # freaky how word_object works here
                 return verb_object
-            word_object._as_if_method = verb_method # types.MethodType(verb_method, self)
-        # if meta_verb is not None:
-        #     def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
-        #         # TODO: load fields and then self.save()
-        #         pass
-        #     word_object._as_if_method = verb_method
+            word_object._as_if_method = verb_method
         word_object.save()
         return word_object
 
     @classmethod
-    def uninstall(cls):
-        cursor = cls._connection.cursor(prepared=True)
-        cursor.execute("DELETE FROM `{table}`".format(table=cls._table))
-        cursor.close()
+    def make_verb_a_method(cls, verb):
+        setattr(cls, verb.txt, verb)
 
-    @classmethod
-    def disconnect(cls):
-        cls._connection.close()
+    def __getattr__(self, item):
+        print("Word get {item}".format(item=item))
+
+    def disconnect(self):
+        self._connection.close()
 
     def _from_id(self, _id):
         """Construct a Word from its id
