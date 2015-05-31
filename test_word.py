@@ -19,7 +19,7 @@ class WordTestCase(unittest.TestCase):
             user=    os.environ['DATABASE_USER'],
             password=os.environ['DATABASE_PASSWORD'],
             database=os.environ['DATABASE_DATABASE'],
-            table='word'
+            table=   os.environ['DATABASE_TABLE'],
         )
         Word.install_from_scratch()
 

@@ -52,10 +52,8 @@ class Word(object):
 
     @classmethod
     def connect(cls, **kwargs):
-        table = kwargs.pop('table')
-        assert table is not None
+        cls._table = kwargs.pop('table')
         cls._connection = mysql.connector.connect(**kwargs)
-        cls._table = table
 
     _ID_DEFINE = Number(1)
     _ID_NOUN   = Number(2)
