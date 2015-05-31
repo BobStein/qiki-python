@@ -134,7 +134,7 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
 
-    def test_zz4_define_collision(self):
+    def test_zz2_define_collision(self):
         system = Word('system')
         noun = Word('noun')
         system.define(noun, 'human')
@@ -145,9 +145,10 @@ class WordTestCase(unittest.TestCase):
         system = Word('system')
         verb = Word('verb')
         like = system.define(verb, 'like')
+        # self.assertEqual(Word.like.txt, 'like')
         self.assertEqual(like.txt, 'like')
         Word.like = like
-        rating = system.like(system, 'loving itself', 100)
+        rating = system.like(system, system, 'loving itself', Number(100))
         print(rating.description())
         self.assertEqual(Number(100), rating.num)
         self.assertEqual('loving itself', rating.txt)

@@ -5,6 +5,7 @@ A qiki Word is defined by a three-word subject-verb-object
 
 import six
 import time
+import types
 import mysql.connector
 from number import Number
 
@@ -118,16 +119,21 @@ class Word(object):
     def __call__(self, *args, **kwargs):
         return self._as_if_method(*args, **kwargs)
 
-    def null_verb_method(*args, **kwargs):
+    def null_verb_method(self, *args, **kwargs):
         pass
 
     def noun(self, txt, num=Number(1)):
         return self.define(Word('noun'), txt, num)
 
-    def define(self, obj, txt, num=Number(1), meta_verb=None):
+    def define(self, obj, txt, num=Number(1), vrb='define'):
         if Word(txt).exists:
             raise self.DefineDuplicateException
-        word_object = Word(sbj=self.id, vrb=Word('define').id, obj=obj.id, num=num, txt=txt)
+        word_object = Word(sbj=self.id, vrb=Word(vrb).id, obj=obj.id, num=num, txt=txt)
+        if word_object.is_a(Word('verb')):
+            def verb_method(_self, _obj, _txt, _num=Number(1)):
+                verb_object = _self.define(_obj, _txt, num=_num, vrb=word_object.txt)
+                return verb_object
+            word_object._as_if_method = verb_method # types.MethodType(verb_method, self)
         # if meta_verb is not None:
         #     def verb_method(_self, _obj, _txt, _meta_verb=None):   # or something
         #         # TODO: load fields and then self.save()

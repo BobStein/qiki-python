@@ -779,4 +779,4 @@ Number.internal_setup()
 # TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
 # TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO: str(Number('0q80')) should be '0'.  78 changes in test_word.py
-
+# TODO: Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
