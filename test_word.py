@@ -2,6 +2,7 @@
 Testing qiki word.py
 """
 
+from __future__ import print_function
 import unittest
 import os
 import types
@@ -34,25 +35,68 @@ class WordTestCase(unittest.TestCase):
         n = Number(1)
         self.assertEqual(1, int(n))
 
-    def test_01_word(self):
-       self.assertTrue(self.system.is_system())
+    def test_01_system(self):
+        self.assertTrue(self.system.is_system())
+        self.assertEqual('system', self.system.txt)
 
-    def test_02_word(self):
+    def test_02_noun(self):
         noun = self.system('noun')
         self.assertTrue(noun.exists)
         self.assertTrue(noun.is_noun())
         self.assertEqual('noun', noun.txt)
 
-    def test_03_word(self):
+    def test_03_noun_spawn(self):
         noun = self.system('noun')
         thing = noun('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
 
-    def test_03b_word(self):
+    def test_03b_noun_spawn_crazy_syntax(self):
         thing = self.system('noun')('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
+
+    def test_04_is_a(self):
+        noun = self.system('noun')
+        thing = noun('thing')
+        cosa = thing('cosa')
+        self.assertTrue(noun.is_a(noun))
+        self.assertTrue(thing.is_a(noun))
+        self.assertTrue(cosa.is_a(noun))
+
+    def test_05_noun_grandchild(self):
+        agent = self.system('agent')
+        human = agent('human')
+        self.assertEqual('human', human.txt)
+
+    def test_06_noun_great_grandchild(self):
+        noun = self.system('noun')
+        self.assertTrue(noun.is_noun())
+
+        child = noun('child')
+        self.assertFalse(child.is_noun())
+        self.assertTrue( child.spawn(child.obj).is_noun())
+
+        grandchild = child('grandchild')
+        self.assertFalse(grandchild.is_noun())
+        self.assertFalse(grandchild.spawn(grandchild.obj).is_noun())
+        self.assertTrue( grandchild.spawn(grandchild.spawn(grandchild.obj).obj).is_noun())
+
+        greatgrandchild = grandchild('greatgrandchild')
+        self.assertFalse(greatgrandchild.is_noun())
+        self.assertFalse(greatgrandchild.spawn(greatgrandchild.obj).is_noun())
+        self.assertFalse(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).is_noun())
+        self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
+        self.assertEqual('greatgrandchild', greatgrandchild.txt)
+
+    ########## Internals ##########
+
+    def test_00_number_from_mysql(self):
+        mysql_42 = bytearray(b'\x82\x2A')
+        num_42 = Number(42)
+        self.assertEqual(num_42, Word.number_from_mysql(mysql_42))
+
+
 
     if False:
         def test_02_word_by_name(self):
@@ -94,11 +138,6 @@ class WordTestCase(unittest.TestCase):
                 pass
             with self.assertRaises(TypeError):
                 Word(UnExpected)
-
-        def test_number_from_mysql(self):
-            mysql_42 = bytearray(b'\x82\x2A')
-            num_42 = Number(42)
-            self.assertEqual(num_42, Word.number_from_mysql(mysql_42))
 
         def test_by_id(self):
             define = Word('define')

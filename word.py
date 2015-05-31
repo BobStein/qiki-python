@@ -140,7 +140,16 @@ class Word(object):
             return the_word
         elif self.is_noun():
             assert self._system.exists and self._system.is_system()
-            return self._system.define(self, *args, **kwargs)
+            the_word = self._system.define(self, *args, **kwargs)
+            the_word._system = self._system
+            return the_word
+        elif self.is_a_noun():
+            assert self._system.exists and self._system.is_system()
+            the_word = self._system.define(self, *args, **kwargs)
+            the_word._system = self._system
+            return the_word
+        else:
+            raise
 
         # In the case of person.like(obj), self points to like, not person.  There is no way to know person here.
         # This answer comes close:
@@ -163,7 +172,7 @@ class Word(object):
                 txt=txt,
                 obj_txt=self.spawn(already.obj).txt
             ))
-        the_word = self.sentence(self, self.spawn('define'), obj, txt, num)
+        the_word = self.sentence(sbj=self, vrb=self.spawn('define'), obj=obj, txt=txt, num=num)
         return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
@@ -237,7 +246,16 @@ class Word(object):
         cursor.close()
 
     def is_a(self, word):
-        return self.vrb.is_define() and self.obj == word.id
+        if self.vrb == self._ID_DEFINE:
+            if self.obj == word.id:
+                return True
+            parent = self.spawn(self.obj)
+            if parent.vrb == self._ID_DEFINE and parent.obj == word.id:
+                return True
+        return False
+
+    def is_a_noun(self):
+        return self.is_a(self.spawn('noun'))
 
     def is_define(self):
         return self.id == self._ID_DEFINE
@@ -293,14 +311,13 @@ class Word(object):
         assert isinstance(self.__id, (Number, type(None)))
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
-        assert isinstance(self.obj, Number)
+        assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
         assert not self.exists
-        _id = self.__id
-        if _id is None:
-            _id = self.max_id().inc()   # AUTO sorta INCREMENT
-        assert isinstance(_id, Number)
+        if self.__id is None:
+            self.__id = self.max_id().inc()   # AUTO sorta INCREMENT
+        assert isinstance(self.__id, Number)
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
@@ -308,7 +325,7 @@ class Word(object):
             "VALUES (x'{id}', x'{sbj}', x'{vrb}', x'{obj}', x'{num}',    ?, x'{whn}')"
             .format(
                 table=self._table,
-                id=_id.hex(),
+                id=self.__id.hex(),
                 sbj=self.sbj.hex(),
                 vrb=self.vrb.hex(),
                 obj=self.obj.hex(),
@@ -322,8 +339,13 @@ class Word(object):
         cursor.close()
 
     # noinspection PyClassHasNoInit
-    class DefineDuplicateException(BaseException):
+    class DefineDuplicateException(Exception):
         pass
 
 
-# TODO: raise subclass of built-in exceptions
+# TODO: don't raise built-in classes, raise subclasses of built-in exceptions
+# TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
+# ...If so they'd need to be dynamic properties -- and avoid infinite recursion!
+# ...One way to do this might be x = Word(id) wouldn't generate database activity
+# ......unless some other method were called, e.g. x.vrb
+# TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
