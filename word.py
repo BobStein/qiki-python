@@ -28,7 +28,7 @@ class Word(object):
         self.exists = False
         self.__id = None
         self._as_if_method = self.null_verb_method
-        assert self._connection is not None, "Call Word.setup(database path)"
+        assert self._connection is not None, "Call Word.connect(database credentials)"
         if isinstance(content, six.string_types):
             self._from_definition(content)
         elif isinstance(content, Number):
@@ -51,9 +51,10 @@ class Word(object):
             raise TypeError('Word(%s) is not supported' % typename)
 
     @classmethod
-    def connect(cls, connection_specs, table=None):
+    def connect(cls, **kwargs):
+        table = kwargs.pop('table')
         assert table is not None
-        cls._connection = mysql.connector.connect(**connection_specs)
+        cls._connection = mysql.connector.connect(**kwargs)
         cls._table = table
 
     _ID_DEFINE = Number(1)

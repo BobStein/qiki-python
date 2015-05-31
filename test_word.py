@@ -4,7 +4,6 @@ Testing qiki word.py
 
 import unittest
 import os
-
 from number import Number
 from word import Word
 
@@ -14,13 +13,14 @@ LET_DATABASE_RECORDS_REMAIN = True
 class WordTestCase(unittest.TestCase):
 
     def setUp(self):
-        Word.connect({
-            'host':     os.environ['DATABASE_HOST'],
-            'port':     os.environ['DATABASE_PORT'],
-            'user':     os.environ['DATABASE_USER'],
-            'password': os.environ['DATABASE_PASSWORD'],
-            'database': os.environ['DATABASE_DATABASE'],
-        }, table='word')
+        Word.connect(
+            host=    os.environ['DATABASE_HOST'],
+            port=    os.environ['DATABASE_PORT'],
+            user=    os.environ['DATABASE_USER'],
+            password=os.environ['DATABASE_PASSWORD'],
+            database=os.environ['DATABASE_DATABASE'],
+            table='word'
+        )
         Word.install_from_scratch()
 
     def tearDown(self):
