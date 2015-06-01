@@ -88,12 +88,24 @@ class WordTestCase(unittest.TestCase):
         self.assertFalse(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).is_noun())
         self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
         self.assertEqual('greatgrandchild', greatgrandchild.txt)
-        self.describe_all_words()
 
     def test_07_noun_great_great_grandchild(self):
         greatgrandchild = self.system('noun')('child')('grandchild')('greatgrandchild')
         greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
         self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
+        self.describe_all_words()
+
+    def test_07_is_a_noun(self):
+        noun = self.system('noun')
+        child = noun('child')
+        grandchild = child('grandchild')
+        greatgrandchild = grandchild('greatgrandchild')
+        greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
+        self.assertTrue(noun.is_a_noun())
+        self.assertTrue(child.is_a_noun())
+        self.assertTrue(grandchild.is_a_noun())
+        self.assertTrue(greatgrandchild.is_a_noun())
+        self.assertTrue(greatgreatgrandchild.is_a_noun())
 
     def test_08_noun_twice(self):
         noun = self.system('noun')
@@ -108,19 +120,26 @@ class WordTestCase(unittest.TestCase):
         thing = self.system('noun')('thing')
         thing_description = thing.description()
         self.assertIn('thing', thing_description)
-        print(thing_description)
 
-    def test_short_and_long_way(self):
+    def test_short_and_long_ways(self):
         noun = self.system('noun')
         thing1 = noun('thing')
-        thing2 = self.system.define(noun, 'thing')
+        thing2 = self.system.noun('thing')
+        thing3 = self.system.define(noun, 'thing')
         self.assertEqual(thing1.id,            thing2.id           )
+        self.assertEqual(thing1.id,            thing3.id           )
         self.assertEqual(thing1.description(), thing2.description())
+        self.assertEqual(thing1.description(), thing3.description())
 
-    def describe_all_words(self):
-        ids = self.system.get_all_ids()
-        for id in ids:
-            print(self.system(id).description())
+    def test_verb(self):
+        agent = self.system('agent')
+        human = agent('human')
+        self.system.verb('like')
+        anna = human('anna')
+        bart = human('bart')
+        chad = human('bart')
+        anna.like(bart, 8)
+        anna.like(chad, 10)
 
 
     ########## Internals ##########
@@ -130,6 +149,13 @@ class WordTestCase(unittest.TestCase):
         num_42 = Number(42)
         self.assertEqual(num_42, Word.number_from_mysql(mysql_42))
 
+
+    ################ Util ####################
+
+    def describe_all_words(self):
+        ids = self.system.get_all_ids()
+        for id in ids:
+            print(self.system(id).description())
 
 
     if False:

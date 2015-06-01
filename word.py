@@ -149,7 +149,7 @@ class Word(object):
         pass
 
     def noun(self, txt, num=Number(1)):
-        return self.define(Word('noun'), txt, num)
+        return self.define(self('noun'), txt, num)
 
     def define(self, obj, txt, num=Number(1)):
         already = self.spawn(txt)
@@ -233,7 +233,7 @@ class Word(object):
         return False
 
     def is_a_noun(self):
-        return self.is_a(self.spawn('noun'))
+        return self.is_a(self('noun'))
 
     def is_define(self):
         return self.id == self._ID_DEFINE
