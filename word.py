@@ -138,26 +138,26 @@ class Word(object):
             assert the_word.sbj == self.id
             the_word._system = self
             return the_word
-        elif self.is_noun():
-            assert self._system.exists and self._system.is_system()
-            the_word = self._system.define(self, *args, **kwargs)
-            the_word._system = self._system
-            return the_word
-        elif self.is_a_noun():
-            assert self._system.exists and self._system.is_system()
-            the_word = self._system.define(self, *args, **kwargs)
-            the_word._system = self._system
-            return the_word
         else:
-            raise
+            assert self._system.exists and self._system.is_system()
+            the_word = self._system.define(self, *args, **kwargs)
+            the_word._system = self._system
+            return the_word
+        # elif self.is_a_noun():
+        #     assert self._system.exists and self._system.is_system()
+        #     the_word = self._system.define(self, *args, **kwargs)
+        #     the_word._system = self._system
+        #     return the_word
+        # else:
+        #     raise
 
         # In the case of person.like(obj), self points to like, not person.  There is no way to know person here.
         # This answer comes close:
         # http://stackoverflow.com/a/6575615/673991
         # But it assigns the child object to an instance of the parent class
         # I want it to work when the child is assigned to the parent class itself -- and to work for all past-or-future instantiations
-        print("HACK call " + self.txt)
-        return self._as_if_method(*args, **kwargs)
+        # print("HACK call " + self.txt)
+        # return self._as_if_method(*args, **kwargs)
 
     def null_verb_method(self, *args, **kwargs):
         pass

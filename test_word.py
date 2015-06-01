@@ -89,6 +89,12 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
         self.assertEqual('greatgrandchild', greatgrandchild.txt)
 
+    def test_07_noun_great_great_grandchild(self):
+        greatgrandchild = self.system('noun')('child')('grandchild')('greatgrandchild')
+        greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
+        self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
+
+
     ########## Internals ##########
 
     def test_00_number_from_mysql(self):
