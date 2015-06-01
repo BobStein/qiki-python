@@ -1229,6 +1229,19 @@ class NumberTestCase(unittest.TestCase):
     def test_float_cant_distinguish_big_integers(self):
         self.assertEqual(float(Number('0q8A_010000000000000001')), float(Number('0q8A_01')))
 
+    def test_add_assign(self):
+        n = 2
+        n += Number(2)
+        self.assertEqual(Number(4), n)
+
+        n = Number(2)
+        n += Number(2)
+        self.assertEqual(Number(4), n)
+
+        n = Number(2)
+        n += 2
+        self.assertEqual(Number(4), n)
+
     def test_pickle(self):
         self.assertIn(pickle.dumps(Number), (
             textwrap.dedent("""\

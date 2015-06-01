@@ -125,7 +125,8 @@ class Word(object):
         cursor.close()
 
     def spawn(self, *args, **kwargs):
-        """Word() for the same connection and table"""
+        """Construct a Word() using the same connection and table."""
+        # kwargs = dict(kwargs.items() + dict(table=self._table, connection=self._connection).items())
         kwargs['table'] = self._table
         kwargs['connection'] = self._connection
         the_word = self.__class__(*args, **kwargs)
@@ -143,21 +144,6 @@ class Word(object):
             the_word = self._system.define(self, *args, **kwargs)
             the_word._system = self._system
             return the_word
-        # elif self.is_a_noun():
-        #     assert self._system.exists and self._system.is_system()
-        #     the_word = self._system.define(self, *args, **kwargs)
-        #     the_word._system = self._system
-        #     return the_word
-        # else:
-        #     raise
-
-        # In the case of person.like(obj), self points to like, not person.  There is no way to know person here.
-        # This answer comes close:
-        # http://stackoverflow.com/a/6575615/673991
-        # But it assigns the child object to an instance of the parent class
-        # I want it to work when the child is assigned to the parent class itself -- and to work for all past-or-future instantiations
-        # print("HACK call " + self.txt)
-        # return self._as_if_method(*args, **kwargs)
 
     def null_verb_method(self, *args, **kwargs):
         pass
@@ -168,11 +154,8 @@ class Word(object):
     def define(self, obj, txt, num=Number(1)):
         already = self.spawn(txt)
         if already.exists:
-            raise self.DefineDuplicateException("'{txt}' already defined, as a {obj_txt}.".format(
-                txt=txt,
-                obj_txt=self.spawn(already.obj).txt
-            ))
-        the_word = self.sentence(sbj=self, vrb=self.spawn('define'), obj=obj, txt=txt, num=num)
+            return already
+        the_word = self.sentence(sbj=self, vrb=self('define'), obj=obj, txt=txt, num=num)
         return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
@@ -182,11 +165,6 @@ class Word(object):
         assert isinstance(txt, six.string_types)
         assert isinstance(num, Number)
         word_object = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
-        # if word_object.is_a(Word('verb')):
-        #     def verb_method(_self, _obj, _txt, _num=Number(1)):
-        #         verb_object = _self.define(_obj, txt=_txt, num=_num, vrb_txt=word_object.txt)   # freaky how word_object works here
-        #         return verb_object
-        #     word_object._as_if_method = verb_method
         word_object.save()
         return word_object
 
@@ -273,9 +251,9 @@ class Word(object):
         return self.id == self._ID_SYSTEM
 
     def description(self):
-        sbj = Word(self.sbj)
-        vrb = Word(self.vrb)
-        obj = Word(self.obj)
+        sbj = self.spawn(self.sbj)
+        vrb = self.spawn(self.vrb)
+        obj = self.spawn(self.obj)
         return "{sbj}.{vrb}({obj}, {txt}{maybe_num})".format(
             sbj=sbj.txt,
             vrb=vrb.txt,
@@ -342,6 +320,14 @@ class Word(object):
     class DefineDuplicateException(Exception):
         pass
 
+    def get_all_ids(self):
+        cursor = self._connection.cursor()
+        cursor.execute("SELECT id FROM `{table}` ORDER BY id ASC".format(table=self._table))
+        ids = []
+        for row in cursor:
+            id = self.number_from_mysql(row[0])
+            ids.append(id)
+        return ids
 
 # TODO: don't raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.

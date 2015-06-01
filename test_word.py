@@ -88,6 +88,7 @@ class WordTestCase(unittest.TestCase):
         self.assertFalse(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).is_noun())
         self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
         self.assertEqual('greatgrandchild', greatgrandchild.txt)
+        self.describe_all_words()
 
     def test_07_noun_great_great_grandchild(self):
         greatgrandchild = self.system('noun')('child')('grandchild')('greatgrandchild')
@@ -98,10 +99,29 @@ class WordTestCase(unittest.TestCase):
         noun = self.system('noun')
         base_max_id = self.system.max_id()
         thing1 = noun('thing')
-        self.assertEqual(Number(int(base_max_id)+1), self.system.max_id())
-        thing1 = noun('thing')
-        self.assertEqual(Number(int(base_max_id)+1), self.system.max_id())
+        self.assertEqual(base_max_id+1, self.system.max_id())
+        thing2 = noun('thing')
+        self.assertEqual(base_max_id+1, self.system.max_id())
         self.assertEqual(thing1.id, thing2.id)
+
+    def test_describe(self):
+        thing = self.system('noun')('thing')
+        thing_description = thing.description()
+        self.assertIn('thing', thing_description)
+        print(thing_description)
+
+    def test_short_and_long_way(self):
+        noun = self.system('noun')
+        thing1 = noun('thing')
+        thing2 = self.system.define(noun, 'thing')
+        self.assertEqual(thing1.id,            thing2.id           )
+        self.assertEqual(thing1.description(), thing2.description())
+
+    def describe_all_words(self):
+        ids = self.system.get_all_ids()
+        for id in ids:
+            print(self.system(id).description())
+
 
     ########## Internals ##########
 
@@ -175,12 +195,6 @@ class WordTestCase(unittest.TestCase):
             num_max_id = Word.max_id()
             int_max_id = int(num_max_id)
             self.assertEqual(Word._ID_MAX_FIXED, int_max_id)
-
-        def test_describe(self):
-            noun = Word('noun')
-            noun_description = noun.description()
-            self.assertIn('noun', noun_description)
-            print(noun_description)
 
         def test_is_a(self):
             self.assertTrue( Word('verb').is_a(Word('noun')))
