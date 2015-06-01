@@ -94,6 +94,14 @@ class WordTestCase(unittest.TestCase):
         greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
         self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
 
+    def test_08_noun_twice(self):
+        noun = self.system('noun')
+        base_max_id = self.system.max_id()
+        thing1 = noun('thing')
+        self.assertEqual(Number(int(base_max_id)+1), self.system.max_id())
+        thing1 = noun('thing')
+        self.assertEqual(Number(int(base_max_id)+1), self.system.max_id())
+        self.assertEqual(thing1.id, thing2.id)
 
     ########## Internals ##########
 

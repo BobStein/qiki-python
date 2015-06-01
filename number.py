@@ -117,6 +117,51 @@ class Number(object):
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
 
+    def __sub__(self, other):
+        n1 = Number(self)
+        n2 = Number(other)
+        if (n1.is_whole() and n2.is_whole()):
+            return Number(int(n1) - int(n2))
+        else:
+            return Number(float(n1) - float(n2))
+
+    def __neg__(self):
+        n = Number(self)
+        if (n.is_whole()):
+            return Number(-int(n))
+        else:
+            return Number(-float(n))
+
+    def __rsub__(self, other):
+        return -self.__sub__(other)
+
+    def __add__(self, other):
+        n1 = Number(self)
+        n2 = Number(other)
+        if (n1.is_whole() and n2.is_whole()):
+            return Number(int(n1) + int(n2))
+        else:
+            return Number(float(n1) + float(n2))
+    __radd__ = __add__
+
+    def is_whole(self):
+        if self.zone in self.ZONE_WHOLE_MAYBE:
+            (qan, qanlength) = self.qantissa()
+            qexp = self.qexponent() - qanlength
+            if qexp >= 0:
+                return True
+            else:
+                if qan % self._exp256(-qexp) == 0:
+                    return True
+                else:
+                    return False
+        elif self.zone in self.ZONE_WHOLE_YES:
+            return True
+        elif self.zone in self.ZONE_WHOLE_NO:
+            return False
+        else:
+            raise
+
     @classmethod
     def from_raw(cls, value):
         """Construct a Number from its raw, internal binary string
@@ -605,11 +650,11 @@ class Number(object):
         return True
 
     @classmethod
-    def _zone_union(cls, *zonesets):
-        assert cls._sets_exclusive(*zonesets), "Sets not mutually exclusive: %s" % repr(zonesets)
+    def _union_of_distinct_sets(cls, *sets):
+        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive: %s" % repr(sets)
         return_value = set()
-        for zoneset in zonesets:
-            return_value |= zoneset
+        for each_set in sets:
+            return_value |= each_set
         return return_value
 
     def inc(self):
@@ -656,11 +701,11 @@ class Number(object):
             cls.Zone.INFINITESIMAL_NEG,
             cls.Zone.TRANSFINITE_NEG,
         }
-        cls.ZONE_FINITE = cls._zone_union(
+        cls.ZONE_FINITE = cls._union_of_distinct_sets(
             cls.ZONE_LUDICROUS,
             cls.ZONE_REASONABLE,
         )
-        cls.ZONE_UNREASONABLE = cls._zone_union(
+        cls.ZONE_UNREASONABLE = cls._union_of_distinct_sets(
             cls.ZONE_LUDICROUS,
             cls.ZONE_NONFINITE,
         )
@@ -681,7 +726,7 @@ class Number(object):
             cls.Zone.LUDICROUS_LARGE_NEG,
             cls.Zone.TRANSFINITE_NEG,
         }
-        cls.ZONE_NONZERO = cls._zone_union(
+        cls.ZONE_NONZERO = cls._union_of_distinct_sets(
             cls.ZONE_POSITIVE,
             cls.ZONE_NEGATIVE,
         )
@@ -697,11 +742,11 @@ class Number(object):
             cls.Zone.INFINITESIMAL_NEG,
             cls.Zone.LUDICROUS_SMALL_NEG,
         }
-        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = cls._zone_union(
+        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = cls._union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_POSITIVE_ZERO,
             cls.ZONE_ZERO,
         )
-        cls.ZONE_ESSENTIALLY_ZERO = cls._zone_union(
+        cls.ZONE_ESSENTIALLY_ZERO = cls._union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
             cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
         )
@@ -713,7 +758,7 @@ class Number(object):
             cls.Zone.FRACTIONAL_NEG,
             cls.Zone.NEGATIVE,
         }
-        cls.ZONE_REASONABLY_NONZERO = cls._zone_union(
+        cls.ZONE_REASONABLY_NONZERO = cls._union_of_distinct_sets(
             cls.ZONE_REASONABLY_POSITIVE,
             cls.ZONE_REASONABLY_NEGATIVE,
         )
@@ -724,32 +769,62 @@ class Number(object):
             cls.Zone.TRANSFINITE_NEG,
         }
 
+        cls.ZONE_WHOLE_NO = {
+            cls.Zone.FRACTIONAL,
+            cls.Zone.LUDICROUS_SMALL,
+            cls.Zone.INFINITESIMAL,
+            cls.Zone.INFINITESIMAL_NEG,
+            cls.Zone.LUDICROUS_SMALL_NEG,
+            cls.Zone.FRACTIONAL_NEG,
+        }
+        cls.ZONE_WHOLE_YES = {
+            cls.Zone.ZERO,
+        }
+        cls.ZONE_WHOLE_MAYBE = {
+            cls.Zone.POSITIVE,
+            cls.Zone.NEGATIVE,
+        }
+        cls.ZONE_WHOLE_INDETERMINATE = {
+            cls.Zone.TRANSFINITE,
+            cls.Zone.LUDICROUS_LARGE,
+            cls.Zone.LUDICROUS_LARGE_NEG,
+            cls.Zone.TRANSFINITE_NEG,
+        }
+
         cls.ZONE_NAN = {
             cls.Zone.NAN
         }
-        cls._ZONE_ALL_BY_REASONABLENESS = cls._zone_union(
+        cls._ZONE_ALL_BY_REASONABLENESS = cls._union_of_distinct_sets(
             cls.ZONE_REASONABLE,
             cls.ZONE_UNREASONABLE,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_FINITENESS = cls._zone_union(
+        cls._ZONE_ALL_BY_FINITENESS = cls._union_of_distinct_sets(
             cls.ZONE_FINITE,
             cls.ZONE_NONFINITE,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_ZERONESS = cls._zone_union(
+        cls._ZONE_ALL_BY_ZERONESS = cls._union_of_distinct_sets(
             cls.ZONE_NONZERO,
             cls.ZONE_ZERO,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_BIGNESS = cls._zone_union(
+        cls._ZONE_ALL_BY_BIGNESS = cls._union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_ZERO,
             cls.ZONE_REASONABLY_NONZERO,
             cls.ZONE_UNREASONABLY_BIG,
             cls.ZONE_NAN,
         )
+        cls._ZONE_ALL_BY_WHOLENESS = cls._union_of_distinct_sets(
+            cls.ZONE_WHOLE_NO,
+            cls.ZONE_WHOLE_YES,
+            cls.ZONE_WHOLE_MAYBE,
+            cls.ZONE_WHOLE_INDETERMINATE,
+            cls.ZONE_NAN,
+        )
 
         cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
+
 
 Number.internal_setup()
 

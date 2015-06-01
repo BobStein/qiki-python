@@ -446,16 +446,16 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number._sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
 
     def test_zone_union(self):
-        self.assertEqual({1,2,3,4,5,6}, Number._zone_union({1,2,3}, {4,5,6}))
+        self.assertEqual({1,2,3,4,5,6}, Number._union_of_distinct_sets({1,2,3}, {4,5,6}))
         if not sys.flags.optimize:
             with self.assertRaises(AssertionError):
-                Number._zone_union({1,2,3}, {3,5,6})
+                Number._union_of_distinct_sets({1,2,3}, {3,4,5})
 
     def assertEqualSets(self, s1, s2):
         if s1 != s2:
             self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
-                '\n\t'.join((str(z) for z in (s1-s2))),
-                '\n\t'.join((str(z) for z in (s2-s1))),
+                '\n\t'.join((Number.name_of_zone[z] for z in (s1-s2))),
+                '\n\t'.join((Number.name_of_zone[z] for z in (s2-s1))),
             ))
 
     # noinspection PyUnresolvedReferences
@@ -464,6 +464,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_BIGNESS)
+        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_WHOLENESS)
 
     def test_zone(self):
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
@@ -1178,6 +1179,55 @@ class NumberTestCase(unittest.TestCase):
             self.assert_inc_works_on(power_of_two+1)
             self.assert_inc_works_on(power_of_two+2)
             power_of_two *= 2
+
+    def test_is_whole(self):
+        self.assertFalse(Number(-2.5).is_whole())
+        self.assertTrue (Number(-2  ).is_whole())
+        self.assertTrue (Number(-1  ).is_whole())
+        self.assertFalse(Number(-0.5).is_whole())
+        self.assertTrue (Number( 0  ).is_whole())
+        self.assertFalse(Number( 0.5).is_whole())
+        self.assertTrue (Number( 1  ).is_whole())
+        self.assertTrue (Number( 2  ).is_whole())
+        self.assertFalse(Number( 2.5).is_whole())
+        self.assertTrue (Number('0q8A_01').is_whole())
+        self.assertTrue (Number('0q8A_010000000000000001').is_whole())
+        self.assertTrue (Number('0q8A_0100000000000000010000').is_whole())
+        self.assertFalse(Number('0q8A_0100000000000000010001').is_whole())
+        self.assertFalse(Number('0q8A_01000000000000000180').is_whole())
+        self.assertTrue (Number('0q8A_01000000000000000200').is_whole())
+        self.assertTrue (Number('0q8A_010000000000000002').is_whole())
+
+    def test_neg(self):
+        self.assertEqual(Number(-42), -Number(42))
+        self.assertEqual(Number(-42.0625), -Number(42.0625))
+        self.assertEqual(Number('0q75_FEFFFFFFFFFFFFFFFF'), -Number('0q8A_010000000000000001'))
+
+    def test_add(self):
+        self.assertEqual(Number(4), Number(2) + Number(2))
+        self.assertEqual(Number(4), Number(2) +       (2))
+        self.assertEqual(Number(4),       (2) + Number(2))
+
+    def test_add_real(self):
+        self.assertEqual(Number(4.375), Number(2.125) + Number(2.25))
+        self.assertEqual(Number(4.375), Number(2.125) +       (2.25))
+        self.assertEqual(Number(4.375),       (2.125) + Number(2.25))
+
+    def test_sub(self):
+        self.assertEqual(Number(42), Number(8642) - Number(8600))
+        self.assertEqual(Number(42), Number(8642) -       (8600))
+        self.assertEqual(Number(42),       (8642) - Number(8600))
+
+    def test_sub_real(self):
+        self.assertEqual(Number(-0.125), Number(2.125) - Number(2.25))
+        self.assertEqual(Number(-0.125), Number(2.125) -       (2.25))
+        self.assertEqual(Number(-0.125),       (2.125) - Number(2.25))
+
+    def test_big_int_add(self):
+        self.assertEqual(Number('0q8A_010000000000000001'), Number('0q8A_01') + Number('0q82_01'))
+
+    def test_float_cant_distinguish_big_integers(self):
+        self.assertEqual(float(Number('0q8A_010000000000000001')), float(Number('0q8A_01')))
 
     def test_pickle(self):
         self.assertIn(pickle.dumps(Number), (
