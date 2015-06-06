@@ -202,8 +202,9 @@ class Word(object):
             if self.obj == word.id:
                 return True
             parent = self.spawn(self.obj)
-            if parent.vrb == self._ID_DEFINE and parent.obj == word.id:
-                return True
+            if parent.id == self.id:
+                return False
+            return parent.is_a(word)
         return False
 
     def is_a_noun(self):
