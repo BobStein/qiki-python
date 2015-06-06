@@ -201,18 +201,18 @@ class WordTestCase(unittest.TestCase):
         anna = human('anna')
         bart = human('bart')
         self.system.verb('like')
-        maxid = self.system.max_id()
+        max_id = self.system.max_id()
 
         anna.like(bart, 8)
-        self.assertEqual(maxid+1, self.system.max_id())
+        self.assertEqual(max_id+1, self.system.max_id())
         self.assertEqual(8, anna.like(bart).num)
 
         anna.like(bart, 10)
-        self.assertEqual(maxid+2, self.system.max_id())
+        self.assertEqual(max_id+2, self.system.max_id())
         self.assertEqual(10, anna.like(bart).num)
 
         anna.like(bart, 2)
-        self.assertEqual(maxid+3, self.system.max_id())
+        self.assertEqual(max_id+3, self.system.max_id())
         self.assertEqual(2, anna.like(bart).num)
 
 
