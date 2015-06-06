@@ -185,7 +185,13 @@ class Word(object):
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `sbj` = x'{sbj}' AND `vrb` = x'{vrb}' AND `obj` = x'{obj}' LIMIT 1"
+            "SELECT * "
+                "FROM `{table}` "
+                "WHERE `sbj` = x'{sbj}' "
+                    "AND `vrb` = x'{vrb}' "
+                    "AND `obj` = x'{obj}' "
+                "ORDER BY `id` DESC "
+                "LIMIT 1"
             .format(
                 table=self._table,
                 sbj=self.sbj.hex(),
@@ -246,12 +252,12 @@ class Word(object):
         sbj = self.spawn(self.sbj)
         vrb = self.spawn(self.vrb)
         obj = self.spawn(self.obj)
-        return "{sbj}.{vrb}({obj}, {txt}{maybe_num})".format(
+        return "{sbj}.{vrb}({obj}{maybe_num}{maybe_txt})".format(
             sbj=sbj.txt,
             vrb=vrb.txt,
             obj=obj.txt,
-            txt=repr(self.txt),
             maybe_num=(", " + self.presentable(self.num)) if self.num != 1 else "",
+            maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
         )
 
     @staticmethod
@@ -262,10 +268,18 @@ class Word(object):
             return str(float(num))
 
     def __repr__(self):
-        if hasattr(self, 'txt'):
+        if hasattr(self, 'txt') and self.spawn(self.vrb).is_define():
             return "Word('{0}')".format(self.txt)
-        elif hasattr(self, '__id'):
-            return "Word(Number('{id_qstring}'))".format(qstring=self.id.qstring())
+        elif self.exists:
+            return "Word(Number({id_qstring}))".format(id_qstring=self.id.qstring())
+        else:
+            return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
+                sbj=self.sbj.qstring(),
+                vrb=self.vrb.qstring(),
+                obj=self.obj.qstring(),
+                txt=repr(self.txt),
+                num=self.num.qstring(),
+            ))
 
     @staticmethod
     def number_from_mysql(mysql_blob):
@@ -344,7 +358,9 @@ class System(Word):
         assert service == 'MySQL'
         table = kwargs.pop('table')
         connection = mysql.connector.connect(**kwargs)
-        # TODO:  Combine connection and table?  We could subclass like so:  Word.System(MySQLConnection)
+        # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
+        # TODO:  No, make them properties of System.  And make all Words refer to a System
+        # TODO:  So combine all three.  Maybe System shouldn't subclass Word?
         super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         self._system = self
 

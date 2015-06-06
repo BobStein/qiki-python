@@ -175,9 +175,46 @@ class WordTestCase(unittest.TestCase):
         anna.like(chad, 10)
         self.assertFalse(anna.like.is_system())
         self.assertFalse(anna.like.is_verb())
-        self.describe_all_words()
         self.assertEqual(8, anna.like(bart).num)
         self.assertEqual(10, anna.like(chad).num)
+        self.describe_all_words()
+
+    def test_repr(self):
+        self.assertEqual("Word('noun')", repr(self.system('noun')))
+        human = self.system.agent('human')
+        self.assertEqual("Word('human')", repr(human))
+        like = self.system.verb('like')
+        self.assertEqual("Word('like')", repr(like))
+        liking = self.system.like(human, 10)
+        self.assertEqual("Word(Number({_id}))".format(_id=liking.id.qstring()), repr(liking))
+
+    def test_verb_txt(self):
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        self.system.verb('like')
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual("just as friends", anna.like(bart).txt)
+
+    def test_verb_overlay(self):
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        self.system.verb('like')
+        maxid = self.system.max_id()
+
+        anna.like(bart, 8)
+        self.assertEqual(maxid+1, self.system.max_id())
+        self.assertEqual(8, anna.like(bart).num)
+
+        anna.like(bart, 10)
+        self.assertEqual(maxid+2, self.system.max_id())
+        self.assertEqual(10, anna.like(bart).num)
+
+        anna.like(bart, 2)
+        self.assertEqual(maxid+3, self.system.max_id())
+        self.assertEqual(2, anna.like(bart).num)
+
 
 
     ########## Internals ##########
