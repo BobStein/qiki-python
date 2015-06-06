@@ -202,8 +202,8 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual("Word('like')", repr(like))
         liking = self.system.like(human, 10)
         self.assertEqual("Word(Number({_id}))".format(_id=liking.id.qstring()), repr(liking))
-        # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='xxx')
-        # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='xxx', num=0q82_7F)
+        # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='something')
+        # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='something', num=0q82_7F)
         # print(repr(w))
 
     def test_verb_txt(self):

@@ -359,8 +359,8 @@ class System(Word):
         table = kwargs.pop('table')
         connection = mysql.connector.connect(**kwargs)
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
-        # TODO:  No, make them properties of System.  And make all Words refer to a System
-        # TODO:  So combine all three.  Maybe System shouldn't subclass Word?
+        # TODO:  ...No, make them properties of System.  And make all Words refer to a System
+        # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
         super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         self._system = self
 
@@ -418,7 +418,7 @@ class System(Word):
 
 # TODO: don't raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
-# ...If so they'd need to be dynamic properties -- and avoid infinite recursion!
-# ...One way to do this might be x = Word(id) wouldn't generate database activity
-# ......unless some other method were called, e.g. x.vrb
+# TODO: ...If so they'd need to be dynamic properties -- and avoid infinite recursion!
+# TODO: ...One way to do this might be x = Word(id) wouldn't generate database activity
+# TODO: ......unless some other method were called, e.g. x.vrb
 # TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
