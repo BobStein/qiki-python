@@ -163,8 +163,13 @@ class WordTestCase(unittest.TestCase):
         like = verb('like')
         self.assertTrue(like.is_a_verb())
         self.assertFalse(verb.is_a_verb())
+        self.assertFalse(self.system('noun').is_a_verb())
+        self.assertTrue(self.system('define').is_a_verb())
+        self.assertFalse(self.system('agent').is_a_verb())
+        self.assertFalse(self.system('system').is_a_verb())
 
     def test_verb_use(self):
+        """Test that sbj.vrb(obj, num) creates a word.  And sbj.vrb(obj).num reads it back."""
         agent = self.system('agent')
         human = agent('human')
         self.system.verb('like')
@@ -179,6 +184,16 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(10, anna.like(chad).num)
         self.describe_all_words()
 
+    def test_verb_use_alt(self):
+        """Test that system.verb can be copied by assignment, and still work."""
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        verb = self.system.verb
+        verb('like')
+        anna.like(bart, 13)
+        self.assertEqual(13, anna.like(bart).num)
+
     def test_repr(self):
         self.assertEqual("Word('noun')", repr(self.system('noun')))
         human = self.system.agent('human')
@@ -187,8 +202,12 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual("Word('like')", repr(like))
         liking = self.system.like(human, 10)
         self.assertEqual("Word(Number({_id}))".format(_id=liking.id.qstring()), repr(liking))
+        # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='xxx')
+        # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='xxx', num=0q82_7F)
+        # print(repr(w))
 
     def test_verb_txt(self):
+        """Test s.v(o, n, txt).  Read with s.v(o).txt"""
         human = self.system.agent('human')
         anna = human('anna')
         bart = human('bart')
@@ -197,6 +216,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual("just as friends", anna.like(bart).txt)
 
     def test_verb_overlay(self):
+        """Test multiple s.v(o, num) calls with different num's.  Read with s.v(o).num"""
         human = self.system.agent('human')
         anna = human('anna')
         bart = human('bart')
