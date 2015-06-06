@@ -70,6 +70,13 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(thing.is_a(noun))
         self.assertTrue(cosa.is_a(noun))
 
+        self.assertTrue(self.system.is_a_noun())
+        self.assertTrue(self.system('system').is_a_noun())
+        self.assertTrue(self.system('agent').is_a_noun())
+        self.assertTrue(self.system('noun').is_a_noun())
+        self.assertTrue(self.system('verb').is_a_noun())
+        self.assertTrue(self.system('define').is_a_noun())
+
     def test_05_noun_grandchild(self):
         agent = self.system('agent')
         human = agent('human')

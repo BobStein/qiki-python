@@ -10,6 +10,12 @@ from number import Number
 
 class Word(object):
     """
+    A qiki Word is a subject-verb-object triplet of other words.
+
+    A word is identified by a qiki Number id.
+    A word may be elaborated by a number and some text.
+    A word remembers the time it was created.
+
     :type content: six.string_types | Word | instancemethod
 
     :type sbj: Number | Word
@@ -18,26 +24,26 @@ class Word(object):
     :type num: Number
     :type txt: six.string_types
 
-    :type _ID_DEFINE: Number
-    :type _connection: mysql.connector.ySQLConnection
+    :type _connection: mysql.connector.MySQLConnection
+    :type _table": six.string_types
+    :type _system": Word
     """
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None,connection=None):
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None, connection=None):
         self._table = table
         self._connection = connection
         self.exists = False
         self.__id = None
         self._as_if_method = self.null_verb_method
-        assert self._connection is not None, "Not connected, call Word.system()"
         if isinstance(content, six.string_types):
+            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_definition(content)
         elif isinstance(content, Number):
+            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_id(content)
         elif isinstance(content, type(self)):
+            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_word(content)
-        elif isinstance(content, type(self.define)):   # instancemethod
-            # TODO: look up a vrb by its txt field being content.__name__
-            pass
         elif content is None:
             self.sbj = sbj
             self.vrb = vrb
@@ -58,11 +64,8 @@ class Word(object):
 
     _ID_MAX_FIXED = Number(5)
 
-    # def noun(self, *args, **kwargs):
-    #     return self._system('noun')(*args, **kwargs)
-        # return self.define(self('noun'), txt, num)
-
     def __getattr__(self, item):
+        assert hasattr(self, '_system')
         return_value = self._system(item)
         return_value._meta_self = self
         return return_value
@@ -70,11 +73,11 @@ class Word(object):
     def __call__(self, *args, **kwargs):
         if self.is_system():
             assert self.id == self._ID_SYSTEM
-            the_word = self.spawn(*args, **kwargs)
-            assert the_word.exists, "There is no {name}".format(name=repr(args[0]))
-            # assert the_word.sbj == self._ID_SYSTEM, "System id shouldn't be {_id}".format(_id=the_word.sbj)
-            return the_word
+            existing_word = self.spawn(*args, **kwargs)
+            assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
+            return existing_word
         elif self.is_a_verb():
+            assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
             assert len(args) >= 1
@@ -87,34 +90,41 @@ class Word(object):
                 txt = args[2]
             except IndexError:
                 txt=''
+            assert hasattr(self, '_meta_self')
             if len(args) == 1:
-                the_word = self._system.spawn(sbj=self._meta_self.id, vrb=self.id, obj=obj.id)
-                the_word.lookup_svo()
-                assert the_word.exists
+                existing_word = self._system.spawn(sbj=self._meta_self.id, vrb=self.id, obj=obj.id)
+                existing_word.lookup_svo()
+                assert existing_word.exists
             else:
-                the_word = self.sentence(sbj=self._meta_self, vrb=self, obj=obj, num=num, txt=txt)
-            return the_word
+                existing_word = self.sentence(sbj=self._meta_self, vrb=self, obj=obj, num=num, txt=txt)
+            return existing_word
         else:
+            assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
-            the_word = self._system.define(self, *args, **kwargs)
-            return the_word
+            existing_or_new_word = self._system.define(self, *args, **kwargs)
+            return existing_or_new_word
 
     def null_verb_method(self, *args, **kwargs):
         pass
 
     def define(self, obj, txt, num=Number(1)):
-        already = self.spawn(txt)
-        if already.exists:
-            return already
-        the_word = self.sentence(sbj=self, vrb=self('define'), obj=obj, txt=txt, num=num)
-        return the_word
+        existing_word = self.spawn(txt)
+        if existing_word.exists:
+            return existing_word
+        new_word = self.sentence(sbj=self, vrb=self('define'), obj=obj, txt=txt, num=num)
+        return new_word
 
     def spawn(self, *args, **kwargs):
-        """Construct a Word() using the same _connection, _table, and _system."""
+        """
+        Construct a Word() using the same _connection, _table, and _system.
+
+        The word may exist already.  Otherwise it will be prepared to .save().
+        """
         kwargs['table']      = self._table
         kwargs['connection'] = self._connection
         the_word = Word(*args, **kwargs)
+        assert hasattr(self, '_system')
         the_word._system = self._system
         return the_word
 
@@ -124,9 +134,9 @@ class Word(object):
         assert isinstance(obj, Word),             "obj can't be a {type}".format(type=type(obj).__name__)
         assert isinstance(txt, six.string_types), "txt can't be a {type}".format(type=type(txt).__name__)
         assert isinstance(num, Number),           "num can't be a {type}".format(type=type(num).__name__)
-        word_object = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
-        word_object.save()
-        return word_object
+        new_word = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
+        new_word.save()
+        return new_word
 
     @classmethod
     def make_verb_a_method(cls, verb):
@@ -136,7 +146,9 @@ class Word(object):
         self._connection.close()
 
     def _from_id(self, _id):
-        """Construct a Word from its id
+        """
+        Construct a Word from its id.
+
         :type _id: Number
         """
         assert isinstance(_id, Number)
@@ -208,10 +220,12 @@ class Word(object):
         return False
 
     def is_a_noun(self):
-        return self.is_a(self('noun'))
+        assert hasattr(self, '_system')
+        return self.is_a(self._system.noun)
 
     def is_a_verb(self):
-        return self.is_a(self._system('verb'))
+        assert hasattr(self, '_system')
+        return self.is_a(self._system.verb)
 
     def is_define(self):
         return self.id == self._ID_DEFINE
