@@ -47,18 +47,8 @@ class Word(object):
         else:
             typename = type(content).__name__
             if typename == 'instance':
-                pass#typename = content.__class__.__name__
+                typename = content.__class__.__name__
             raise TypeError('Word(%s) is not supported' % typename)
-
-    @classmethod
-    def system(cls, **kwargs):
-        service = kwargs.pop('service')
-        assert service == 'MySQL'
-        table = kwargs.pop('table')
-        connection = mysql.connector.connect(**kwargs)
-        # TODO:  Combine connection and table?  We could subclass like so:  Word.System(MySQLConnection)
-        this_system = cls(cls._ID_SYSTEM, table=table, connection=connection)
-        return this_system
 
     _ID_DEFINE = Number(1)
     _ID_NOUN   = Number(2)
@@ -68,88 +58,50 @@ class Word(object):
 
     _ID_MAX_FIXED = Number(5)
 
-    def install_from_scratch(self):
-        self.uninstall_to_scratch()
-        define = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_VERB,
-            num = Number(1),
-            txt = u'define',
-        )
-        noun = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'noun',
-        )
-        verb = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'verb',
-        )
-        agent = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'agent',
-        )
-        system = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_AGENT,
-            num = Number(1),
-            txt = u'system',
-        )
-        define.__id = self._ID_DEFINE
-        noun.__id = self._ID_NOUN
-        verb.__id = self._ID_VERB
-        agent.__id = self._ID_AGENT
-        system.__id = self._ID_SYSTEM
-        try:
-            define.save()
-            noun.save()
-            verb.save()
-            agent.save()
-            system.save()
-        except mysql.connector.IntegrityError:
-            pass
+    # def noun(self, *args, **kwargs):
+    #     return self._system('noun')(*args, **kwargs)
+        # return self.define(self('noun'), txt, num)
 
-    def uninstall_to_scratch(self):
-        cursor = self._connection.cursor(prepared=True)
-        cursor.execute("DELETE FROM `{table}`".format(table=self._table))
-        cursor.close()
-
-    def spawn(self, *args, **kwargs):
-        """Construct a Word() using the same connection and table."""
-        # kwargs = dict(kwargs.items() + dict(table=self._table, connection=self._connection).items())
-        kwargs['table'] = self._table
-        kwargs['connection'] = self._connection
-        the_word = self.__class__(*args, **kwargs)
-        return the_word
+    def __getattr__(self, item):
+        return_value = self._system(item)
+        return_value._meta_self = self
+        return return_value
 
     def __call__(self, *args, **kwargs):
         if self.is_system():
+            assert self.id == self._ID_SYSTEM
             the_word = self.spawn(*args, **kwargs)
-            assert the_word.exists
-            assert the_word.sbj == self.id
-            the_word._system = self
+            assert the_word.exists, "There is no {name}".format(name=repr(args[0]))
+            # assert the_word.sbj == self._ID_SYSTEM, "System id shouldn't be {_id}".format(_id=the_word.sbj)
+            return the_word
+        elif self.is_a_verb():
+            assert self._system.exists
+            assert self._system.is_system()
+            assert len(args) >= 1
+            obj = args[0]
+            try:
+                num = Number(args[1])
+            except IndexError:
+                num = Number(1)
+            try:
+                txt = args[2]
+            except IndexError:
+                txt=''
+            if len(args) == 1:
+                the_word = self._system.spawn(sbj=self._meta_self.id, vrb=self.id, obj=obj.id)
+                the_word.lookup_svo()
+                assert the_word.exists
+            else:
+                the_word = self.sentence(sbj=self._meta_self, vrb=self, obj=obj, num=num, txt=txt)
             return the_word
         else:
-            assert self._system.exists and self._system.is_system()
+            assert self._system.exists
+            assert self._system.is_system()
             the_word = self._system.define(self, *args, **kwargs)
-            the_word._system = self._system
             return the_word
 
     def null_verb_method(self, *args, **kwargs):
         pass
-
-    def noun(self, txt, num=Number(1)):
-        return self.define(self('noun'), txt, num)
 
     def define(self, obj, txt, num=Number(1)):
         already = self.spawn(txt)
@@ -158,12 +110,20 @@ class Word(object):
         the_word = self.sentence(sbj=self, vrb=self('define'), obj=obj, txt=txt, num=num)
         return the_word
 
+    def spawn(self, *args, **kwargs):
+        """Construct a Word() using the same _connection, _table, and _system."""
+        kwargs['table']      = self._table
+        kwargs['connection'] = self._connection
+        the_word = Word(*args, **kwargs)
+        the_word._system = self._system
+        return the_word
+
     def sentence(self, sbj, vrb, obj, txt, num):
-        assert isinstance(sbj, Word), "sbj can't be a {type}".format(type=type(sbj).__name__)
-        assert isinstance(vrb, Word), "vrb can't be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, Word), "obj can't be a {type}".format(type=type(obj).__name__)
-        assert isinstance(txt, six.string_types)
-        assert isinstance(num, Number)
+        assert isinstance(sbj, Word),             "sbj can't be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, Word),             "vrb can't be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, Word),             "obj can't be a {type}".format(type=type(obj).__name__)
+        assert isinstance(txt, six.string_types), "txt can't be a {type}".format(type=type(txt).__name__)
+        assert isinstance(num, Number),           "num can't be a {type}".format(type=type(num).__name__)
         word_object = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
         word_object.save()
         return word_object
@@ -189,7 +149,7 @@ class Word(object):
         )
 
     def _from_definition(self, txt):
-        """Construct a Word from its txt"""
+        """Construct a Word from its txt, but only when it's a definition."""
         assert isinstance(txt, six.string_types)
         self._load_row(
             "SELECT * FROM `{table}` WHERE `vrb` = x'{define}' AND `txt` = ?"
@@ -207,6 +167,20 @@ class Word(object):
             self._from_id(word.id)
         else:
             self._from_definition(word.txt)
+
+    def lookup_svo(self):
+        assert isinstance(self.sbj, Number)
+        assert isinstance(self.vrb, Number)
+        assert isinstance(self.obj, Number)
+        self._load_row(
+            "SELECT * FROM `{table}` WHERE `sbj` = x'{sbj}' AND `vrb` = x'{vrb}' AND `obj` = x'{obj}' LIMIT 1"
+            .format(
+                table=self._table,
+                sbj=self.sbj.hex(),
+                vrb=self.vrb.hex(),
+                obj=self.obj.hex(),
+            ),
+        )
 
     def _load_row(self, sql, params=()):
         cursor = self._connection.cursor(prepared=True)
@@ -235,6 +209,9 @@ class Word(object):
     def is_a_noun(self):
         return self.is_a(self('noun'))
 
+    def is_a_verb(self):
+        return self.is_a(self._system('verb'))
+
     def is_define(self):
         return self.id == self._ID_DEFINE
 
@@ -259,8 +236,21 @@ class Word(object):
             vrb=vrb.txt,
             obj=obj.txt,
             txt=repr(self.txt),
-            maybe_num=(", " + str(self.num)) if self.num != 1 else "",
+            maybe_num=(", " + self.presentable(self.num)) if self.num != 1 else "",
         )
+
+    @staticmethod
+    def presentable(num):
+        if num.is_whole():
+            return str(int(num))
+        else:
+            return str(float(num))
+
+    def __repr__(self):
+        if hasattr(self, 'txt'):
+            return "Word('{0}')".format(self.txt)
+        elif hasattr(self, '__id'):
+            return "Word(Number('{id_qstring}'))".format(qstring=self.id.qstring())
 
     @staticmethod
     def number_from_mysql(mysql_blob):
@@ -274,18 +264,20 @@ class Word(object):
     def id(self, value):
         raise RuntimeError("Cannot set a Word's id")
 
-    def __repr__(self):
-        if hasattr(self, 'txt'):
-            return "Word('{0}')".format(self.txt)
-        elif hasattr(self, '__id'):
-            return "Word(Number('{id_qstring}'))".format(qstring=self.id.qstring())
-
     def max_id(self):
         cursor = self._connection.cursor()
         cursor.execute("SELECT MAX(id) FROM `{table}`".format(table=self._table))
-        return self.number_from_mysql(cursor.fetchone()[0])
+        max_id_sql_row = cursor.fetchone()
+        if max_id_sql_row is None:
+            return Number(0)
+        max_id_sql = max_id_sql_row[0]
+        if max_id_sql is None:
+            return Number(0)
+        return self.number_from_mysql(max_id_sql)
 
-    def save(self):
+    def save(self, override_id=None):
+        if override_id is not None:
+            self.__id = override_id
         assert isinstance(self.__id, (Number, type(None)))
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
@@ -325,9 +317,73 @@ class Word(object):
         cursor.execute("SELECT id FROM `{table}` ORDER BY id ASC".format(table=self._table))
         ids = []
         for row in cursor:
-            id = self.number_from_mysql(row[0])
-            ids.append(id)
+            _id = self.number_from_mysql(row[0])
+            ids.append(_id)
         return ids
+
+
+class System(Word):
+
+    def __init__(self, **kwargs):
+        service = kwargs.pop('service')
+        assert service == 'MySQL'
+        table = kwargs.pop('table')
+        connection = mysql.connector.connect(**kwargs)
+        # TODO:  Combine connection and table?  We could subclass like so:  Word.System(MySQLConnection)
+        super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
+        self._system = self
+
+    def install_from_scratch(self):
+        self.uninstall_to_scratch()
+        define = self.spawn(
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_VERB,
+            num = Number(1),
+            txt = u'define',
+        )
+        noun = self.spawn(
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
+            num = Number(1),
+            txt = u'noun',
+        )
+        verb = self.spawn(
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
+            num = Number(1),
+            txt = u'verb',
+        )
+        agent = self.spawn(
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_NOUN,
+            num = Number(1),
+            txt = u'agent',
+        )
+        system = self.spawn(
+            sbj = self._ID_SYSTEM,
+            vrb = self._ID_DEFINE,
+            obj = self._ID_AGENT,
+            num = Number(1),
+            txt = u'system',
+        )
+        try:
+            define.save(override_id=self._ID_DEFINE)
+            noun.save(override_id=self._ID_NOUN)
+            verb.save(override_id=self._ID_VERB)
+            agent.save(override_id=self._ID_AGENT)
+            system.save(override_id=self._ID_SYSTEM)
+        except mysql.connector.IntegrityError:
+            raise
+
+    def uninstall_to_scratch(self):
+        cursor = self._connection.cursor(prepared=True)
+        cursor.execute("DELETE FROM `{table}`".format(table=self._table))
+        cursor.close()
+
 
 # TODO: don't raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.

@@ -120,14 +120,14 @@ class Number(object):
     def __sub__(self, other):
         n1 = Number(self)
         n2 = Number(other)
-        if (n1.is_whole() and n2.is_whole()):
+        if n1.is_whole() and n2.is_whole():
             return Number(int(n1) - int(n2))
         else:
             return Number(float(n1) - float(n2))
 
     def __neg__(self):
         n = Number(self)
-        if (n.is_whole()):
+        if n.is_whole():
             return Number(-int(n))
         else:
             return Number(-float(n))
@@ -138,7 +138,7 @@ class Number(object):
     def __add__(self, other):
         n1 = Number(self)
         n2 = Number(other)
-        if (n1.is_whole() and n2.is_whole()):
+        if n1.is_whole() and n2.is_whole():
             return Number(int(n1) + int(n2))
         else:
             return Number(float(n1) + float(n2))

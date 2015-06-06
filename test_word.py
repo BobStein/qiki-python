@@ -5,9 +5,8 @@ Testing qiki word.py
 from __future__ import print_function
 import unittest
 import os
-import types
 from number import Number
-from word import Word
+from word import Word, System
 
 LET_DATABASE_RECORDS_REMAIN = True
 
@@ -15,7 +14,7 @@ LET_DATABASE_RECORDS_REMAIN = True
 class WordTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.system = Word.system(
+        self.system = System(
             service= os.environ['DATABASE_SERVICE'],
             host=    os.environ['DATABASE_HOST'],
             port=    os.environ['DATABASE_PORT'],
@@ -38,6 +37,10 @@ class WordTestCase(unittest.TestCase):
     def test_01_system(self):
         self.assertTrue(self.system.is_system())
         self.assertEqual('system', self.system.txt)
+        self.assertEqual(self.system._ID_SYSTEM, self.system.id)
+        self.assertEqual(self.system._ID_SYSTEM, self.system.sbj)
+        self.assertEqual(self.system('define').id, self.system.vrb)
+        self.assertEqual(self.system('agent').id, self.system.obj)
 
     def test_02_noun(self):
         noun = self.system('noun')
@@ -45,13 +48,16 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(noun.is_noun())
         self.assertEqual('noun', noun.txt)
 
-    def test_03_noun_spawn(self):
+    def test_03a_max_id(self):
+        self.assertEqual(Word._ID_MAX_FIXED, self.system.max_id())
+
+    def test_03b_noun_spawn(self):
         noun = self.system('noun')
         thing = noun('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
 
-    def test_03b_noun_spawn_crazy_syntax(self):
+    def test_03c_noun_spawn_crazy_syntax(self):
         thing = self.system('noun')('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
@@ -93,7 +99,6 @@ class WordTestCase(unittest.TestCase):
         greatgrandchild = self.system('noun')('child')('grandchild')('greatgrandchild')
         greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
         self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
-        self.describe_all_words()
 
     def test_07_is_a_noun(self):
         noun = self.system('noun')
@@ -131,15 +136,41 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(thing1.description(), thing2.description())
         self.assertEqual(thing1.description(), thing3.description())
 
+        subthing1 = thing1('subthing1')
+        subthing2 = thing2('subthing2')
+        subthing3 = thing3('subthing3')
+        self.assertTrue(subthing1.exists)
+        self.assertTrue(subthing2.exists)
+        self.assertTrue(subthing3.exists)
+        self.assertEqual('subthing1', subthing1.txt)
+        self.assertEqual('subthing2', subthing2.txt)
+        self.assertEqual('subthing3', subthing3.txt)
+
     def test_verb(self):
+        self.system.verb('like')
+        like = self.system('like')
+        self.assertEqual(self.system.id, like.sbj)
+
+    def test_is_a_verb(self):
+        verb = self.system.verb('verb')
+        like = verb('like')
+        self.assertTrue(like.is_a_verb())
+        self.assertFalse(verb.is_a_verb())
+
+    def test_verb_use(self):
         agent = self.system('agent')
         human = agent('human')
         self.system.verb('like')
         anna = human('anna')
         bart = human('bart')
-        chad = human('bart')
+        chad = human('chad')
         anna.like(bart, 8)
         anna.like(chad, 10)
+        self.assertFalse(anna.like.is_system())
+        self.assertFalse(anna.like.is_verb())
+        self.describe_all_words()
+        self.assertEqual(8, anna.like(bart).num)
+        self.assertEqual(10, anna.like(chad).num)
 
 
     ########## Internals ##########
@@ -154,8 +185,8 @@ class WordTestCase(unittest.TestCase):
 
     def describe_all_words(self):
         ids = self.system.get_all_ids()
-        for id in ids:
-            print(self.system(id).description())
+        for _id in ids:
+            print(int(_id), self.system(_id).description())
 
 
     if False:
@@ -217,11 +248,6 @@ class WordTestCase(unittest.TestCase):
             u = Word('_undefined_verb_')
             self.assertFalse(u.exists)
 
-        def test_max_id(self):
-            num_max_id = Word.max_id()
-            int_max_id = int(num_max_id)
-            self.assertEqual(Word._ID_MAX_FIXED, int_max_id)
-
         def test_is_a(self):
             self.assertTrue( Word('verb').is_a(Word('noun')))
             self.assertFalse(Word('noun').is_a(Word('verb')))
@@ -273,6 +299,7 @@ class WordTestCase(unittest.TestCase):
             chet = Word.human('Chet')
             anna_likes_bart = anna.like(bart, "He's just so dreamy.", Number(10))
             anna_likes_chet = anna.like(chet, "He's alright I guess.", Number(9))
+            print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
 
 
 if __name__ == '__main__':
