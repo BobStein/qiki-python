@@ -63,16 +63,64 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual('thing', thing.txt)
 
     def test_04_is_a(self):
+        verb = self.system('verb')
         noun = self.system('noun')
         thing = noun('thing')
         cosa = thing('cosa')
+
+        self.assertTrue(verb.is_a(noun))
         self.assertTrue(noun.is_a(noun))
         self.assertTrue(thing.is_a(noun))
         self.assertTrue(cosa.is_a(noun))
 
+        self.assertFalse(verb.is_a(thing))
+        self.assertFalse(noun.is_a(thing))
+        self.assertTrue(thing.is_a(thing))
+        self.assertTrue(thing.is_a(thing, reflexive=True))
+        self.assertFalse(thing.is_a(thing, reflexive=False))
+        self.assertTrue(cosa.is_a(thing))
+
+        self.assertFalse(verb.is_a(cosa))
+        self.assertFalse(noun.is_a(cosa))
+        self.assertFalse(thing.is_a(cosa))
+        self.assertTrue(cosa.is_a(cosa))
+
+        self.assertTrue(verb.is_a(verb))
+        self.assertFalse(noun.is_a(verb))
+        self.assertFalse(thing.is_a(verb))
+        self.assertFalse(cosa.is_a(verb))
+
+    def test_04_is_a_recursion(self):
+        noun = self.system.noun
+        self.assertTrue(noun.is_a_noun(recursion=0))
+        self.assertTrue(noun.is_a_noun(recursion=1))
+        self.assertTrue(noun.is_a_noun(recursion=2))
+        self.assertTrue(noun.is_a_noun(recursion=3))
+
+        child1 = noun('child1')
+        self.assertFalse(child1.is_a_noun(recursion=0))
+        self.assertTrue(child1.is_a_noun(recursion=1))
+        self.assertTrue(child1.is_a_noun(recursion=2))
+        self.assertTrue(child1.is_a_noun(recursion=3))
+
+        child2 = child1('child2')
+        self.assertFalse(child2.is_a_noun(recursion=0))
+        self.assertFalse(child2.is_a_noun(recursion=1))
+        self.assertTrue(child2.is_a_noun(recursion=2))
+        self.assertTrue(child2.is_a_noun(recursion=3))
+
+        child12 = child2('child3')('child4')('child5')('child6')('child7')('child8')('child9')('child10')('child11')('child12')
+        self.assertFalse(child12.is_a_noun(recursion=10))
+        self.assertFalse(child12.is_a_noun(recursion=11))
+        self.assertTrue(child12.is_a_noun(recursion=12))
+        self.assertTrue(child12.is_a_noun(recursion=13))
+
+    def test_04_is_a_noun(self):
         self.assertTrue(self.system.is_a_noun())
         self.assertTrue(self.system('system').is_a_noun())
         self.assertTrue(self.system('agent').is_a_noun())
+        self.assertTrue(self.system('noun').is_a_noun(reflexive=True))
+        self.assertTrue(self.system('noun').is_a_noun(reflexive=False))   # noun is explicitly defined as a noun
         self.assertTrue(self.system('noun').is_a_noun())
         self.assertTrue(self.system('verb').is_a_noun())
         self.assertTrue(self.system('define').is_a_noun())
@@ -107,7 +155,7 @@ class WordTestCase(unittest.TestCase):
         greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
         self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
 
-    def test_07_is_a_noun(self):
+    def test_07_is_a_noun_great_great_grandchild(self):
         noun = self.system('noun')
         child = noun('child')
         grandchild = child('grandchild')
@@ -159,9 +207,11 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(self.system.id, like.sbj)
 
     def test_is_a_verb(self):
-        verb = self.system.verb('verb')
+        verb = self.system('verb')
         like = verb('like')
         self.assertTrue(like.is_a_verb())
+        self.assertTrue(verb.is_a_verb(reflexive=True))
+        self.assertFalse(verb.is_a_verb(reflexive=False))
         self.assertFalse(verb.is_a_verb())
         self.assertFalse(self.system('noun').is_a_verb())
         self.assertTrue(self.system('define').is_a_verb())
@@ -176,12 +226,21 @@ class WordTestCase(unittest.TestCase):
         anna = human('anna')
         bart = human('bart')
         chad = human('chad')
-        anna.like(bart, 8)
+        dirk = human('dirk')
+        anna.like(anna, 1, "Narcissism.")
+        anna.like(bart, 8, "Okay.")
         anna.like(chad, 10)
+        anna.like(dirk, 1)
         self.assertFalse(anna.like.is_system())
         self.assertFalse(anna.like.is_verb())
+        self.assertEqual(1, anna.like(anna).num)
         self.assertEqual(8, anna.like(bart).num)
         self.assertEqual(10, anna.like(chad).num)
+        self.assertEqual(1, anna.like(dirk).num)
+        self.assertEqual("Narcissism.", anna.like(anna).txt)
+        self.assertEqual("Okay.", anna.like(bart).txt)
+        self.assertEqual("", anna.like(chad).txt)
+        self.assertEqual("", anna.like(dirk).txt)
         self.describe_all_words()
 
     def test_verb_use_alt(self):
@@ -251,6 +310,8 @@ class WordTestCase(unittest.TestCase):
         ids = self.system.get_all_ids()
         for _id in ids:
             print(int(_id), self.system(_id).description())
+
+
 
 
     if False:

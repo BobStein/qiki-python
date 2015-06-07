@@ -678,6 +678,8 @@ class Number(object):
         # Constants
         # ---------
         cls.NAN = cls(None)
+        cls.POSITIVE_INFINITY = cls.from_raw(cls.RAW_INF)
+        cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
 
 
         # Sets of Zones   TODO: draw a Venn Diagram or table or something
@@ -853,5 +855,5 @@ Number.internal_setup()
 # TODO: raise subclass of built-in exceptions
 # TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
 # TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
-# TODO: str(Number('0q80')) should be '0'.  78 changes in test_word.py
+# TODO: str(Number('0q80')) should be '0'.  str(Number.NAN should be '0q'
 # TODO: Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()

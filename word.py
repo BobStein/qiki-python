@@ -76,7 +76,7 @@ class Word(object):
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
             return existing_word
-        elif self.is_a_verb():
+        elif self.is_a_verb(reflexive=False):
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
@@ -215,23 +215,28 @@ class Word(object):
             self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
         cursor.close()
 
-    def is_a(self, word):
-        if self.vrb == self._ID_DEFINE:
-            if self.obj == word.id:
-                return True
-            parent = self.spawn(self.obj)
-            if parent.id == self.id:
-                return False
-            return parent.is_a(word)
-        return False
+    def is_a(self, word, reflexive=True, recursion=10):
+        assert recursion >= 0
+        if reflexive and self.id == word.id:
+            return True
+        if recursion <= 0:
+            return False
+        if self.vrb != self._ID_DEFINE:
+            return False
+        if self.obj == word.id:
+            return True
+        parent = self.spawn(self.obj)
+        if parent.id == self.id:
+            return False
+        return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO: limit recursion
 
-    def is_a_noun(self):
+    def is_a_noun(self, reflexive=True, **kwargs):
         assert hasattr(self, '_system')
-        return self.is_a(self._system.noun)
+        return self.is_a(self._system.noun, reflexive=reflexive, **kwargs)
 
-    def is_a_verb(self):
+    def is_a_verb(self, reflexive=False, **kwargs):
         assert hasattr(self, '_system')
-        return self.is_a(self._system.verb)
+        return self.is_a(self._system.verb, reflexive=reflexive, **kwargs)
 
     def is_define(self):
         return self.id == self._ID_DEFINE
@@ -252,11 +257,11 @@ class Word(object):
         sbj = self.spawn(self.sbj)
         vrb = self.spawn(self.vrb)
         obj = self.spawn(self.obj)
-        return "{sbj}.{vrb}({obj}{maybe_num}{maybe_txt})".format(
+        return "{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
             sbj=sbj.txt,
             vrb=vrb.txt,
             obj=obj.txt,
-            maybe_num=(", " + self.presentable(self.num)) if self.num != 1 else "",
+            num=self.presentable(self.num),
             maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
         )
 

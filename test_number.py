@@ -94,6 +94,13 @@ class NumberTestCase(unittest.TestCase):
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
+    def test_infinite_constants(self):
+        self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
+        self.assertEqual('0q00_7F', Number.NEGATIVE_INFINITY.qstring())
+
+        self.assertEqual(float('+inf'), Number.POSITIVE_INFINITY)
+        self.assertEqual(float('-inf'), Number.NEGATIVE_INFINITY)
+
     def test_qantissa_positive(self):
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
