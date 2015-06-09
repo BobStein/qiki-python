@@ -181,10 +181,10 @@ class Word(object):
         """
         assert isinstance(_id, Number)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `id` = {id}"
+            "SELECT * FROM `{table}` WHERE `id` = {_id}"
             .format(
                 table=self._table,
-                id=_id.mysql(),
+                _id=_id.mysql(),
             )
         )
 
