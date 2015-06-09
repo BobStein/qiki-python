@@ -153,10 +153,10 @@ class Word(object):
         """
         assert isinstance(_id, Number)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `id` = x'{id}'"
+            "SELECT * FROM `{table}` WHERE `id` = {id}"
             .format(
                 table=self._table,
-                id=_id.hex(),
+                id=_id.mysql(),
             )
         )
 
@@ -164,10 +164,10 @@ class Word(object):
         """Construct a Word from its txt, but only when it's a definition."""
         assert isinstance(txt, six.string_types)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `vrb` = x'{define}' AND `txt` = ?"
+            "SELECT * FROM `{table}` WHERE `vrb` = {define} AND `txt` = ?"
             .format(
                 table=self._table,
-                define=self._ID_DEFINE.hex(),
+                define=self._ID_DEFINE.mysql(),
             ),
             (txt,)
         )
@@ -187,16 +187,16 @@ class Word(object):
         self._load_row(
             "SELECT * "
                 "FROM `{table}` "
-                "WHERE `sbj` = x'{sbj}' "
-                    "AND `vrb` = x'{vrb}' "
-                    "AND `obj` = x'{obj}' "
+                "WHERE   `sbj` = {sbj} "
+                    "AND `vrb` = {vrb} "
+                    "AND `obj` = {obj} "
                 "ORDER BY `id` DESC "
                 "LIMIT 1"
             .format(
                 table=self._table,
-                sbj=self.sbj.hex(),
-                vrb=self.vrb.hex(),
-                obj=self.obj.hex(),
+                sbj=self.sbj.mysql(),
+                vrb=self.vrb.mysql(),
+                obj=self.obj.mysql(),
             ),
         )
 
@@ -207,11 +207,11 @@ class Word(object):
         if tuple_row is not None:
             self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
-            self.__id = self.number_from_mysql(dict_row['id'])
-            self.sbj = self.number_from_mysql(dict_row['sbj'])
-            self.vrb = self.number_from_mysql(dict_row['vrb'])
-            self.obj = self.number_from_mysql(dict_row['obj'])
-            self.num = self.number_from_mysql(dict_row['num'])
+            self.__id = Number.from_mysql(dict_row['id'])
+            self.sbj = Number.from_mysql(dict_row['sbj'])
+            self.vrb = Number.from_mysql(dict_row['vrb'])
+            self.obj = Number.from_mysql(dict_row['obj'])
+            self.num = Number.from_mysql(dict_row['num'])
             self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
         cursor.close()
 
@@ -286,10 +286,6 @@ class Word(object):
                 num=self.num.qstring(),
             ))
 
-    @staticmethod
-    def number_from_mysql(mysql_blob):
-        return Number.from_raw(six.binary_type(mysql_blob))
-
     @property
     def id(self):
         return self.__id
@@ -307,7 +303,7 @@ class Word(object):
         max_id_sql = max_id_sql_row[0]
         if max_id_sql is None:
             return Number(0)
-        return self.number_from_mysql(max_id_sql)
+        return Number.from_mysql(max_id_sql)
 
     def save(self, override_id=None):
         if override_id is not None:
@@ -325,16 +321,16 @@ class Word(object):
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
-            "       (  `id`,    `sbj`,    `vrb`,    `obj`,    `num`, `txt`,   `whn`) "
-            "VALUES (x'{id}', x'{sbj}', x'{vrb}', x'{obj}', x'{num}',    ?, x'{whn}')"
+                   "(`id`, `sbj`, `vrb`, `obj`, `num`, `txt`, `whn`) "
+            "VALUES ({id}, {sbj}, {vrb}, {obj}, {num},     ?, {whn})"
             .format(
                 table=self._table,
-                id=self.__id.hex(),
-                sbj=self.sbj.hex(),
-                vrb=self.vrb.hex(),
-                obj=self.obj.hex(),
-                num=self.num.hex(),
-                whn=Number(time.time()).hex(),
+                id=self.__id.mysql(),
+                sbj=self.sbj.mysql(),
+                vrb=self.vrb.mysql(),
+                obj=self.obj.mysql(),
+                num=self.num.mysql(),
+                whn=Number(time.time()).mysql(),
             ),
             (self.txt, )
         )
@@ -351,7 +347,7 @@ class Word(object):
         cursor.execute("SELECT id FROM `{table}` ORDER BY id ASC".format(table=self._table))
         ids = []
         for row in cursor:
-            _id = self.number_from_mysql(row[0])
+            _id = Number.from_mysql(row[0])
             ids.append(_id)
         return ids
 

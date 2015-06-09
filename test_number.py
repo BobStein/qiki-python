@@ -63,9 +63,48 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q80', Number('0q80').qstring())
         self.assertEqual('0q', Number('0q').qstring())
 
+    def test_from_bytearray(self):
+        self.assertEqual(Number('0q82_2A'), Number.from_bytearray(bytearray(b'\x82\x2A')))
+
+    def test_to_x_apostrophe_hex(self):
+        self.assertEqual("x'822A80'", Number('0q82_2A80').x_apostrophe_hex())
+        self.assertEqual("x'822A'", Number('0q82_2A').x_apostrophe_hex())
+        self.assertEqual("x'80'", Number('0q80').x_apostrophe_hex())
+        self.assertEqual("x''", Number('0q').x_apostrophe_hex())
+
+    def test_to_zero_x_hex(self):
+        self.assertEqual("0x822A80", Number('0q82_2A80').zero_x_hex())
+        self.assertEqual("0x822A", Number('0q82_2A').zero_x_hex())
+        self.assertEqual("0x80", Number('0q80').zero_x_hex())
+        self.assertEqual("0x", Number('0q').zero_x_hex())
+
+    def test_to_ditto_backslash_hex(self):
+        self.assertEqual(r'"\x82\x2A\x80"', Number('0q82_2A80').ditto_backslash_hex())
+        self.assertEqual(r'"\x82\x2A"', Number('0q82_2A').ditto_backslash_hex())
+        self.assertEqual(r'"\x80"', Number('0q80').ditto_backslash_hex())
+        self.assertEqual(r'""', Number('0q').ditto_backslash_hex())
+
+    def test_from_mysql(self):
+        self.assertEqual(Number('0q82_2A'), Number.from_mysql(bytearray(b'\x82\x2A')))
+
+    def test_to_mysql(self):
+        self.assertEqual("x'822A'", Number('0q82_2A').mysql())
+
+    # TODO: test from_mysql and to_mysql using SELECT and @-variables -- maybe in test_word.py because it already has a db connection.
+
+    # Blob literal surtaxes:
+    # ----------------------
+    # mysql: x'822A' or 0x822A
+    # mssql: 0x822A
+    # sqlite or DB2: x'822A'
+    # postgre: E'\x82\x2A'
+    # c or java or javascript: "\x82\x2A"
+
     def test_repr(self):
         n =               Number('0q83_03E8')
         self.assertEqual("Number('0q83_03E8')", repr(n))
+
+
 
     # noinspection PyUnresolvedReferences
     def test_nan(self):
@@ -73,7 +112,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'', Number.NAN.raw)
         self.assertEqual('', Number.NAN.hex())
         self.assertEqual('nan', str(float(Number.NAN)))
-        self.assertTrue(Number._floats_really_same(float('nan'), float(Number.NAN)))
+        self.assertFloatSame(float('nan'), float(Number.NAN))
 
     def test_nan_default(self):
         self.assertEqual('0q', Number().qstring())
@@ -94,6 +133,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
+    # noinspection PyUnresolvedReferences
     def test_infinite_constants(self):
         self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
         self.assertEqual('0q00_7F', Number.NEGATIVE_INFINITY.qstring())
@@ -1302,6 +1342,9 @@ class NumberTestCase(unittest.TestCase):
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
 
+    def test_invalid_qstring(self):
+        self.assertFloatSame(+0.0, float(Number('0q81')))
+        self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
 
     ################## testing internal methods ###########################
@@ -1461,18 +1504,29 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00\x00'))
 
+    def assertFloatSame(self, x1, x2):
+        self.assertTrue(Number._floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
+            x1=x1,
+            x2=x2,
+        ))
+
+    def assertFloatNotSame(self, x1, x2):
+        self.assertFalse(Number._floats_really_same(x1, x2), "{x1} is the same as {x2}".format(
+            x1=x1,
+            x2=x2,
+        ))
+
     def test_01_floats_really_same(self):
-        self.assertTrue (Number._floats_really_same(1.0, 1.0))
-        self.assertFalse(Number._floats_really_same(1.0, 0.0))
-        self.assertFalse(Number._floats_really_same(1.0, float('nan')))
-        self.assertFalse(Number._floats_really_same(float('nan'), 1.0))
-        self.assertTrue (Number._floats_really_same(float('nan'), float('nan')))
+        self.assertFloatSame(1.0, 1.0)
+        self.assertFloatNotSame(1.0, 0.0)
+        self.assertFloatNotSame(1.0, float('nan'))
+        self.assertFloatNotSame(float('nan'), 1.0)
+        self.assertFloatSame(float('nan'), float('nan'))
 
-        self.assertTrue (Number._floats_really_same(+0.0, +0.0))
-        self.assertFalse(Number._floats_really_same(+0.0, -0.0))
-        self.assertFalse(Number._floats_really_same(-0.0, +0.0))
-        self.assertTrue (Number._floats_really_same(-0.0, -0.0))
-
+        self.assertFloatSame(+0.0, +0.0)
+        self.assertFloatNotSame(+0.0, -0.0)
+        self.assertFloatNotSame(-0.0, +0.0)
+        self.assertFloatSame(-0.0, -0.0)
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])

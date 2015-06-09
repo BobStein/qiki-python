@@ -31,7 +31,7 @@ class Number(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            raise TypeError('Number(%s) is not supported' % typename)
+            raise TypeError("Number(%s) is not supported" % typename)
 
         assert(isinstance(self.__raw, six.binary_type))
 
@@ -175,6 +175,12 @@ class Number(object):
         return_value = cls()
         return_value.raw = value
         return return_value
+
+    @classmethod
+    def from_bytearray(cls, value):
+        return cls.from_raw(six.binary_type(value))
+
+    from_mysql = from_bytearray
 
     def _from_string(self, s):
         assert(isinstance(s, six.string_types))
@@ -351,6 +357,20 @@ class Number(object):
     def hex(self):
         return self.hex_encode(self.raw)
 
+    def x_apostrophe_hex(self):
+        return "x'" + self.hex() + "'"
+
+    def zero_x_hex(self):
+        return "0x" + self.hex()
+
+    def ditto_backslash_hex(self):
+        hex = self.hex()
+        escaped_hex_pairs = [r'\x' + hex[i:i+2] for i in range(0, len(hex), 2)]
+        # Thanks http://stackoverflow.com/a/9475354/673991
+        return '"' + ''.join(escaped_hex_pairs) + '"'
+
+    mysql = x_apostrophe_hex
+
     @staticmethod
     def hex_decode(s):
         """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
@@ -371,7 +391,7 @@ class Number(object):
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
-            raise ValueError('qantissa() not defined for %s' % repr(self))
+            raise ValueError("qantissa() not defined for %s" % repr(self))
         number_qantissa = self._unpack_big_integer(self.raw[qan_offset:])
         return tuple((number_qantissa, len(self.raw) - qan_offset))
 
@@ -407,9 +427,14 @@ class Number(object):
 
     def qexponent(self):
         try:
-            return self.__qexponent_encode_dict[self.zone](self)
+            encoder = self.__qexponent_encode_dict[self.zone]
         except KeyError:
-            raise ValueError('qexponent() not defined for %s' % repr(self))
+            raise ValueError("qexponent() not defined for %s" % repr(self))
+        try:
+            qex = encoder(self)
+        except IndexError:
+            qex = 0   # XXX:  e.g. 0q81.  Though that qex is more like negative infinity.
+        return qex
 
     __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
         Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
@@ -633,9 +658,11 @@ class Number(object):
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
             qan -= self._exp256(qanlength)
-            if qanlength != 0 and qan >= - self._exp256(qanlength-1):
+            if qanlength > 0 and qan >= - self._exp256(qanlength-1):
                 (qan, qanlength) = (-1,1)
         else:
+            if qanlength < 0:
+                return 0.0
             if qanlength == 0 or qan <=  self._exp256(qanlength-1):
                 (qan, qanlength) = (1,1)
         exponent_base_2 = 8 * (qexp-qanlength)

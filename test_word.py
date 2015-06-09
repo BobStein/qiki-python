@@ -294,14 +294,35 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(max_id+3, self.system.max_id())
         self.assertEqual(2, anna.like(bart).num)
 
+    def test_verb_overlay_duplicate(self):
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        self.system.verb('like')
+        max_id = self.system.max_id()
+
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual(max_id+1, self.system.max_id())
+
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual(max_id+1, self.system.max_id())
+
+        anna.like(bart, 5, "maybe more than friends")
+        self.assertEqual(max_id+2, self.system.max_id())
+
+        anna.like(bart, 6, "maybe more than friends")
+        self.assertEqual(max_id+3, self.system.max_id())
+
+        anna.like(bart, 7, "maybe more than friends")
+        self.assertEqual(max_id+4, self.system.max_id())
+
+        anna.like(bart, 7, "maybe more than friends")
+        self.assertEqual(max_id+4, self.system.max_id())
+
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual(max_id+5, self.system.max_id())
 
 
-    ########## Internals ##########
-
-    def test_00_number_from_mysql(self):
-        mysql_42 = bytearray(b'\x82\x2A')
-        num_42 = Number(42)
-        self.assertEqual(num_42, Word.number_from_mysql(mysql_42))
 
 
     ################ Util ####################
