@@ -304,13 +304,13 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 5, "just as friends")
         self.assertEqual(max_id+1, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")
+        anna.like(bart, 5, "just as friends")   # Restating same s,v,o and same n,t should not generate a new word.
         self.assertEqual(max_id+1, self.system.max_id())
 
-        anna.like(bart, 5, "maybe more than friends")
+        anna.like(bart, 5, "maybe more than friends")   # Restating same n new t
         self.assertEqual(max_id+2, self.system.max_id())
 
-        anna.like(bart, 6, "maybe more than friends")
+        anna.like(bart, 6, "maybe more than friends")   # Restating same t new n
         self.assertEqual(max_id+3, self.system.max_id())
 
         anna.like(bart, 7, "maybe more than friends")
@@ -319,9 +319,49 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 7, "maybe more than friends")
         self.assertEqual(max_id+4, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")
+        anna.like(bart, 5, "just as friends")   # Reverting to old n,t should generate a new word.
         self.assertEqual(max_id+5, self.system.max_id())
 
+    def test_is_definition(self):
+        self.assertTrue(self.system('noun').is_definition())
+        self.assertTrue(self.system('verb').is_definition())
+        self.assertTrue(self.system('define').is_definition())
+        self.assertTrue(self.system('agent').is_definition())
+        self.assertTrue(self.system.is_definition())
+
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        like = self.system.verb('like')
+        liking = anna.like(bart, 5)
+
+        self.assertTrue(human.is_definition())
+        self.assertTrue(anna.is_definition())
+        self.assertTrue(bart.is_definition())
+        self.assertTrue(like.is_definition())
+        self.assertFalse(liking.is_definition())
+
+    def test_nonverb_nondefine_as_function_disallowed(self):
+        human = self.system.agent('human')
+        anna = human('anna')
+        bart = human('bart')
+        self.system.verb('like')
+
+        liking = anna.like(bart, 5)
+        with self.assertRaises(Word.NonverbNondefineAsFunctionException):
+            liking(bart)
+
+    def test_system_is_system(self):
+        sys1 = self.system
+        sys2 = self.system('system')
+        sys3 = self.system('system')('system')('system')
+        sys4 = self.system('system').system('system').system.system.system('system')('system')('system')
+        self.assertEqual(sys1.id, sys2.id)
+        self.assertEqual(sys1.id, sys3.id)
+        self.assertEqual(sys1.id, sys4.id)
+        self.assertIs(sys1, sys2)
+        self.assertIs(sys1, sys3)
+        self.assertIs(sys1, sys4)
 
 
 

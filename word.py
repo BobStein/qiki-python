@@ -71,15 +71,33 @@ class Word(object):
         return return_value
 
     def __call__(self, *args, **kwargs):
-        if self.is_system():
+        if self.is_system():   # system('name')
             assert self.id == self._ID_SYSTEM
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
+            if existing_word.id == self.id:
+                return self   # system is a singleton
             return existing_word
-        elif self.is_a_verb(reflexive=False):
+        elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
+
+            # TODO:  keyword-only or flexible positional arguments?
+            # DONE:  s.v(o)
+
+            # TODO:  disallow positional arguments?
+            # DONE:  s.v(o,n)
+            # TODO:  s.v(o,t)
+            # DONE:  s.v(o,n,t)
+            # TODO:  s.v(o,t,n)
+
+            # TODO:  support keyword arguments:
+            # TODO:  s.v(o,num=n)
+            # TODO:  s.v(o,txt=t)
+            # TODO:  s.v(o,num=n,txt=t)
+            # TODO:  s.v(o,txt=t,num=n)
+
             assert len(args) >= 1
             obj = args[0]
             try:
@@ -98,12 +116,19 @@ class Word(object):
             else:
                 existing_word = self.sentence(sbj=self._meta_self, vrb=self, obj=obj, num=num, txt=txt)
             return existing_word
-        else:
+        elif self.is_definition():   # subject.noun('name')
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
+            # if not self.is_define()
             existing_or_new_word = self._system.define(self, *args, **kwargs)
             return existing_or_new_word
+        else:
+            raise self.NonverbNondefineAsFunctionException(
+                "Word {_id} cannot be used as a function -- it's neither a verb nor a definition.".format(
+                    _id=int(self.id)
+                )
+            )
 
     def null_verb_method(self, *args, **kwargs):
         pass
@@ -241,6 +266,9 @@ class Word(object):
     def is_define(self):
         return self.id == self._ID_DEFINE
 
+    def is_definition(self):
+        return self.vrb == self._ID_DEFINE
+
     def is_noun(self):
         return self.id == self._ID_NOUN
 
@@ -273,7 +301,7 @@ class Word(object):
             return str(float(num))
 
     def __repr__(self):
-        if hasattr(self, 'txt') and self.spawn(self.vrb).is_define():
+        if hasattr(self, 'txt') and self.is_definition():
             return "Word('{0}')".format(self.txt)
         elif self.exists:
             return "Word(Number({id_qstring}))".format(id_qstring=self.id.qstring())
@@ -340,6 +368,10 @@ class Word(object):
 
     # noinspection PyClassHasNoInit
     class DefineDuplicateException(Exception):
+        pass
+
+    # noinspection PyClassHasNoInit
+    class NonverbNondefineAsFunctionException(Exception):
         pass
 
     def get_all_ids(self):
