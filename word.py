@@ -84,6 +84,9 @@ class Word(object):
             assert self._system.is_system()
 
             # TODO:  keyword-only or flexible positional arguments?
+            # https://www.python.org/dev/peps/pep-3102/
+            # http://code.activestate.com/recipes/577940-emulate-keyword-only-arguments-in-python-2/
+
             # DONE:  s.v(o)
 
             # TODO:  disallow positional arguments?
