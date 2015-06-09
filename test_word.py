@@ -304,23 +304,23 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 5, "just as friends")
         self.assertEqual(max_id+1, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")   # Restating same s,v,o and same n,t should not generate a new word.
-        self.assertEqual(max_id+1, self.system.max_id())
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual(max_id+1, self.system.max_id(), "Restating identical s.v(o,n,t) generated a new word.")
 
-        anna.like(bart, 5, "maybe more than friends")   # Restating same n new t
-        self.assertEqual(max_id+2, self.system.max_id())
+        anna.like(bart, 5, "maybe more than friends")
+        self.assertEqual(max_id+2, self.system.max_id(), "Restating same n, new t, did NOT generate a new word.")
 
-        anna.like(bart, 6, "maybe more than friends")   # Restating same t new n
-        self.assertEqual(max_id+3, self.system.max_id())
-
-        anna.like(bart, 7, "maybe more than friends")
-        self.assertEqual(max_id+4, self.system.max_id())
+        anna.like(bart, 6, "maybe more than friends")
+        self.assertEqual(max_id+3, self.system.max_id(), "Restating same t, new n, did NOT generate a new word.")
 
         anna.like(bart, 7, "maybe more than friends")
         self.assertEqual(max_id+4, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")   # Reverting to old n,t should generate a new word.
-        self.assertEqual(max_id+5, self.system.max_id())
+        anna.like(bart, 7, "maybe more than friends")
+        self.assertEqual(max_id+4, self.system.max_id())
+
+        anna.like(bart, 5, "just as friends")
+        self.assertEqual(max_id+5, self.system.max_id(), "Reverting to an old n,t did NOT generate a new word.")
 
     def test_is_definition(self):
         self.assertTrue(self.system('noun').is_definition())
