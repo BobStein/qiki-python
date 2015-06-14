@@ -390,8 +390,8 @@ class Word(object):
 class System(Word):
 
     def __init__(self, **kwargs):
-        service = kwargs.pop('service')
-        assert service == 'MySQL'
+        language = kwargs.pop('language')
+        assert language == 'MySQL'
         table = kwargs.pop('table')
         connection = mysql.connector.connect(**kwargs)
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)

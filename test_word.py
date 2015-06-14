@@ -15,7 +15,7 @@ class WordTestCase(unittest.TestCase):
 
     def setUp(self):
         self.system = System(
-            service= os.environ['DATABASE_SERVICE'],
+            language=os.environ['DATABASE_LANGUAGE'],
             host=    os.environ['DATABASE_HOST'],
             port=    os.environ['DATABASE_PORT'],
             user=    os.environ['DATABASE_USER'],
@@ -304,14 +304,14 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 5, "just as friends")
         self.assertEqual(max_id+1, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_id+1, self.system.max_id(), "Restating identical s.v(o,n,t) generated a new word.")
+        anna.like(bart, 5, "just as friends")   # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
+        self.assertEqual(max_id+1, self.system.max_id(), "Identical s.v(o,n,t) shouldn't generate a new word.")
 
         anna.like(bart, 5, "maybe more than friends")
-        self.assertEqual(max_id+2, self.system.max_id(), "Restating same n, new t, did NOT generate a new word.")
+        self.assertEqual(max_id+2, self.system.max_id(), "New t should generate a new word.")
 
         anna.like(bart, 6, "maybe more than friends")
-        self.assertEqual(max_id+3, self.system.max_id(), "Restating same t, new n, did NOT generate a new word.")
+        self.assertEqual(max_id+3, self.system.max_id(), "New n should generate a new word.")
 
         anna.like(bart, 7, "maybe more than friends")
         self.assertEqual(max_id+4, self.system.max_id())
@@ -320,7 +320,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(max_id+4, self.system.max_id())
 
         anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_id+5, self.system.max_id(), "Reverting to an old n,t did NOT generate a new word.")
+        self.assertEqual(max_id+5, self.system.max_id(), "Reverting to an old n,t should generate a new word.")
 
     def test_is_definition(self):
         self.assertTrue(self.system('noun').is_definition())
@@ -375,7 +375,7 @@ class WordTestCase(unittest.TestCase):
 
 
 
-    if False:
+    if False:   # TODO: integrate these or delete
         def test_02_word_by_name(self):
             define = Word('define')
             self.assertEqual('define', define.txt)
