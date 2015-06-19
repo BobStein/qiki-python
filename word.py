@@ -3,6 +3,7 @@ A qiki Word is defined by a three-word subject-verb-object
 """
 
 
+import re
 import six
 import time
 import mysql.connector
@@ -384,6 +385,7 @@ class Word(object):
         for row in cursor:
             _id = Number.from_mysql(row[0])
             ids.append(_id)
+        cursor.close()
         return ids
 
 
@@ -394,14 +396,36 @@ class System(Word):
         assert language == 'MySQL'
         table = kwargs.pop('table')
         connection = mysql.connector.connect(**kwargs)
+        self._system = self
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
         # TODO:  ...No, make them properties of System.  And make all Words refer to a System
         # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
-        super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
-        self._system = self
+        try:
+            super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
+        except mysql.connector.ProgrammingError as exception:
+            exception_message = str(exception)
+            print(exception_message)
+            if re.search(r"Table .* doesn't exist", exception_message):
+                self.install_from_scratch()   # TODO: Don't install twice, don't super() twice -- not D.R.Y.
+                super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
+            else:
+                assert False, exception_message
 
     def install_from_scratch(self):
-        self.uninstall_to_scratch()
+        cursor = self._connection.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS `{table}` (
+                `id` varbinary(255) NOT NULL,
+                `sbj` varbinary(255) NOT NULL,
+                `vrb` varbinary(255) NOT NULL,
+                `obj` varbinary(255) NOT NULL,
+                `num` varbinary(255) NOT NULL,
+                `txt` varchar(255) NOT NULL,
+                `whn` varbinary(255) NOT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+        """.format(table=self._table))
+        cursor.close()
         define = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
@@ -448,7 +472,11 @@ class System(Word):
 
     def uninstall_to_scratch(self):
         cursor = self._connection.cursor(prepared=True)
-        cursor.execute("DELETE FROM `{table}`".format(table=self._table))
+        try:
+            cursor.execute("DELETE FROM `{table}`".format(table=self._table))
+        except mysql.connector.ProgrammingError:
+            pass
+        cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self._table))
         cursor.close()
 
 

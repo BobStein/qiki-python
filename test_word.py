@@ -23,6 +23,7 @@ class WordTestCase(unittest.TestCase):
             database=os.environ['DATABASE_DATABASE'],
             table=   os.environ['DATABASE_TABLE'],
         )
+        self.system.uninstall_to_scratch()
         self.system.install_from_scratch()
 
     def tearDown(self):
