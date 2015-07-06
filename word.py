@@ -389,7 +389,8 @@ class Word(object):
         return ids
 
 
-class System(Word):
+class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex,
+                      #                     Station,
 
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
