@@ -4,10 +4,13 @@ A qiki Word is defined by a three-word subject-verb-object
 
 
 import re
-import six
 import time
+
 import mysql.connector
+import six
+
 from number import Number
+
 
 class Word(object):
     """
@@ -128,7 +131,7 @@ class Word(object):
             existing_or_new_word = self._system.define(self, *args, **kwargs)
             return existing_or_new_word
         else:
-            raise self.NonverbNondefineAsFunctionException(
+            raise self.NonVerbUndefinedAsFunctionException(
                 "Word {_id} cannot be used as a function -- it's neither a verb nor a definition.".format(
                     _id=int(self.id)
                 )
@@ -354,7 +357,7 @@ class Word(object):
         cursor.execute(
             "INSERT INTO `{table}` "
                    "(`id`, `sbj`, `vrb`, `obj`, `num`, `txt`, `whn`) "
-            "VALUES ({id}, {sbj}, {vrb}, {obj}, {num},     ?, {whn})"
+            "VALUES ({id}, {sbj}, {vrb}, {obj}, {num},     ?, {whn})"   # TODO:  Which is it?  ? or %s
             .format(
                 table=self._table,
                 id=self.__id.mysql(),
@@ -375,7 +378,7 @@ class Word(object):
         pass
 
     # noinspection PyClassHasNoInit
-    class NonverbNondefineAsFunctionException(Exception):
+    class NonVerbUndefinedAsFunctionException(Exception):
         pass
 
     def get_all_ids(self):
@@ -426,6 +429,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
         """.format(table=self._table))
+        # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
         define = self.spawn(
             sbj = self._ID_SYSTEM,

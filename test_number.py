@@ -9,7 +9,8 @@ import sys
 import pickle
 import textwrap
 import six
-from number import Number
+
+from qiki import Number
 
 
 class NumberTestCase(unittest.TestCase):

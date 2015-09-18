@@ -8,10 +8,12 @@ Features:
  - monotonicity (memcmp() order)
 """
 
-import six
+import binascii
 import math
 import struct
-import binascii
+
+import six
+
 
 # noinspection PyUnresolvedReferences
 class Number(object):
@@ -57,8 +59,7 @@ class Number(object):
     # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
 
-    # noinspection PyClassHasNoInit
-    class Zone:
+    class Zone(object):
         TRANSFINITE         = b'\xFF\x80'
         LUDICROUS_LARGE     = b'\xFF'
         POSITIVE            = b'\x82'
@@ -160,18 +161,20 @@ class Number(object):
         elif self.zone in self.ZONE_WHOLE_NO:
             return False
         else:
-            raise
+            raise   # TODO: raise WholeIndeterminate()?
 
     @classmethod
     def from_raw(cls, value):
-        """Construct a Number from its raw, internal binary string
+        """Construct a Number from its raw, internal binary string of qigits
 
-        Wrong:  assert Number(1) == Number(b'x82\x01')
-        Right:  assert Number(1) == Number.from_raw(b'x82\x01')
-        Right:  assert Number(1) == Number.from_raw(bytearray(b'x82\x01'))
+        Right:  assert Number(1) == Number(0q82_01')
+        Wrong:                      Number(b'\x82\x01')
+        Right:  assert Number(1) == Number.from_raw(b'\x82\x01')
+        Right:  assert Number(1) == Number.from_raw(bytearray(b'\x82\x01'))
         """
         if not isinstance(value, six.binary_type):
-            raise ValueError("'%s' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
+            raise ValueError("'%s' is not a binary string.  "
+                             "Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
         return_value = cls()
         return_value.raw = value
         return return_value
@@ -183,6 +186,10 @@ class Number(object):
     from_mysql = from_bytearray
 
     def _from_string(self, s):
+        """Construct a Number from a printable, hexadecimal rendering of its raw, internal binary string of qigits
+
+        Example:  assert Number(1) == Number(0q82_01')
+        """
         assert(isinstance(s, six.string_types))
         if s[:2] == '0q':
             sdigits = s[2:].replace('_', '')
@@ -197,6 +204,12 @@ class Number(object):
             raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
 
     def _from_float(self, x, qigits = None):
+        """Construct a Number from a Python IEEE 754 double-precision floating point number
+
+        Example:  assert Number(1) == Number(1.0)
+        Example:  assert '0q82_01' == Number(1.0).qstring()
+        Example:  assert '0q82_03243F6A8885A3' = Number(math.pi).qstring()
+        """
         if qigits is None or qigits <= 0:
             qigits = self.QIGITS_PRECISION_DEFAULT
 
@@ -364,8 +377,8 @@ class Number(object):
         return "0x" + self.hex()
 
     def ditto_backslash_hex(self):
-        hex = self.hex()
-        escaped_hex_pairs = [r'\x' + hex[i:i+2] for i in range(0, len(hex), 2)]
+        hex_digits = self.hex()
+        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
         # Thanks http://stackoverflow.com/a/9475354/673991
         return '"' + ''.join(escaped_hex_pairs) + '"'
 

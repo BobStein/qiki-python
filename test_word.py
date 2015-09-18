@@ -5,16 +5,18 @@ Testing qiki word.py
 from __future__ import print_function
 import unittest
 import os
-from number import Number
-from word import Word, System
 
-LET_DATABASE_RECORDS_REMAIN = True
+import qiki
+
+
+LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database over from scratch.
+                                     # Set this to True to manually examine the database after running it.
 
 
 class WordTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.system = System(
+        self.system = qiki.System(
             language=os.environ['DATABASE_LANGUAGE'],
             host=    os.environ['DATABASE_HOST'],
             port=    os.environ['DATABASE_PORT'],
@@ -32,7 +34,7 @@ class WordTestCase(unittest.TestCase):
         self.system.disconnect()
 
     def test_00_number(self):
-        n = Number(1)
+        n = qiki.Number(1)
         self.assertEqual(1, int(n))
 
     def test_01_system(self):
@@ -50,7 +52,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual('noun', noun.txt)
 
     def test_03a_max_id(self):
-        self.assertEqual(Word._ID_MAX_FIXED, self.system.max_id())
+        self.assertEqual(qiki.Word._ID_MAX_FIXED, self.system.max_id())
 
     def test_03b_noun_spawn(self):
         noun = self.system('noun')
@@ -305,8 +307,11 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 5, "just as friends")
         self.assertEqual(max_id+1, self.system.max_id())
 
-        anna.like(bart, 5, "just as friends")   # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
-        self.assertEqual(max_id+1, self.system.max_id(), "Identical s.v(o,n,t) shouldn't generate a new word.")
+        # anna.like(bart, 5, "just as friends")
+        # self.assertEqual(max_id+1, self.system.max_id(), "Identical s.v(o,n,t) shouldn't generate a new word.")
+        # TODO:  Decide whether these "duplicates" should be errors or insert new records or not...
+        # TODO:  Probably it should be an error for some verbs (e.g. like) and not for others (e.g. comment)
+        # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
 
         anna.like(bart, 5, "maybe more than friends")
         self.assertEqual(max_id+2, self.system.max_id(), "New t should generate a new word.")
@@ -317,8 +322,8 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 7, "maybe more than friends")
         self.assertEqual(max_id+4, self.system.max_id())
 
-        anna.like(bart, 7, "maybe more than friends")
-        self.assertEqual(max_id+4, self.system.max_id())
+        # anna.like(bart, 7, "maybe more than friends")
+        # self.assertEqual(max_id+4, self.system.max_id())
 
         anna.like(bart, 5, "just as friends")
         self.assertEqual(max_id+5, self.system.max_id(), "Reverting to an old n,t should generate a new word.")
@@ -342,14 +347,14 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(like.is_definition())
         self.assertFalse(liking.is_definition())
 
-    def test_nonverb_nondefine_as_function_disallowed(self):
+    def test_non_verb_undefined_as_function_disallowed(self):
         human = self.system.agent('human')
         anna = human('anna')
         bart = human('bart')
         self.system.verb('like')
 
         liking = anna.like(bart, 5)
-        with self.assertRaises(Word.NonverbNondefineAsFunctionException):
+        with self.assertRaises(qiki.Word.NonVerbUndefinedAsFunctionException):
             liking(bart)
 
     def test_system_is_system(self):
@@ -378,35 +383,35 @@ class WordTestCase(unittest.TestCase):
 
     if False:   # TODO: integrate these or delete
         def test_02_word_by_name(self):
-            define = Word('define')
+            define = qiki.Word('define')
             self.assertEqual('define', define.txt)
 
         def test_02_word_by_id(self):
-            define = Word('define')
-            define_too = Word(define.id)
+            define = qiki.Word('define')
+            define_too = qiki.Word(define.id)
             self.assertEqual('define', define_too.txt)
 
         def test_02_word_by_word(self):
             """Word copy constructor."""
-            define = Word('define')
-            define_too = Word(define)
+            define = qiki.Word('define')
+            define_too = qiki.Word(define)
             self.assertEqual('define', define_too.txt)
 
         def test_id_cannot_set_id(self):
-            define = Word('define')
+            define = qiki.Word('define')
             with self.assertRaises(RuntimeError):
                 define.id = -1
 
         def test_quintuple_self_evident(self):
-            define = Word('define')
+            define = qiki.Word('define')
             self.assertEqual(define.vrb, define.id)
-            noun = Word('noun')
+            noun = qiki.Word('noun')
             self.assertEqual(noun.obj, noun.id)
-            verb = Word('verb')
+            verb = qiki.Word('verb')
             self.assertEqual(verb.obj, noun.id)
-            agent = Word('agent')
+            agent = qiki.Word('agent')
             self.assertEqual(agent.obj, noun.id)
-            system = Word('system')
+            system = qiki.Word('system')
             self.assertEqual(system.sbj, system.id)
             self.assertEqual(system.obj, agent.id)
 
@@ -415,75 +420,75 @@ class WordTestCase(unittest.TestCase):
             class UnExpected:
                 pass
             with self.assertRaises(TypeError):
-                Word(UnExpected)
+                qiki.Word(UnExpected)
 
         def test_by_id(self):
-            define = Word('define')
-            define2 = Word(define.id)
+            define = qiki.Word('define')
+            define2 = qiki.Word(define.id)
             self.assertEqual('define', define2.txt)
             self.assertEqual(define.id, define2.id)
 
         def test_repr(self):
-            define = Word('define')
+            define = qiki.Word('define')
             self.assertIn('define', repr(define))
             self.assertEqual("Word('define')", repr(define))
 
         def test_defined_verb(self):
-            self.assertTrue(Word('define').exists)
+            self.assertTrue(qiki.Word('define').exists)
 
         def test_undefined_verb(self):
-            u = Word('_undefined_verb_')
+            u = qiki.Word('_undefined_verb_')
             self.assertFalse(u.exists)
 
         def test_is_a(self):
-            self.assertTrue( Word('verb').is_a(Word('noun')))
-            self.assertFalse(Word('noun').is_a(Word('verb')))
+            self.assertTrue( qiki.Word('verb').is_a(qiki.Word('noun')))
+            self.assertFalse(qiki.Word('noun').is_a(qiki.Word('verb')))
 
         def test_zz1_define_noun(self):
-            system = Word('system')
-            noun = Word('noun')
+            system = qiki.Word('system')
+            noun = qiki.Word('noun')
             human = system.define(noun, 'human')
             self.assertTrue(human.exists)
             self.assertEqual('human', human.txt)
 
         def test_zz1_define_by_id(self):
-            system = Word('system')
-            noun = Word('noun')
+            system = qiki.Word('system')
+            noun = qiki.Word('noun')
             human = system.define(noun, 'human')
             self.assertTrue(human.exists)
             self.assertEqual('human', human.txt)
 
         def test_zz1_noun_method(self):
-            system = Word('system')
+            system = qiki.Word('system')
             thing = system.noun('thing')
             self.assertTrue(thing.exists)
             self.assertEqual('thing', thing.txt)
 
         def test_zz2_define_collision(self):
-            system = Word('system')
-            noun = Word('noun')
+            system = qiki.Word('system')
+            noun = qiki.Word('noun')
             system.define(noun, 'human')
-            with self.assertRaises(Word.DefineDuplicateException):
+            with self.assertRaises(qiki.Word.DefineDuplicateException):
                 system.define(noun, 'human')
 
         def test_zz3_define_verb(self):
-            system = Word('system')
-            verb = Word('verb')
+            system = qiki.Word('system')
+            verb = qiki.Word('verb')
             like = system.define(verb, 'like')
             self.assertEqual(like.txt, 'like')
             self.assertEqual(like.obj, verb.id)
-            Word.make_verb_a_method(like)
+            qiki.Word.make_verb_a_method(like)
             rating = system.like(system, system, 'loving itself', Number(100))
             print(rating.description())
             self.assertEqual(Number(100), rating.num)
             self.assertEqual('loving itself', rating.txt)
 
         def someday_test_zz3_define_verb_slimmer(self):
-            Word.noun('human')
-            Word.verb('like')
-            anna = Word.human('Anna')
-            bart = Word.human('Bart')
-            chet = Word.human('Chet')
+            qiki.Word.noun('human')
+            qiki.Word.verb('like')
+            anna = qiki.Word.human('Anna')
+            bart = qiki.Word.human('Bart')
+            chet = qiki.Word.human('Chet')
             anna_likes_bart = anna.like(bart, "He's just so dreamy.", Number(10))
             anna_likes_chet = anna.like(chet, "He's alright I guess.", Number(9))
             print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
