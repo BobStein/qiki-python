@@ -161,11 +161,11 @@ class Word(object):
         return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
-        assert isinstance(sbj, Word),             "sbj can't be a {type}".format(type=type(sbj).__name__)
-        assert isinstance(vrb, Word),             "vrb can't be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, Word),             "obj can't be a {type}".format(type=type(obj).__name__)
-        assert isinstance(txt, six.string_types), "txt can't be a {type}".format(type=type(txt).__name__)
-        assert isinstance(num, Number),           "num can't be a {type}".format(type=type(num).__name__)
+        assert isinstance(sbj, Word),             "sbj cannot be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, Word),             "vrb cannot be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, Word),             "obj cannot be a {type}".format(type=type(obj).__name__)
+        assert isinstance(txt, six.string_types), "txt cannot be a {type}".format(type=type(txt).__name__)
+        assert isinstance(num, Number),           "num cannot be a {type}".format(type=type(num).__name__)
         new_word = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
         new_word.save()
         return new_word
@@ -185,10 +185,13 @@ class Word(object):
         """
         assert isinstance(_id, Number)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `id` = {_id}"
+            "SELECT * FROM `{table}` WHERE `id` = ?"
             .format(
                 table=self._table,
-                _id=_id.mysql(),
+                # identifier=_id.mysql(),
+            ),
+            (
+                _id.raw,
             )
         )
 
@@ -196,12 +199,17 @@ class Word(object):
         """Construct a Word from its txt, but only when it's a definition."""
         assert isinstance(txt, six.string_types)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `vrb` = {define} AND `txt` = ?"
+            "SELECT * FROM `{table}` "
+                "WHERE   `vrb` = ? "
+                    "AND `txt` = ?"
             .format(
                 table=self._table,
-                define=self._ID_DEFINE.mysql(),
+                # define=self._ID_DEFINE.mysql(),
             ),
-            (txt,)
+            (
+                self._ID_DEFINE.raw,
+                txt
+            )
         )
         if not self.exists:
             self.txt = txt
@@ -217,19 +225,23 @@ class Word(object):
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         self._load_row(
-            "SELECT * "
-                "FROM `{table}` "
-                "WHERE   `sbj` = {sbj} "
-                    "AND `vrb` = {vrb} "
-                    "AND `obj` = {obj} "
+            "SELECT * FROM `{table}` "
+                "WHERE   `sbj` = ? "
+                    "AND `vrb` = ? "
+                    "AND `obj` = ? "
                 "ORDER BY `id` DESC "
                 "LIMIT 1"
             .format(
                 table=self._table,
-                sbj=self.sbj.mysql(),
-                vrb=self.vrb.mysql(),
-                obj=self.obj.mysql(),
+                # sbj=self.sbj.mysql(),   # "{sbj}" generates error in PyCharm "<expression> expected"
+                # vrb=self.vrb.mysql(),
+                # obj=self.obj.mysql(),
             ),
+            (
+                self.sbj.raw,
+                self.vrb.raw,
+                self.obj.raw,
+            )
         )
 
     def _load_row(self, sql, params=()):
@@ -353,21 +365,32 @@ class Word(object):
         if self.__id is None:
             self.__id = self.max_id().inc()   # AUTO sorta INCREMENT
         assert isinstance(self.__id, Number)
+        # TODO: named substitutions with NON-prepared statements??
+        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+        # http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
         cursor = self._connection.cursor(prepared=True)
         cursor.execute(
             "INSERT INTO `{table}` "
-                   "(`id`, `sbj`, `vrb`, `obj`, `num`, `txt`, `whn`) "
-            "VALUES ({id}, {sbj}, {vrb}, {obj}, {num},     ?, {whn})"   # TODO:  Which is it?  ? or %s
+                   "(id, sbj, vrb, obj, num, txt, whn) "
+            "VALUES ( ?,   ?,   ?,   ?,   ?,   ?,   ?)"
             .format(
                 table=self._table,
-                id=self.__id.mysql(),
-                sbj=self.sbj.mysql(),
-                vrb=self.vrb.mysql(),
-                obj=self.obj.mysql(),
-                num=self.num.mysql(),
-                whn=Number(time.time()).mysql(),
+                # id=self.__id.mysql(),
+                # sbj=self.sbj.mysql(),
+                # vrb=self.vrb.mysql(),
+                # obj=self.obj.mysql(),
+                # num=self.num.mysql(),
+                # whn=Number(time.time()).mysql(),
             ),
-            (self.txt, )
+            (
+                self.__id.raw,
+                self.sbj.raw,
+                self.vrb.raw,
+                self.obj.raw,
+                self.num.raw,
+                self.txt,
+                Number(time.time()).raw,
+            )
         )
         self._connection.commit()
         self.exists = True
@@ -485,9 +508,9 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         cursor.close()
 
 
-# TODO: don't raise built-in classes, raise subclasses of built-in exceptions
+# TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
-# TODO: ...If so they'd need to be dynamic properties -- and avoid infinite recursion!
-# TODO: ...One way to do this might be x = Word(id) wouldn't generate database activity
+# TODO: ...If so they would need to be dynamic properties -- and avoid infinite recursion!
+# TODO: ...One way to do this might be x = Word(id) would not generate database activity
 # TODO: ......unless some other method were called, e.g. x.vrb
 # TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
