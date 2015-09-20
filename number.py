@@ -267,10 +267,10 @@ class Number(object):
         return qex + qan
 
     @classmethod
-    def _pack_integer(cls, theinteger, nbytes=None):
+    def _pack_integer(cls, the_integer, nbytes=None):
         """Pack an integer into a binary string, which is like a base-256, big-endian string.
 
-        :param theinteger:  an arbitrarily large integer
+        :param the_integer:  an arbitrarily large integer
         :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
         :return:  an unsigned two's complement string, MSB first
 
@@ -283,14 +283,14 @@ class Number(object):
         """
 
         if nbytes is None:
-            nbytes = len(cls._hex_even(abs(theinteger)))//2   # nbytes default = 1 + floor(log(abs(theinteger), 256))
+            nbytes = len(cls._hex_even(abs(the_integer)))//2   # nbytes default = 1 + floor(log(abs(the_integer), 256))
 
-        if nbytes <= 8 and 0 <= theinteger < 4294967296:
-            return struct.pack('>Q', theinteger)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
-        elif nbytes <= 8 and -2147483648 <= theinteger < 2147483648:
-            return struct.pack('>q', theinteger)[8-nbytes:]
+        if nbytes <= 8 and 0 <= the_integer < 4294967296:
+            return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
+        elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
+            return struct.pack('>q', the_integer)[8-nbytes:]
         else:
-            return cls._pack_big_integer_via_hex(theinteger, nbytes)
+            return cls._pack_big_integer_via_hex(the_integer, nbytes)
 
     @classmethod
     def _pack_big_integer_via_hex(cls, num, nbytes):
@@ -313,28 +313,38 @@ class Number(object):
         )
 
     @staticmethod
-    def _hex_even(theinteger):
+    def _hex_even(the_integer):
         """Encode a hexadecimal string from a big integer.
 
         like hex() but even number of digits, no '0x' prefix, no 'L' suffix
         Also derived from Mike Boers code http://stackoverflow.com/a/777774/673991
         """
-        hex_string = hex(theinteger)[2:].rstrip('L')
+        hex_string = hex(the_integer)[2:].rstrip('L')
         if len(hex_string) % 2:
             hex_string = '0' + hex_string
         return hex_string
 
+    assert 'ff' == _hex_even.__func__(255)   # Thanks http://stackoverflow.com/a/12718272/673991
+    assert '0100' == _hex_even.__func__(256)
+
     @staticmethod
-    def _left_pad00(thestring, nbytes):
+    def _left_pad00(the_string, nbytes):
         """Make a string nbytes long by padding '\x00's on the left.
 
         Thanks Jeff Mercado http://stackoverflow.com/a/5773669/673991
         """
-        return thestring.rjust(nbytes, b'\x00')
+        assert(isinstance(the_string, six.binary_type))
+        return the_string.rjust(nbytes, b'\x00')
+
+    assert b'\x00\x00abcd' == _left_pad00.__func__(b'abcd', 6)
 
     @staticmethod
-    def _right_strip00(qan):
-        return qan.rstrip(b'\x00')
+    def _right_strip00(the_string):
+        """Remove '\x00' NULs from the right end of a string."""
+        assert(isinstance(the_string, six.binary_type))
+        return the_string.rstrip(b'\x00')
+
+    assert b'abcd' == _right_strip00.__func__(b'abcd\x00\x00')
 
     @staticmethod
     def _exp256(e):
@@ -342,6 +352,9 @@ class Number(object):
         assert isinstance(e, six.integer_types)
         assert e >= 0
         return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
+
+    assert 256 == _exp256.__func__(1)
+    assert 65536 == _exp256.__func__(2)
 
     def qstring(self, underscore=1):
         """Output Number in '0qHHHHHH' string form.
@@ -387,12 +400,17 @@ class Number(object):
     @staticmethod
     def hex_decode(s):
         """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
+        assert(isinstance(s, six.string_types))
         return binascii.unhexlify(s)
 
     @staticmethod
     def hex_encode(s):
+        assert(isinstance(s, six.binary_type))
         """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
         return binascii.hexlify(s).upper().decode()
+
+    assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
+    assert 'BEEF' == hex_encode.__func__(b'\xBE\xEF')
 
     def qantissa(self):
         """Extract the base-256 significand in its raw form.
@@ -413,7 +431,7 @@ class Number(object):
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
-    }   # TODO: ludicrous numbers
+    }   # TODO: ludicrous numbers should have a qantissa() too (offset 2^N)
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
@@ -504,15 +522,15 @@ class Number(object):
 
     @staticmethod
     def _int_cant_be_positive_infinity():
-        raise OverflowError("Positive Infinity can't be represented by integers")
+        raise OverflowError("Positive Infinity cannot be represented by integers")
 
     @staticmethod
     def _int_cant_be_negative_infinity():
-        raise OverflowError("Negative Infinity can't be represented by integers")
+        raise OverflowError("Negative Infinity cannot be represented by integers")
 
     @staticmethod
     def _int_cant_be_nan():
-        raise ValueError("Not-A-Number can't be represented by integers")
+        raise ValueError("Not-A-Number cannot be represented by integers")
 
     def _to_int_positive(self):
         (qan, qanlength) = self.qantissa()
@@ -539,6 +557,9 @@ class Number(object):
         else:
             return n << nbits
 
+    assert 64 == _shift_left.__func__(32, 1)
+    assert 16 == _shift_left.__func__(32, -1)
+
     @property
     def zone(self):
         try:
@@ -562,7 +583,7 @@ class Number(object):
             )
         return zone_by_tree
 
-    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone's values
+    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone values
         for z in self._sorted_zones:
             if z <= self.raw:
                 return z
@@ -611,16 +632,21 @@ class Number(object):
         """Compare floating point numbers, a little differently.
 
         Similar to == except:
-         1. same if both NAN.
-         2. not same if one is +0.0 and the other -0.0.
+         1. They are the same if both are NAN.
+         2. They are NOT the same if one is +0.0 and the other -0.0.
+
+        This is useful for precise unit testing.
         """
         assert type(f1) is float
         assert type(f2) is float
         if math.isnan(f1) and math.isnan(f2):
             return True
-        if  math.copysign(1,f1) != math.copysign(1,f2):
+        if  math.copysign(1,f1) != math.copysign(1,f2):   # thanks http://stackoverflow.com/a/25338224/673991
             return False
         return f1 == f2
+
+    assert True == _floats_really_same.__func__(float('nan'), float('nan'))
+    assert False == _floats_really_same.__func__(+0.0, -0.0)
 
     def __float__(self):
         float_by_dictionary = self.__float__by_zone_dictionary()
@@ -897,3 +923,9 @@ Number.internal_setup()
 # TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO: str(Number('0q80')) should be '0'.  str(Number.NAN should be '0q'
 # TODO: Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
+
+# FIXME: Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
+#   Is that an IEEE float problem or a qiki.Number problem?
+#   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
+#   This may not be worth solving, or it may indicate a negative number bug.
+#   1.9374 =  but 1.9375-5 = 0q7D_FCF00000000001 and -3.062500000000005 = 0q7D_FCF0
