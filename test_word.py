@@ -4,9 +4,30 @@ Testing qiki word.py
 
 from __future__ import print_function
 import unittest
-import os
+import sys
 
 import qiki
+try:
+    import secure.credentials
+except ImportError:
+    secure = None
+    print("""
+        Example secure/credentials.py
+
+            for_playground_database = dict(
+                language= 'MySQL',
+                host=     'localhost',
+                port=     8000,
+                user=     'user',
+                password= 'password',
+                database= 'database',
+                table=    'word',
+            )
+
+        You also need an empty secure/__init__.py
+    """)
+    sys.exit(1)
+
 
 
 LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database over from scratch.
@@ -16,15 +37,15 @@ LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database 
 class WordTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.system = qiki.System(
-            language=os.environ['DATABASE_LANGUAGE'],
-            host=    os.environ['DATABASE_HOST'],
-            port=    os.environ['DATABASE_PORT'],
-            user=    os.environ['DATABASE_USER'],
-            password=os.environ['DATABASE_PASSWORD'],
-            database=os.environ['DATABASE_DATABASE'],
-            table=   os.environ['DATABASE_TABLE'],
-        )
+        self.system = qiki.System(**secure.credentials.for_unit_testing_database)
+        #     language=secure.credentials.for_unit_testing_database['language'],
+        #     host=    secure.credentials.for_unit_testing_database['host'],
+        #     port=    secure.credentials.for_unit_testing_database['port'],
+        #     user=    secure.credentials.for_unit_testing_database['user'],
+        #     password=secure.credentials.for_unit_testing_database['password'],
+        #     database=secure.credentials.for_unit_testing_database['database'],
+        #     table=   secure.credentials.for_unit_testing_database['table'],
+        # )
         self.system.uninstall_to_scratch()
         self.system.install_from_scratch()
 
@@ -478,9 +499,9 @@ class WordTestCase(unittest.TestCase):
             self.assertEqual(like.txt, 'like')
             self.assertEqual(like.obj, verb.id)
             qiki.Word.make_verb_a_method(like)
-            rating = system.like(system, system, 'loving itself', Number(100))
+            rating = system.like(system, system, 'loving itself', qiki.Number(100))
             print(rating.description())
-            self.assertEqual(Number(100), rating.num)
+            self.assertEqual(qiki.Number(100), rating.num)
             self.assertEqual('loving itself', rating.txt)
 
         def someday_test_zz3_define_verb_slimmer(self):
@@ -489,8 +510,8 @@ class WordTestCase(unittest.TestCase):
             anna = qiki.Word.human('Anna')
             bart = qiki.Word.human('Bart')
             chet = qiki.Word.human('Chet')
-            anna_likes_bart = anna.like(bart, "He's just so dreamy.", Number(10))
-            anna_likes_chet = anna.like(chet, "He's alright I guess.", Number(9))
+            anna_likes_bart = anna.like(bart, "He's just so dreamy.", qiki.Number(10))
+            anna_likes_chet = anna.like(chet, "He's alright I guess.", qiki.Number(9))
             print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
 
 
