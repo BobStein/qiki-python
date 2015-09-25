@@ -127,7 +127,6 @@ class Word(object):
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
-            # if not self.is_define()
             existing_or_new_word = self._system.define(self, *args, **kwargs)
             return existing_or_new_word
         else:
@@ -188,7 +187,6 @@ class Word(object):
             "SELECT * FROM `{table}` WHERE `id` = ?"
             .format(
                 table=self._table,
-                # identifier=_id.mysql(),
             ),
             (
                 _id.raw,
@@ -204,7 +202,6 @@ class Word(object):
                     "AND `txt` = ?"
             .format(
                 table=self._table,
-                # define=self._ID_DEFINE.mysql(),
             ),
             (
                 self._ID_DEFINE.raw,
@@ -233,9 +230,6 @@ class Word(object):
                 "LIMIT 1"
             .format(
                 table=self._table,
-                # sbj=self.sbj.mysql(),   # "{sbj}" generates error in PyCharm "<expression> expected"
-                # vrb=self.vrb.mysql(),
-                # obj=self.obj.mysql(),
             ),
             (
                 self.sbj.raw,
@@ -375,12 +369,6 @@ class Word(object):
             "VALUES ( ?,   ?,   ?,   ?,   ?,   ?,   ?)"
             .format(
                 table=self._table,
-                # id=self.__id.mysql(),
-                # sbj=self.sbj.mysql(),
-                # vrb=self.vrb.mysql(),
-                # obj=self.obj.mysql(),
-                # num=self.num.mysql(),
-                # whn=Number(time.time()).mysql(),
             ),
             (
                 self.__id.raw,
@@ -433,7 +421,6 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
             super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
-            # print(exception_message)
             if re.search(r"Table .* doesn't exist", exception_message):
                 self.install_from_scratch()   # TODO: Don't install twice, don't super() twice -- not D.R.Y.
                 super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
@@ -470,56 +457,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
 
-        # self._install_word(self._ID_DEFINE, self._ID_VERB, u'define')
-        # self._install_word(self._ID_NOUN, self._ID_NOUN, u'noun')
-        # self._install_word(self._ID_VERB, self._ID_NOUN, u'verb')
-        # self._install_word(self._ID_AGENT, self._ID_NOUN, u'agent')
-        # self._install_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
-
-        # define = self.spawn(
-        #     sbj = self._ID_SYSTEM,
-        #     vrb = self._ID_DEFINE,
-        #     obj = self._ID_VERB,
-        #     num = Number(1),
-        #     txt = u'define',
-        # )
-        # noun = self.spawn(
-        #     sbj = self._ID_SYSTEM,
-        #     vrb = self._ID_DEFINE,
-        #     obj = self._ID_NOUN,
-        #     num = Number(1),
-        #     txt = u'noun',
-        # )
-        # verb = self.spawn(
-        #     sbj = self._ID_SYSTEM,
-        #     vrb = self._ID_DEFINE,
-        #     obj = self._ID_NOUN,
-        #     num = Number(1),
-        #     txt = u'verb',
-        # )
-        # agent = self.spawn(
-        #     sbj = self._ID_SYSTEM,
-        #     vrb = self._ID_DEFINE,
-        #     obj = self._ID_NOUN,
-        #     num = Number(1),
-        #     txt = u'agent',
-        # )
-        # system = self.spawn(
-        #     sbj = self._ID_SYSTEM,
-        #     vrb = self._ID_DEFINE,
-        #     obj = self._ID_AGENT,
-        #     num = Number(1),
-        #     txt = u'system',
-        # )
-        # try:
-        #     define.save(override_id=self._ID_DEFINE)
-        #     noun.save(override_id=self._ID_NOUN)
-        #     verb.save(override_id=self._ID_VERB)
-        #     agent.save(override_id=self._ID_AGENT)
-        #     system.save(override_id=self._ID_SYSTEM)
-        # except mysql.connector.IntegrityError:
-        #     raise
-
+    mysql.connector
     def _seminal_word(self, _id, _obj, _txt):
         word = Word(_id, table=self._table, connection=self._connection)
         if not word.exists:
