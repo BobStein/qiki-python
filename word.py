@@ -2,7 +2,7 @@
 A qiki Word is defined by a three-word subject-verb-object
 """
 
-
+from __future__ import print_function
 import re
 import time
 
@@ -433,13 +433,23 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
             super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
-            print(exception_message)
+            # print(exception_message)
             if re.search(r"Table .* doesn't exist", exception_message):
                 self.install_from_scratch()   # TODO: Don't install twice, don't super() twice -- not D.R.Y.
                 super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
             else:
                 assert False, exception_message
+
+        self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
+        self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
+        self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
+        self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
+        self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
+
+        if not self.exists:
+            self._from_id(self._ID_SYSTEM)
         assert self.exists
+
         assert self.is_system()
         assert self._connection.is_connected()
 
@@ -459,49 +469,86 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
-        define = self.spawn(
+
+        # self._install_word(self._ID_DEFINE, self._ID_VERB, u'define')
+        # self._install_word(self._ID_NOUN, self._ID_NOUN, u'noun')
+        # self._install_word(self._ID_VERB, self._ID_NOUN, u'verb')
+        # self._install_word(self._ID_AGENT, self._ID_NOUN, u'agent')
+        # self._install_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
+
+        # define = self.spawn(
+        #     sbj = self._ID_SYSTEM,
+        #     vrb = self._ID_DEFINE,
+        #     obj = self._ID_VERB,
+        #     num = Number(1),
+        #     txt = u'define',
+        # )
+        # noun = self.spawn(
+        #     sbj = self._ID_SYSTEM,
+        #     vrb = self._ID_DEFINE,
+        #     obj = self._ID_NOUN,
+        #     num = Number(1),
+        #     txt = u'noun',
+        # )
+        # verb = self.spawn(
+        #     sbj = self._ID_SYSTEM,
+        #     vrb = self._ID_DEFINE,
+        #     obj = self._ID_NOUN,
+        #     num = Number(1),
+        #     txt = u'verb',
+        # )
+        # agent = self.spawn(
+        #     sbj = self._ID_SYSTEM,
+        #     vrb = self._ID_DEFINE,
+        #     obj = self._ID_NOUN,
+        #     num = Number(1),
+        #     txt = u'agent',
+        # )
+        # system = self.spawn(
+        #     sbj = self._ID_SYSTEM,
+        #     vrb = self._ID_DEFINE,
+        #     obj = self._ID_AGENT,
+        #     num = Number(1),
+        #     txt = u'system',
+        # )
+        # try:
+        #     define.save(override_id=self._ID_DEFINE)
+        #     noun.save(override_id=self._ID_NOUN)
+        #     verb.save(override_id=self._ID_VERB)
+        #     agent.save(override_id=self._ID_AGENT)
+        #     system.save(override_id=self._ID_SYSTEM)
+        # except mysql.connector.IntegrityError:
+        #     raise
+
+    def _seminal_word(self, _id, _obj, _txt):
+        word = Word(_id, table=self._table, connection=self._connection)
+        if not word.exists:
+            print("Installing word", _txt)
+            self._install_word(_id, _obj, _txt)
+            word = Word(_id, table=self._table, connection=self._connection)
+        assert word.exists
+
+    def _install_word(self, _id, _obj, _txt):
+        word = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
-            obj = self._ID_VERB,
+            obj = _obj,
             num = Number(1),
-            txt = u'define',
-        )
-        noun = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'noun',
-        )
-        verb = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'verb',
-        )
-        agent = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_NOUN,
-            num = Number(1),
-            txt = u'agent',
-        )
-        system = self.spawn(
-            sbj = self._ID_SYSTEM,
-            vrb = self._ID_DEFINE,
-            obj = self._ID_AGENT,
-            num = Number(1),
-            txt = u'system',
+            txt = _txt,
         )
         try:
-            define.save(override_id=self._ID_DEFINE)
-            noun.save(override_id=self._ID_NOUN)
-            verb.save(override_id=self._ID_VERB)
-            agent.save(override_id=self._ID_AGENT)
-            system.save(override_id=self._ID_SYSTEM)
+            word.save(override_id=_id)
         except mysql.connector.IntegrityError:
+            # TODO:  What was I thinking should happen here?
             raise
+        except mysql.connector.ProgrammingError as exception:
+            exception_message = str(exception)
+            if re.search(r"INSERT command denied to user", exception_message):
+                print("GRANT INSERT ON db TO user@host?")
+                raise
+            else:
+                print(exception_message)
+                raise
 
     def uninstall_to_scratch(self):
         cursor = self._connection.cursor(prepared=True)
@@ -519,3 +566,4 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
 # TODO: ...One way to do this might be x = Word(id) would not generate database activity
 # TODO: ......unless some other method were called, e.g. x.vrb
 # TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
+# TODO: Logging callback
