@@ -416,7 +416,9 @@ class Word(object):
 
 
 class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex,
-                      #                     Station,
+                      #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
+                      #                     Heap, Midden, Scribe,
+                      # Eventually, this will encapsulate other word repositories
 
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
@@ -437,6 +439,9 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
                 super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
             else:
                 assert False, exception_message
+        assert self.exists
+        assert self.is_system()
+        assert self._connection.is_connected()
 
     def install_from_scratch(self):
         cursor = self._connection.cursor()
