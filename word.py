@@ -358,6 +358,7 @@ class Word(object):
         assert not self.exists
         if self.__id is None:
             self.__id = self.max_id().inc()   # AUTO sorta INCREMENT
+            # TODO: Race condition?
         assert isinstance(self.__id, Number)
         # TODO: named substitutions with NON-prepared statements??
         # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
@@ -505,3 +506,4 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
 # TODO: ......unless some other method were called, e.g. x.vrb
 # TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
 # TODO: Logging callback
+# TODO: MySQL decouple -- reinvent some db abstraction class?

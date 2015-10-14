@@ -971,6 +971,24 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q83_03E8', str(Number(Number('0q83_03E8'))))
         self.assertEqual('0q7C_FEFF', str(Number(Number('0q7C_FEFF'))))
 
+    def test_copy_constructor_ancestored(self):
+        """Propagating up the type hierarchy"""
+
+        class SonOfNumber(Number):
+            pass
+
+        self.assertEqual('0q83_03E8', str(Number(SonOfNumber('0q83_03E8'))))
+        self.assertEqual('0q7C_FEFF', str(Number(SonOfNumber('0q7C_FEFF'))))
+
+    def test_copy_constructor_inherited(self):
+        """Propagating down the type hierarchy"""
+
+        class SonOfNumber(Number):
+            pass
+
+        self.assertEqual('0q83_03E8', str(SonOfNumber(Number('0q83_03E8'))))
+        self.assertEqual('0q7C_FEFF', str(SonOfNumber(Number('0q7C_FEFF'))))
+
     def test_sizeof(self):
         self.assertIn(sys.getsizeof(Number('0q')), (28, 32))  # depends on Zone.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q80')), (28, 32))
@@ -1346,6 +1364,8 @@ class NumberTestCase(unittest.TestCase):
     def test_invalid_qstring(self):
         self.assertFloatSame(+0.0, float(Number('0q81')))
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
+
+
 
 
     ################## testing internal methods ###########################

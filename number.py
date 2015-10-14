@@ -23,7 +23,9 @@ class Number(object):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        elif isinstance(content, type(self)):  # copy-constructor
+        elif isinstance(content, type(self)):  # Number(SonOfNumber())
+            self.raw = content.raw
+        elif isinstance(self, type(content)):  # SonOfNumber(Number())
             self.raw = content.raw
         elif isinstance(content, six.string_types):
             self._from_string(content)
@@ -33,7 +35,10 @@ class Number(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            raise TypeError("Number(%s) is not supported" % typename)
+            raise TypeError("{outer}({inner}) is not supported".format(
+                outer=type(self).__name__,
+                inner=typename,
+            ))
 
         assert(isinstance(self.__raw, six.binary_type))
 
@@ -106,7 +111,7 @@ class Number(object):
         self.raw = d
 
     def __repr__(self):
-        return "Number('%s')" % self.qstring()
+        return "Number('{}')".format(self.qstring())
 
     def __str__(self):
         return self.qstring()
@@ -173,8 +178,8 @@ class Number(object):
         Right:  assert Number(1) == Number.from_raw(bytearray(b'\x82\x01'))
         """
         if not isinstance(value, six.binary_type):
-            raise ValueError("'%s' is not a binary string.  "
-                             "Number.from_raw(needs e.g. b'\\x82\\x01')" % repr(value))
+            raise ValueError("'{}' is not a binary string.  "
+                             "Number.from_raw(needs e.g. b'\\x82\\x01')".format(repr(value)))
         return_value = cls()
         return_value.raw = value
         return return_value
@@ -198,10 +203,10 @@ class Number(object):
             try:
                 sdecoded = self.hex_decode(sdigits)
             except TypeError:
-                raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '%s'" % s)
+                raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s))
             self.raw = six.binary_type(sdecoded)
         else:
-            raise ValueError("A qiki Number string must start with '0q' instead of '%s'" % s)
+            raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
 
     def _from_float(self, x, qigits = None):
         """Construct a Number from a Python IEEE 754 double-precision floating point number
@@ -275,10 +280,10 @@ class Number(object):
         :return:  an unsigned two's complement string, MSB first
 
         Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
-            assert     b'xFF' == _pack_integer(255)
-            assert b'x00\xFF' == _pack_integer(255,2)
-            assert     b'x01' == _pack_integer(-255)
-            assert b'xFF\x01' == _pack_integer(-255,2)
+            assert     b'\xFF' == Number._pack_integer(255)
+            assert b'\x00\xFF' == Number._pack_integer(255,2)
+            assert     b'\x01' == Number._pack_integer(-255)
+            assert b'\xFF\x01' == Number._pack_integer(-255,2)
         Caution, nbytes lower than minimum may not be enforced, see unit tests
         """
 
@@ -323,7 +328,6 @@ class Number(object):
         if len(hex_string) % 2:
             hex_string = '0' + hex_string
         return hex_string
-
     assert 'ff' == _hex_even.__func__(255)   # Thanks http://stackoverflow.com/a/12718272/673991
     assert '0100' == _hex_even.__func__(256)
 
@@ -335,7 +339,6 @@ class Number(object):
         """
         assert(isinstance(the_string, six.binary_type))
         return the_string.rjust(nbytes, b'\x00')
-
     assert b'\x00\x00abcd' == _left_pad00.__func__(b'abcd', 6)
 
     @staticmethod
@@ -343,7 +346,6 @@ class Number(object):
         """Remove '\x00' NULs from the right end of a string."""
         assert(isinstance(the_string, six.binary_type))
         return the_string.rstrip(b'\x00')
-
     assert b'abcd' == _right_strip00.__func__(b'abcd\x00\x00')
 
     @staticmethod
@@ -352,7 +354,6 @@ class Number(object):
         assert isinstance(e, six.integer_types)
         assert e >= 0
         return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
-
     assert 256 == _exp256.__func__(1)
     assert 65536 == _exp256.__func__(2)
 
@@ -402,14 +403,13 @@ class Number(object):
         """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
         assert(isinstance(s, six.string_types))
         return binascii.unhexlify(s)
+    assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
 
     @staticmethod
     def hex_encode(s):
         assert(isinstance(s, six.binary_type))
         """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
         return binascii.hexlify(s).upper().decode()
-
-    assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
     assert 'BEEF' == hex_encode.__func__(b'\xBE\xEF')
 
     def qantissa(self):
@@ -737,6 +737,7 @@ class Number(object):
         cls.name_of_zone = {   # Translate zone code to zone name, e.g. name_of_zone[b'\x80'] == 'ZERO'
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
         }
+        assert cls.name_of_zone[cls.Zone.ZERO] == 'ZERO'
 
         cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes, desc order == defined order
 
@@ -909,13 +910,12 @@ Number.internal_setup()
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?
 
-# TODO: Number.inc()   (use native computation)
-# TODO: __neg__ (take advantage of two's complement encoding)
-# TODO: __add__, __mul__, etc.  (phase 1: mooch float or int, phase 2: native computations)
-# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
+# TODO: Number.inc() native - taking advantage of raw encodings
+# TODO: __neg__ native - taking advantage of two's complement encoding
+# TODO: __add__, __mul__, etc. native
+# TODO: other Number(string)s, e.g. assert 1 == Number('1')
 
-# TODO: is_whole_number() -- would help discriminate whether phase-1 math should use int or float, (less than 2**52)
-# TODO: hooks to add features modularly
+# TODO: hooks to add features modularly, e.g. suffixes
 # TODO: change % to .format()
 # TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
 # TODO: raise subclass of built-in exceptions
