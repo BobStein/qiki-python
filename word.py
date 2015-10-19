@@ -396,10 +396,10 @@ class Word(object):
     def get_all_ids(self):
         cursor = self._connection.cursor()
         cursor.execute("SELECT id FROM `{table}` ORDER BY id ASC".format(table=self._table))
-        ids = []
-        for row in cursor:
-            _id = Number.from_mysql(row[0])
-            ids.append(_id)
+        ids = [Number.from_mysql(row[0]) for row in cursor]
+        # for row in cursor:
+        #     _id = Number.from_mysql(row[0])
+        #     ids.append(_id)
         cursor.close()
         return ids
 
@@ -423,25 +423,18 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
-                self.install_from_scratch()   # TODO: Don't install twice, don't super() twice -- not D.R.Y.
+                self.install_from_scratch()
+                # TODO: Don't super() twice -- cuz it's not D.R.Y.
+                # TODO: Don't install in unit tests if we're about to uninstall.
                 super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
             else:
                 assert False, exception_message
-
-        self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
-        self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
-        self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
-        self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
-        self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
-
-        if not self.exists:
-            self._from_id(self._ID_SYSTEM)
         assert self.exists
-
         assert self.is_system()
         assert self._connection.is_connected()
 
     def install_from_scratch(self):
+        """Create database table and insert words.  Or do nothing if table and/or words already exist."""
         cursor = self._connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS `{table}` (
@@ -458,11 +451,20 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
 
-    mysql.connector
+        self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
+        self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
+        self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
+        self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
+        self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
+
+        if not self.exists:
+            self._from_id(self._ID_SYSTEM)
+        assert self.exists
+        assert self.is_system()
+
     def _seminal_word(self, _id, _obj, _txt):
         word = Word(_id, table=self._table, connection=self._connection)
         if not word.exists:
-            print("Installing word", _txt)
             self._install_word(_id, _obj, _txt)
             word = Word(_id, table=self._table, connection=self._connection)
         assert word.exists
@@ -497,6 +499,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
             pass
         cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self._table))
         cursor.close()
+        # After this, we can only install_from_scratch() or disconnect()
 
 
 # TODO: Do not raise built-in classes, raise subclasses of built-in exceptions

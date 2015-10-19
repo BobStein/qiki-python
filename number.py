@@ -18,6 +18,9 @@ import six
 # noinspection PyUnresolvedReferences
 class Number(object):
 
+    __slots__ = ('__raw', )   # less memory
+    # __slots__ = ('__raw', '_zone')   # faster
+
     def __init__(self, content=None, qigits=None):
         if isinstance(content, six.integer_types):
             self._from_int(content)
@@ -39,11 +42,7 @@ class Number(object):
                 outer=type(self).__name__,
                 inner=typename,
             ))
-
         assert(isinstance(self.__raw, six.binary_type))
-
-    __slots__ = ('__raw', )   # less memory
-    # __slots__ = ('__raw', '_zone')   # faster
 
     RAW_INF     = b'\xFF\x81'
     RAW_ZERO    = b'\x80'
@@ -55,9 +54,9 @@ class Number(object):
     # -----
     # qiki Numbers fall into zones.
     # The internal Number.Zone class serves as an enumeration.
-    # Its members have values that are *between* zones.
-    # Raw, internal binary strings are represented.
-    # They are less than or equal to all raw values in the zone they represent,
+    # Its members of Number.Zone have values that are *between* zones.
+    # Raw, internal binary strings are represented by these values.
+    # Each value is less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
     # (So actually, some zone values are valid raw values, others are among the inter-zone values.)
     # The valid raw string for 1 is b'x82\x01' but Number.Zone.POSITIVE is b'x82'.
@@ -91,6 +90,7 @@ class Number(object):
     # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
     # So 8 qigits can store 57-64 bits, and that may be needed to store 53.
     # For example 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits
+    # These 8 bytes are the
     QIGITS_PRECISION_DEFAULT = 8
 
     @property

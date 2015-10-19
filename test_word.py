@@ -38,16 +38,12 @@ class WordTestCase(unittest.TestCase):
 
     def setUp(self):
         self.system = qiki.System(**secure.credentials.for_unit_testing_database)
-        #     language=secure.credentials.for_unit_testing_database['language'],
-        #     host=    secure.credentials.for_unit_testing_database['host'],
-        #     port=    secure.credentials.for_unit_testing_database['port'],
-        #     user=    secure.credentials.for_unit_testing_database['user'],
-        #     password=secure.credentials.for_unit_testing_database['password'],
-        #     database=secure.credentials.for_unit_testing_database['database'],
-        #     table=   secure.credentials.for_unit_testing_database['table'],
-        # )
         self.system.uninstall_to_scratch()
         self.system.install_from_scratch()
+        # cursor = self.system._connection.cursor()
+        # cursor.execute("SELECT txt FROM `{table}` ORDER BY id ASC".format(table=self.system._table))
+        # print("Word database:", ", ".join([row[0] for row in cursor]))
+        # cursor.close()
 
     def tearDown(self):
         if not LET_DATABASE_RECORDS_REMAIN:
