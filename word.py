@@ -329,7 +329,8 @@ class Word(object):
 
     @property
     def id(self):
-        return self.__id
+        return Number(self.__id)   # Copy constructor so e.g. w.id.suffix(n) won't modify w.id.
+                                   # TODO: but what about w.sbj.suffix(n), etc.?
 
     @id.setter
     def id(self, value):

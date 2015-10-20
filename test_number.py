@@ -1366,8 +1366,70 @@ class NumberTestCase(unittest.TestCase):
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
 
+    ###################### suffixes ################################
+
+    def test_add_suffix(self):
+        self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(3))
+
+    def test_suffix_qstring(self):
+        self.assertEqual('0q8201030100', Number(1).add_suffix(3).qstring(underscore=0))
+        self.assertEqual('0q82_01__030100', Number(1).add_suffix(3).qstring())
+
+    def test_suffix_class(self):
+        suffix = Number.Suffix(3)
+        self.assertEqual(3, suffix.type)
+        self.assertEqual(b'', suffix.payload)
+        self.assertEqual(b'\x03\x01\x00', suffix.raw)
+
+    def test_suffix_class_empty(self):
+        suffix = Number.Suffix()
+        self.assertEqual(None, suffix.type)
+        self.assertEqual(b'', suffix.payload)
+        self.assertEqual(b'\x00\x00', suffix.raw)
+
+    def test_suffix_class_equality(self):
+        suffix1 = Number.Suffix(1)
+        another1 = Number.Suffix(1)
+        suffix3 = Number.Suffix(3)
+        another3 = Number.Suffix(3)
+        self.assertTrue(suffix1 == another1)
+        self.assertFalse(suffix1 == another3)
+        self.assertFalse(suffix3 == another1)
+        self.assertTrue(suffix3 == another3)
+
+    def test_parse_suffixes(self):
+        self.assertEqual((Number(1), ), Number(1).parse_suffixes())
+        self.assertEqual((Number(1), Number.Suffix(3)), Number(1).add_suffix(3).parse_suffixes())
+        self.assertEqual(
+            (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
+            Number( 1.75).add_suffix(    111).add_suffix(    222).parse_suffixes()
+        )
+
+    def test_parse_suffixes_is_passive(self):
+        n_original = Number(1.75).add_suffix(111).add_suffix(222)
+        nbytes_original = len(n_original.raw)
+        n = Number(n_original)
+
+        n.parse_suffixes()
+
+        self.assertEqual(n_original, n)
+        self.assertEqual(nbytes_original, len(n.raw))
+
+    def test_malformed_suffix(self):
+        with self.assertRaises(ValueError):
+            Number('0q00').parse_suffixes()
+        with self.assertRaises(ValueError):
+            Number('0q82_01__9900').parse_suffixes()
+        with self.assertRaises(ValueError):
+            Number('0q82_01__000400').parse_suffixes()
+        with self.assertRaises(ValueError):
+            Number('0q82_01__000300').parse_suffixes()   # It's never valid to suffix Number.NAN.
+        Number('0q82_01__000200').parse_suffixes()   # Yucky, but indistinguishable from valid
+        Number('0q82_01__000100').parse_suffixes()
+        Number('0q82_01__0000').parse_suffixes()
 
 
+    ################## new tests go above here ###########################
     ################## testing internal methods ###########################
 
     def test_01_shift_left(self):

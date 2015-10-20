@@ -386,7 +386,19 @@ class WordTestCase(unittest.TestCase):
         self.assertIs(sys1, sys3)
         self.assertIs(sys1, sys4)
 
+    def test_id_setting_not_allowed(self):
+        _system = self.system('system')
+        self.assertEqual(_system.id, self.system._ID_SYSTEM)
+        with self.assertRaises(RuntimeError):
+            _system.id = 999
+        self.assertEqual(_system.id, self.system._ID_SYSTEM)
 
+    def test_id_suffixer(self):
+        _system = self.system('system')
+        self.assertEqual(_system.id, self.system._ID_SYSTEM)
+        suffixed_system_id = _system.id.add_suffix(3)
+        self.assertEqual(_system.id, self.system._ID_SYSTEM)
+        self.assertEqual(suffixed_system_id, qiki.Number('0q82_05__030100'))
 
     ################ Util ####################
 

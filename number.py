@@ -193,7 +193,7 @@ class Number(object):
     def _from_string(self, s):
         """Construct a Number from a printable, hexadecimal rendering of its raw, internal binary string of qigits
 
-        Example:  assert Number(1) == Number(0q82_01')
+        Example:  assert Number(1) == Number('0q82_01')
         """
         assert(isinstance(s, six.string_types))
         if s[:2] == '0q':
@@ -363,23 +363,30 @@ class Number(object):
         assert '0q85_1234ABCD' == Number(0x1234ABCD).qstring()
         Q-string is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
-        Except q for x, underscores optional, and the value interpretation differs.
+        Except q for x, underscores optional, and of course the value interpretation differs.
         """
         if underscore == 0:
-            return '0q' + self.hex()
+            return_value = '0q' + self.hex()
         else:
-            length = len(self.raw)
+            parsed_suffixes = list(self.parse_suffixes())
+            root_raw = parsed_suffixes.pop(0).raw
+            length = len(root_raw)
             if length == 0:
                 offset = 0
             elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
                 offset = 1   # TODO: ludicrous numbers have bigger offsets (for googolplex it's 64)
-            h = self.hex()
+            h = self.hex_encode(root_raw)
             if length <= offset:
-                return '0q' + h
+                return_value = '0q' + h
             else:
-                return '0q' + h[:2*offset] + '_' + h[2*offset:]
+                return_value = '0q' + h[:2*offset] + '_' + h[2*offset:]
+            for suffix in parsed_suffixes:
+                if underscore > 0:
+                    return_value += '__'
+                return_value += self.hex_encode(suffix.raw)
+        return return_value
 
     def hex(self):
         return self.hex_encode(self.raw)
@@ -729,6 +736,56 @@ class Number(object):
 
     def _inc_via_integer(self):
         return Number(int(self) + 1).raw
+
+    class Suffix(object):
+        def __init__(self, type_=None, payload=b''):
+            self.type = type_
+            self.payload = payload
+            if type_ is None:
+                self.raw = b'\x00\x00'
+            else:
+                length = len(payload) + 1 if type_ is not None else 0
+                self.raw = payload + six.binary_type(bytearray((type_, length, 0)))
+
+        def __eq__(self, other):
+            return self.type == other.type and self.payload == other.payload
+
+    def add_suffix(self, new_type=None):
+        if new_type is None:
+            pass
+        else:
+            self.raw = self.raw + six.binary_type(bytearray((new_type, 1, 0)))
+            return self
+
+    # def suffixes(self):
+    #     n = self
+    #     _suffixes = []
+    #     while True:
+    #         (n, suffix) = n._parse_suffix()
+    #         if suffix is None:
+    #             break
+    #         _suffixes.append(suffix)
+    #     return _suffixes
+
+    def parse_suffixes(self):
+        return_array = []
+        n = Number(self)   # Is this really necessary? self.raw is immutable is it not?
+        while True:
+            last_byte = n.raw[-1:]
+            if last_byte == b'\x00':
+                try:
+                    length = six.indexbytes(n.raw, -2)
+                    type_ = six.indexbytes(n.raw, -3)
+                except IndexError:
+                    raise ValueError
+                if length >= len(n.raw)-2:   # Suffix may neither be larger than raw, nor consume all of it.
+                    raise ValueError
+                n = Number.from_raw(n.raw[0:-length-2])
+                return_array.append(Number.Suffix(type_))
+            else:
+                break
+        return_array.append(n)
+        return tuple(reversed(return_array))
 
     @classmethod
     def internal_setup(cls):
