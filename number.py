@@ -383,9 +383,8 @@ class Number(object):
             else:
                 return_value = '0q' + h[:2*offset] + '_' + h[2*offset:]
             for suffix in parsed_suffixes:
-                if underscore > 0:
-                    return_value += '__'
-                return_value += self.hex_encode(suffix.raw)
+                return_value += '__'
+                return_value += suffix.qstring(underscore)
         return return_value
 
     def hex(self):
@@ -738,24 +737,94 @@ class Number(object):
         return Number(int(self) + 1).raw
 
     class Suffix(object):
+        """A Number can have suffixes.
+
+        Format of a nonempty suffix:
+            PPPPPP_TTLL00
+        where:
+            PPPPPP - 0 to 250 byte payload
+            _  - underscore is a conventional qstring delimiter between payload and the rest
+            TT - type code of the suffix
+            LL - length, number of bytes in the type and payload, 0x00 to 0xFA
+            00 - NUL byte
+
+        The empty suffix is two NUL bytes (or LL length is zero, and there is no type and no payload):
+            0000
+
+        The NUL byte is what indicates there is a suffix.
+        This is why an unsuffixed number has all its right-end 00-bytes stripped.
+
+        Example:
+            assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
+        """
+
+        MAX_PAYLOAD_LENGTH = 250
+
         def __init__(self, type_=None, payload=b''):
-            self.type = type_
-            self.payload = payload
-            if type_ is None:
+            assert isinstance(type_, (int, type(None)))
+            assert isinstance(payload, (six.binary_type, self.Number))
+            self.type_ = type_
+            if isinstance(payload, self.Number):
+                self.payload = payload.raw
+            else:
+                self.payload = payload
+            if self.type_ is None:
+                assert self.payload == b''
+                self.length_of_payload_plus_type = 0
                 self.raw = b'\x00\x00'
             else:
-                length = len(payload) + 1 if type_ is not None else 0
-                self.raw = payload + six.binary_type(bytearray((type_, length, 0)))
+                self.length_of_payload_plus_type = len(self.payload) + 1
+                if 0x00 <= self.length_of_payload_plus_type <= self.MAX_PAYLOAD_LENGTH+1:
+                    self.raw = self.payload + six.binary_type(bytearray((
+                        self.type_,
+                        self.length_of_payload_plus_type,
+                        0x00
+                    )))
+                else:
+                    raise ValueError
 
         def __eq__(self, other):
-            return self.type == other.type and self.payload == other.payload
+            return self.type_ == other.type_ and self.payload == other.payload
 
-    def add_suffix(self, new_type=None):
-        if new_type is None:
-            pass
-        else:
-            self.raw = self.raw + six.binary_type(bytearray((new_type, 1, 0)))
-            return self
+        def __repr__(self):
+            if self.type_ is None:
+                return "Number.Suffix()"
+            else:
+                return "Number.Suffix({type_}, b'{payload}')".format(
+                    type_=self.type_,
+                    payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
+                )
+
+        def qstring(self, underscore=1):
+            whole_suffix_in_hex = self.hex_encode(self.raw)
+            if underscore > 0 and self.payload:
+                payload_hex = whole_suffix_in_hex[:-6]
+                type_length_00_hex = whole_suffix_in_hex[-6:]
+                return payload_hex + '_' + type_length_00_hex
+            else:
+                return whole_suffix_in_hex
+
+        @classmethod
+        def internal_setup(cls, number_class):
+            cls.Number = number_class
+            # cls.hex_encode = number_class.hex_encode
+
+    Suffix.hex_encode = hex_encode
+
+    def add_suffix(self, new_type=None, payload=b''):
+        suffix = self.Suffix(new_type, payload)
+        self.raw += suffix.raw
+        return self
+
+    def get_suffix_payload(self, sought_type):
+        suffixes = self.parse_suffixes()
+        for suffix in suffixes[1:]:
+            if suffix.type_ == sought_type:
+                return suffix.payload
+        raise IndexError
+
+    def get_suffix_number(self, sought_type):
+        return self.from_raw(self.get_suffix_payload(sought_type))
 
     # def suffixes(self):
     #     n = self
@@ -774,14 +843,21 @@ class Number(object):
             last_byte = n.raw[-1:]
             if last_byte == b'\x00':
                 try:
-                    length = six.indexbytes(n.raw, -2)
-                    type_ = six.indexbytes(n.raw, -3)
+                    length_of_payload_plus_type = six.indexbytes(n.raw, -2)
                 except IndexError:
                     raise ValueError
-                if length >= len(n.raw)-2:   # Suffix may neither be larger than raw, nor consume all of it.
+                if length_of_payload_plus_type >= len(n.raw)-2:   # Suffix may neither be larger than raw, nor consume all of it.
                     raise ValueError
-                n = Number.from_raw(n.raw[0:-length-2])
-                return_array.append(Number.Suffix(type_))
+                if length_of_payload_plus_type == 0x00:
+                    return_array.append(Number.Suffix())
+                else:
+                    try:
+                        type_ = six.indexbytes(n.raw, -3)
+                    except IndexError:
+                        raise ValueError
+                    payload = n.raw[-length_of_payload_plus_type-2:-3]
+                    return_array.append(Number.Suffix(type_, payload))
+                n = Number.from_raw(n.raw[0:-length_of_payload_plus_type-2])
             else:
                 break
         return_array.append(n)
@@ -953,6 +1029,8 @@ class Number(object):
 
 
 Number.internal_setup()
+Number.Suffix.internal_setup(Number)
+assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
 
 
 

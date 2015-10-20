@@ -1371,41 +1371,98 @@ class NumberTestCase(unittest.TestCase):
     def test_add_suffix(self):
         self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(3))
 
-    def test_suffix_qstring(self):
+    def test_qstring_empty(self):
+        """Make sure trailing 00s in qstring literal are not stripped."""
+        self.assertEqual(Number('0q82_01__0000'), Number('0q82_01__0000'))
+        self.assertEqual('0q82010000', Number('0q82_01__0000').qstring(underscore=0))
+        self.assertEqual('0q82012233110300', Number('0q82_01__2233_110300').qstring(underscore=0))
+
+    def test_add_suffix_empty(self):
+        self.assertEqual(Number('0q82_01__0000'), Number(1).add_suffix())
+
+    def test_add_suffix_payload(self):
+        self.assertEqual(Number('0q82_01__3456_120300'), Number(1).add_suffix(0x12, b'\x34\x56'))
+
+    def test_add_suffix_qstring(self):
         self.assertEqual('0q8201030100', Number(1).add_suffix(3).qstring(underscore=0))
         self.assertEqual('0q82_01__030100', Number(1).add_suffix(3).qstring())
 
+    def test_add_suffix_qstring_empty(self):
+        self.assertEqual('0q82010000', Number(1).add_suffix().qstring(underscore=0))
+        self.assertEqual('0q82_01__0000', Number(1).add_suffix().qstring())
+
+    def test_add_suffix_qstring_payload(self):
+        self.assertEqual('0q82014455330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring(underscore=0))
+        self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
+
     def test_suffix_class(self):
         suffix = Number.Suffix(3)
-        self.assertEqual(3, suffix.type)
+        self.assertEqual(3, suffix.type_)
         self.assertEqual(b'', suffix.payload)
         self.assertEqual(b'\x03\x01\x00', suffix.raw)
 
     def test_suffix_class_empty(self):
         suffix = Number.Suffix()
-        self.assertEqual(None, suffix.type)
+        self.assertEqual(None, suffix.type_)
         self.assertEqual(b'', suffix.payload)
         self.assertEqual(b'\x00\x00', suffix.raw)
 
+    def test_suffix_class_payload(self):
+        suffix = Number.Suffix(33, b'\xDE\xAD\xBE\xEF')
+        self.assertEqual(33, suffix.type_)
+        self.assertEqual(b'\xDE\xAD\xBE\xEF', suffix.payload)
+        self.assertEqual(b'\xDE\xAD\xBE\xEF\x21\x05\x00', suffix.raw)
+
     def test_suffix_class_equality(self):
-        suffix1 = Number.Suffix(1)
+        suffix1  = Number.Suffix(1)
         another1 = Number.Suffix(1)
-        suffix3 = Number.Suffix(3)
+        suffix3  = Number.Suffix(3)
         another3 = Number.Suffix(3)
         self.assertTrue(suffix1 == another1)
         self.assertFalse(suffix1 == another3)
         self.assertFalse(suffix3 == another1)
         self.assertTrue(suffix3 == another3)
 
+    def test_suffix_class_equality_payload(self):
+        suffix11  = Number.Suffix(1, b'\x01\x11\x10')
+        suffix13  = Number.Suffix(1, b'\x03\x33\x30')
+        another13 = Number.Suffix(1, b'\x03\x33\x30')
+        self.assertTrue(suffix11 == suffix11)
+        self.assertFalse(suffix11 == suffix13)
+        self.assertFalse(suffix13 == suffix11)
+        self.assertTrue(suffix13 == another13)
+
+    def test_suffix_class_qstring(self):
+        self.assertEqual('0000', Number.Suffix().qstring())
+        self.assertEqual('110100', Number.Suffix(0x11).qstring())
+        self.assertEqual('2233110300', Number.Suffix(0x11, b'\x22\x33').qstring(underscore=0))
+        self.assertEqual('2233_110300', Number.Suffix(0x11, b'\x22\x33').qstring())
+
     def test_parse_suffixes(self):
         self.assertEqual((Number(1), ), Number(1).parse_suffixes())
+        self.assertEqual((Number(1), Number.Suffix()), Number(1).add_suffix().parse_suffixes())
         self.assertEqual((Number(1), Number.Suffix(3)), Number(1).add_suffix(3).parse_suffixes())
         self.assertEqual(
             (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
             Number( 1.75).add_suffix(    111).add_suffix(    222).parse_suffixes()
         )
 
+    def test_parse_suffixes_payload(self):
+        self.assertEqual(
+            (Number(22.25), Number.Suffix(123, b'')),
+            Number( 22.25).add_suffix(    123, b'').parse_suffixes()
+        )
+        self.assertEqual(
+            (Number(22.25), Number.Suffix(123, b' ')),
+            Number( 22.25).add_suffix(    123, b' ').parse_suffixes()
+        )
+        self.assertEqual(
+            (Number(22.25), Number.Suffix(123, b'\xAA\xBB\xCC')),
+            Number( 22.25).add_suffix(    123, b'\xAA\xBB\xCC').parse_suffixes()
+        )
+
     def test_parse_suffixes_is_passive(self):
+        """Make sure x.parse_suffixes() does not modify x."""
         n_original = Number(1.75).add_suffix(111).add_suffix(222)
         nbytes_original = len(n_original.raw)
         n = Number(n_original)
@@ -1416,18 +1473,56 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(nbytes_original, len(n.raw))
 
     def test_malformed_suffix(self):
+        """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
         with self.assertRaises(ValueError):
-            Number('0q00').parse_suffixes()
+            Number('0q00').parse_suffixes()   # Where's the length byte?
+        with self.assertRaises(ValueError):
+            Number('0q0000').parse_suffixes()   # Can't suffix Number.NAN
+        with self.assertRaises(ValueError):
+            Number('0q220100').parse_suffixes()   # Can't suffix Number.NAN
+        with self.assertRaises(ValueError):
+            Number('0q334455_220400').parse_suffixes()   # Can't suffix Number.NAN
         with self.assertRaises(ValueError):
             Number('0q82_01__9900').parse_suffixes()
         with self.assertRaises(ValueError):
             Number('0q82_01__000400').parse_suffixes()
         with self.assertRaises(ValueError):
-            Number('0q82_01__000300').parse_suffixes()   # It's never valid to suffix Number.NAN.
+            Number('0q82_01__000300').parse_suffixes()   # Looks like suffixed Number.NAN.
         Number('0q82_01__000200').parse_suffixes()   # Yucky, but indistinguishable from valid
         Number('0q82_01__000100').parse_suffixes()
         Number('0q82_01__0000').parse_suffixes()
 
+    def test_suffix_payload_too_long(self):
+        self.assertEqual('11'*249 + '_08FA00', Number.Suffix(8, b'\x11' * 249).qstring())
+        self.assertEqual('11'*250 + '_08FB00', Number.Suffix(8, b'\x11' * 250).qstring())
+        with self.assertRaises(ValueError):
+            Number.Suffix(8, b'\x11' * 251)
+        with self.assertRaises(ValueError):
+            Number.Suffix(8, b'\x11' * 252)
+
+    def test_suffix_number(self):
+        self.assertEqual('0q83_01FF__823F_FF0300', Number(511).add_suffix(255, Number(63)))
+
+    def test_suffix_extract_raw(self):
+        self.assertEqual(b'\x33\x44', Number(1).add_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
+
+    def test_suffix_extract_raw_wrong(self):
+        with self.assertRaises(IndexError):
+            Number(1).add_suffix(0x11, b'\x33\x44').get_suffix_payload(0x22)
+
+    def test_suffix_extract_raw_among_multiple(self):
+        self.assertEqual(
+            b'\x33\x44',
+            Number(1).add_suffix(0x11, b'\x33\x44').add_suffix(0x22, b'\x88\x99').get_suffix_payload(0x11)
+        )
+        self.assertEqual(
+            b'\x88\x99',
+            Number(1).add_suffix(0x11, b'\x33\x44').add_suffix(0x22, b'\x88\x99').get_suffix_payload(0x22)
+        )
+
+    def test_suffix_extract_number(self):
+        self.assertEqual(Number(88), Number(1).add_suffix(0x11, Number(88)).get_suffix_number(0x11))
+        self.assertEqual(Number(-123.75), Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
 
     ################## new tests go above here ###########################
     ################## testing internal methods ###########################
