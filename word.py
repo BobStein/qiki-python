@@ -9,16 +9,20 @@ import time
 import mysql.connector
 import six
 
-from number import Number
+from qiki import Number
 
 
 class Word(object):
     """
-    A qiki Word is a subject-verb-object triplet of other words.
+    A qiki Word is a subject-verb-object triplet of other words (sbj, vrb, obj).
 
-    A word is identified by a qiki Number id.
-    A word may be elaborated by a number and some text.
-    A word remembers the time it was created.
+    A word is identified by a qiki Number (idn).
+    A word may be elaborated by a Number (num) and a string (txt).
+    A word remembers the time it was created (whn).
+
+    Each of these seven components of a word has a 3-letter symbol.
+    (idn, sbj, vrb, obj, num, txt, whn)
+    This helps a little in searching for the symbol, and avoiding Python reserved words.
 
     :type content: six.string_types | Word | instancemethod
 
@@ -37,18 +41,23 @@ class Word(object):
         self._table = table
         self._connection = connection
         self.exists = False
-        self.__id = None
+        self._idn = None
         self._as_if_method = self.null_verb_method
         if isinstance(content, six.string_types):
+            # e.g. Word('agent')
             assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_definition(content)
         elif isinstance(content, Number):
+            # Word(idn)
             assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
-            self._from_id(content)
+            self._from_idn(content)
         elif isinstance(content, type(self)):
+            # Word(some_other_word)
             assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_word(content)
         elif content is None:
+            # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
+            # TODO: If this is only used via spawn(), then move this code there somehow?
             self.sbj = sbj
             self.vrb = vrb
             self.obj = obj
@@ -58,7 +67,11 @@ class Word(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            raise TypeError('Word(%s) is not supported' % typename)
+            # raise TypeError('Word(%s) is not supported' % typename)
+            raise TypeError("{outer}({inner}) is not supported".format(
+                outer=type(self).__name__,
+                inner=typename,
+            ))
 
     _ID_DEFINE = Number(1)
     _ID_NOUN   = Number(2)
@@ -68,18 +81,18 @@ class Word(object):
 
     _ID_MAX_FIXED = Number(5)
 
-    def __getattr__(self, item):
+    def __getattr__(self, verb):
         assert hasattr(self, '_system')
-        return_value = self._system(item)
-        return_value._meta_self = self
+        return_value = self._system(verb)
+        return_value._word_before_the_dot = self
         return return_value
 
     def __call__(self, *args, **kwargs):
         if self.is_system():   # system('name')
-            assert self.id == self._ID_SYSTEM
+            assert self.idn == self._ID_SYSTEM
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
-            if existing_word.id == self.id:
+            if existing_word.idn == self.idn:
                 return self   # system is a singleton
             return existing_word
         elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
@@ -115,13 +128,13 @@ class Word(object):
                 txt = args[2]
             except IndexError:
                 txt=''
-            assert hasattr(self, '_meta_self')
+            assert hasattr(self, '_word_before_the_dot')
             if len(args) == 1:
-                existing_word = self._system.spawn(sbj=self._meta_self.id, vrb=self.id, obj=obj.id)
+                existing_word = self._system.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
                 existing_word.lookup_svo()
                 assert existing_word.exists
             else:
-                existing_word = self.sentence(sbj=self._meta_self, vrb=self, obj=obj, num=num, txt=txt)
+                existing_word = self.sentence(sbj=self._word_before_the_dot, vrb=self, obj=obj, num=num, txt=txt)
             return existing_word
         elif self.is_definition():   # subject.noun('name')
             assert hasattr(self, '_system')
@@ -131,8 +144,8 @@ class Word(object):
             return existing_or_new_word
         else:
             raise self.NonVerbUndefinedAsFunctionException(
-                "Word {_id} cannot be used as a function -- it's neither a verb nor a definition.".format(
-                    _id=int(self.id)
+                "Word {idn} cannot be used as a function -- it's neither a verb nor a definition.".format(
+                    idn=int(self.idn)
                 )
             )
 
@@ -165,7 +178,7 @@ class Word(object):
         assert isinstance(obj, Word),             "obj cannot be a {type}".format(type=type(obj).__name__)
         assert isinstance(txt, six.string_types), "txt cannot be a {type}".format(type=type(txt).__name__)
         assert isinstance(num, Number),           "num cannot be a {type}".format(type=type(num).__name__)
-        new_word = self.spawn(sbj=sbj.id, vrb=vrb.id, obj=obj.id, num=num, txt=txt)
+        new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
 
@@ -176,20 +189,20 @@ class Word(object):
     def disconnect(self):
         self._connection.close()
 
-    def _from_id(self, _id):
+    def _from_idn(self, idn):
         """
-        Construct a Word from its id.
+        Construct a Word from its idn.
 
-        :type _id: Number
+        :type idn: Number
         """
-        assert isinstance(_id, Number)
+        assert isinstance(idn, Number)
         self._load_row(
-            "SELECT * FROM `{table}` WHERE `id` = ?"
+            "SELECT * FROM `{table}` WHERE `idn` = ?"
             .format(
                 table=self._table,
             ),
             (
-                _id.raw,
+                idn.raw,
             )
         )
 
@@ -213,7 +226,7 @@ class Word(object):
 
     def _from_word(self, word):
         if word.exists:
-            self._from_id(word.id)
+            self._from_idn(word.idn)
         else:
             self._from_definition(word.txt)
 
@@ -226,7 +239,7 @@ class Word(object):
                 "WHERE   `sbj` = ? "
                     "AND `vrb` = ? "
                     "AND `obj` = ? "
-                "ORDER BY `id` DESC "
+                "ORDER BY `idn` DESC "
                 "LIMIT 1"
             .format(
                 table=self._table,
@@ -245,7 +258,7 @@ class Word(object):
         if tuple_row is not None:
             self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
-            self.__id = Number.from_mysql(dict_row['id'])
+            self._idn = Number.from_mysql(dict_row['idn'])
             self.sbj = Number.from_mysql(dict_row['sbj'])
             self.vrb = Number.from_mysql(dict_row['vrb'])
             self.obj = Number.from_mysql(dict_row['obj'])
@@ -255,16 +268,16 @@ class Word(object):
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
-        if reflexive and self.id == word.id:
+        if reflexive and self.idn == word.idn:
             return True
         if recursion <= 0:
             return False
         if self.vrb != self._ID_DEFINE:
             return False
-        if self.obj == word.id:
+        if self.obj == word.idn:
             return True
         parent = self.spawn(self.obj)
-        if parent.id == self.id:
+        if parent.idn == self.idn:
             return False
         return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO: limit recursion
 
@@ -277,22 +290,22 @@ class Word(object):
         return self.is_a(self._system.verb, reflexive=reflexive, **kwargs)
 
     def is_define(self):
-        return self.id == self._ID_DEFINE
+        return self.idn == self._ID_DEFINE
 
     def is_definition(self):
         return self.vrb == self._ID_DEFINE
 
     def is_noun(self):
-        return self.id == self._ID_NOUN
+        return self.idn == self._ID_NOUN
 
     def is_verb(self):
-        return self.id == self._ID_VERB
+        return self.idn == self._ID_VERB
 
     def is_agent(self):
-        return self.id == self._ID_AGENT
+        return self.idn == self._ID_AGENT
 
     def is_system(self):
-        return self.id == self._ID_SYSTEM
+        return self.idn == self._ID_SYSTEM
 
     def description(self):
         sbj = self.spawn(self.sbj)
@@ -317,7 +330,7 @@ class Word(object):
         if hasattr(self, 'txt') and self.is_definition():
             return "Word('{0}')".format(self.txt)
         elif self.exists:
-            return "Word(Number({id_qstring}))".format(id_qstring=self.id.qstring())
+            return "Word(Number({idn_qstring}))".format(idn_qstring=self.idn.qstring())
         else:
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
                 sbj=self.sbj.qstring(),
@@ -328,52 +341,60 @@ class Word(object):
             ))
 
     @property
-    def id(self):
-        return Number(self.__id)   # Copy constructor so e.g. w.id.suffix(n) won't modify w.id.
+    def idn(self):
+        return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
                                    # TODO: but what about w.sbj.suffix(n), etc.?
+                                   # So this passing through Number() is a bad idea.
+                                   # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
+    @idn.setter
+    def idn(self, value):
+        raise RuntimeError("Cannot set a Word's idn")
 
-    @id.setter
-    def id(self, value):
-        raise RuntimeError("Cannot set a Word's id")
-
-    def max_id(self):
+    def max_idn(self):
         cursor = self._connection.cursor()
-        cursor.execute("SELECT MAX(id) FROM `{table}`".format(table=self._table))
-        max_id_sql_row = cursor.fetchone()
-        if max_id_sql_row is None:
+        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._table))
+        max_idn_sql_row = cursor.fetchone()
+        if max_idn_sql_row is None:
             return Number(0)
-        max_id_sql = max_id_sql_row[0]
-        if max_id_sql is None:
+        max_idn_sql = max_idn_sql_row[0]
+        if max_idn_sql is None:
             return Number(0)
-        return Number.from_mysql(max_id_sql)
+        return_value = Number.from_mysql(max_idn_sql)
+        assert not return_value.is_nan()
+        assert return_value.is_whole()
+        return return_value
 
-    def save(self, override_id=None):
-        if override_id is not None:
-            self.__id = override_id
-        assert isinstance(self.__id, (Number, type(None)))
+    def save(self, override_idn=None):
+        if override_idn is not None:
+            self._idn = override_idn
+        assert isinstance(self.idn, (Number, type(None)))
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
         assert not self.exists
-        if self.__id is None:
-            self.__id = self.max_id().inc()   # AUTO sorta INCREMENT
+        if self._idn is None:
+            self._idn = self.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO: Race condition?
-        assert isinstance(self.__id, Number)
+            assert not self.idn.is_nan()
+        assert isinstance(self.idn, Number)
         # TODO: named substitutions with NON-prepared statements??
         # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
         cursor = self._connection.cursor(prepared=True)
+        if self.idn.is_nan():
+            print("Inserting idn =", str(self.idn), self.txt)
+        assert not self.idn.is_nan()
         cursor.execute(
             "INSERT INTO `{table}` "
-                   "(id, sbj, vrb, obj, num, txt, whn) "
-            "VALUES ( ?,   ?,   ?,   ?,   ?,   ?,   ?)"
+                   "(idn, sbj, vrb, obj, num, txt, whn) "
+            "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
             .format(
                 table=self._table,
             ),
             (
-                self.__id.raw,
+                self.idn.raw,
                 self.sbj.raw,
                 self.vrb.raw,
                 self.obj.raw,
@@ -394,15 +415,19 @@ class Word(object):
     class NonVerbUndefinedAsFunctionException(Exception):
         pass
 
-    def get_all_ids(self):
+    def get_all_idns(self):
         cursor = self._connection.cursor()
-        cursor.execute("SELECT id FROM `{table}` ORDER BY id ASC".format(table=self._table))
+        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
         ids = [Number.from_mysql(row[0]) for row in cursor]
         # for row in cursor:
-        #     _id = Number.from_mysql(row[0])
-        #     ids.append(_id)
+        #     idn = Number.from_mysql(row[0])
+        #     ids.append(idn)
         cursor.close()
         return ids
+
+
+class Listing(Word):
+    pass
 
 
 class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex,
@@ -419,6 +444,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
         # TODO:  ...No, make them properties of System.  And make all Words refer to a System
         # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
+        # TODO: Or make a class SystemMysql(System)
         try:
             super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         except mysql.connector.ProgrammingError as exception:
@@ -439,14 +465,14 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         cursor = self._connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS `{table}` (
-                `id` varbinary(255) NOT NULL,
+                `idn` varbinary(255) NOT NULL,
                 `sbj` varbinary(255) NOT NULL,
                 `vrb` varbinary(255) NOT NULL,
                 `obj` varbinary(255) NOT NULL,
                 `num` varbinary(255) NOT NULL,
                 `txt` varchar(255) NOT NULL,
                 `whn` varbinary(255) NOT NULL,
-                PRIMARY KEY (`id`)
+                PRIMARY KEY (`idn`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
@@ -459,18 +485,18 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
 
         if not self.exists:
-            self._from_id(self._ID_SYSTEM)
+            self._from_idn(self._ID_SYSTEM)
         assert self.exists
         assert self.is_system()
 
-    def _seminal_word(self, _id, _obj, _txt):
-        word = Word(_id, table=self._table, connection=self._connection)
+    def _seminal_word(self, _idn, _obj, _txt):
+        word = Word(_idn, table=self._table, connection=self._connection)
         if not word.exists:
-            self._install_word(_id, _obj, _txt)
-            word = Word(_id, table=self._table, connection=self._connection)
+            self._install_word(_idn, _obj, _txt)
+            word = Word(_idn, table=self._table, connection=self._connection)
         assert word.exists
 
-    def _install_word(self, _id, _obj, _txt):
+    def _install_word(self, _idn, _obj, _txt):
         word = self.spawn(
             sbj = self._ID_SYSTEM,
             vrb = self._ID_DEFINE,
@@ -479,7 +505,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
             txt = _txt,
         )
         try:
-            word.save(override_id=_id)
+            word.save(override_idn=_idn)
         except mysql.connector.IntegrityError:
             # TODO:  What was I thinking should happen here?
             raise
@@ -506,7 +532,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
 # TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
 # TODO: ...If so they would need to be dynamic properties -- and avoid infinite recursion!
-# TODO: ...One way to do this might be x = Word(id) would not generate database activity
+# TODO: ...One way to do this might be x = Word(idn) would not generate database activity
 # TODO: ......unless some other method were called, e.g. x.vrb
 # TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
 # TODO: Logging callback

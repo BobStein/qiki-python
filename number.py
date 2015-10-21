@@ -168,6 +168,9 @@ class Number(object):
         else:
             raise   # TODO: raise WholeIndeterminate()?
 
+    def is_nan(self):
+        return self == self.NAN
+
     @classmethod
     def from_raw(cls, value):
         """Construct a Number from its raw, internal binary string of qigits

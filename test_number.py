@@ -1264,6 +1264,13 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (Number('0q8A_01000000000000000200').is_whole())
         self.assertTrue (Number('0q8A_010000000000000002').is_whole())
 
+    def test_is_nan(self):
+        self.assertFalse(Number(0).is_nan())
+        self.assertFalse(Number(1).is_nan())
+        self.assertFalse(Number(float('inf')).is_nan())
+        self.assertTrue(Number(float('nan')).is_nan())
+        self.assertTrue(Number.NAN.is_nan())
+
     def test_neg(self):
         self.assertEqual(Number(-42), -Number(42))
         self.assertEqual(Number(-42.0625), -Number(42.0625))
@@ -1523,6 +1530,8 @@ class NumberTestCase(unittest.TestCase):
     def test_suffix_extract_number(self):
         self.assertEqual(Number(88), Number(1).add_suffix(0x11, Number(88)).get_suffix_number(0x11))
         self.assertEqual(Number(-123.75), Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
+        self.assertEqual(       -123.75 , Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
+        self.assertIs(       Number, type(Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
 
     ################## new tests go above here ###########################
     ################## testing internal methods ###########################

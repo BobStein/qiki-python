@@ -14,7 +14,7 @@ except ImportError:
     print("""
         Example secure/credentials.py
 
-            for_playground_database = dict(
+            for_example_database = dict(
                 language= 'MySQL',
                 host=     'localhost',
                 port=     8000,
@@ -25,6 +25,7 @@ except ImportError:
             )
 
         You also need an empty secure/__init__.py
+        Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
     """)
     sys.exit(1)
 
@@ -41,7 +42,7 @@ class WordTestCase(unittest.TestCase):
         self.system.uninstall_to_scratch()
         self.system.install_from_scratch()
         # cursor = self.system._connection.cursor()
-        # cursor.execute("SELECT txt FROM `{table}` ORDER BY id ASC".format(table=self.system._table))
+        # cursor.execute("SELECT txt FROM `{table}` ORDER BY idn ASC".format(table=self.system._table))
         # print("Word database:", ", ".join([row[0] for row in cursor]))
         # cursor.close()
 
@@ -57,10 +58,10 @@ class WordTestCase(unittest.TestCase):
     def test_01_system(self):
         self.assertTrue(self.system.is_system())
         self.assertEqual('system', self.system.txt)
-        self.assertEqual(self.system._ID_SYSTEM, self.system.id)
+        self.assertEqual(self.system._ID_SYSTEM, self.system.idn)
         self.assertEqual(self.system._ID_SYSTEM, self.system.sbj)
-        self.assertEqual(self.system('define').id, self.system.vrb)
-        self.assertEqual(self.system('agent').id, self.system.obj)
+        self.assertEqual(self.system('define').idn, self.system.vrb)
+        self.assertEqual(self.system('agent').idn, self.system.obj)
 
     def test_02_noun(self):
         noun = self.system('noun')
@@ -68,8 +69,8 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(noun.is_noun())
         self.assertEqual('noun', noun.txt)
 
-    def test_03a_max_id(self):
-        self.assertEqual(qiki.Word._ID_MAX_FIXED, self.system.max_id())
+    def test_03a_max_idn(self):
+        self.assertEqual(qiki.Word._ID_MAX_FIXED, self.system.max_idn())
 
     def test_03b_noun_spawn(self):
         noun = self.system('noun')
@@ -189,12 +190,12 @@ class WordTestCase(unittest.TestCase):
 
     def test_08_noun_twice(self):
         noun = self.system('noun')
-        base_max_id = self.system.max_id()
+        base_max_idn = self.system.max_idn()
         thing1 = noun('thing')
-        self.assertEqual(base_max_id+1, self.system.max_id())
+        self.assertEqual(base_max_idn+1, self.system.max_idn())
         thing2 = noun('thing')
-        self.assertEqual(base_max_id+1, self.system.max_id())
-        self.assertEqual(thing1.id, thing2.id)
+        self.assertEqual(base_max_idn+1, self.system.max_idn())
+        self.assertEqual(thing1.idn, thing2.idn)
 
     def test_describe(self):
         thing = self.system('noun')('thing')
@@ -206,8 +207,8 @@ class WordTestCase(unittest.TestCase):
         thing1 = noun('thing')
         thing2 = self.system.noun('thing')
         thing3 = self.system.define(noun, 'thing')
-        self.assertEqual(thing1.id,            thing2.id           )
-        self.assertEqual(thing1.id,            thing3.id           )
+        self.assertEqual(thing1.idn,            thing2.idn           )
+        self.assertEqual(thing1.idn,            thing3.idn           )
         self.assertEqual(thing1.description(), thing2.description())
         self.assertEqual(thing1.description(), thing3.description())
 
@@ -224,7 +225,7 @@ class WordTestCase(unittest.TestCase):
     def test_verb(self):
         self.system.verb('like')
         like = self.system('like')
-        self.assertEqual(self.system.id, like.sbj)
+        self.assertEqual(self.system.idn, like.sbj)
 
     def test_is_a_verb(self):
         verb = self.system('verb')
@@ -280,7 +281,7 @@ class WordTestCase(unittest.TestCase):
         like = self.system.verb('like')
         self.assertEqual("Word('like')", repr(like))
         liking = self.system.like(human, 10)
-        self.assertEqual("Word(Number({_id}))".format(_id=liking.id.qstring()), repr(liking))
+        self.assertEqual("Word(Number({idn}))".format(idn=liking.idn.qstring()), repr(liking))
         # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='something')
         # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='something', num=0q82_7F)
         # print(repr(w))
@@ -300,18 +301,18 @@ class WordTestCase(unittest.TestCase):
         anna = human('anna')
         bart = human('bart')
         self.system.verb('like')
-        max_id = self.system.max_id()
+        max_idn = self.system.max_idn()
 
         anna.like(bart, 8)
-        self.assertEqual(max_id+1, self.system.max_id())
+        self.assertEqual(max_idn+1, self.system.max_idn())
         self.assertEqual(8, anna.like(bart).num)
 
         anna.like(bart, 10)
-        self.assertEqual(max_id+2, self.system.max_id())
+        self.assertEqual(max_idn+2, self.system.max_idn())
         self.assertEqual(10, anna.like(bart).num)
 
         anna.like(bart, 2)
-        self.assertEqual(max_id+3, self.system.max_id())
+        self.assertEqual(max_idn+3, self.system.max_idn())
         self.assertEqual(2, anna.like(bart).num)
 
     def test_verb_overlay_duplicate(self):
@@ -319,31 +320,31 @@ class WordTestCase(unittest.TestCase):
         anna = human('anna')
         bart = human('bart')
         self.system.verb('like')
-        max_id = self.system.max_id()
+        max_idn = self.system.max_idn()
 
         anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_id+1, self.system.max_id())
+        self.assertEqual(max_idn+1, self.system.max_idn())
 
         # anna.like(bart, 5, "just as friends")
-        # self.assertEqual(max_id+1, self.system.max_id(), "Identical s.v(o,n,t) shouldn't generate a new word.")
+        # self.assertEqual(max_idn+1, self.system.max_idn(), "Identical s.v(o,n,t) shouldn't generate a new word.")
         # TODO:  Decide whether these "duplicates" should be errors or insert new records or not...
         # TODO:  Probably it should be an error for some verbs (e.g. like) and not for others (e.g. comment)
         # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
 
         anna.like(bart, 5, "maybe more than friends")
-        self.assertEqual(max_id+2, self.system.max_id(), "New t should generate a new word.")
+        self.assertEqual(max_idn+2, self.system.max_idn(), "New t should generate a new word.")
 
         anna.like(bart, 6, "maybe more than friends")
-        self.assertEqual(max_id+3, self.system.max_id(), "New n should generate a new word.")
+        self.assertEqual(max_idn+3, self.system.max_idn(), "New n should generate a new word.")
 
         anna.like(bart, 7, "maybe more than friends")
-        self.assertEqual(max_id+4, self.system.max_id())
+        self.assertEqual(max_idn+4, self.system.max_idn())
 
         # anna.like(bart, 7, "maybe more than friends")
-        # self.assertEqual(max_id+4, self.system.max_id())
+        # self.assertEqual(max_idn+4, self.system.max_idn())
 
         anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_id+5, self.system.max_id(), "Reverting to an old n,t should generate a new word.")
+        self.assertEqual(max_idn+5, self.system.max_idn(), "Reverting to an old n,t should generate a new word.")
 
     def test_is_definition(self):
         self.assertTrue(self.system('noun').is_definition())
@@ -379,35 +380,46 @@ class WordTestCase(unittest.TestCase):
         sys2 = self.system('system')
         sys3 = self.system('system')('system')('system')
         sys4 = self.system('system').system('system').system.system.system('system')('system')('system')
-        self.assertEqual(sys1.id, sys2.id)
-        self.assertEqual(sys1.id, sys3.id)
-        self.assertEqual(sys1.id, sys4.id)
+        self.assertEqual(sys1.idn, sys2.idn)
+        self.assertEqual(sys1.idn, sys3.idn)
+        self.assertEqual(sys1.idn, sys4.idn)
         self.assertIs(sys1, sys2)
         self.assertIs(sys1, sys3)
         self.assertIs(sys1, sys4)
 
-    def test_id_setting_not_allowed(self):
+    def test_idn_setting_not_allowed(self):
         _system = self.system('system')
-        self.assertEqual(_system.id, self.system._ID_SYSTEM)
+        self.assertEqual(_system.idn, self.system._ID_SYSTEM)
         with self.assertRaises(RuntimeError):
-            _system.id = 999
-        self.assertEqual(_system.id, self.system._ID_SYSTEM)
+            _system.idn = 999
+        self.assertEqual(_system.idn, self.system._ID_SYSTEM)
 
-    def test_id_suffixer(self):
+    def test_idn_suffix(self):
         _system = self.system('system')
-        self.assertEqual(_system.id, self.system._ID_SYSTEM)
-        suffixed_system_id = _system.id.add_suffix(3)
-        self.assertEqual(_system.id, self.system._ID_SYSTEM)
-        self.assertEqual(suffixed_system_id, qiki.Number('0q82_05__030100'))
+        self.assertEqual(_system.idn, self.system._ID_SYSTEM)
+        suffixed_system_idn = _system.idn.add_suffix(3)
+        self.assertEqual(_system.idn, self.system._ID_SYSTEM)
+        self.assertEqual(suffixed_system_idn, qiki.Number('0q82_05__030100'))
 
     ################ Util ####################
 
     def describe_all_words(self):
-        ids = self.system.get_all_ids()
-        for _id in ids:
-            print(int(_id), self.system(_id).description())
+        idns = self.system.get_all_idns()
+        for _idn in idns:
+            print(int(_idn), self.system(_idn).description())
 
 
+    ############### Numbered Lists #######################
+
+    class Names(qiki.Listing):
+        names = [
+            "Archie",
+            "Barbara",
+            "Chad",
+            "Deanne"
+        ]
+        def lookup(self, index, callback):
+            callback(self.names[index], qiki.Number(1))
 
 
     if False:   # TODO: integrate these or delete
@@ -415,9 +427,9 @@ class WordTestCase(unittest.TestCase):
             define = qiki.Word('define')
             self.assertEqual('define', define.txt)
 
-        def test_02_word_by_id(self):
+        def test_02_word_by_idn(self):
             define = qiki.Word('define')
-            define_too = qiki.Word(define.id)
+            define_too = qiki.Word(define.idn)
             self.assertEqual('define', define_too.txt)
 
         def test_02_word_by_word(self):
@@ -426,23 +438,23 @@ class WordTestCase(unittest.TestCase):
             define_too = qiki.Word(define)
             self.assertEqual('define', define_too.txt)
 
-        def test_id_cannot_set_id(self):
+        def test_idn_cannot_set_idn(self):
             define = qiki.Word('define')
             with self.assertRaises(RuntimeError):
-                define.id = -1
+                define.idn = -1
 
-        def test_quintuple_self_evident(self):
+        def test_quintuple_self_evidnent(self):
             define = qiki.Word('define')
-            self.assertEqual(define.vrb, define.id)
+            self.assertEqual(define.vrb, define.idn)
             noun = qiki.Word('noun')
-            self.assertEqual(noun.obj, noun.id)
+            self.assertEqual(noun.obj, noun.idn)
             verb = qiki.Word('verb')
-            self.assertEqual(verb.obj, noun.id)
+            self.assertEqual(verb.obj, noun.idn)
             agent = qiki.Word('agent')
-            self.assertEqual(agent.obj, noun.id)
+            self.assertEqual(agent.obj, noun.idn)
             system = qiki.Word('system')
-            self.assertEqual(system.sbj, system.id)
-            self.assertEqual(system.obj, agent.id)
+            self.assertEqual(system.sbj, system.idn)
+            self.assertEqual(system.obj, agent.idn)
 
         def test_word_cant_construct_unfamiliar_class(self):
             # noinspection PyClassHasNoInit
@@ -451,11 +463,11 @@ class WordTestCase(unittest.TestCase):
             with self.assertRaises(TypeError):
                 qiki.Word(UnExpected)
 
-        def test_by_id(self):
+        def test_by_idn(self):
             define = qiki.Word('define')
-            define2 = qiki.Word(define.id)
+            define2 = qiki.Word(define.idn)
             self.assertEqual('define', define2.txt)
-            self.assertEqual(define.id, define2.id)
+            self.assertEqual(define.idn, define2.idn)
 
         def test_repr(self):
             define = qiki.Word('define')
@@ -480,7 +492,7 @@ class WordTestCase(unittest.TestCase):
             self.assertTrue(human.exists)
             self.assertEqual('human', human.txt)
 
-        def test_zz1_define_by_id(self):
+        def test_zz1_define_by_idn(self):
             system = qiki.Word('system')
             noun = qiki.Word('noun')
             human = system.define(noun, 'human')
@@ -505,7 +517,7 @@ class WordTestCase(unittest.TestCase):
             verb = qiki.Word('verb')
             like = system.define(verb, 'like')
             self.assertEqual(like.txt, 'like')
-            self.assertEqual(like.obj, verb.id)
+            self.assertEqual(like.obj, verb.idn)
             qiki.Word.make_verb_a_method(like)
             rating = system.like(system, system, 'loving itself', qiki.Number(100))
             print(rating.description())
