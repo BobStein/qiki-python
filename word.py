@@ -41,8 +41,7 @@ class Word(object):
     :type _system": Word
     """
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None, system=None):
-        self._table = table
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, system=None):
         self._system = system
         self.exists = False
         self._idn = None
@@ -166,7 +165,6 @@ class Word(object):
 
         The word may exist already.  Otherwise it will be prepared to .save().
         """
-        kwargs['table']  = self._table
         kwargs['system'] = self._system
         the_word = Word(*args, **kwargs)
         assert hasattr(self, '_system')
@@ -217,7 +215,7 @@ class Word(object):
             self._load_row(
                 "SELECT * FROM `{table}` WHERE `idn` = ?"
                 .format(
-                    table=self._table,
+                    table=self._system._table,
                 ),
                 (
                     idn.raw,
@@ -234,7 +232,7 @@ class Word(object):
                 "WHERE   `vrb` = ? "
                     "AND `txt` = ?"
             .format(
-                table=self._table,
+                table=self._system._table,
             ),
             (
                 self._ID_DEFINE.raw,
@@ -262,7 +260,7 @@ class Word(object):
                 "ORDER BY `idn` DESC "
                 "LIMIT 1"
             .format(
-                table=self._table,
+                table=self._system._table,
             ),
             (
                 self.sbj.raw,
@@ -389,7 +387,7 @@ class Word(object):
 
     def max_idn(self):
         cursor = self._system._connection.cursor()
-        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._table))
+        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._system._table))
         max_idn_sql_row = cursor.fetchone()
         if max_idn_sql_row is None:
             return Number(0)
@@ -428,7 +426,7 @@ class Word(object):
                    "(idn, sbj, vrb, obj, num, txt, whn) "
             "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
             .format(
-                table=self._table,
+                table=self._system._table,
             ),
             (
                 self.idn.raw,
@@ -454,7 +452,7 @@ class Word(object):
 
     def get_all_idns(self):
         cursor = self._system._connection.cursor()
-        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
+        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._system._table))
         ids = [Number.from_mysql(row[0]) for row in cursor]
         # for row in cursor:
         #     idn = Number.from_mysql(row[0])
@@ -509,7 +507,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
-        table = kwargs.pop('table')
+        self._table = kwargs.pop('table')
         self._connection = mysql.connector.connect(**kwargs)
         self._system = self
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
@@ -517,7 +515,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
         # TODO:  Or make a class SystemMysql(System)
         try:
-            super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, system=self)
+            super(self.__class__, self).__init__(self._ID_SYSTEM, system=self)
             assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
@@ -525,7 +523,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
                 self.install_from_scratch()
                 # TODO: Don't super() twice -- cuz it's not D.R.Y.
                 # TODO: Don't install in unit tests if we're about to uninstall.
-                super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, system=self)
+                super(self.__class__, self).__init__(self._ID_SYSTEM, system=self)
             else:
                 assert False, exception_message
         except Word.MissingFromLex:
