@@ -69,6 +69,13 @@ class WordTestCase(unittest.TestCase):
         self.assertTrue(noun.is_noun())
         self.assertEqual('noun', noun.txt)
 
+    def test_02a_str(self):
+        self.assertEqual('noun', str(self.system('noun')))
+
+    def test_02b_repr(self):
+        noun_id = int(qiki.Number(qiki.Word._ID_NOUN))
+        self.assertEqual("Word('{}')".format(noun_id), repr(self.system('noun')))
+
     def test_03a_max_idn(self):
         self.assertEqual(qiki.Word._ID_MAX_FIXED, self.system.max_idn())
 
@@ -273,17 +280,17 @@ class WordTestCase(unittest.TestCase):
         anna.like(bart, 13)
         self.assertEqual(13, anna.like(bart).num)
 
-    def test_repr(self):
-        self.assertEqual("Word('noun')", repr(self.system('noun')))
-        human = self.system.agent('human')
-        self.assertEqual("Word('human')", repr(human))
-        like = self.system.verb('like')
-        self.assertEqual("Word('like')", repr(like))
-        liking = self.system.like(human, 10)
-        self.assertEqual("Word(Number({idn}))".format(idn=liking.idn.qstring()), repr(liking))
-        # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='something')
-        # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='something', num=0q82_7F)
-        # print(repr(w))
+    # def OBSOLETE_test_repr(self):
+    #     self.assertEqual("Word('noun')", repr(self.system('noun')))
+    #     human = self.system.agent('human')
+    #     self.assertEqual("Word('human')", repr(human))
+    #     like = self.system.verb('like')
+    #     self.assertEqual("Word('like')", repr(like))
+    #     liking = self.system.like(human, 10)
+    #     self.assertEqual("Word(Number({idn}))".format(idn=liking.idn.qstring()), repr(liking))
+    #     # w = self.system.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='something')
+    #     # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='something', num=0q82_7F)
+    #     # print(repr(w))
 
     def test_verb_txt(self):
         """Test s.v(o, n, txt).  Read with s.v(o).txt"""
@@ -400,13 +407,6 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(_system.idn, self.system._ID_SYSTEM)
         self.assertEqual(suffixed_system_idn, qiki.Number('0q82_05__030100'))
 
-    ################ Util ####################
-
-    def describe_all_words(self):
-        idns = self.system.get_all_idns()
-        for _idn in idns:
-            print(int(_idn), self.system(_idn).description())
-
 
     ############### Numbered Lists #######################
 
@@ -418,13 +418,20 @@ class WordTestCase(unittest.TestCase):
             "Deanne"
         ]
         def lookup(self, index, callback):
-            callback(self.names[int(index)], qiki.Number(1))
+            try:
+                name = self.names[int(index)]
+            except IndexError:
+                raise qiki.Listing.NotFound
+            callback(name, qiki.Number(1))
+
+    def setup_listing(self):
+        self.listing = self.system.noun('listing')
+        qiki.Listing.install(self.listing.idn)
+        self.names = self.listing('names')
+        self.Names.install(self.names.idn)
 
     def test_listing(self):
-        listing = self.system.noun('listing')
-        qiki.Listing.install(listing.idn)
-        names = listing('names')
-        self.Names.install(names.idn)
+        self.setup_listing()
 
         number_two = qiki.Number(2)
         chad = self.Names(number_two)
@@ -435,7 +442,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(2, len(idn_suffix))
         idn = idn_suffix[0]
         suffix = idn_suffix[1]
-        self.assertEqual(idn, names.idn)
+        self.assertEqual(idn, self.names.idn)
         self.assertEqual(suffix.payload_number(), number_two)
 
         bless = self.system.verb('bless')
@@ -461,6 +468,11 @@ class WordTestCase(unittest.TestCase):
 
         self.describe_all_words()
 
+    def test_listing_not_found(self):
+        self.setup_listing()
+
+        with self.assertRaises(qiki.Listing.NotFound):
+            self.Names(qiki.Number(5))
 
 
 
@@ -469,6 +481,15 @@ class WordTestCase(unittest.TestCase):
 
 
 
+
+
+
+    ################ Util ####################
+
+    def describe_all_words(self):
+        idns = self.system.get_all_idns()
+        for _idn in idns:
+            print(int(_idn), self.system(_idn).description())
 
 
     ################## obsolete or maybe someday #################################

@@ -41,22 +41,23 @@ class Word(object):
     :type _system": Word
     """
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None, connection=None):
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, table=None, system=None):
         self._table = table
-        self._connection = connection
+        self._system = system
         self.exists = False
         self._idn = None
         if isinstance(content, six.string_types):
             # e.g. Word('agent')
-            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_definition(content)
         elif isinstance(content, Number):
             # Word(idn)
-            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_idn(content)
+            assert self.exists
         elif isinstance(content, type(self)):
             # Word(some_other_word)
-            assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_word(content)
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
@@ -85,7 +86,7 @@ class Word(object):
     _ID_MAX_FIXED = Number(5)
 
     def __getattr__(self, verb):
-        assert hasattr(self, '_system')
+        assert hasattr(self, '_system'), "No system, can't x.{vrb}".format(vrb=verb)
         return_value = self._system(verb)
         return_value._word_before_the_dot = self
         return return_value
@@ -161,15 +162,15 @@ class Word(object):
 
     def spawn(self, *args, **kwargs):
         """
-        Construct a Word() using the same _connection, _table, and _system.
+        Construct a Word() using the same _table, and _system.
 
         The word may exist already.  Otherwise it will be prepared to .save().
         """
-        kwargs['table']      = self._table
-        kwargs['connection'] = self._connection
+        kwargs['table']  = self._table
+        kwargs['system'] = self._system
         the_word = Word(*args, **kwargs)
         assert hasattr(self, '_system')
-        the_word._system = self._system
+        # the_word._system = self._system
         return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
@@ -191,7 +192,10 @@ class Word(object):
     #     setattr(cls, verb.txt, verb)
 
     def disconnect(self):
-        self._connection.close()
+        self._system._connection.close()
+
+    class MissingFromLex(Exception):
+        pass
 
     def _from_idn(self, idn):
         """
@@ -208,6 +212,7 @@ class Word(object):
             listed_instance = listing_class(suffix.payload_number())
             # self.txt = idn.qstring()
             self.txt = listed_instance.txt
+            self.exists = True
         else:
             self._load_row(
                 "SELECT * FROM `{table}` WHERE `idn` = ?"
@@ -218,6 +223,8 @@ class Word(object):
                     idn.raw,
                 )
             )
+            if not self.exists:
+                raise self.MissingFromLex
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -265,7 +272,7 @@ class Word(object):
         )
 
     def _load_row(self, sql, params=()):
-        cursor = self._connection.cursor(prepared=True)
+        cursor = self._system._connection.cursor(prepared=True)
         cursor.execute(sql, params)
         tuple_row = cursor.fetchone()
         if tuple_row is not None:
@@ -325,9 +332,9 @@ class Word(object):
         vrb = self.spawn(self.vrb)
         obj = self.spawn(self.obj)
         return "{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
-            sbj=sbj.txt,
-            vrb=vrb.txt,
-            obj=obj.txt,
+            sbj=str(sbj),
+            vrb=str(vrb),
+            obj=str(obj),
             num=self.presentable(self.num),
             maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
         )
@@ -340,10 +347,8 @@ class Word(object):
             return str(float(num))
 
     def __repr__(self):
-        if hasattr(self, 'txt') and self.is_definition():
-            return "Word('{0}')".format(self.txt)
-        elif self.exists:
-            return "Word(Number({idn_qstring}))".format(idn_qstring=self.idn.qstring())
+        if self.exists:
+            return "Word('{0}')".format(int(self.idn))
         else:
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
                 sbj=self.sbj.qstring(),
@@ -353,10 +358,29 @@ class Word(object):
                 num=self.num.qstring(),
             ))
 
+        # if hasattr(self, 'txt') and self.is_definition():
+        #     return "Word('{0}')".format(self.txt)
+        # elif self.exists:
+        #     return "Word(Number({idn_qstring}))".format(idn_qstring=self.idn.qstring())
+        # else:
+        #     return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
+        #         sbj=self.sbj.qstring(),
+        #         vrb=self.vrb.qstring(),
+        #         obj=self.obj.qstring(),
+        #         txt=repr(self.txt),
+        #         num=self.num.qstring(),
+        #     ))
+
+    def __str__(self):
+        if hasattr(self, 'txt'):
+            return self.txt
+        else:
+            return repr(self)
+
     @property
     def idn(self):
         return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
-                                   # TODO: but what about w.sbj.suffix(n), etc.?
+                                   # TODO: but then what about w.sbj.add_suffix(n), etc.?
                                    # So this passing through Number() is a bad idea.
                                    # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
     @idn.setter
@@ -364,7 +388,7 @@ class Word(object):
         raise RuntimeError("Cannot set a Word's idn")
 
     def max_idn(self):
-        cursor = self._connection.cursor()
+        cursor = self._system._connection.cursor()
         cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._table))
         max_idn_sql_row = cursor.fetchone()
         if max_idn_sql_row is None:
@@ -395,7 +419,7 @@ class Word(object):
         # TODO: named substitutions with NON-prepared statements??
         # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
-        cursor = self._connection.cursor(prepared=True)
+        cursor = self._system._connection.cursor(prepared=True)
         if self.idn.is_nan():
             print("Inserting idn =", str(self.idn), self.txt)
         assert not self.idn.is_nan()
@@ -416,7 +440,7 @@ class Word(object):
                 Number(time.time()).raw,
             )
         )
-        self._connection.commit()
+        self._system._connection.commit()
         self.exists = True
         cursor.close()
 
@@ -429,7 +453,7 @@ class Word(object):
         pass
 
     def get_all_idns(self):
-        cursor = self._connection.cursor()
+        cursor = self._system._connection.cursor()
         cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
         ids = [Number.from_mysql(row[0]) for row in cursor]
         # for row in cursor:
@@ -474,6 +498,8 @@ class Listing(Word):
         assert return_value.meta_idn == meta_idn
         return return_value
 
+    class NotFound(Exception):
+        pass
 
 class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
@@ -484,23 +510,27 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         language = kwargs.pop('language')
         assert language == 'MySQL'
         table = kwargs.pop('table')
-        connection = mysql.connector.connect(**kwargs)
+        self._connection = mysql.connector.connect(**kwargs)
         self._system = self
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
         # TODO:  ...No, make them properties of System.  And make all Words refer to a System
         # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
         # TODO:  Or make a class SystemMysql(System)
         try:
-            super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
+            super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, system=self)
+            assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
                 self.install_from_scratch()
                 # TODO: Don't super() twice -- cuz it's not D.R.Y.
                 # TODO: Don't install in unit tests if we're about to uninstall.
-                super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
+                super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, system=self)
             else:
                 assert False, exception_message
+        except Word.MissingFromLex:
+            self.install_seminal_words()
+
         assert self.exists
         assert self.is_system()
         assert self._connection.is_connected()
@@ -522,7 +552,9 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
+        self.install_seminal_words()
 
+    def install_seminal_words(self):
         self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
         self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
         self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
@@ -535,10 +567,14 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         assert self.is_system()
 
     def _seminal_word(self, _idn, _obj, _txt):
-        word = Word(_idn, table=self._table, connection=self._connection)
-        if not word.exists:
+        try:
+            word = self.spawn(_idn)
+        except Word.MissingFromLex:
             self._install_word(_idn, _obj, _txt)
-            word = Word(_idn, table=self._table, connection=self._connection)
+            word = self.spawn(_idn)
+        # if not word.exists:   # TODO: is this really necessary any longer?
+        #     self._install_word(_idn, _obj, _txt)
+        #     word = self.spawn(_idn)
         assert word.exists
 
     def _install_word(self, _idn, _obj, _txt):
