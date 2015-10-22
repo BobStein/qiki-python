@@ -24,6 +24,10 @@ class Word(object):
     (idn, sbj, vrb, obj, num, txt, whn)
     This helps a little in searching for the symbol, and avoiding Python reserved words.
 
+    A word is fundamentally, uniquely, and forever defined by its idn,
+    within the context of its System,
+    as long as it has been saved (exists is true).
+
     :type content: six.string_types | Word | instancemethod
 
     :type sbj: Number | Word
@@ -169,6 +173,10 @@ class Word(object):
         return the_word
 
     def sentence(self, sbj, vrb, obj, txt, num):
+        """ Construct a new sentence from a 3-word subject-verb-object
+
+        sentence takes a word-triple, spawn takes a number-triple.
+        """
         assert isinstance(sbj, Word),             "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),             "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, Word),             "obj cannot be a {type}".format(type=type(obj).__name__)
@@ -177,10 +185,10 @@ class Word(object):
         new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
-
-    @classmethod
-    def make_verb_a_method(cls, verb):
-        setattr(cls, verb.txt, verb)
+    #
+    # @classmethod
+    # def make_verb_a_method(cls, verb):
+    #     setattr(cls, verb.txt, verb)
 
     def disconnect(self):
         self._connection.close()
@@ -192,15 +200,24 @@ class Word(object):
         :type idn: Number
         """
         assert isinstance(idn, Number)
-        self._load_row(
-            "SELECT * FROM `{table}` WHERE `idn` = ?"
-            .format(
-                table=self._table,
-            ),
-            (
-                idn.raw,
+        if idn.is_suffixed():
+            (identifier, suffix) = idn.parse_suffixes()
+            assert isinstance(identifier, Number)
+            assert isinstance(suffix, Number.Suffix)
+            listing_class = Listing.class_from_meta_idn(identifier)
+            listed_instance = listing_class(suffix.payload_number())
+            # self.txt = idn.qstring()
+            self.txt = listed_instance.txt
+        else:
+            self._load_row(
+                "SELECT * FROM `{table}` WHERE `idn` = ?"
+                .format(
+                    table=self._table,
+                ),
+                (
+                    idn.raw,
+                )
             )
-        )
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -214,7 +231,7 @@ class Word(object):
             ),
             (
                 self._ID_DEFINE.raw,
-                txt
+                txt,
             )
         )
         if not self.exists:
@@ -423,9 +440,39 @@ class Word(object):
 
 
 class Listing(Word):
+
+    SUFFIX_TYPE_LISTING = 0x1D   # TODO:  Move to number.py I guess?
+
+    meta_idn = None   # idn associated with the CLASS, not the INSTANCE
+
+    class_dictionary = dict()
+
+    # FIXME:  Is there really one meta_idn per derived class, but only one class_dictionary for all classes??
+
+    def __init__(self, index):
+        self.index = index
+        self._idn = Number(self.meta_idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
+        self.num = None
+        self.txt = None
+        self.lookup(self.index, self.lookup_callback)
+
+    def lookup_callback(self, txt, num):
+        self.num = num
+        self.txt = txt
+
     @classmethod
-    def install(cls, meta_word):
-        pass
+    def install(cls, meta_idn):
+        assert isinstance(meta_idn, Number)
+        cls.meta_idn = meta_idn
+        cls.class_dictionary[meta_idn] = cls
+
+    @classmethod
+    def class_from_meta_idn(cls, meta_idn):
+        # print(repr(cls.class_dictionary))
+        return_value = cls.class_dictionary[meta_idn]
+        assert issubclass(return_value, cls), repr(return_value) + " " + repr(cls)
+        assert return_value.meta_idn == meta_idn
+        return return_value
 
 
 class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
@@ -442,7 +489,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
         # TODO:  ...No, make them properties of System.  And make all Words refer to a System
         # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
-        # TODO: Or make a class SystemMysql(System)
+        # TODO:  Or make a class SystemMysql(System)
         try:
             super(self.__class__, self).__init__(self._ID_SYSTEM, table=table, connection=connection)
         except mysql.connector.ProgrammingError as exception:

@@ -1376,7 +1376,7 @@ class NumberTestCase(unittest.TestCase):
     ###################### suffixes ################################
 
     def test_add_suffix(self):
-        self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(3))
+        self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -1391,8 +1391,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(Number('0q82_01__3456_120300'), Number(1).add_suffix(0x12, b'\x34\x56'))
 
     def test_add_suffix_qstring(self):
-        self.assertEqual('0q8201030100', Number(1).add_suffix(3).qstring(underscore=0))
-        self.assertEqual('0q82_01__030100', Number(1).add_suffix(3).qstring())
+        self.assertEqual('0q8201030100', Number(1).add_suffix(0x03).qstring(underscore=0))
+        self.assertEqual('0q82_01__030100', Number(1).add_suffix(0x03).qstring())
 
     def test_add_suffix_qstring_empty(self):
         self.assertEqual('0q82010000', Number(1).add_suffix().qstring(underscore=0))
@@ -1403,8 +1403,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
 
     def test_suffix_class(self):
-        suffix = Number.Suffix(3)
-        self.assertEqual(3, suffix.type_)
+        suffix = Number.Suffix(0x03)
+        self.assertEqual(0x03, suffix.type_)
         self.assertEqual(b'', suffix.payload)
         self.assertEqual(b'\x03\x01\x00', suffix.raw)
 
@@ -1421,19 +1421,19 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'\xDE\xAD\xBE\xEF\x21\x05\x00', suffix.raw)
 
     def test_suffix_class_equality(self):
-        suffix1  = Number.Suffix(1)
-        another1 = Number.Suffix(1)
-        suffix3  = Number.Suffix(3)
-        another3 = Number.Suffix(3)
+        suffix1  = Number.Suffix(0x01)
+        another1 = Number.Suffix(0x01)
+        suffix3  = Number.Suffix(0x03)
+        another3 = Number.Suffix(0x03)
         self.assertTrue(suffix1 == another1)
         self.assertFalse(suffix1 == another3)
         self.assertFalse(suffix3 == another1)
         self.assertTrue(suffix3 == another3)
 
     def test_suffix_class_equality_payload(self):
-        suffix11  = Number.Suffix(1, b'\x01\x11\x10')
-        suffix13  = Number.Suffix(1, b'\x03\x33\x30')
-        another13 = Number.Suffix(1, b'\x03\x33\x30')
+        suffix11  = Number.Suffix(0x01, b'\x01\x11\x10')
+        suffix13  = Number.Suffix(0x01, b'\x03\x33\x30')
+        another13 = Number.Suffix(0x01, b'\x03\x33\x30')
         self.assertTrue(suffix11 == suffix11)
         self.assertFalse(suffix11 == suffix13)
         self.assertFalse(suffix13 == suffix11)
@@ -1532,6 +1532,72 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(Number(-123.75), Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
         self.assertEqual(       -123.75 , Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
         self.assertIs(       Number, type(Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
+
+    def test_suffix_number(self):
+        n = Number(99).add_suffix(0x11, Number(356))
+        (idn, suffix) = n.parse_suffixes()
+        self.assertIs(type(idn), Number)
+        self.assertIs(type(suffix), Number.Suffix)
+        self.assertEqual(Number(356), suffix.payload_number())
+
+    def test_get_suffix(self):
+        n = Number(99).add_suffix(0x11).add_suffix(0x22)
+        s11 = n.get_suffix(0x11)
+        s22 = n.get_suffix(0x22)
+        self.assertEqual(s11, Number.Suffix(0x11))
+        self.assertNotEqual(s11, Number.Suffix(0x22))
+        self.assertEqual(s22, Number.Suffix(0x22))
+        self.assertNotEqual(s22, Number.Suffix(0x11))
+
+    def test_nan_suffix_empty(self):
+        nan = Number(float('nan'))
+        with self.assertRaises(ValueError):
+            nan.add_suffix()
+
+    def test_nan_suffix_type(self):
+        nan = Number(float('nan'))
+        with self.assertRaises(ValueError):
+            nan.add_suffix(0x11)
+
+    def test_nan_suffix_payload(self):
+        nan = Number(float('nan'))
+        with self.assertRaises(ValueError):
+            nan.add_suffix(0x11, b'abcd')
+
+    def test_is_suffixed(self):
+        self.assertTrue(Number(22).add_suffix().is_suffixed())
+        self.assertTrue(Number(22).add_suffix(0x11).is_suffixed())
+        self.assertTrue(Number(22).add_suffix(0x11, b'abcd').is_suffixed())
+        self.assertTrue(Number(22).add_suffix(0x11, Number(42)).is_suffixed())
+        self.assertFalse(Number(22).is_suffixed())
+        self.assertFalse(Number.NAN.is_suffixed())
+
+    def test_dictionary_index(self):
+        d = dict()
+        d[Number(2)] = 'dos'
+        d[Number(5)] = 'cinco'
+        self.assertEqual('dos', d[Number(2)])
+        self.assertEqual('cinco', d[Number(5)])
+        with self.assertRaises(KeyError):
+            d[Number(8)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     ################## new tests go above here ###########################
     ################## testing internal methods ###########################

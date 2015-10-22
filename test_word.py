@@ -417,21 +417,49 @@ class WordTestCase(unittest.TestCase):
             "Chad",
             "Deanne"
         ]
-        def lookup(self, index, callback, context=None):
-            callback(context, self.names[int(index)], qiki.Number(1))
+        def lookup(self, index, callback):
+            callback(self.names[int(index)], qiki.Number(1))
 
     def test_listing(self):
         listing = self.system.noun('listing')
-        qiki.Listing.install(listing)
+        qiki.Listing.install(listing.idn)
         names = listing('names')
-        self.Names.install(names)
+        self.Names.install(names.idn)
+
+        number_two = qiki.Number(2)
+        chad = self.Names(number_two)
+        self.assertEqual(number_two, chad.index)
+        self.assertEqual(    "Chad", chad.txt)
+        self.assertEqual(         1, chad.num)
+        idn_suffix = chad.idn.parse_suffixes()
+        self.assertEqual(2, len(idn_suffix))
+        idn = idn_suffix[0]
+        suffix = idn_suffix[1]
+        self.assertEqual(idn, names.idn)
+        self.assertEqual(suffix.payload_number(), number_two)
+
+        bless = self.system.verb('bless')
+        blessed_name = self.system.spawn(
+            sbj=self.system.idn,
+            vrb=bless.idn,
+            obj=chad.idn,
+            txt="mah soul",
+            num=qiki.Number(666),
+        )
+        blessed_name.save()
+
+        laud = self.system.verb('laud')
+        thing = self.system.noun('thing')
+        lauded_thing = self.system.spawn(
+            sbj=chad.idn,
+            vrb=laud.idn,
+            obj=thing.idn,
+            txt="most sincerely",
+            num=qiki.Number(123456789),
+        )
+        lauded_thing.save()
 
         self.describe_all_words()
-
-        name = self.Names(qiki.Number(2))
-        self.assertEqual("Chad", name.txt)
-        self.assertEqual(1, name.num)
-
 
 
 
@@ -445,117 +473,116 @@ class WordTestCase(unittest.TestCase):
 
     ################## obsolete or maybe someday #################################
 
-    if False:   # TODO: integrate these or delete
-        def test_02_word_by_name(self):
-            define = qiki.Word('define')
-            self.assertEqual('define', define.txt)
-
-        def test_02_word_by_idn(self):
-            define = qiki.Word('define')
-            define_too = qiki.Word(define.idn)
-            self.assertEqual('define', define_too.txt)
-
-        def test_02_word_by_word(self):
-            """Word copy constructor."""
-            define = qiki.Word('define')
-            define_too = qiki.Word(define)
-            self.assertEqual('define', define_too.txt)
-
-        def test_idn_cannot_set_idn(self):
-            define = qiki.Word('define')
-            with self.assertRaises(RuntimeError):
-                define.idn = -1
-
-        def test_quintuple_self_evidnent(self):
-            define = qiki.Word('define')
-            self.assertEqual(define.vrb, define.idn)
-            noun = qiki.Word('noun')
-            self.assertEqual(noun.obj, noun.idn)
-            verb = qiki.Word('verb')
-            self.assertEqual(verb.obj, noun.idn)
-            agent = qiki.Word('agent')
-            self.assertEqual(agent.obj, noun.idn)
-            system = qiki.Word('system')
-            self.assertEqual(system.sbj, system.idn)
-            self.assertEqual(system.obj, agent.idn)
-
-        def test_word_cant_construct_unfamiliar_class(self):
-            # noinspection PyClassHasNoInit
-            class UnExpected:
-                pass
-            with self.assertRaises(TypeError):
-                qiki.Word(UnExpected)
-
-        def test_by_idn(self):
-            define = qiki.Word('define')
-            define2 = qiki.Word(define.idn)
-            self.assertEqual('define', define2.txt)
-            self.assertEqual(define.idn, define2.idn)
-
-        def test_repr(self):
-            define = qiki.Word('define')
-            self.assertIn('define', repr(define))
-            self.assertEqual("Word('define')", repr(define))
-
-        def test_defined_verb(self):
-            self.assertTrue(qiki.Word('define').exists)
-
-        def test_undefined_verb(self):
-            u = qiki.Word('_undefined_verb_')
-            self.assertFalse(u.exists)
-
-        def test_is_a(self):
-            self.assertTrue( qiki.Word('verb').is_a(qiki.Word('noun')))
-            self.assertFalse(qiki.Word('noun').is_a(qiki.Word('verb')))
-
-        def test_zz1_define_noun(self):
-            system = qiki.Word('system')
-            noun = qiki.Word('noun')
-            human = system.define(noun, 'human')
-            self.assertTrue(human.exists)
-            self.assertEqual('human', human.txt)
-
-        def test_zz1_define_by_idn(self):
-            system = qiki.Word('system')
-            noun = qiki.Word('noun')
-            human = system.define(noun, 'human')
-            self.assertTrue(human.exists)
-            self.assertEqual('human', human.txt)
-
-        def test_zz1_noun_method(self):
-            system = qiki.Word('system')
-            thing = system.noun('thing')
-            self.assertTrue(thing.exists)
-            self.assertEqual('thing', thing.txt)
-
-        def test_zz2_define_collision(self):
-            system = qiki.Word('system')
-            noun = qiki.Word('noun')
-            system.define(noun, 'human')
-            with self.assertRaises(qiki.Word.DefineDuplicateException):
-                system.define(noun, 'human')
-
-        def test_zz3_define_verb(self):
-            system = qiki.Word('system')
-            verb = qiki.Word('verb')
-            like = system.define(verb, 'like')
-            self.assertEqual(like.txt, 'like')
-            self.assertEqual(like.obj, verb.idn)
-            qiki.Word.make_verb_a_method(like)
-            rating = system.like(system, system, 'loving itself', qiki.Number(100))
-            print(rating.description())
-            self.assertEqual(qiki.Number(100), rating.num)
-            self.assertEqual('loving itself', rating.txt)
-
-        def someday_test_zz3_define_verb_slimmer(self):
-            qiki.Word.noun('human')
-            qiki.Word.verb('like')
-            anna = qiki.Word.human('Anna')
-            bart = qiki.Word.human('Bart')
-            chet = qiki.Word.human('Chet')
-            anna_likes_bart = anna.like(bart, "He's just so dreamy.", qiki.Number(10))
-            anna_likes_chet = anna.like(chet, "He's alright I guess.", qiki.Number(9))
-            print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
+    # def test_02_word_by_name(self):
+    #     define = qiki.Word('define')
+    #     self.assertEqual('define', define.txt)
+    #
+    # def test_02_word_by_idn(self):
+    #     define = qiki.Word('define')
+    #     define_too = qiki.Word(define.idn)
+    #     self.assertEqual('define', define_too.txt)
+    #
+    # def test_02_word_by_word(self):
+    #     """Word copy constructor."""
+    #     define = qiki.Word('define')
+    #     define_too = qiki.Word(define)
+    #     self.assertEqual('define', define_too.txt)
+    #
+    # def test_idn_cannot_set_idn(self):
+    #     define = qiki.Word('define')
+    #     with self.assertRaises(RuntimeError):
+    #         define.idn = -1
+    #
+    # def test_quintuple_self_evidnent(self):
+    #     define = qiki.Word('define')
+    #     self.assertEqual(define.vrb, define.idn)
+    #     noun = qiki.Word('noun')
+    #     self.assertEqual(noun.obj, noun.idn)
+    #     verb = qiki.Word('verb')
+    #     self.assertEqual(verb.obj, noun.idn)
+    #     agent = qiki.Word('agent')
+    #     self.assertEqual(agent.obj, noun.idn)
+    #     system = qiki.Word('system')
+    #     self.assertEqual(system.sbj, system.idn)
+    #     self.assertEqual(system.obj, agent.idn)
+    #
+    # def test_word_cant_construct_unfamiliar_class(self):
+    #     # noinspection PyClassHasNoInit
+    #     class UnExpected:
+    #         pass
+    #     with self.assertRaises(TypeError):
+    #         qiki.Word(UnExpected)
+    #
+    # def test_by_idn(self):
+    #     define = qiki.Word('define')
+    #     define2 = qiki.Word(define.idn)
+    #     self.assertEqual('define', define2.txt)
+    #     self.assertEqual(define.idn, define2.idn)
+    #
+    # def test_repr(self):
+    #     define = qiki.Word('define')
+    #     self.assertIn('define', repr(define))
+    #     self.assertEqual("Word('define')", repr(define))
+    #
+    # def test_defined_verb(self):
+    #     self.assertTrue(qiki.Word('define').exists)
+    #
+    # def test_undefined_verb(self):
+    #     u = qiki.Word('_undefined_verb_')
+    #     self.assertFalse(u.exists)
+    #
+    # def test_is_a(self):
+    #     self.assertTrue( qiki.Word('verb').is_a(qiki.Word('noun')))
+    #     self.assertFalse(qiki.Word('noun').is_a(qiki.Word('verb')))
+    #
+    # def test_zz1_define_noun(self):
+    #     system = qiki.Word('system')
+    #     noun = qiki.Word('noun')
+    #     human = system.define(noun, 'human')
+    #     self.assertTrue(human.exists)
+    #     self.assertEqual('human', human.txt)
+    #
+    # def test_zz1_define_by_idn(self):
+    #     system = qiki.Word('system')
+    #     noun = qiki.Word('noun')
+    #     human = system.define(noun, 'human')
+    #     self.assertTrue(human.exists)
+    #     self.assertEqual('human', human.txt)
+    #
+    # def test_zz1_noun_method(self):
+    #     system = qiki.Word('system')
+    #     thing = system.noun('thing')
+    #     self.assertTrue(thing.exists)
+    #     self.assertEqual('thing', thing.txt)
+    #
+    # def test_zz2_define_collision(self):
+    #     system = qiki.Word('system')
+    #     noun = qiki.Word('noun')
+    #     system.define(noun, 'human')
+    #     with self.assertRaises(qiki.Word.DefineDuplicateException):
+    #         system.define(noun, 'human')
+    #
+    # def test_zz3_define_verb(self):
+    #     system = qiki.Word('system')
+    #     verb = qiki.Word('verb')
+    #     like = system.define(verb, 'like')
+    #     self.assertEqual(like.txt, 'like')
+    #     self.assertEqual(like.obj, verb.idn)
+    #     qiki.Word.make_verb_a_method(like)
+    #     rating = system.like(system, system, 'loving itself', qiki.Number(100))
+    #     print(rating.description())
+    #     self.assertEqual(qiki.Number(100), rating.num)
+    #     self.assertEqual('loving itself', rating.txt)
+    #
+    # def someday_test_zz3_define_verb_slimmer(self):
+    #     qiki.Word.noun('human')
+    #     qiki.Word.verb('like')
+    #     anna = qiki.Word.human('Anna')
+    #     bart = qiki.Word.human('Bart')
+    #     chet = qiki.Word.human('Chet')
+    #     anna_likes_bart = anna.like(bart, "He's just so dreamy.", qiki.Number(10))
+    #     anna_likes_chet = anna.like(chet, "He's alright I guess.", qiki.Number(9))
+    #     print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
 
 
 if __name__ == '__main__':

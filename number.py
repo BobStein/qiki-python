@@ -123,6 +123,9 @@ class Number(object):
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
 
+    def __hash__(self):
+        return hash(self.raw)
+
     def __sub__(self, other):
         n1 = Number(self)
         n2 = Number(other)
@@ -798,6 +801,9 @@ class Number(object):
                     payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
                 )
 
+        def __hash__(self):
+            return hash(self.raw)
+
         def qstring(self, underscore=1):
             whole_suffix_in_hex = self.hex_encode(self.raw)
             if underscore > 0 and self.payload:
@@ -807,6 +813,9 @@ class Number(object):
             else:
                 return whole_suffix_in_hex
 
+        def payload_number(self):
+            return self.Number.from_raw(self.payload)
+
         @classmethod
         def internal_setup(cls, number_class):
             cls.Number = number_class
@@ -814,17 +823,26 @@ class Number(object):
 
     Suffix.hex_encode = hex_encode
 
+    def is_suffixed(self):
+        return self.raw[-1:] == b'\x00'
+
     def add_suffix(self, new_type=None, payload=b''):
+        if self.is_nan():
+            raise ValueError
         suffix = self.Suffix(new_type, payload)
         self.raw += suffix.raw
         return self
 
-    def get_suffix_payload(self, sought_type):
+    def get_suffix(self, sought_type):
         suffixes = self.parse_suffixes()
         for suffix in suffixes[1:]:
             if suffix.type_ == sought_type:
-                return suffix.payload
+                return suffix
         raise IndexError
+
+
+    def get_suffix_payload(self, sought_type):
+        return self.get_suffix(sought_type).payload
 
     def get_suffix_number(self, sought_type):
         return self.from_raw(self.get_suffix_payload(sought_type))
