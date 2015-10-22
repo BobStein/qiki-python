@@ -262,7 +262,6 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual("Okay.", anna.like(bart).txt)
         self.assertEqual("", anna.like(chad).txt)
         self.assertEqual("", anna.like(dirk).txt)
-        self.describe_all_words()
 
     def test_verb_use_alt(self):
         """Test that system.verb can be copied by assignment, and still work."""
@@ -418,9 +417,33 @@ class WordTestCase(unittest.TestCase):
             "Chad",
             "Deanne"
         ]
-        def lookup(self, index, callback):
-            callback(self.names[index], qiki.Number(1))
+        def lookup(self, index, callback, context=None):
+            callback(context, self.names[int(index)], qiki.Number(1))
 
+    def test_listing(self):
+        listing = self.system.noun('listing')
+        qiki.Listing.install(listing)
+        names = listing('names')
+        self.Names.install(names)
+
+        self.describe_all_words()
+
+        name = self.Names(qiki.Number(2))
+        self.assertEqual("Chad", name.txt)
+        self.assertEqual(1, name.num)
+
+
+
+
+
+
+
+
+
+
+
+
+    ################## obsolete or maybe someday #################################
 
     if False:   # TODO: integrate these or delete
         def test_02_word_by_name(self):

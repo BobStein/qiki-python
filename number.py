@@ -1067,3 +1067,6 @@ assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qst
 #   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
 #   This may not be worth solving, or it may indicate a negative number bug.
 #   1.9374 =  but 1.9375-5 = 0q7D_FCF00000000001 and -3.062500000000005 = 0q7D_FCF0
+
+# TODO: Terminology for unsuffixed Number?  For suffixed Number?
+# Number class is unsuffixed, and derived class is suffixed?  Name it Numeraloid?  Identifier?

@@ -42,7 +42,6 @@ class Word(object):
         self._connection = connection
         self.exists = False
         self._idn = None
-        self._as_if_method = self.null_verb_method
         if isinstance(content, six.string_types):
             # e.g. Word('agent')
             assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -136,7 +135,7 @@ class Word(object):
             else:
                 existing_word = self.sentence(sbj=self._word_before_the_dot, vrb=self, obj=obj, num=num, txt=txt)
             return existing_word
-        elif self.is_definition():   # subject.noun('name')
+        elif self.is_definition():   # subject.noun('text') == subject.define('noun', 'text')
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
@@ -148,9 +147,6 @@ class Word(object):
                     idn=int(self.idn)
                 )
             )
-
-    def null_verb_method(self, *args, **kwargs):
-        pass
 
     def define(self, obj, txt, num=Number(1)):
         existing_word = self.spawn(txt)
@@ -427,12 +423,14 @@ class Word(object):
 
 
 class Listing(Word):
-    pass
+    @classmethod
+    def install(cls, meta_word):
+        pass
 
 
-class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex,
+class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
-                      #                     Heap, Midden, Scribe,
+                      #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                       # Eventually, this will encapsulate other word repositories
 
     def __init__(self, **kwargs):
