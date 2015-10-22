@@ -45,6 +45,7 @@ class Word(object):
         self._system = system
         self.exists = False
         self._idn = None
+        self._word_before_the_dot = False
         if isinstance(content, six.string_types):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -91,13 +92,14 @@ class Word(object):
         return return_value
 
     def __call__(self, *args, **kwargs):
-        if self.is_system():   # system('name')
+        if self.is_system():   # system('text') - find a word by its txt
             assert self.idn == self._ID_SYSTEM
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
             if existing_word.idn == self.idn:
                 return self   # system is a singleton
-            return existing_word
+            else:
+                return existing_word
         elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
             assert hasattr(self, '_system')
             assert self._system.exists
@@ -121,6 +123,8 @@ class Word(object):
             # TODO:  s.v(o,num=n,txt=t)
             # TODO:  s.v(o,txt=t,num=n)
 
+            # DONE: o(t)
+
             assert len(args) >= 1
             obj = args[0]
             try:
@@ -132,14 +136,16 @@ class Word(object):
             except IndexError:
                 txt=''
             assert hasattr(self, '_word_before_the_dot')
-            if len(args) == 1:
-                existing_word = self._system.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
+            if len(args) == 1:   # subject.verb(object)
+                existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
                 existing_word.lookup_svo()
                 assert existing_word.exists
-            else:
+            else:   # subject.verb(object, number)
+                    # subject.verb(object, number, text)
                 existing_word = self.sentence(sbj=self._word_before_the_dot, vrb=self, obj=obj, num=num, txt=txt)
+            self._word_before_the_dot = False   # single use
             return existing_word
-        elif self.is_definition():   # subject.noun('text') == subject.define('noun', 'text')
+        elif self.is_definition():   # object('text') ==> system.define(object, 'text')
             assert hasattr(self, '_system')
             assert self._system.exists
             assert self._system.is_system()
@@ -153,28 +159,28 @@ class Word(object):
             )
 
     def define(self, obj, txt, num=Number(1)):
-        existing_word = self.spawn(txt)
-        if existing_word.exists:
-            return existing_word
-        new_word = self.sentence(sbj=self, vrb=self('define'), obj=obj, txt=txt, num=num)
+        possibly_existing_word = self.spawn(txt)
+        if possibly_existing_word.exists:
+            return possibly_existing_word
+        new_word = self.sentence(sbj=self, vrb=self._system('define'), obj=obj, txt=txt, num=num)
         return new_word
 
     def spawn(self, *args, **kwargs):
         """
-        Construct a Word() using the same _table, and _system.
+        Construct a Word() using the same _system.
 
         The word may exist already.  Otherwise it will be prepared to .save().
         """
-        kwargs['system'] = self._system
-        the_word = Word(*args, **kwargs)
         assert hasattr(self, '_system')
-        # the_word._system = self._system
-        return the_word
+        kwargs['system'] = self._system
+        return Word(*args, **kwargs)
 
     def sentence(self, sbj, vrb, obj, txt, num):
         """ Construct a new sentence from a 3-word subject-verb-object
 
-        sentence takes a word-triple, spawn takes a number-triple.
+        Differences between Word.sentence() and Word.spawn():
+            sentence takes a Word-triple, spawn takes an idn-triple.
+            sentence saves the new word.
         """
         assert isinstance(sbj, Word),             "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),             "vrb cannot be a {type}".format(type=type(vrb).__name__)
@@ -188,9 +194,6 @@ class Word(object):
     # @classmethod
     # def make_verb_a_method(cls, verb):
     #     setattr(cls, verb.txt, verb)
-
-    def disconnect(self):
-        self._system._connection.close()
 
     class MissingFromLex(Exception):
         pass
@@ -417,30 +420,9 @@ class Word(object):
         # TODO: named substitutions with NON-prepared statements??
         # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
-        cursor = self._system._connection.cursor(prepared=True)
-        if self.idn.is_nan():
-            print("Inserting idn =", str(self.idn), self.txt)
-        assert not self.idn.is_nan()
-        cursor.execute(
-            "INSERT INTO `{table}` "
-                   "(idn, sbj, vrb, obj, num, txt, whn) "
-            "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
-            .format(
-                table=self._system._table,
-            ),
-            (
-                self.idn.raw,
-                self.sbj.raw,
-                self.vrb.raw,
-                self.obj.raw,
-                self.num.raw,
-                self.txt,
-                Number(time.time()).raw,
-            )
-        )
-        self._system._connection.commit()
+
+        self._system.insert_word(self)
         self.exists = True
-        cursor.close()
 
     # noinspection PyClassHasNoInit
     class DefineDuplicateException(Exception):
@@ -449,16 +431,6 @@ class Word(object):
     # noinspection PyClassHasNoInit
     class NonVerbUndefinedAsFunctionException(Exception):
         pass
-
-    def get_all_idns(self):
-        cursor = self._system._connection.cursor()
-        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._system._table))
-        ids = [Number.from_mysql(row[0]) for row in cursor]
-        # for row in cursor:
-        #     idn = Number.from_mysql(row[0])
-        #     ids.append(idn)
-        cursor.close()
-        return ids
 
 
 class Listing(Word):
@@ -498,6 +470,7 @@ class Listing(Word):
 
     class NotFound(Exception):
         pass
+
 
 class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
@@ -606,6 +579,42 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self._table))
         cursor.close()
         # After this, we can only install_from_scratch() or disconnect()
+
+    def disconnect(self):
+        self._connection.close()
+
+    def get_all_idns(self):
+        cursor = self._connection.cursor()
+        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
+        ids = [Number.from_mysql(row[0]) for row in cursor]
+        # for row in cursor:
+        #     idn = Number.from_mysql(row[0])
+        #     ids.append(idn)
+        cursor.close()
+        return ids
+
+    def insert_word(self, word):
+        cursor = self._connection.cursor(prepared=True)
+        assert not word.idn.is_nan()
+        cursor.execute(
+            "INSERT INTO `{table}` "
+                   "(idn, sbj, vrb, obj, num, txt, whn) "
+            "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
+            .format(
+                table=self._table,
+            ),
+            (
+                word.idn.raw,
+                word.sbj.raw,
+                word.vrb.raw,
+                word.obj.raw,
+                word.num.raw,
+                word.txt,
+                Number(time.time()).raw,
+            )
+        )
+        self._connection.commit()
+        cursor.close()
 
 
 # TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
