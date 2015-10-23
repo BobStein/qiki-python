@@ -1009,34 +1009,6 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(py23(24, 20), sys.getsizeof(b'\x83\x03\xE8'))
         self.assertEqual(py23(45, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
-    # noinspection PyUnresolvedReferences,PyUnusedLocal
-    def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
-        number = Number(number_able)
-        if is_zero is not None:
-            self.assertEqual(is_zero, number.is_zero())
-
-    # noinspection PyUnresolvedReferences
-    def someday_test_is(self):
-        self.assertTrue(Number('0q80').iszero())
-        self.assertFalse(Number('0q80').nonzero())
-        self.assertIses('0q80', is_zero=True,  all_true=('zero',),     all_false=('infinite', 'negative', 'positive'))
-        self.assertIses('0q82', is_zero=False, all_true=('positive',), all_false=('infinite', 'negative', 'zero'))
-        self.assertIses('0q7E', is_zero=False, all_true=('negative',), all_false=('infinite', 'zero', 'positive'))
-        self.assertAllAre('zero', ('0q80',))
-        self.assertAllAreNot('zero', ('0q82','0q7E'))
-        self.assertAllAre('positive', ('0q82',))
-        self.assertAllAreNot('positive', ('0q80','0q7E'))
-        self.assertISnon('0q82', ('nan', 'negative', 'zero', 'infinitesimal', 'POSITIVE', 'REASONABLE', 'ludicrous', 'FINITE', 'infinite' 'transfinite'))
-        self.assertAREarent('0q80', ('non', 'neg', 'ZERO', 'pos', 'REAS', 'lud', 'FIN', 'inf', 'lud'))
-        self.assertAREarent('0q7E', ('non', 'NEG', 'zero', 'pos', 'REAS', 'lud', 'FIN', 'inf', 'lud'))
-        # other possibilities
-        # isvalid() nonvalid() isnan() nonnan() isstrictlyvalid() isunderscoredright()
-        # wouldfloat() wouldint() wouldlong() wouldDecimal()
-        # almostzero() essentiallyzero() issmall() nearzero() approacheszero() (zero or infinitesimal OR MAYBE ludicrous_small)
-        # reasonablyzero() (includes ludicrous_small)
-        # essentiallyzero() (does NOT include ludicrous_small, only infinitesimal and zero)
-        # islarge() (ludicrous_large or infinite)
-
     def test_uneven_hex(self):
         if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
             with self.assertRaises(ValueError):
@@ -1123,6 +1095,35 @@ class NumberTestCase(unittest.TestCase):
     #     self.assertEqual('0q82_42', Number.from_raw(          b'\x82\x42' ).qstring())
     #     self.assertEqual('0q82_42', Number.from_raw(bytearray(b'\x82\x42')).qstring())
 
+    def test_dictionary_index(self):
+        d = dict()
+        d[Number(2)] = 'dos'
+        d[Number(5)] = 'cinco'
+        self.assertEqual('dos', d[Number(2)])
+        self.assertEqual('cinco', d[Number(5)])
+        with self.assertRaises(KeyError):
+            d[Number(8)]
+
+    ################## new INDIVIDUAL tests go above here ###########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ############################## TEST GROUPS ###################################
+
+    ############################# comparison ######################################
+
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
         self.assertFalse(Number(0.0) == Number(1.0))
@@ -1203,19 +1204,6 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (      (0.0) >= Number(0.0))
         self.assertFalse(      (0.0) >= Number(1.0))
 
-    def assert_inc_works_on(self, integer):
-        n = Number(integer)
-        n_plus_one = Number(integer)
-        n_plus_one.inc()
-        self.assertEqual(   integer+1, int(n_plus_one))
-        self.assertNotEqual(integer,   int(n_plus_one))
-        self.assertNotEqual(integer+1, int(n))
-        self.assertEqual(   integer,   int(n))
-
-    def test_inc(self):
-        self.assert_inc_works_on(0)
-        self.assert_inc_works_on(1)
-
     def test_unittest_equality(self):
         """See also test_02_big_int_unittest_equality()."""
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
@@ -1234,19 +1222,8 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(googol_plus_1 == googol)
         self.assertTrue (googol_plus_1 == googol_plus_1)
 
-    def test_inc_googol(self):
-        googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-        self.assert_inc_works_on(googol)
 
-    def test_inc_powers_of_2(self):
-        power_of_two = 1
-        for binary_exponent in range(0,1000):
-            self.assert_inc_works_on(power_of_two-2)
-            self.assert_inc_works_on(power_of_two-1)
-            self.assert_inc_works_on(power_of_two)
-            self.assert_inc_works_on(power_of_two+1)
-            self.assert_inc_works_on(power_of_two+2)
-            power_of_two *= 2
+    ################################### is - categories ##################################################
 
     def test_is_whole(self):
         self.assertFalse(Number(-2.5).is_whole())
@@ -1272,6 +1249,37 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number(float('inf')).is_nan())
         self.assertTrue(Number(float('nan')).is_nan())
         self.assertTrue(Number.NAN.is_nan())
+
+    # noinspection PyUnresolvedReferences,PyUnusedLocal
+    def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
+        number = Number(number_able)
+        if is_zero is not None:
+            self.assertEqual(is_zero, number.is_zero())
+
+    # noinspection PyUnresolvedReferences
+    def someday_test_is(self):
+        self.assertTrue(Number('0q80').iszero())
+        self.assertFalse(Number('0q80').nonzero())
+        self.assertIses('0q80', is_zero=True,  all_true=('zero',),     all_false=('infinite', 'negative', 'positive'))
+        self.assertIses('0q82', is_zero=False, all_true=('positive',), all_false=('infinite', 'negative', 'zero'))
+        self.assertIses('0q7E', is_zero=False, all_true=('negative',), all_false=('infinite', 'zero', 'positive'))
+        self.assertAllAre('zero', ('0q80',))
+        self.assertAllAreNot('zero', ('0q82','0q7E'))
+        self.assertAllAre('positive', ('0q82',))
+        self.assertAllAreNot('positive', ('0q80','0q7E'))
+        self.assertISnon('0q82', ('nan', 'negative', 'zero', 'infinitesimal', 'POSITIVE', 'REASONABLE', 'ludicrous', 'FINITE', 'infinite' 'transfinite'))
+        self.assertAREarent('0q80', ('non', 'neg', 'ZERO', 'pos', 'REAS', 'lud', 'FIN', 'inf', 'lud'))
+        self.assertAREarent('0q7E', ('non', 'NEG', 'zero', 'pos', 'REAS', 'lud', 'FIN', 'inf', 'lud'))
+        # other possibilities
+        # isvalid() nonvalid() isnan() nonnan() isstrictlyvalid() isunderscoredright()
+        # wouldfloat() wouldint() wouldlong() wouldDecimal()
+        # almostzero() essentiallyzero() issmall() nearzero() approacheszero() (zero or infinitesimal OR MAYBE ludicrous_small)
+        # reasonablyzero() (includes ludicrous_small)
+        # essentiallyzero() (does NOT include ludicrous_small, only infinitesimal and zero)
+        # islarge() (ludicrous_large or infinite)
+
+
+    ########################################## math #############################################
 
     def test_neg(self):
         self.assertEqual(Number(-42), -Number(42))
@@ -1317,31 +1325,34 @@ class NumberTestCase(unittest.TestCase):
         n += 2
         self.assertEqual(Number(4), n)
 
-    def test_dictionary_index(self):
-        d = dict()
-        d[Number(2)] = 'dos'
-        d[Number(5)] = 'cinco'
-        self.assertEqual('dos', d[Number(2)])
-        self.assertEqual('cinco', d[Number(5)])
-        with self.assertRaises(KeyError):
-            d[Number(8)]
+    def assert_inc_works_on(self, integer):
+        n = Number(integer)
+        n_plus_one = Number(integer)
+        n_plus_one.inc()
+        self.assertEqual(   integer+1, int(n_plus_one))
+        self.assertNotEqual(integer,   int(n_plus_one))
+        self.assertNotEqual(integer+1, int(n))
+        self.assertEqual(   integer,   int(n))
+
+    def test_inc(self):
+        self.assert_inc_works_on(0)
+        self.assert_inc_works_on(1)
+
+    def test_inc_googol(self):
+        googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        self.assert_inc_works_on(googol)
+
+    def test_inc_powers_of_2(self):
+        power_of_two = 1
+        for binary_exponent in range(0,1000):
+            self.assert_inc_works_on(power_of_two-2)
+            self.assert_inc_works_on(power_of_two-1)
+            self.assert_inc_works_on(power_of_two)
+            self.assert_inc_works_on(power_of_two+1)
+            self.assert_inc_works_on(power_of_two+2)
+            power_of_two *= 2
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    ################## new INDIVIDUAL tests go above here ###########################
     ########################################### pickle ###############################################
     # This isn't so much testing as revealing what pickle does to a qiki.Number.
 
@@ -1464,7 +1475,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
 
-    ###################### suffixes ################################
+    ###################### Number.Suffix ################################
 
     def test_add_suffix(self):
         self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
@@ -1663,26 +1674,29 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     ################## new test GROUPS go above here ###########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ################## testing internal methods ###########################
+    # Checking assumptions about Python itself.
+    # These are actually run before all other tests.
 
     def test_01_shift_left(self):
         self.assertEqual(0b000010000, Number._shift_left(0b000010000, 0))
