@@ -97,7 +97,7 @@ class Word(object):
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
             if existing_word.idn == self.idn:
-                return self   # system is a singleton
+                return self   # system is a singleton.  Why is this important?
             else:
                 return existing_word
         elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
@@ -246,10 +246,13 @@ class Word(object):
             self.txt = txt
 
     def _from_word(self, word):
+        self._system = word._system
         if word.exists:
             self._from_idn(word.idn)
         else:
             self._from_definition(word.txt)
+        if self.is_system():
+            raise ValueError   # system is a singleton.  TODO: Explain why this should be.
 
     def lookup_svo(self):
         assert isinstance(self.sbj, Number)
@@ -349,7 +352,7 @@ class Word(object):
 
     def __repr__(self):
         if self.exists:
-            return "Word('{0}')".format(int(self.idn))
+            return "Word({})".format(int(self.idn))
         else:
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
                 sbj=self.sbj.qstring(),
@@ -377,6 +380,9 @@ class Word(object):
             return self.txt
         else:
             return repr(self)
+
+    def __eq__(self, other):
+        return self.exists and other.exists and self.idn == other.idn
 
     @property
     def idn(self):

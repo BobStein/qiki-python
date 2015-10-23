@@ -74,7 +74,7 @@ class WordTestCase(unittest.TestCase):
 
     def test_02b_repr(self):
         noun_id = int(qiki.Number(qiki.Word._ID_NOUN))
-        self.assertEqual("Word('{}')".format(noun_id), repr(self.system('noun')))
+        self.assertEqual("Word({})".format(noun_id), repr(self.system('noun')))
 
     def test_03a_max_idn(self):
         self.assertEqual(qiki.Word._ID_MAX_FIXED, self.system.max_idn())
@@ -203,6 +203,46 @@ class WordTestCase(unittest.TestCase):
         thing2 = noun('thing')
         self.assertEqual(base_max_idn+1, self.system.max_idn())
         self.assertEqual(thing1.idn, thing2.idn)
+
+    def test_09a_equality(self):
+        self.assertEqual(self.system.noun, self.system.noun)
+        self.assertNotEqual(self.system.noun, self.system.verb)
+        self.assertNotEqual(self.system.verb, self.system.noun)
+        self.assertEqual(self.system.verb, self.system.verb)
+
+    def test_09a_equality_by_attribute(self):
+        noun1 = self.system.noun
+        noun2 = self.system.noun
+        self.assertEqual(noun1, noun2)
+        self.assertIsNot(noun1, noun2)
+
+    def test_09a_equality_by_call(self):
+        noun1 = self.system('noun')
+        noun2 = self.system('noun')
+        self.assertEqual(noun1, noun2)
+        self.assertIsNot(noun1, noun2)
+
+    def test_09a_equality_by_copy_constructor(self):
+        noun1 = self.system('noun')
+        noun2 = qiki.Word(noun1)
+        self.assertEqual(noun1, noun2)
+        self.assertIsNot(noun1, noun2)
+
+    def test_09b_system_singleton_by_attribute(self):
+        system1 = self.system
+        system2 = self.system.system
+        self.assertEqual(system1, system2)
+        self.assertIs(system1, system2)
+
+    def test_09b_system_singleton_by_call(self):
+        system1 = self.system
+        system2 = self.system('system')
+        self.assertEqual(system1, system2)
+        self.assertIs(system1, system2)   # How does this work?
+
+    def test_09b_system_singleton_by_copy_constructor(self):
+        with self.assertRaises(ValueError):
+            qiki.Word(self.system)
 
     def test_describe(self):
         thing = self.system('noun')('thing')
