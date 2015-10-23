@@ -1317,7 +1317,31 @@ class NumberTestCase(unittest.TestCase):
         n += 2
         self.assertEqual(Number(4), n)
 
+    def test_dictionary_index(self):
+        d = dict()
+        d[Number(2)] = 'dos'
+        d[Number(5)] = 'cinco'
+        self.assertEqual('dos', d[Number(2)])
+        self.assertEqual('cinco', d[Number(5)])
+        with self.assertRaises(KeyError):
+            d[Number(8)]
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ################## new INDIVIDUAL tests go above here ###########################
     ########################################### pickle ###############################################
     # This isn't so much testing as revealing what pickle does to a qiki.Number.
 
@@ -1639,14 +1663,6 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
 
-    def test_dictionary_index(self):
-        d = dict()
-        d[Number(2)] = 'dos'
-        d[Number(5)] = 'cinco'
-        self.assertEqual('dos', d[Number(2)])
-        self.assertEqual('cinco', d[Number(5)])
-        with self.assertRaises(KeyError):
-            d[Number(8)]
 
 
 
@@ -1665,8 +1681,7 @@ class NumberTestCase(unittest.TestCase):
 
 
 
-
-    ################## new tests go above here ###########################
+    ################## new test GROUPS go above here ###########################
     ################## testing internal methods ###########################
 
     def test_01_shift_left(self):
