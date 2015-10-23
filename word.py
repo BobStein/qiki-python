@@ -106,8 +106,8 @@ class Word(object):
             assert self._system.is_system()
 
             # TODO:  keyword-only or flexible positional arguments?
-            # https://www.python.org/dev/peps/pep-3102/
-            # http://code.activestate.com/recipes/577940-emulate-keyword-only-arguments-in-python-2/
+            # SEE:  https://www.python.org/dev/peps/pep-3102/
+            # SEE:  http://code.activestate.com/recipes/577940-emulate-keyword-only-arguments-in-python-2/
 
             # DONE:  s.v(o)
 
@@ -287,7 +287,7 @@ class Word(object):
             self.vrb = Number.from_mysql(dict_row['vrb'])
             self.obj = Number.from_mysql(dict_row['obj'])
             self.num = Number.from_mysql(dict_row['num'])
-            self.txt = str(dict_row['txt'].decode('utf-8'))   # http://stackoverflow.com/q/27566078/673991
+            self.txt = str(dict_row['txt'].decode('utf-8'))   # THANKS:  http://stackoverflow.com/q/27566078/673991
         cursor.close()
 
     def is_a(self, word, reflexive=True, recursion=10):
@@ -424,8 +424,8 @@ class Word(object):
             assert not self.idn.is_nan()
         assert isinstance(self.idn, Number)
         # TODO: named substitutions with NON-prepared statements??
-        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
-        # http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
+        # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+        # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
 
         self._system.insert_word(self)
         self.exists = True

@@ -85,7 +85,7 @@ class Number(object):
     # A "qigit" is a qiki Number byte, or base-256 digit.
     # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
     # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-    # Source:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+    # SEE:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
     # Why are 8 qigits needed to store 53 bits, not 7?
     # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
     # So 8 qigits can store 57-64 bits, and that may be needed to store 53.
@@ -292,7 +292,7 @@ class Number(object):
             assert b'\xFF\x01' == Number._pack_integer(-255,2)
         Caution, nbytes lower than minimum may not be enforced, see unit tests
         """
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC: This function might be useful elsewhere.
 
         if nbytes is None:
             nbytes = len(cls._hex_even(abs(the_integer)))//2   # nbytes default = 1 + floor(log(abs(the_integer), 256))
@@ -309,8 +309,8 @@ class Number(object):
         """Pack an integer into a binary string.
 
         Akin to base-256 encode
-        Idea from http://stackoverflow.com/a/777774/673991
         """
+        # THANKS:  http://stackoverflow.com/a/777774/673991
         if num >= 0:
             num_twos_complement = num
         else:
@@ -329,22 +329,21 @@ class Number(object):
         """Encode a hexadecimal string from a big integer.
 
         like hex() but even number of digits, no '0x' prefix, no 'L' suffix
-        Also derived from Mike Boers code http://stackoverflow.com/a/777774/673991
         """
-        # [GENERIC] This function might be useful elsewhere.
+        # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
+        # GENERIC:  This function might be useful elsewhere.
         hex_string = hex(the_integer)[2:].rstrip('L')
         if len(hex_string) % 2:
             hex_string = '0' + hex_string
         return hex_string
-    assert 'ff' == _hex_even.__func__(255)   # Thanks http://stackoverflow.com/a/12718272/673991
+    assert 'ff' == _hex_even.__func__(255)
     assert '0100' == _hex_even.__func__(256)
+    # THANKS:  http://stackoverflow.com/a/12718272/673991
 
     @staticmethod
     def _left_pad00(the_string, nbytes):
-        """Make a string nbytes long by padding '\x00's on the left.
-
-        Thanks Jeff Mercado http://stackoverflow.com/a/5773669/673991
-        """
+        """Make a string nbytes long by padding '\x00's on the left."""
+        # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
         assert(isinstance(the_string, six.binary_type))
         return the_string.rjust(nbytes, b'\x00')
     assert b'\x00\x00abcd' == _left_pad00.__func__(b'abcd', 6)
@@ -384,7 +383,7 @@ class Number(object):
             elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
-                offset = 1   # TODO: ludicrous numbers have bigger offsets (for googolplex it's 64)
+                offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it's 64)
             h = self.hex_encode(root_raw)
             if length <= offset:
                 return_value = '0q' + h
@@ -407,7 +406,7 @@ class Number(object):
     def ditto_backslash_hex(self):
         hex_digits = self.hex()
         escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
-        # Thanks http://stackoverflow.com/a/9475354/673991
+        # THANKS:  http://stackoverflow.com/a/9475354/673991
         return '"' + ''.join(escaped_hex_pairs) + '"'
 
     mysql = x_apostrophe_hex
@@ -415,7 +414,7 @@ class Number(object):
     @staticmethod
     def hex_decode(s):
         """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC:  This function might be useful elsewhere.
         assert(isinstance(s, six.string_types))
         return binascii.unhexlify(s)
     assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
@@ -423,7 +422,7 @@ class Number(object):
     @staticmethod
     def hex_encode(s):
         """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC:  This function might be useful elsewhere.
         assert(isinstance(s, six.binary_type))
         return binascii.hexlify(s).upper().decode()
     assert 'BEEF' == hex_encode.__func__(b'\xBE\xEF')
@@ -431,7 +430,7 @@ class Number(object):
     def qantissa(self):
         """Extract the base-256 significand in its raw form.
 
-        Returns a tuple: (integer value of significand, number of qigits)
+        Returns a tuple:  (integer value of significand, number of qigits)
         The number of qigits is the amount stored in the qantissa,
         and is unrelated to the location of the decimal point.
         """
@@ -447,7 +446,7 @@ class Number(object):
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
-    }   # TODO: ludicrous numbers should have a qantissa() too (offset 2^N)
+    }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
 
     @classmethod
     def _unpack_big_integer(cls, binary_string):
@@ -560,7 +559,7 @@ class Number(object):
         the_int = self._shift_left(qan_negative, qexp*8)
         if qexp < 0:
             extraneous_mask = self._exp256(-qexp) - 1
-            extraneous = qan_negative & extraneous_mask   # XXX: a more graceful way to floor to 0 instead of to -inf
+            extraneous = qan_negative & extraneous_mask   # XXX:  a more graceful way to floor to 0 instead of to -inf
             if extraneous != 0:
                 the_int += 1
         return the_int
@@ -568,7 +567,7 @@ class Number(object):
     @staticmethod
     def _shift_left(n, nbits):
         """Shift positive left, or negative right."""
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC:  This function might be useful elsewhere.
         if nbits < 0:
             return n >> -nbits
         else:
@@ -654,12 +653,13 @@ class Number(object):
 
         This is useful for precise unit testing.
         """
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC:  This function might be useful elsewhere.
         assert type(f1) is float
         assert type(f2) is float
         if math.isnan(f1) and math.isnan(f2):
             return True
-        if  math.copysign(1,f1) != math.copysign(1,f2):   # thanks http://stackoverflow.com/a/25338224/673991
+        if math.copysign(1,f1) != math.copysign(1,f2):
+            # THANKS:  http://stackoverflow.com/a/25338224/673991
             return False
         return f1 == f2
 
@@ -727,7 +727,7 @@ class Number(object):
 
     @classmethod
     def _sets_exclusive(cls, *sets):
-        # [GENERIC] This function might be useful elsewhere.
+        # GENERIC:  This function might be useful elsewhere.
         for i in range(len(sets)):
             for j in range(i):
                 if set(sets[i]).intersection(sets[j]):
@@ -736,8 +736,8 @@ class Number(object):
 
     @classmethod
     def _union_of_distinct_sets(cls, *sets):
-        # [GENERIC] This function might be useful elsewhere.
-        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive: %s" % repr(sets)
+        # GENERIC:  This function might be useful elsewhere.
+        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
         return_value = set()
         for each_set in sets:
             return_value |= each_set
@@ -901,7 +901,7 @@ class Number(object):
         cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
 
 
-        # Sets of Zones   TODO: draw a Venn Diagram or table or something
+        # Sets of Zones   TODO:  draw a Venn Diagram or table or something
         # -------------
         cls.ZONE_REASONABLE = {
             cls.Zone.POSITIVE,
@@ -1053,38 +1053,40 @@ assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qst
 
 
 
-# TODO: Ludicrous Numbers
-# TODO: Transfinite Numbers
-# TODO: Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
-# TODO: Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
-# TODO: ...would be 8 bytes, same as float64, ...
-# TODO: ...versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
+# TODO:  Ludicrous Numbers
+# TODO:  Transfinite Numbers
+# TODO:  Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
+# TODO:  Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
+# TODO:  ...would be 8 bytes, same as float64, ...
+# TODO:  ...versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 
-# TODO: decimal.Decimal
-# TODO: complex
-# TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
-# TODO: other Numpy compatibilities?
+# TODO:  decimal.Decimal
+# TODO:  complex
+# TODO:  Numpy types
+# SEE:  http://docs.scipy.org/doc/numpy/user/basics.types.html
+# TODO:  other Numpy compatibilities?
 
-# TODO: Number.inc() native - taking advantage of raw encodings
-# TODO: __neg__ native - taking advantage of two's complement encoding
-# TODO: __add__, __mul__, etc. native
-# TODO: other Number(string)s, e.g. assert 1 == Number('1')
+# TODO:  Number.inc() native - taking advantage of raw encodings
+# TODO:  __neg__ native - taking advantage of two's complement encoding
+# TODO:  __add__, __mul__, etc. native
+# TODO:  other Number(string)s, e.g. assert 1 == Number('1')
 
-# TODO: hooks to add features modularly, e.g. suffixes
-# TODO: change % to .format()
-# TODO: change raw from str/bytes to bytearray?  See http://ze.phyr.us/bytearray/
-# TODO: raise subclass of built-in exceptions
-# TODO: combine qantissa() and qexponent() into _unpack() that extracts all three pieces
-# TODO: _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
-# TODO: str(Number('0q80')) should be '0'.  str(Number.NAN should be '0q'
-# TODO: Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
+# TODO:  hooks to add features modularly, e.g. suffixes
+# TODO:  change % to .format()
+# TODO:  change raw from str/bytes to bytearray?
+# SEE:  http://ze.phyr.us/bytearray/
+# TODO:  raise subclass of built-in exceptions
+# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
+# TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN should be '0q'
+# TODO:  Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
 
-# FIXME: Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
+# FIXME:  Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
 #   Is that an IEEE float problem or a qiki.Number problem?
 #   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
 #   This may not be worth solving, or it may indicate a negative number bug.
 #   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
 
-# TODO: Terminology for an unsuffixed Number?  For a suffixed Number?
+# TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?
 # Number class is unsuffixed, and derived class is suffixed?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?

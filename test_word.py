@@ -35,7 +35,7 @@ LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database 
                                      # Set this to True to manually examine the database after running it.
 
 
-class WordTestCase(unittest.TestCase):
+class WordTests(unittest.TestCase):
 
     def setUp(self):
         self.system = qiki.System(**secure.credentials.for_unit_testing_database)
@@ -50,6 +50,8 @@ class WordTestCase(unittest.TestCase):
         if not LET_DATABASE_RECORDS_REMAIN:
             self.system.uninstall_to_scratch()
         self.system.disconnect()
+
+class WordFirstTests(WordTests):
 
     def test_00_number(self):
         n = qiki.Number(1)
@@ -243,6 +245,9 @@ class WordTestCase(unittest.TestCase):
     def test_09b_system_singleton_cant_do_by_copy_constructor(self):
         with self.assertRaises(ValueError):
             qiki.Word(self.system)
+
+
+class WordMoreTests(WordTests):
 
     def test_describe(self):
         thing = self.system('noun')('thingamajig')
@@ -449,7 +454,7 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(suffixed_system_idn, qiki.Number('0q82_05__030100'))
 
 
-    ############### Numbered Lists #######################
+class WordListingTests(WordTests):
 
     class Names(qiki.Listing):
         names = [
@@ -462,7 +467,7 @@ class WordTestCase(unittest.TestCase):
             try:
                 name = self.names[int(index)]
             except IndexError:
-                raise qiki.Listing.NotFound
+                raise self.NotFound
             callback(name, qiki.Number(1))
 
     def setup_listing(self):
