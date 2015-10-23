@@ -1315,7 +1315,9 @@ class NumberTestCase(unittest.TestCase):
         n += 2
         self.assertEqual(Number(4), n)
 
-    def test_pickle(self):
+    ########################################### pickle ###############################################
+
+    def test_pickle_protocol_0_class(self):
         self.assertIn(pickle.dumps(Number), (
             textwrap.dedent("""\
                 cNumber.Number
@@ -1330,6 +1332,8 @@ class NumberTestCase(unittest.TestCase):
             b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
         ))
 
+
+    def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
         self.assertIn(pickle.dumps(x314), (
             textwrap.dedent("""\
@@ -1364,6 +1368,38 @@ class NumberTestCase(unittest.TestCase):
                 b.""") % repr(x314.raw),
             b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'   # Python 3.X
         ))
+
+    def test_pickle_protocol_2_class(self):
+        self.assertEqual(pickle.dumps(Number, 2), b'\x80\x02cnumber\nNumber\nq\x00.')
+
+    def test_pickle_protocol_2_instance(self):
+        x314 = Number(3.14)
+
+        self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
+        self.assertEqual(x314.raw, b'\x82\x03#\xd7\n=p\xa3\xe0')
+        x314_raw_mangled_utf8 = b'\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0'
+
+        self.assertEqual(
+            pickle.dumps(x314, 2),
+                '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t' +
+                x314.raw +
+                'q\x02b.'
+            if six.PY2 else
+                b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00' +
+                x314_raw_mangled_utf8 +
+                b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+        )
+
+        # print(repr(pickle.dumps(x314, 2)))
+        # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
+        # PY3:  b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+
+        # print(repr(x314.raw))
+        # '\x82\x03#\xd7\n=p\xa3\xe0'
+
+        # As reported by failed assertEqual:
+        # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
+        # PY3:  b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x0[126 chars]06b.'
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
