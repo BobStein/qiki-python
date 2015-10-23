@@ -238,26 +238,27 @@ class WordTestCase(unittest.TestCase):
         system1 = self.system
         system2 = self.system('system')
         self.assertEqual(system1, system2)
-        self.assertIs(system1, system2)   # How does this work?
+        self.assertIs(system1, system2)   # Why does this work?
 
-    def test_09b_system_singleton_by_copy_constructor(self):
+    def test_09b_system_singleton_cant_do_by_copy_constructor(self):
         with self.assertRaises(ValueError):
             qiki.Word(self.system)
 
     def test_describe(self):
-        thing = self.system('noun')('thing')
-        thing_description = thing.description()
-        self.assertIn('thing', thing_description)
+        thing = self.system('noun')('thingamajig')
+        self.assertIn('thingamajig', thing.description())
 
     def test_short_and_long_ways(self):
         noun = self.system('noun')
         thing1 = noun('thing')
         thing2 = self.system.noun('thing')
         thing3 = self.system.define(noun, 'thing')
-        self.assertEqual(thing1.idn,            thing2.idn           )
-        self.assertEqual(thing1.idn,            thing3.idn           )
+        self.assertEqual(thing1.idn,           thing2.idn          )
+        self.assertEqual(thing1.idn,           thing3.idn          )
         self.assertEqual(thing1.description(), thing2.description())
         self.assertEqual(thing1.description(), thing3.description())
+        self.assertEqual(thing1,               thing2              )
+        self.assertEqual(thing1,               thing3              )
 
         subthing1 = thing1('subthing1')
         subthing2 = thing2('subthing2')
