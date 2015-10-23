@@ -13,7 +13,29 @@ import six
 from qiki import Number
 
 
-class NumberTestCase(unittest.TestCase):
+class MoreTests(unittest.TestCase):
+
+    def assertFloatSame(self, x1, x2):
+        self.assertTrue(Number._floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
+            x1=x1,
+            x2=x2,
+        ))
+
+    def assertFloatNotSame(self, x1, x2):
+        self.assertFalse(Number._floats_really_same(x1, x2), "{x1} is the same as {x2}".format(
+            x1=x1,
+            x2=x2,
+        ))
+
+    def assertEqualSets(self, s1, s2):
+        if s1 != s2:
+            self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
+                '\n\t'.join((Number.name_of_zone[z] for z in (s1-s2))),
+                '\n\t'.join((Number.name_of_zone[z] for z in (s2-s1))),
+            ))
+
+
+class NumberTests(MoreTests):
 
     def setUp(self):
         pass
@@ -498,13 +520,6 @@ class NumberTestCase(unittest.TestCase):
         if not sys.flags.optimize:
             with self.assertRaises(AssertionError):
                 Number._union_of_distinct_sets({1,2,3}, {3,4,5})
-
-    def assertEqualSets(self, s1, s2):
-        if s1 != s2:
-            self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
-                '\n\t'.join((Number.name_of_zone[z] for z in (s1-s2))),
-                '\n\t'.join((Number.name_of_zone[z] for z in (s2-s1))),
-            ))
 
     # noinspection PyUnresolvedReferences
     def test_zone_sets(self):
@@ -1120,9 +1135,7 @@ class NumberTestCase(unittest.TestCase):
 
 
 
-    ############################## TEST GROUPS ###################################
-
-    ############################# comparison ######################################
+class NumberComparisonTests(MoreTests):
 
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
@@ -1223,7 +1236,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertTrue (googol_plus_1 == googol_plus_1)
 
 
-    ################################### is - categories ##################################################
+class NumberIsTests(MoreTests):
 
     def test_is_whole(self):
         self.assertFalse(Number(-2.5).is_whole())
@@ -1279,7 +1292,7 @@ class NumberTestCase(unittest.TestCase):
         # islarge() (ludicrous_large or infinite)
 
 
-    ########################################## math #############################################
+class NumberMathTests(MoreTests):
 
     def test_neg(self):
         self.assertEqual(Number(-42), -Number(42))
@@ -1353,8 +1366,8 @@ class NumberTestCase(unittest.TestCase):
             power_of_two *= 2
 
 
-    ########################################### pickle ###############################################
-    # This isn't so much testing as revealing what pickle does to a qiki.Number.
+class NumberPickleTests(MoreTests):
+    """ This isn't so much testing as revealing what pickle does to a qiki.Number."""
 
     def test_pickle_protocol_0_class(self):
         if six.PY2:
@@ -1475,7 +1488,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
 
-    ###################### Number.Suffix ################################
+class NumberSuffixTests(MoreTests):
 
     def test_add_suffix(self):
         self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
@@ -1674,7 +1687,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
 
-    ################## new test GROUPS go above here ###########################
+################### New test GROUPS go above here ##################################
 
 
 
@@ -1690,13 +1703,12 @@ class NumberTestCase(unittest.TestCase):
 
 
 
+class PythonTests(MoreTests):
+    """
+    Testing internal Python features.
 
-
-
-
-    ################## testing internal methods ###########################
-    # Checking assumptions about Python itself.
-    # These are actually run before all other tests.
+    Checking assumptions about Python itself.
+    """
 
     def test_01_shift_left(self):
         self.assertEqual(0b000010000, Number._shift_left(0b000010000, 0))
@@ -1852,18 +1864,6 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00'))
         self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00\x00'))
-
-    def assertFloatSame(self, x1, x2):
-        self.assertTrue(Number._floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
-            x1=x1,
-            x2=x2,
-        ))
-
-    def assertFloatNotSame(self, x1, x2):
-        self.assertFalse(Number._floats_really_same(x1, x2), "{x1} is the same as {x2}".format(
-            x1=x1,
-            x2=x2,
-        ))
 
     def test_01_floats_really_same(self):
         self.assertFloatSame(1.0, 1.0)
