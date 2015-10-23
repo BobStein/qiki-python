@@ -1217,6 +1217,7 @@ class NumberTestCase(unittest.TestCase):
         self.assert_inc_works_on(1)
 
     def test_unittest_equality(self):
+        """See also test_02_big_int_unittest_equality()."""
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertEqual   (googol       , googol)
@@ -1225,6 +1226,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual   (googol_plus_1, googol_plus_1)
 
     def test_op_equality(self):
+        """See also test_02_big_int_op_equality()."""
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertTrue (googol        == googol)
@@ -1991,6 +1993,24 @@ class NumberTestCase(unittest.TestCase):
         self.assertFalse(b'' == b'\x80')
         self.assertFalse(b'\x80' == b'\x81')
         self.assertFalse(b'\x82' == b'\x82\x00')
+
+    def test_02_big_int_unittest_equality(self):
+        """See also test_unittest_equality()."""
+        googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        self.assertEqual   (googol       , googol)
+        self.assertNotEqual(googol       , googol_plus_1)
+        self.assertNotEqual(googol_plus_1, googol)
+        self.assertEqual   (googol_plus_1, googol_plus_1)
+
+    def test_02_big_int_op_equality(self):
+        """See also test_op_equality()."""
+        googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        self.assertTrue (googol        == googol)
+        self.assertFalse(googol        == googol_plus_1)
+        self.assertFalse(googol_plus_1 == googol)
+        self.assertTrue (googol_plus_1 == googol_plus_1)
 
 
 def py23(if2, if3):
