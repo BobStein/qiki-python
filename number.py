@@ -292,6 +292,7 @@ class Number(object):
             assert b'\xFF\x01' == Number._pack_integer(-255,2)
         Caution, nbytes lower than minimum may not be enforced, see unit tests
         """
+        # [GENERIC] This function might be useful elsewhere.
 
         if nbytes is None:
             nbytes = len(cls._hex_even(abs(the_integer)))//2   # nbytes default = 1 + floor(log(abs(the_integer), 256))
@@ -330,6 +331,7 @@ class Number(object):
         like hex() but even number of digits, no '0x' prefix, no 'L' suffix
         Also derived from Mike Boers code http://stackoverflow.com/a/777774/673991
         """
+        # [GENERIC] This function might be useful elsewhere.
         hex_string = hex(the_integer)[2:].rstrip('L')
         if len(hex_string) % 2:
             hex_string = '0' + hex_string
@@ -413,14 +415,16 @@ class Number(object):
     @staticmethod
     def hex_decode(s):
         """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
+        # [GENERIC] This function might be useful elsewhere.
         assert(isinstance(s, six.string_types))
         return binascii.unhexlify(s)
     assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
 
     @staticmethod
     def hex_encode(s):
-        assert(isinstance(s, six.binary_type))
         """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
+        # [GENERIC] This function might be useful elsewhere.
+        assert(isinstance(s, six.binary_type))
         return binascii.hexlify(s).upper().decode()
     assert 'BEEF' == hex_encode.__func__(b'\xBE\xEF')
 
@@ -564,6 +568,7 @@ class Number(object):
     @staticmethod
     def _shift_left(n, nbits):
         """Shift positive left, or negative right."""
+        # [GENERIC] This function might be useful elsewhere.
         if nbits < 0:
             return n >> -nbits
         else:
@@ -649,6 +654,7 @@ class Number(object):
 
         This is useful for precise unit testing.
         """
+        # [GENERIC] This function might be useful elsewhere.
         assert type(f1) is float
         assert type(f2) is float
         if math.isnan(f1) and math.isnan(f2):
@@ -721,6 +727,7 @@ class Number(object):
 
     @classmethod
     def _sets_exclusive(cls, *sets):
+        # [GENERIC] This function might be useful elsewhere.
         for i in range(len(sets)):
             for j in range(i):
                 if set(sets[i]).intersection(sets[j]):
@@ -729,6 +736,7 @@ class Number(object):
 
     @classmethod
     def _union_of_distinct_sets(cls, *sets):
+        # [GENERIC] This function might be useful elsewhere.
         assert cls._sets_exclusive(*sets), "Sets not mutually exclusive: %s" % repr(sets)
         return_value = set()
         for each_set in sets:
@@ -846,16 +854,6 @@ class Number(object):
 
     def get_suffix_number(self, sought_type):
         return self.from_raw(self.get_suffix_payload(sought_type))
-
-    # def suffixes(self):
-    #     n = self
-    #     _suffixes = []
-    #     while True:
-    #         (n, suffix) = n._parse_suffix()
-    #         if suffix is None:
-    #             break
-    #         _suffixes.append(suffix)
-    #     return _suffixes
 
     def parse_suffixes(self):
         return_array = []
@@ -1063,6 +1061,7 @@ assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qst
 # TODO: ...versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 
 # TODO: decimal.Decimal
+# TODO: complex
 # TODO: Numpy types -- http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO: other Numpy compatibilities?
 
@@ -1084,7 +1083,8 @@ assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qst
 #   Is that an IEEE float problem or a qiki.Number problem?
 #   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
 #   This may not be worth solving, or it may indicate a negative number bug.
-#   1.9374 =  but 1.9375-5 = 0q7D_FCF00000000001 and -3.062500000000005 = 0q7D_FCF0
+#   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
 
-# TODO: Terminology for unsuffixed Number?  For suffixed Number?
-# Number class is unsuffixed, and derived class is suffixed?  Name it Numeraloid?  Identifier?
+# TODO: Terminology for an unsuffixed Number?  For a suffixed Number?
+# Number class is unsuffixed, and derived class is suffixed?
+# Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?

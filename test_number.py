@@ -1355,7 +1355,7 @@ class NumberMathTests(MoreTests):
         googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         self.assert_inc_works_on(googol)
 
-    def test_inc_powers_of_2(self):
+    def test_inc_powers_of_2(self):   # This takes take a long time, about 2 seconds
         power_of_two = 1
         for binary_exponent in range(0,1000):
             self.assert_inc_works_on(power_of_two-2)
