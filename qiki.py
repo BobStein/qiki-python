@@ -15,4 +15,4 @@ Usage example:
 """
 
 from number import Number
-from word import Word, System, Listing
+from word import Word, System, SystemMySQL, Listing

@@ -138,7 +138,7 @@ class Word(object):
             assert hasattr(self, '_word_before_the_dot')
             if len(args) == 1:   # subject.verb(object)
                 existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
-                existing_word.lookup_svo()
+                existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists
             else:   # subject.verb(object, number)
                     # subject.verb(object, number, text)
@@ -167,9 +167,10 @@ class Word(object):
 
     def spawn(self, *args, **kwargs):
         """
-        Construct a Word() using the same _system.
+        Construct a Word() using the same _system as another word.
 
-        The word may exist already.  Otherwise it will be prepared to .save().
+        The constructed word may exist in the database alreqady already.
+        Otherwise it will be prepared to .save().
         """
         assert hasattr(self, '_system')
         kwargs['system'] = self._system
@@ -181,6 +182,7 @@ class Word(object):
         Differences between Word.sentence() and Word.spawn():
             sentence takes a Word-triple, spawn takes an idn-triple.
             sentence saves the new word.
+            spawn can take in idn or other ways to indicate an existing word.
         """
         assert isinstance(sbj, Word),             "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),             "vrb cannot be a {type}".format(type=type(vrb).__name__)
@@ -215,6 +217,7 @@ class Word(object):
             self.txt = listed_instance.txt
             self.exists = True
         else:
+            # TODO:  Move this part to System
             self._load_row(
                 "SELECT * FROM `{table}` WHERE `idn` = ?"
                 .format(
@@ -229,6 +232,7 @@ class Word(object):
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
+        # TODO:  Move to System
         assert isinstance(txt, six.string_types)
         self._load_row(
             "SELECT * FROM `{table}` "
@@ -246,15 +250,19 @@ class Word(object):
             self.txt = txt
 
     def _from_word(self, word):
-        self._system = word._system
-        if word.exists:
-            self._from_idn(word.idn)
-        else:
-            self._from_definition(word.txt)
-        if self.is_system():
+        if word.is_system():
             raise ValueError   # system is a singleton.  TODO: Explain why this should be.
+        assert word.exists
+        self._system = word._system
+        self._from_idn(word.idn)
+        # if word.exists:
+        #     self._from_idn(word.idn)
+        # else:
+        #     self._from_definition(word.txt)
 
-    def lookup_svo(self):
+    def _from_sbj_vrb_obj(self):
+        """Construct a word from its subject-verb-object"""
+        # TODO:  Move to System
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
@@ -275,10 +283,17 @@ class Word(object):
             )
         )
 
-    def _load_row(self, sql, params=()):
+    def _load_row(self, sql, parameters):
+        """Flesh out a word object from a single row of the word table.
+
+        Same parameters as cursor.execute,
+        namely a MySQL string and a tuple of ?-value parameters.
+        """
+        # TODO:  Move to System.  Along with every function that calls it.
         cursor = self._system._connection.cursor(prepared=True)
-        cursor.execute(sql, params)
+        cursor.execute(sql, parameters)
         tuple_row = cursor.fetchone()
+        assert cursor.fetchone() is None
         if tuple_row is not None:
             self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
@@ -482,17 +497,16 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
                       #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                       # Eventually, this will encapsulate other word repositories
+    pass
 
+
+class SystemMySQL(System):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
         self._connection = mysql.connector.connect(**kwargs)
         self._system = self
-        # TODO:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
-        # TODO:  ...No, make them properties of System.  And make all Words refer to a System
-        # TODO:  ...So combine all three.  Maybe System shouldn't subclass Word?
-        # TODO:  Or make a class SystemMysql(System)
         try:
             super(self.__class__, self).__init__(self._ID_SYSTEM, system=self)
             assert self.exists
@@ -506,7 +520,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
             else:
                 assert False, exception_message
         except Word.MissingFromLex:
-            self.install_seminal_words()
+            self._install_seminal_words()
 
         assert self.exists
         assert self.is_system()
@@ -529,9 +543,9 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
-        self.install_seminal_words()
+        self._install_seminal_words()
 
-    def install_seminal_words(self):
+    def _install_seminal_words(self):
         self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
         self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
         self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
@@ -544,6 +558,9 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         assert self.is_system()
 
     def _seminal_word(self, _idn, _obj, _txt):
+        """Insert important, fundamental word into the table, if it's not already there.
+
+        Subject is always 'system'.  Verb is always 'define'."""
         try:
             word = self.spawn(_idn)
         except Word.MissingFromLex:
@@ -577,6 +594,7 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
                 raise
 
     def uninstall_to_scratch(self):
+        """Deletes table.  Opposite of install_from_scratch()."""
         cursor = self._connection.cursor(prepared=True)
         try:
             cursor.execute("DELETE FROM `{table}`".format(table=self._table))
@@ -590,12 +608,11 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         self._connection.close()
 
     def get_all_idns(self):
+        """Return an array of all word ids in the database."""
+        # TODO:  Start and number parameters, for LIMIT clause.
         cursor = self._connection.cursor()
         cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
         ids = [Number.from_mysql(row[0]) for row in cursor]
-        # for row in cursor:
-        #     idn = Number.from_mysql(row[0])
-        #     ids.append(idn)
         cursor.close()
         return ids
 
@@ -622,6 +639,11 @@ class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictiona
         self._connection.commit()
         cursor.close()
 
+
+# DONE:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
+# DONE:  ...No, make them properties of System.  And make all Words refer to a System
+# DONE:  ...So combine all three.  Maybe System shouldn't subclass Word?
+# DONE:  Or make a class SystemMysql(System)
 
 # TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.

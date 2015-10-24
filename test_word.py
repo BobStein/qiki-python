@@ -38,7 +38,7 @@ LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database 
 class WordTests(unittest.TestCase):
 
     def setUp(self):
-        self.system = qiki.System(**secure.credentials.for_unit_testing_database)
+        self.system = qiki.SystemMySQL(**secure.credentials.for_unit_testing_database)
         self.system.uninstall_to_scratch()
         self.system.install_from_scratch()
         # cursor = self.system._connection.cursor()
