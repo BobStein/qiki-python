@@ -246,6 +246,14 @@ class WordFirstTests(WordTests):
         with self.assertRaises(ValueError):
             qiki.Word(self.system)
 
+    def test_10a_word_by_system_idn(self):
+        agent = self.system(qiki.Word._ID_AGENT)
+        self.assertEqual(agent.txt, 'agent')
+
+    def test_10b_word_by_system_txt(self):
+        agent = self.system('agent')
+        self.assertEqual(agent.idn, qiki.Word._ID_AGENT)
+
 
 class WordMoreTests(WordTests):
 
@@ -456,34 +464,37 @@ class WordMoreTests(WordTests):
 
 class WordListingTests(WordTests):
 
-    class Names(qiki.Listing):
-        names = [
-            "Archie",
-            "Barbara",
-            "Chad",
-            "Deanne"
+    class Students(qiki.Listing):
+        names_and_grades = [
+            ("Archie", 4.0),
+            ("Barbara", 3.0),
+            ("Chad", 3.0),
+            ("Deanne", 1.0),
         ]
         def lookup(self, index, callback):
             try:
-                name = self.names[int(index)]
+                name_and_grade = self.names_and_grades[int(index)]
             except IndexError:
                 raise self.NotFound
-            callback(name, qiki.Number(1))
+            name = name_and_grade[0]
+            grade = name_and_grade[1]
+            callback(name, grade)
 
-    def setup_listing(self):
+    def setUp(self):
+        super(WordListingTests, self).setUp()
         self.listing = self.system.noun('listing')
-        qiki.Listing.install(self.listing.idn)
+        qiki.Listing.install(self.listing)
         self.names = self.listing('names')
-        self.Names.install(self.names.idn)
+        self.Students.install(self.names)
 
-    def test_listing(self):
-        self.setup_listing()
-
+    def test_listing_suffix(self):
         number_two = qiki.Number(2)
-        chad = self.Names(number_two)
+        chad = self.Students(number_two)
         self.assertEqual(number_two, chad.index)
         self.assertEqual(    "Chad", chad.txt)
-        self.assertEqual(         1, chad.num)
+        self.assertEqual(       3.0, chad.num)
+        self.assertTrue(chad.exists)
+
         idn_suffix = chad.idn.parse_suffixes()
         self.assertEqual(2, len(idn_suffix))
         idn = idn_suffix[0]
@@ -491,20 +502,30 @@ class WordListingTests(WordTests):
         self.assertEqual(idn, self.names.idn)
         self.assertEqual(suffix.payload_number(), number_two)
 
+    def test_listing_using_spawn_and_save(self):
+        archie = self.Students(qiki.Number(0))
         bless = self.system.verb('bless')
         blessed_name = self.system.spawn(
             sbj=self.system.idn,
             vrb=bless.idn,
-            obj=chad.idn,
+            obj=archie.idn,
             txt="mah soul",
             num=qiki.Number(666),
         )
         blessed_name.save()
 
+        blessed_name_too = self.system.spawn(blessed_name.idn)
+        self.assertTrue(blessed_name_too.exists)
+        self.assertEqual(blessed_name_too.sbj, qiki.Word._ID_SYSTEM)
+        self.assertEqual(blessed_name_too.vrb, bless.idn)
+        self.assertEqual(blessed_name_too.obj, archie.idn)
+        self.assertEqual(blessed_name_too.num, qiki.Number(666))
+        self.assertEqual(blessed_name_too.txt, "mah soul")
+
         laud = self.system.verb('laud')
         thing = self.system.noun('thing')
         lauded_thing = self.system.spawn(
-            sbj=chad.idn,
+            sbj=archie.idn,
             vrb=laud.idn,
             obj=thing.idn,
             txt="most sincerely",
@@ -512,16 +533,51 @@ class WordListingTests(WordTests):
         )
         lauded_thing.save()
 
-        self.describe_all_words()
+    def test_listing_using_method_verb(self):
+        archie = self.Students(qiki.Number(0))
+        bless = self.system.verb('bless')
+        blessed_name = self.system.bless(archie, qiki.Number(666), "mah soul")
+
+        blessed_name_too = self.system.spawn(blessed_name.idn)
+        self.assertTrue(blessed_name_too.exists)
+        self.assertEqual(blessed_name_too.sbj, qiki.Word._ID_SYSTEM)
+        self.assertEqual(blessed_name_too.vrb, bless.idn)
+        self.assertEqual(blessed_name_too.obj, archie.idn)
+        self.assertEqual(blessed_name_too.num, qiki.Number(666))
+        self.assertEqual(blessed_name_too.txt, "mah soul")
+
+        self.system.verb('laud')
+        thing = self.system.noun('thing')
+        archie.laud(thing, qiki.Number(123456789), "most sincerely")
 
     def test_listing_not_found(self):
-        self.setup_listing()
-
         with self.assertRaises(qiki.Listing.NotFound):
-            self.Names(qiki.Number(5))
+            self.Students(qiki.Number(5))
 
+    def test_listing_index_Number(self):
+        deanne = self.Students(qiki.Number(3))
+        self.assertEqual("Deanne", deanne.txt)
 
+    def test_listing_index_int(self):
+        deanne = self.Students(3)
+        self.assertEqual("Deanne", deanne.txt)
 
+    def test_listing_as_nouns(self):
+        barbara = self.Students(1)
+        deanne = self.Students(3)
+        self.system.verb('like')
+        barbara.like(deanne, qiki.Number(1))
+        deanne.like(barbara, qiki.Number(-1000000000))
+
+        self.describe_all_words()
+
+    def test_listing_by_system_idn(self):
+        """Make sure system(suffixed number) will look up a listing."""
+        chad1 = self.Students(2)
+        idn_chad = chad1.idn
+        chad2 = self.system(idn_chad)
+        self.assertEqual("Chad", chad1.txt)
+        self.assertEqual("Chad", chad2.txt)
 
 
 
@@ -533,8 +589,8 @@ class WordListingTests(WordTests):
     ################ Util ####################
 
     def describe_all_words(self):
-        idns = self.system.get_all_idns()
-        for _idn in idns:
+        idn_array = self.system.get_all_idns()
+        for _idn in idn_array:
             print(int(_idn), self.system(_idn).description())
 
 
@@ -560,7 +616,7 @@ class WordListingTests(WordTests):
     #     with self.assertRaises(RuntimeError):
     #         define.idn = -1
     #
-    # def test_quintuple_self_evidnent(self):
+    # def test_quintuple_self_evident(self):
     #     define = qiki.Word('define')
     #     self.assertEqual(define.vrb, define.idn)
     #     noun = qiki.Word('noun')

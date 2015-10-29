@@ -35,17 +35,14 @@ class Word(object):
     :type obj: Number | Word
     :type num: Number
     :type txt: six.string_types
-
-    :type _connection: mysql.connector.MySQLConnection
-    :type _table": six.string_types
-    :type _system": Word
+    :type system: Word
     """
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, system=None):
         self._system = system
         self.exists = False
         self._idn = None
-        self._word_before_the_dot = False
+        self._word_before_the_dot = None
         if isinstance(content, six.string_types):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -88,7 +85,7 @@ class Word(object):
     def __getattr__(self, verb):
         assert hasattr(self, '_system'), "No system, can't x.{vrb}".format(vrb=verb)
         return_value = self._system(verb)
-        return_value._word_before_the_dot = self
+        return_value._word_before_the_dot = self   # In s.v(o) this is how we remember the s.
         return return_value
 
     def __call__(self, *args, **kwargs):
@@ -135,15 +132,16 @@ class Word(object):
                 txt = args[2]
             except IndexError:
                 txt=''
-            assert hasattr(self, '_word_before_the_dot')
+            assert self._word_before_the_dot is not None
             if len(args) == 1:   # subject.verb(object)
                 existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
-                assert existing_word.exists
+                assert existing_word.exists, "The form subject.verb(object) is a getter, not a setter."
             else:   # subject.verb(object, number)
                     # subject.verb(object, number, text)
                 existing_word = self.sentence(sbj=self._word_before_the_dot, vrb=self, obj=obj, num=num, txt=txt)
-            self._word_before_the_dot = False   # single use
+            self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
+            # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
         elif self.is_definition():   # object('text') ==> system.define(object, 'text')
             assert hasattr(self, '_system')
@@ -169,7 +167,7 @@ class Word(object):
         """
         Construct a Word() using the same _system as another word.
 
-        The constructed word may exist in the database alreqady already.
+        The constructed word may exist in the database already.
         Otherwise it will be prepared to .save().
         """
         assert hasattr(self, '_system')
@@ -208,12 +206,7 @@ class Word(object):
         """
         assert isinstance(idn, Number)
         if idn.is_suffixed():
-            (identifier, suffix) = idn.parse_suffixes()
-            assert isinstance(identifier, Number)
-            assert isinstance(suffix, Number.Suffix)
-            listing_class = Listing.class_from_meta_idn(identifier)
-            listed_instance = listing_class(suffix.payload_number())
-            # self.txt = idn.qstring()
+            listed_instance = Listing.word_lookup(idn)
             self.txt = listed_instance.txt
             self.exists = True
         else:
@@ -458,35 +451,69 @@ class Listing(Word):
 
     SUFFIX_TYPE_LISTING = 0x1D   # TODO:  Move to number.py I guess?
 
-    meta_idn = None   # idn associated with the CLASS, not the INSTANCE
+    meta_word = None   # word associated with the CLASS, not the INSTANCE
 
     class_dictionary = dict()
 
     # FIXME:  Is there really one meta_idn per derived class, but only one class_dictionary for all classes??
 
     def __init__(self, index):
-        self.index = index
-        self._idn = Number(self.meta_idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
+        assert isinstance(index, (int, Number))   # TODO:  Support a non-Number index.
+        assert self.meta_word is not None
+        self.index = Number(index)
+        self._idn = Number(self.meta_word.idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
         self.num = None
         self.txt = None
         self.lookup(self.index, self.lookup_callback)
+        self._system = self.meta_word._system
+
+    def lookup(self, index, callback):
+        raise NotImplementedError("Subclasses of Listing must define a lookup() function.")
 
     def lookup_callback(self, txt, num):
         self.num = num
         self.txt = txt
+        self.exists = True
 
     @classmethod
-    def install(cls, meta_idn):
-        assert isinstance(meta_idn, Number)
-        cls.meta_idn = meta_idn
-        cls.class_dictionary[meta_idn] = cls
+    def install(cls, meta_word):
+        """
+        Associate the class with a (simple) word in the database.
+        That word's idn will be the root of the idn for all instances.
+
+        This must be called before any instantiations.
+        """
+        assert isinstance(meta_word, Word)
+        assert isinstance(meta_word.idn, Number)
+        cls.meta_word = meta_word
+        cls.class_dictionary[meta_word.idn] = cls
+
+    @classmethod
+    def word_lookup(cls, idn):
+        """
+        Turn a suffixed Number identifier into a (word) instance of some subclass of Listing.
+
+        So it's a double-lookup.
+        First we look up which class this idn is for.
+        That's determined by the root of the idn.
+        (The root is the Number part without any suffix.)
+        This class will be a subclass of Listing.
+        Second we call that class's lookup on the suffix of the idn.
+        """
+        (identifier, suffix) = idn.parse_suffixes()
+        assert isinstance(identifier, Number)
+        assert isinstance(suffix, Number.Suffix)
+        subclass = cls.class_from_meta_idn(identifier)
+        listed_instance = subclass(suffix.payload_number())
+        # TODO:  Support non-Number suffixes?  The Listing index must now be a Number.
+        return listed_instance
 
     @classmethod
     def class_from_meta_idn(cls, meta_idn):
         # print(repr(cls.class_dictionary))
         return_value = cls.class_dictionary[meta_idn]
-        assert issubclass(return_value, cls), repr(return_value) + " " + repr(cls)
-        assert return_value.meta_idn == meta_idn
+        assert issubclass(return_value, cls), repr(return_value) + " is not a subclass of " + repr(cls)
+        assert return_value.meta_word.idn == meta_idn
         return return_value
 
     class NotFound(Exception):
