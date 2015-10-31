@@ -86,6 +86,9 @@ class NumberTests(MoreTests):
         self.assertEqual('0q80', Number('0q80').qstring())
         self.assertEqual('0q', Number('0q').qstring())
 
+    def test_redundant_one(self):
+        self.assertEqual(Number('0q82'), Number('0q82_01'))
+
     def test_from_bytearray(self):
         self.assertEqual(Number('0q82_2A'), Number.from_bytearray(bytearray(b'\x82\x2A')))
 

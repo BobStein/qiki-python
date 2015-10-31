@@ -10,13 +10,14 @@ Features:
 
 import binascii
 import math
+import numbers
 import struct
 
 import six
 
 
 # noinspection PyUnresolvedReferences
-class Number(object):
+class Number(numbers.Number):
 
     __slots__ = ('__raw', )   # less memory
     # __slots__ = ('__raw', '_zone')   # faster
@@ -93,6 +94,28 @@ class Number(object):
     # These 8 bytes are the
     QIGITS_PRECISION_DEFAULT = 8
 
+
+    # Raw internal format
+    # -------------------
+    # The raw string is the internal representation of a qiki Number.
+    # It is an 8-bit binary string.
+    # E.g. b"\x82\x01" in Python version 2 or 3.
+    # It is represented textually by a "qstring" which is hexadecimal digits,
+    # preceded by '0q', and containing optional '_' underscores.
+    # The raw string consists of a qex and a qan.  Conventionally one underscore separates them.
+    # These are analogous to a floating point exponent and a significand or mantissa.
+    # The qex and qan are encoded so that the raw mapping is monotonic.
+    # That is, if x1.raw < x2.raw then x1 < x2.
+    # With a few caveats raw strings are also bijective
+    # (aka one-to-one and onto, aka unique).
+    # That is, if x1.raw == x2.raw then x1 == x2.
+    # Caveat #1, some raw strings represent the same number,
+    # for example 0q82 and 0q82_01 are both exactly one.
+    # Computations normalize to a standard and unique representation (0q82_01).
+    # Storage (e.g. a database) may opt for brevity (0q82).
+    # All 8-bit binary strings have exactly one interpretation as the raw part of a Number.
+    # Some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
+    # FIXME:  Well dammit they should be equal.
     @property
     def raw(self):
         return self.__raw
@@ -116,12 +139,19 @@ class Number(object):
     def __str__(self):
         return self.qstring()
 
+
+    # Math
+    # ----
     __eq__ = lambda self, other:  Number(self).raw == Number(other).raw
     __ne__ = lambda self, other:  Number(self).raw != Number(other).raw
     __lt__ = lambda self, other:  Number(self).raw <  Number(other).raw
     __le__ = lambda self, other:  Number(self).raw <= Number(other).raw
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
+    # FIXME:  Make 0q82 == 0q82_01.
+    # Option one:  different __raw values, complex interpretation in __eq__() et al.
+    # Option two:  convert on construction to normalized __raw value.
+    # Option three:  give up on Number('0q82') == Number('0q82_01')
 
     def __hash__(self):
         return hash(self.raw)
@@ -240,9 +270,13 @@ class Number(object):
 
     @classmethod
     def _raw_from_float(cls, x, qex_encoder, qigits):
-        """Convert nonzero float to internal raw format
+        """
+        Convert nonzero float to internal raw format.
 
-        qex_encoder() converts a base-256 exponent to internal qex format
+        :param x:            the float to convert
+        :param qex_encoder:  function encodes the qex from the base-256 exponent
+        :param qigits:       number of base-256 digits for the qan
+        :return:             raw string
         """
         (significand_base_2, exponent_base_2) = math.frexp(x)
         assert x == significand_base_2 * 2.0**exponent_base_2
@@ -1090,3 +1124,9 @@ assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qst
 # TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?
 # Number class is unsuffixed, and derived class is suffixed?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
+
+# TODO:  subclass numbers.Integral?
+# TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
+# __floordiv__, __invert__, __lshift__, __mod__, __mul__, __or__, __pos__, __pow__, __rand__, __rdiv__,
+# __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
+# __rxor__, __truediv__, __trunc__, __xor__

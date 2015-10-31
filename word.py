@@ -448,24 +448,19 @@ class Word(object):
 
 
 class Listing(Word):
-
     SUFFIX_TYPE_LISTING = 0x1D   # TODO:  Move to number.py I guess?
-
-    meta_word = None   # word associated with the CLASS, not the INSTANCE
-
-    class_dictionary = dict()
-
-    # FIXME:  Is there really one meta_idn per derived class, but only one class_dictionary for all classes??
+    _meta_word = None   # word associated with the derived CLASS, not the INSTANCE
+    class_dictionary = dict()   # master list of derived classes
 
     def __init__(self, index):
         assert isinstance(index, (int, Number))   # TODO:  Support a non-Number index.
-        assert self.meta_word is not None
+        assert self._meta_word is not None
         self.index = Number(index)
-        self._idn = Number(self.meta_word.idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
+        self._idn = Number(self._meta_word.idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
         self.num = None
         self.txt = None
         self.lookup(self.index, self.lookup_callback)
-        self._system = self.meta_word._system
+        self._system = self._meta_word._system
 
     def lookup(self, index, callback):
         raise NotImplementedError("Subclasses of Listing must define a lookup() function.")
@@ -485,8 +480,9 @@ class Listing(Word):
         """
         assert isinstance(meta_word, Word)
         assert isinstance(meta_word.idn, Number)
-        cls.meta_word = meta_word
+        # TODO:  Make sure if already defined that it's the same class.
         cls.class_dictionary[meta_word.idn] = cls
+        cls._meta_word = meta_word
 
     @classmethod
     def word_lookup(cls, idn):
@@ -513,7 +509,7 @@ class Listing(Word):
         # print(repr(cls.class_dictionary))
         return_value = cls.class_dictionary[meta_idn]
         assert issubclass(return_value, cls), repr(return_value) + " is not a subclass of " + repr(cls)
-        assert return_value.meta_word.idn == meta_idn
+        assert return_value._meta_word.idn == meta_idn
         return return_value
 
     class NotFound(Exception):

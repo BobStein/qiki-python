@@ -51,6 +51,12 @@ class WordTests(unittest.TestCase):
             self.system.uninstall_to_scratch()
         self.system.disconnect()
 
+    def describe_all_words(self):
+        idn_array = self.system.get_all_idns()
+        for _idn in idn_array:
+            print(int(_idn), self.system(_idn).description())
+
+
 class WordFirstTests(WordTests):
 
     def test_00_number(self):
@@ -464,7 +470,7 @@ class WordMoreTests(WordTests):
 
 class WordListingTests(WordTests):
 
-    class Students(qiki.Listing):
+    class Student(qiki.Listing):
         names_and_grades = [
             ("Archie", 4.0),
             ("Barbara", 3.0),
@@ -480,16 +486,19 @@ class WordListingTests(WordTests):
             grade = name_and_grade[1]
             callback(name, grade)
 
+
+class WordListingBasicTests(WordListingTests):
+
     def setUp(self):
         super(WordListingTests, self).setUp()
         self.listing = self.system.noun('listing')
         qiki.Listing.install(self.listing)
         self.names = self.listing('names')
-        self.Students.install(self.names)
+        self.Student.install(self.names)
 
     def test_listing_suffix(self):
         number_two = qiki.Number(2)
-        chad = self.Students(number_two)
+        chad = self.Student(number_two)
         self.assertEqual(number_two, chad.index)
         self.assertEqual(    "Chad", chad.txt)
         self.assertEqual(       3.0, chad.num)
@@ -503,7 +512,7 @@ class WordListingTests(WordTests):
         self.assertEqual(suffix.payload_number(), number_two)
 
     def test_listing_using_spawn_and_save(self):
-        archie = self.Students(qiki.Number(0))
+        archie = self.Student(qiki.Number(0))
         bless = self.system.verb('bless')
         blessed_name = self.system.spawn(
             sbj=self.system.idn,
@@ -534,7 +543,7 @@ class WordListingTests(WordTests):
         lauded_thing.save()
 
     def test_listing_using_method_verb(self):
-        archie = self.Students(qiki.Number(0))
+        archie = self.Student(qiki.Number(0))
         bless = self.system.verb('bless')
         blessed_name = self.system.bless(archie, qiki.Number(666), "mah soul")
 
@@ -552,19 +561,19 @@ class WordListingTests(WordTests):
 
     def test_listing_not_found(self):
         with self.assertRaises(qiki.Listing.NotFound):
-            self.Students(qiki.Number(5))
+            self.Student(qiki.Number(5))
 
     def test_listing_index_Number(self):
-        deanne = self.Students(qiki.Number(3))
+        deanne = self.Student(qiki.Number(3))
         self.assertEqual("Deanne", deanne.txt)
 
     def test_listing_index_int(self):
-        deanne = self.Students(3)
+        deanne = self.Student(3)
         self.assertEqual("Deanne", deanne.txt)
 
     def test_listing_as_nouns(self):
-        barbara = self.Students(1)
-        deanne = self.Students(3)
+        barbara = self.Student(1)
+        deanne = self.Student(3)
         self.system.verb('like')
         barbara.like(deanne, qiki.Number(1))
         deanne.like(barbara, qiki.Number(-1000000000))
@@ -573,25 +582,46 @@ class WordListingTests(WordTests):
 
     def test_listing_by_system_idn(self):
         """Make sure system(suffixed number) will look up a listing."""
-        chad1 = self.Students(2)
+        chad1 = self.Student(2)
         idn_chad = chad1.idn
         chad2 = self.system(idn_chad)
         self.assertEqual("Chad", chad1.txt)
         self.assertEqual("Chad", chad2.txt)
 
 
+class WordListingInternalsTests(WordListingTests):
+
+    class SubStudent(WordListingTests.Student):
+        def lookup(self, index, callback):
+            raise self.NotFound
+
+    class AnotherListing(qiki.Listing):
+        def lookup(self, index, callback):
+            raise self.NotFound
+
+    def setUp(self):
+        super(WordListingInternalsTests, self).setUp()
+        self.SubStudent.install(self.system.noun('sub_student'))
+        self.AnotherListing.install(self.system.noun('another_listing'))
+
+    def test_one_class_dictionary(self):
+        self.assertIs(qiki.Listing.class_dictionary, self.Student.class_dictionary)
+        self.assertIs(qiki.Listing.class_dictionary, self.SubStudent.class_dictionary)
+        self.assertIs(qiki.Listing.class_dictionary, self.AnotherListing.class_dictionary)
+
+    def test_one_meta_word_per_subclass(self):
+        self.assertIsNot(qiki.Listing._meta_word, self.Student._meta_word)
+        self.assertIsNot(qiki.Listing._meta_word, self.SubStudent._meta_word)
+        self.assertIsNot(qiki.Listing._meta_word, self.AnotherListing._meta_word)
+
+        self.assertIsNot(self.Student._meta_word, self.SubStudent._meta_word)
+        self.assertIsNot(self.Student._meta_word, self.AnotherListing._meta_word)
+
+        self.assertIsNot(self.SubStudent._meta_word, self.AnotherListing._meta_word)
 
 
 
 
-
-
-    ################ Util ####################
-
-    def describe_all_words(self):
-        idn_array = self.system.get_all_idns()
-        for _idn in idn_array:
-            print(int(_idn), self.system(_idn).description())
 
 
     ################## obsolete or maybe someday #################################
