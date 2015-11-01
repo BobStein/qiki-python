@@ -5,6 +5,7 @@ Testing qiki number.py
 from __future__ import print_function
 import unittest
 import math
+import numbers
 import sys
 import pickle
 import textwrap
@@ -1122,6 +1123,10 @@ class NumberTests(MoreTests):
         with self.assertRaises(KeyError):
             d[Number(8)]
 
+    def test_number_is_a_number(self):
+        n = Number(1)
+        self.assertIsInstance(n, numbers.Number)
+
     ################## new INDIVIDUAL tests go above here ###########################
 
 
@@ -1562,6 +1567,7 @@ class NumberSuffixTests(MoreTests):
         self.assertEqual('110100', Number.Suffix(0x11).qstring())
         self.assertEqual('2233110300', Number.Suffix(0x11, b'\x22\x33').qstring(underscore=0))
         self.assertEqual('2233_110300', Number.Suffix(0x11, b'\x22\x33').qstring())
+        self.assertEqual('778899_110400', Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring())
 
     def test_parse_suffixes(self):
         self.assertEqual((Number(1), ), Number(1).parse_suffixes())

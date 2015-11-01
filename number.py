@@ -45,14 +45,9 @@ class Number(numbers.Number):
             ))
         assert(isinstance(self.__raw, six.binary_type))
 
-    RAW_INF     = b'\xFF\x81'
-    RAW_ZERO    = b'\x80'
-    RAW_INF_NEG = b'\x00\x7F'
-    RAW_NAN     = b''
 
-
-    # Zones
-    # -----
+    # Zone
+    # ----
     # qiki Numbers fall into zones.
     # The internal Number.Zone class serves as an enumeration.
     # Its members of Number.Zone have values that are *between* zones.
@@ -81,20 +76,6 @@ class Number(numbers.Number):
         NAN                 = b''   # NAN means Not-a-number, Ass-is-out-of-range, or Nullificationalized.
 
 
-    # float precision
-    # ---------------
-    # A "qigit" is a qiki Number byte, or base-256 digit.
-    # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
-    # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-    # SEE:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
-    # Why are 8 qigits needed to store 53 bits, not 7?
-    # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
-    # So 8 qigits can store 57-64 bits, and that may be needed to store 53.
-    # For example 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits
-    # These 8 bytes are the
-    QIGITS_PRECISION_DEFAULT = 8
-
-
     # Raw internal format
     # -------------------
     # The raw string is the internal representation of a qiki Number.
@@ -116,6 +97,12 @@ class Number(numbers.Number):
     # All 8-bit binary strings have exactly one interpretation as the raw part of a Number.
     # Some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
     # FIXME:  Well dammit they should be equal.
+
+    RAW_INF     = b'\xFF\x81'
+    RAW_ZERO    = b'\x80'
+    RAW_INF_NEG = b'\x00\x7F'
+    RAW_NAN     = b''
+
     @property
     def raw(self):
         return self.__raw
@@ -150,8 +137,21 @@ class Number(numbers.Number):
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
     # FIXME:  Make 0q82 == 0q82_01.
     # Option one:  different __raw values, complex interpretation in __eq__() et al.
-    # Option two:  convert on construction to normalized __raw value.
+    #     If so, equality would compare Number.raw_normalized().
+    #     What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
+    # Option two:  convert in raw.setter to normalized __raw value.
+    #     This one feels safer in the long run.
+    #     Does this only affect single-byte raw strings??  e.g. 0q82 --> 0q82_01
+    #                                                      e.g. 0q7E --> 0q7D_FF
+    #     No!                                e.g.  0q81FF_00anything --> 0q81FF_01
+    #                                          e.g.  0q82_00anything --> 0q82_01
+    #     Oh wow, a regular expression might be devised to take care of normalization.
+    #     A very binary-intensive and bytearray-using regular expression.
+    #     Let's call these "raw plateaus".
+    #     Each raw plateau has a canonical raw value, and a multitude of illegal raw values.
+    #     All values at a raw plateau should be "equal".
     # Option three:  give up on Number('0q82') == Number('0q82_01')
+    # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
 
     def __hash__(self):
         return hash(self.raw)
@@ -204,6 +204,16 @@ class Number(numbers.Number):
     def is_nan(self):
         return self == self.NAN
 
+    def inc(self):
+        self.raw = self._inc_via_integer()
+        return self
+
+    def _inc_via_integer(self):
+        return Number(int(self) + 1).raw
+
+
+    # "from" conversions:  Number <-- other type
+    # ------------------------------------------
     @classmethod
     def from_raw(cls, value):
         """Construct a Number from its raw, internal binary string of qigits
@@ -243,6 +253,19 @@ class Number(numbers.Number):
             self.raw = six.binary_type(sdecoded)
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
+
+    # float precision
+    # ---------------
+    # A "qigit" is a qiki Number byte, or base-256 digit.
+    # Number(float) defaults to 8 qigits, for lossless representation of a Python float.
+    # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
+    # SEE:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+    # Why are 8 qigits needed to store 53 bits, not 7?
+    # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
+    # So 8 qigits can store 57-64 bits, and that may be needed to store 53.
+    # For example 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits
+    # These 8 bytes are the
+    QIGITS_PRECISION_DEFAULT = 8
 
     def _from_float(self, x, qigits = None):
         """Construct a Number from a Python IEEE 754 double-precision floating point number
@@ -398,6 +421,9 @@ class Number(numbers.Number):
     assert 256 == _exp256.__func__(1)
     assert 65536 == _exp256.__func__(2)
 
+
+    # "to" conversions:  Number --> other type
+    # ----------------------------------------
     def qstring(self, underscore=1):
         """Output Number in '0qHHHHHH' string form.
 
@@ -610,6 +636,91 @@ class Number(numbers.Number):
     assert 64 == _shift_left.__func__(32, 1)
     assert 16 == _shift_left.__func__(32, -1)
 
+    def __float__(self):
+        float_by_dictionary = self.__float__by_zone_dictionary()
+        assert self._floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
+            "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
+                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
+            )
+        )
+        return float_by_dictionary
+
+    @staticmethod
+    def _floats_really_same(f1,f2):
+        """Compare floating point numbers, a little differently.
+
+        Similar to == except:
+         1. They are the same if both are NAN.
+         2. They are NOT the same if one is +0.0 and the other -0.0.
+
+        This is useful for precise unit testing.
+        """
+        # GENERIC:  This function might be useful elsewhere.
+        assert type(f1) is float
+        assert type(f2) is float
+        if math.isnan(f1) and math.isnan(f2):
+            return True
+        if math.copysign(1,f1) != math.copysign(1,f2):
+            # THANKS:  http://stackoverflow.com/a/25338224/673991
+            return False
+        return f1 == f2
+
+    assert True == _floats_really_same.__func__(float('nan'), float('nan'))
+    assert False == _floats_really_same.__func__(+0.0, -0.0)
+
+    def __float__by_zone_dictionary(self):
+        return self.__float__zone_dict[self.zone](self)
+
+    __float__zone_dict =  {
+        Zone.TRANSFINITE:         lambda self: float('+inf'),
+        Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
+        Zone.POSITIVE:            lambda self: self._to_float(),
+        Zone.FRACTIONAL:          lambda self: self._to_float(),
+        Zone.LUDICROUS_SMALL:     lambda self: 0.0,
+        Zone.INFINITESIMAL:       lambda self: 0.0,
+        Zone.ZERO:                lambda self: 0.0,
+        Zone.INFINITESIMAL_NEG:   lambda self: -0.0,
+        Zone.LUDICROUS_SMALL_NEG: lambda self: -0.0,
+        Zone.FRACTIONAL_NEG:      lambda self: self._to_float(),
+        Zone.NEGATIVE:            lambda self: self._to_float(),
+        Zone.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
+        Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
+        Zone.NAN:                 lambda self: float('nan')
+    }
+
+    def __float__by_zone_ifs(self):
+        _zone = self.zone
+        if _zone in self.ZONE_REASONABLY_NONZERO:
+            return self._to_float()
+        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
+            return 0.0
+        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
+            return -0.0
+        elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
+            return float('+inf')
+        elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
+            return float('-inf')
+        else:
+            return float('nan')
+
+    def _to_float(self):
+        qexp = self.qexponent()
+        (qan, qanlength) = self.qantissa()
+        if self.raw < self.RAW_ZERO:
+            qan -= self._exp256(qanlength)
+            if qanlength > 0 and qan >= - self._exp256(qanlength-1):
+                (qan, qanlength) = (-1,1)
+        else:
+            if qanlength < 0:
+                return 0.0
+            if qanlength == 0 or qan <=  self._exp256(qanlength-1):
+                (qan, qanlength) = (1,1)
+        exponent_base_2 = 8 * (qexp-qanlength)
+        return math.ldexp(float(qan), exponent_base_2)
+
+
+    # Zone Determination
+    # ------------------
     @property
     def zone(self):
         try:
@@ -677,113 +788,9 @@ class Number(numbers.Number):
                 else:
                     return                      self.Zone.NAN
 
-    @staticmethod
-    def _floats_really_same(f1,f2):
-        """Compare floating point numbers, a little differently.
 
-        Similar to == except:
-         1. They are the same if both are NAN.
-         2. They are NOT the same if one is +0.0 and the other -0.0.
-
-        This is useful for precise unit testing.
-        """
-        # GENERIC:  This function might be useful elsewhere.
-        assert type(f1) is float
-        assert type(f2) is float
-        if math.isnan(f1) and math.isnan(f2):
-            return True
-        if math.copysign(1,f1) != math.copysign(1,f2):
-            # THANKS:  http://stackoverflow.com/a/25338224/673991
-            return False
-        return f1 == f2
-
-    assert True == _floats_really_same.__func__(float('nan'), float('nan'))
-    assert False == _floats_really_same.__func__(+0.0, -0.0)
-
-    def __float__(self):
-        float_by_dictionary = self.__float__by_zone_dictionary()
-        assert self._floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
-            "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
-                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
-            )
-        )
-        return float_by_dictionary
-
-    def __float__by_zone_dictionary(self):
-        return self.__float__zone_dict[self.zone](self)
-
-    __float__zone_dict =  {
-        Zone.TRANSFINITE:         lambda self: float('+inf'),
-        Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
-        Zone.POSITIVE:            lambda self: self._to_float(),
-        Zone.FRACTIONAL:          lambda self: self._to_float(),
-        Zone.LUDICROUS_SMALL:     lambda self: 0.0,
-        Zone.INFINITESIMAL:       lambda self: 0.0,
-        Zone.ZERO:                lambda self: 0.0,
-        Zone.INFINITESIMAL_NEG:   lambda self: -0.0,
-        Zone.LUDICROUS_SMALL_NEG: lambda self: -0.0,
-        Zone.FRACTIONAL_NEG:      lambda self: self._to_float(),
-        Zone.NEGATIVE:            lambda self: self._to_float(),
-        Zone.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
-        Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
-        Zone.NAN:                 lambda self: float('nan')
-    }
-
-    def __float__by_zone_ifs(self):
-        _zone = self.zone
-        if _zone in self.ZONE_REASONABLY_NONZERO:
-            return self._to_float()
-        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
-            return 0.0
-        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
-            return -0.0
-        elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
-            return float('+inf')
-        elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
-            return float('-inf')
-        else:
-            return float('nan')
-
-    def _to_float(self):
-        qexp = self.qexponent()
-        (qan, qanlength) = self.qantissa()
-        if self.raw < self.RAW_ZERO:
-            qan -= self._exp256(qanlength)
-            if qanlength > 0 and qan >= - self._exp256(qanlength-1):
-                (qan, qanlength) = (-1,1)
-        else:
-            if qanlength < 0:
-                return 0.0
-            if qanlength == 0 or qan <=  self._exp256(qanlength-1):
-                (qan, qanlength) = (1,1)
-        exponent_base_2 = 8 * (qexp-qanlength)
-        return math.ldexp(float(qan), exponent_base_2)
-
-    @classmethod
-    def _sets_exclusive(cls, *sets):
-        # GENERIC:  This function might be useful elsewhere.
-        for i in range(len(sets)):
-            for j in range(i):
-                if set(sets[i]).intersection(sets[j]):
-                    return False
-        return True
-
-    @classmethod
-    def _union_of_distinct_sets(cls, *sets):
-        # GENERIC:  This function might be useful elsewhere.
-        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
-        return_value = set()
-        for each_set in sets:
-            return_value |= each_set
-        return return_value
-
-    def inc(self):
-        self.raw = self._inc_via_integer()
-        return self
-
-    def _inc_via_integer(self):
-        return Number(int(self) + 1).raw
-
+    # Suffixes
+    # --------
     class Suffix(object):
         """A Number can have suffixes.
 
@@ -915,6 +922,27 @@ class Number(numbers.Number):
                 break
         return_array.append(n)
         return tuple(reversed(return_array))
+
+
+    # Zone Sets
+    # ---------
+    @classmethod
+    def _sets_exclusive(cls, *sets):
+        # GENERIC:  This function might be useful elsewhere.
+        for i in range(len(sets)):
+            for j in range(i):
+                if set(sets[i]).intersection(sets[j]):
+                    return False
+        return True
+
+    @classmethod
+    def _union_of_distinct_sets(cls, *sets):
+        # GENERIC:  This function might be useful elsewhere.
+        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
+        return_value = set()
+        for each_set in sets:
+            return_value |= each_set
+        return return_value
 
     @classmethod
     def internal_setup(cls):
@@ -1083,7 +1111,6 @@ class Number(numbers.Number):
 
 Number.internal_setup()
 Number.Suffix.internal_setup(Number)
-assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
 
 
 
