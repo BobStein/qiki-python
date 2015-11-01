@@ -448,7 +448,6 @@ class Word(object):
 
 
 class Listing(Word):
-    SUFFIX_TYPE_LISTING = 0x1D   # TODO:  Move to number.py I guess?
     _meta_word = None   # word associated with the derived CLASS, not the INSTANCE
     class_dictionary = dict()   # master list of derived classes
 
@@ -456,7 +455,7 @@ class Listing(Word):
         assert isinstance(index, (int, Number))   # TODO:  Support a non-Number index.
         assert self._meta_word is not None
         self.index = Number(index)
-        self._idn = Number(self._meta_word.idn).add_suffix(self.SUFFIX_TYPE_LISTING, self.index)
+        self._idn = Number(self._meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
         self.num = None
         self.txt = None
         self.lookup(self.index, self.lookup_callback)

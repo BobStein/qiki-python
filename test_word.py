@@ -7,6 +7,7 @@ import unittest
 import sys
 
 import qiki
+
 try:
     import secure.credentials
 except ImportError:

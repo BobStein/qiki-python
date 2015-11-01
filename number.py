@@ -157,6 +157,7 @@ class Number(numbers.Number):
     #     Let's call these "raw plateaus".
     #     Each raw plateau has a canonical raw value, and a multitude of illegal raw values.
     #     All values at a raw plateau should be "equal".
+    #     This approach would vindicate making raw a @property
     # Option three:  give up on Number('0q82') == Number('0q82_01')
     # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
 
@@ -197,7 +198,7 @@ class Number(numbers.Number):
             if qexp >= 0:
                 return True
             else:
-                if qan % self._exp256(-qexp) == 0:
+                if qan % exp256(-qexp) == 0:
                     return True
                 else:
                     return False
@@ -254,7 +255,7 @@ class Number(numbers.Number):
             if len(sdigits) % 2 != 0:
                 sdigits += '0'
             try:
-                sdecoded = self.hex_decode(sdigits)
+                sdecoded = string_from_hex(sdigits)
             except TypeError:
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s))
             self.raw = six.binary_type(sdecoded)
@@ -317,9 +318,9 @@ class Number(numbers.Number):
         assert x == significand_base_256 * 256.0**exponent_base_256
         assert 0.00390625 <= abs(significand_base_256) < 1.0
 
-        qan_integer = int(significand_base_256 * cls._exp256(qigits) + 0.5)
-        qan00 = cls._pack_integer(qan_integer, qigits)
-        qan = cls._right_strip00(qan00)
+        qan_integer = int(significand_base_256 * exp256(qigits) + 0.5)
+        qan00 = pack_integer(qan_integer, qigits)
+        qan = right_strip00(qan00)
 
         qex_integer = qex_encoder(exponent_base_256)
         qex = six.int2byte(qex_integer)
@@ -332,101 +333,14 @@ class Number(numbers.Number):
 
         qex_encoder() converts a base-256 exponent to internal qex format
         """
-        qan00 = cls._pack_integer(i)
-        qan = cls._right_strip00(qan00)
+        qan00 = pack_integer(i)
+        qan = right_strip00(qan00)
 
         exponent_base_256 = len(qan00)
         qex_integer = qex_encoder(exponent_base_256)
         qex = six.int2byte(qex_integer)
 
         return qex + qan
-
-    @classmethod
-    def _pack_integer(cls, the_integer, nbytes=None):
-        """Pack an integer into a binary string, which is like a base-256, big-endian string.
-
-        :param the_integer:  an arbitrarily large integer
-        :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
-        :return:  an unsigned two's complement string, MSB first
-
-        Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
-            assert     b'\xFF' == Number._pack_integer(255)
-            assert b'\x00\xFF' == Number._pack_integer(255,2)
-            assert     b'\x01' == Number._pack_integer(-255)
-            assert b'\xFF\x01' == Number._pack_integer(-255,2)
-        Caution, nbytes lower than minimum may not be enforced, see unit tests
-        """
-        # GENERIC: This function might be useful elsewhere.
-
-        if nbytes is None:
-            nbytes = len(cls._hex_even(abs(the_integer)))//2   # nbytes default = 1 + floor(log(abs(the_integer), 256))
-
-        if nbytes <= 8 and 0 <= the_integer < 4294967296:
-            return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
-        elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
-            return struct.pack('>q', the_integer)[8-nbytes:]
-        else:
-            return cls._pack_big_integer_via_hex(the_integer, nbytes)
-
-    @classmethod
-    def _pack_big_integer_via_hex(cls, num, nbytes):
-        """Pack an integer into a binary string.
-
-        Akin to base-256 encode
-        """
-        # THANKS:  http://stackoverflow.com/a/777774/673991
-        if num >= 0:
-            num_twos_complement = num
-        else:
-            num_twos_complement = num + cls._exp256(nbytes)   # two's complement of big negative integers
-        return cls._left_pad00(
-            cls.hex_decode(
-                cls._hex_even(
-                    num_twos_complement
-                )
-            ),
-            nbytes
-        )
-
-    @staticmethod
-    def _hex_even(the_integer):
-        """Encode a hexadecimal string from a big integer.
-
-        like hex() but even number of digits, no '0x' prefix, no 'L' suffix
-        """
-        # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
-        # GENERIC:  This function might be useful elsewhere.
-        hex_string = hex(the_integer)[2:].rstrip('L')
-        if len(hex_string) % 2:
-            hex_string = '0' + hex_string
-        return hex_string
-    assert 'ff' == _hex_even.__func__(255)
-    assert '0100' == _hex_even.__func__(256)
-    # THANKS:  http://stackoverflow.com/a/12718272/673991
-
-    @staticmethod
-    def _left_pad00(the_string, nbytes):
-        """Make a string nbytes long by padding '\x00's on the left."""
-        # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
-        assert(isinstance(the_string, six.binary_type))
-        return the_string.rjust(nbytes, b'\x00')
-    assert b'\x00\x00abcd' == _left_pad00.__func__(b'abcd', 6)
-
-    @staticmethod
-    def _right_strip00(the_string):
-        """Remove '\x00' NULs from the right end of a string."""
-        assert(isinstance(the_string, six.binary_type))
-        return the_string.rstrip(b'\x00')
-    assert b'abcd' == _right_strip00.__func__(b'abcd\x00\x00')
-
-    @staticmethod
-    def _exp256(e):
-        """Compute 256**e for nonnegative integer e."""
-        assert isinstance(e, six.integer_types)
-        assert e >= 0
-        return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
-    assert 256 == _exp256.__func__(1)
-    assert 65536 == _exp256.__func__(2)
 
 
     # "to" conversions:  Number --> other type
@@ -451,7 +365,7 @@ class Number(numbers.Number):
                 offset = 2
             else:
                 offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it's 64)
-            h = self.hex_encode(root_raw)
+            h = hex_from_string(root_raw)
             if length <= offset:
                 return_value = '0q' + h
             else:
@@ -462,7 +376,7 @@ class Number(numbers.Number):
         return return_value
 
     def hex(self):
-        return self.hex_encode(self.raw)
+        return hex_from_string(self.raw)
 
     def x_apostrophe_hex(self):
         return "x'" + self.hex() + "'"
@@ -478,22 +392,6 @@ class Number(numbers.Number):
 
     mysql = x_apostrophe_hex
 
-    @staticmethod
-    def hex_decode(s):
-        """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
-        # GENERIC:  This function might be useful elsewhere.
-        assert(isinstance(s, six.string_types))
-        return binascii.unhexlify(s)
-    assert b'\xBE\xEF' == hex_decode.__func__('BEEF')
-
-    @staticmethod
-    def hex_encode(s):
-        """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
-        # GENERIC:  This function might be useful elsewhere.
-        assert(isinstance(s, six.binary_type))
-        return binascii.hexlify(s).upper().decode()
-    assert 'BEEF' == hex_encode.__func__(b'\xBE\xEF')
-
     def qantissa(self):
         """Extract the base-256 significand in its raw form.
 
@@ -505,7 +403,7 @@ class Number(numbers.Number):
             qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
             raise ValueError("qantissa() not defined for %s" % repr(self))
-        number_qantissa = self._unpack_big_integer(self.raw[qan_offset:])
+        number_qantissa = unpack_big_integer(self.raw[qan_offset:])
         return tuple((number_qantissa, len(self.raw) - qan_offset))
 
     __qan_offset_dict ={
@@ -514,29 +412,6 @@ class Number(numbers.Number):
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
     }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
-
-    @classmethod
-    def _unpack_big_integer(cls, binary_string):
-        """Convert a byte string into an integer.
-
-        Akin to a base-256 decode, big-endian.
-        """
-        if len(binary_string) <= 8:
-            return cls._unpack_big_integer_by_struct(binary_string)
-        else:
-            return cls._unpack_big_integer_by_brute(binary_string)
-
-    @classmethod
-    def _unpack_big_integer_by_struct(cls, binary_string):   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
-        return struct.unpack('>Q', cls._left_pad00(binary_string, 8))[0]
-
-    @classmethod
-    def _unpack_big_integer_by_brute(cls, binary_string):
-        return_value = 0
-        for i in range(len(binary_string)):
-            return_value <<= 8
-            return_value |= six.indexbytes(binary_string, i)
-        return return_value
 
     def qexponent(self):
         try:
@@ -617,63 +492,28 @@ class Number(numbers.Number):
     def _to_int_positive(self):
         (qan, qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
-        return self._shift_left(qan, qexp*8)
+        return shift_left(qan, qexp*8)
 
     def _to_int_negative(self):
         (qan,qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
-        qan_negative = qan - self._exp256(qanlength)
-        the_int = self._shift_left(qan_negative, qexp*8)
+        qan_negative = qan - exp256(qanlength)
+        the_int = shift_left(qan_negative, qexp*8)
         if qexp < 0:
-            extraneous_mask = self._exp256(-qexp) - 1
+            extraneous_mask = exp256(-qexp) - 1
             extraneous = qan_negative & extraneous_mask   # XXX:  a more graceful way to floor to 0 instead of to -inf
             if extraneous != 0:
                 the_int += 1
         return the_int
 
-    @staticmethod
-    def _shift_left(n, nbits):
-        """Shift positive left, or negative right."""
-        # GENERIC:  This function might be useful elsewhere.
-        if nbits < 0:
-            return n >> -nbits
-        else:
-            return n << nbits
-
-    assert 64 == _shift_left.__func__(32, 1)
-    assert 16 == _shift_left.__func__(32, -1)
-
     def __float__(self):
         float_by_dictionary = self.__float__by_zone_dictionary()
-        assert self._floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
+        assert floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
                 repr(self), float_by_dictionary, self.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
-
-    @staticmethod
-    def _floats_really_same(f1,f2):
-        """Compare floating point numbers, a little differently.
-
-        Similar to == except:
-         1. They are the same if both are NAN.
-         2. They are NOT the same if one is +0.0 and the other -0.0.
-
-        This is useful for precise unit testing.
-        """
-        # GENERIC:  This function might be useful elsewhere.
-        assert type(f1) is float
-        assert type(f2) is float
-        if math.isnan(f1) and math.isnan(f2):
-            return True
-        if math.copysign(1,f1) != math.copysign(1,f2):
-            # THANKS:  http://stackoverflow.com/a/25338224/673991
-            return False
-        return f1 == f2
-
-    assert True == _floats_really_same.__func__(float('nan'), float('nan'))
-    assert False == _floats_really_same.__func__(+0.0, -0.0)
 
     def __float__by_zone_dictionary(self):
         return self.__float__zone_dict[self.zone](self)
@@ -714,13 +554,13 @@ class Number(numbers.Number):
         qexp = self.qexponent()
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
-            qan -= self._exp256(qanlength)
-            if qanlength > 0 and qan >= - self._exp256(qanlength-1):
+            qan -= exp256(qanlength)
+            if qanlength > 0 and qan >= - exp256(qanlength-1):
                 (qan, qanlength) = (-1,1)
         else:
             if qanlength < 0:
                 return 0.0
-            if qanlength == 0 or qan <=  self._exp256(qanlength-1):
+            if qanlength == 0 or qan <=  exp256(qanlength-1):
                 (qan, qanlength) = (1,1)
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
@@ -801,7 +641,7 @@ class Number(numbers.Number):
     class Suffix(object):
         """A Number can have suffixes.
 
-        Format of a nonempty suffix:
+        Format of a nonempty suffix (in hexadecimal digits):
             PPPPPP_TTLL00
         where:
             PPPPPP - 0 to 250 byte payload
@@ -821,6 +661,7 @@ class Number(numbers.Number):
         """
 
         MAX_PAYLOAD_LENGTH = 250
+        TYPE_LISTING = 0x1D
 
         def __init__(self, type_=None, payload=b''):
             assert isinstance(type_, (int, type(None)))
@@ -861,7 +702,7 @@ class Number(numbers.Number):
             return hash(self.raw)
 
         def qstring(self, underscore=1):
-            whole_suffix_in_hex = self.hex_encode(self.raw)
+            whole_suffix_in_hex = hex_from_string(self.raw)
             if underscore > 0 and self.payload:
                 payload_hex = whole_suffix_in_hex[:-6]
                 type_length_00_hex = whole_suffix_in_hex[-6:]
@@ -875,9 +716,6 @@ class Number(numbers.Number):
         @classmethod
         def internal_setup(cls, number_class):
             cls.Number = number_class
-            # cls.hex_encode = number_class.hex_encode
-
-    Suffix.hex_encode = hex_encode
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
@@ -931,25 +769,10 @@ class Number(numbers.Number):
         return tuple(reversed(return_array))
 
 
-    # Zone Sets
-    # ---------
-    @classmethod
-    def _sets_exclusive(cls, *sets):
-        # GENERIC:  This function might be useful elsewhere.
-        for i in range(len(sets)):
-            for j in range(i):
-                if set(sets[i]).intersection(sets[j]):
-                    return False
-        return True
-
-    @classmethod
-    def _union_of_distinct_sets(cls, *sets):
-        # GENERIC:  This function might be useful elsewhere.
-        assert cls._sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
-        return_value = set()
-        for each_set in sets:
-            return_value |= each_set
-        return return_value
+    # Setup
+    # -----
+    name_of_zone = None
+    _sorted_zones = None
 
     @classmethod
     def internal_setup(cls):
@@ -991,11 +814,11 @@ class Number(numbers.Number):
             cls.Zone.INFINITESIMAL_NEG,
             cls.Zone.TRANSFINITE_NEG,
         }
-        cls.ZONE_FINITE = cls._union_of_distinct_sets(
+        cls.ZONE_FINITE = union_of_distinct_sets(
             cls.ZONE_LUDICROUS,
             cls.ZONE_REASONABLE,
         )
-        cls.ZONE_UNREASONABLE = cls._union_of_distinct_sets(
+        cls.ZONE_UNREASONABLE = union_of_distinct_sets(
             cls.ZONE_LUDICROUS,
             cls.ZONE_NONFINITE,
         )
@@ -1016,7 +839,7 @@ class Number(numbers.Number):
             cls.Zone.LUDICROUS_LARGE_NEG,
             cls.Zone.TRANSFINITE_NEG,
         }
-        cls.ZONE_NONZERO = cls._union_of_distinct_sets(
+        cls.ZONE_NONZERO = union_of_distinct_sets(
             cls.ZONE_POSITIVE,
             cls.ZONE_NEGATIVE,
         )
@@ -1032,11 +855,11 @@ class Number(numbers.Number):
             cls.Zone.INFINITESIMAL_NEG,
             cls.Zone.LUDICROUS_SMALL_NEG,
         }
-        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = cls._union_of_distinct_sets(
+        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_POSITIVE_ZERO,
             cls.ZONE_ZERO,
         )
-        cls.ZONE_ESSENTIALLY_ZERO = cls._union_of_distinct_sets(
+        cls.ZONE_ESSENTIALLY_ZERO = union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
             cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
         )
@@ -1048,7 +871,7 @@ class Number(numbers.Number):
             cls.Zone.FRACTIONAL_NEG,
             cls.Zone.NEGATIVE,
         }
-        cls.ZONE_REASONABLY_NONZERO = cls._union_of_distinct_sets(
+        cls.ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
             cls.ZONE_REASONABLY_POSITIVE,
             cls.ZONE_REASONABLY_NEGATIVE,
         )
@@ -1084,28 +907,28 @@ class Number(numbers.Number):
         cls.ZONE_NAN = {
             cls.Zone.NAN
         }
-        cls._ZONE_ALL_BY_REASONABLENESS = cls._union_of_distinct_sets(
+        cls._ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
             cls.ZONE_REASONABLE,
             cls.ZONE_UNREASONABLE,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_FINITENESS = cls._union_of_distinct_sets(
+        cls._ZONE_ALL_BY_FINITENESS = union_of_distinct_sets(
             cls.ZONE_FINITE,
             cls.ZONE_NONFINITE,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_ZERONESS = cls._union_of_distinct_sets(
+        cls._ZONE_ALL_BY_ZERONESS = union_of_distinct_sets(
             cls.ZONE_NONZERO,
             cls.ZONE_ZERO,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_BIGNESS = cls._union_of_distinct_sets(
+        cls._ZONE_ALL_BY_BIGNESS = union_of_distinct_sets(
             cls.ZONE_ESSENTIALLY_ZERO,
             cls.ZONE_REASONABLY_NONZERO,
             cls.ZONE_UNREASONABLY_BIG,
             cls.ZONE_NAN,
         )
-        cls._ZONE_ALL_BY_WHOLENESS = cls._union_of_distinct_sets(
+        cls._ZONE_ALL_BY_WHOLENESS = union_of_distinct_sets(
             cls.ZONE_WHOLE_NO,
             cls.ZONE_WHOLE_YES,
             cls.ZONE_WHOLE_MAYBE,
@@ -1116,9 +939,191 @@ class Number(numbers.Number):
         cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
 
 
+# Sets
+# ----
+def sets_exclusive(*sets):
+    for i in range(len(sets)):
+        for j in range(i):
+            if set(sets[i]).intersection(sets[j]):
+                return False
+    return True
+assert True == sets_exclusive({1,2,3}, {4,5,6})
+assert False == sets_exclusive({1,2,3}, {3,4,5})
+
+
+def union_of_distinct_sets(*sets):
+    assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
+    return_value = set()
+    for each_set in sets:
+        return_value |= each_set
+    return return_value
+assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
+
+
+# Hex
+# ---
+def hex_from_integer(the_integer):
+    """Encode a hexadecimal string from a big integer.
+
+    Like hex() but output an even number of digits, no '0x' prefix, no 'L' suffix.
+    """
+    # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
+    hex_string = hex(the_integer)[2:].rstrip('L')
+    if len(hex_string) % 2:
+        hex_string = '0' + hex_string
+    return hex_string
+assert 'ff' == hex_from_integer(255)
+assert '0100' == hex_from_integer(256)
+
+
+def string_from_hex(s):
+    """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
+    assert(isinstance(s, six.string_types))
+    return binascii.unhexlify(s)
+assert b'\xBE\xEF' == string_from_hex('BEEF')
+
+
+def hex_from_string(s):
+    """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
+    assert(isinstance(s, six.binary_type))
+    return binascii.hexlify(s).upper().decode()
+assert 'BEEF' == hex_from_string(b'\xBE\xEF')
+
+
+# Packing and Unpacking Integers
+# ------------------------------
+def pack_integer(the_integer, nbytes=None):
+    """Pack an integer into a binary string, which is like a base-256, big-endian string.
+
+    :param the_integer:  an arbitrarily large integer
+    :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
+    :return:  an unsigned two's complement string, MSB first
+
+    Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
+        assert     b'\xFF' == Number._pack_integer(255)
+        assert b'\x00\xFF' == Number._pack_integer(255,2)
+        assert     b'\x01' == Number._pack_integer(-255)
+        assert b'\xFF\x01' == Number._pack_integer(-255,2)
+    Caution, nbytes lower than minimum may not be enforced, see unit tests.
+    """
+    # GENERIC: This function might be useful elsewhere.
+
+    if nbytes is None:
+        nbytes = len(hex_from_integer(abs(the_integer)))//2
+        # so nbytes defaults to 1 + floor(log(abs(the_integer), 256))
+
+    if nbytes <= 8 and 0 <= the_integer < 4294967296:
+        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
+    elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
+        return struct.pack('>q', the_integer)[8-nbytes:]
+    else:
+        return pack_big_integer_via_hex(the_integer, nbytes)
+
+
+def pack_big_integer_via_hex(num, nbytes):
+    """Pack an integer into a binary string.
+
+    Akin to base-256 encode
+    """
+    # THANKS:  http://stackoverflow.com/a/777774/673991
+    if num >= 0:
+        num_twos_complement = num
+    else:
+        num_twos_complement = num + exp256(nbytes)   # two's complement of big negative integers
+    return left_pad00(
+        string_from_hex(
+            hex_from_integer(
+                num_twos_complement
+            )
+        ),
+        nbytes
+    )
+
+
+def unpack_big_integer(binary_string):
+    """Convert a byte string into an integer.
+
+    Akin to a base-256 decode, big-endian.
+    """
+    if len(binary_string) <= 8:
+        return unpack_big_integer_by_struct(binary_string)
+    else:
+        return unpack_big_integer_by_brute(binary_string)
+
+
+def unpack_big_integer_by_struct(binary_string):   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
+    return struct.unpack('>Q', left_pad00(binary_string, 8))[0]
+
+
+def unpack_big_integer_by_brute(binary_string):
+    return_value = 0
+    for i in range(len(binary_string)):
+        return_value <<= 8
+        return_value |= six.indexbytes(binary_string, i)
+    return return_value
+
+
+def left_pad00(the_string, nbytes):
+    """Make a string nbytes long by padding '\x00's on the left."""
+    # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
+    assert(isinstance(the_string, six.binary_type))
+    return the_string.rjust(nbytes, b'\x00')
+assert b'\x00\x00abcd' == left_pad00(b'abcd', 6)
+
+
+def right_strip00(the_string):
+    """Remove '\x00' NULs from the right end of a string."""
+    assert(isinstance(the_string, six.binary_type))
+    return the_string.rstrip(b'\x00')
+assert b'abcd' == right_strip00(b'abcd\x00\x00')
+
+
+
+# Math
+# ----
+def exp256(e):
+    """Compute 256**e for nonnegative integer e."""
+    assert isinstance(e, six.integer_types)
+    assert e >= 0
+    return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
+assert 256 == exp256(1)
+assert 65536 == exp256(2)
+
+
+def shift_left(n, nbits):
+    """Shift positive left, or negative right."""
+    # GENERIC:  This function might be useful elsewhere.
+    if nbits < 0:
+        return n >> -nbits
+    else:
+        return n << nbits
+assert 64 == shift_left(32, 1)
+assert 16 == shift_left(32, -1)
+
+
+def floats_really_same(f1,f2):
+    """Compare floating point numbers, a little differently.
+
+    Similar to == except:
+     1. They are the same if both are NAN.
+     2. They are NOT the same if one is +0.0 and the other -0.0.
+
+    This is useful for precise unit testing.
+    """
+    assert type(f1) is float
+    assert type(f2) is float
+    if math.isnan(f1) and math.isnan(f2):
+        return True
+    if math.copysign(1,f1) != math.copysign(1,f2):
+        # THANKS:  http://stackoverflow.com/a/25338224/673991
+        return False
+    return f1 == f2
+assert True == floats_really_same(float('nan'), float('nan'))
+assert False == floats_really_same(+0.0, -0.0)
+
+
 Number.internal_setup()
 Number.Suffix.internal_setup(Number)
-
 
 
 # TODO:  Ludicrous Numbers
@@ -1144,9 +1149,9 @@ Number.Suffix.internal_setup(Number)
 # TODO:  change raw from str/bytes to bytearray?
 # SEE:  http://ze.phyr.us/bytearray/
 # TODO:  raise subclass of built-in exceptions
-# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
-# TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN should be '0q'
+# TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should be '0q'
 # TODO:  Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
 
 # FIXME:  Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
@@ -1164,3 +1169,6 @@ Number.Suffix.internal_setup(Number)
 # __floordiv__, __invert__, __lshift__, __mod__, __mul__, __or__, __pos__, __pow__, __rand__, __rdiv__,
 # __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
 # __rxor__, __truediv__, __trunc__, __xor__
+# TODO: subclass numbers.Complex?
+# TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
+#  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__, conjugate, imag, real

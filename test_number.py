@@ -5,14 +5,11 @@ Testing qiki number.py
 
 from __future__ import print_function
 import unittest
-import math
-import numbers
 import sys
 import pickle
 import textwrap
-import six
 
-from qiki import Number
+from number import *
 
 
 class NumberTests(unittest.TestCase):
@@ -21,13 +18,13 @@ class NumberTests(unittest.TestCase):
         pass
 
     def assertFloatSame(self, x1, x2):
-        self.assertTrue(Number._floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
+        self.assertTrue(floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
             x1=x1,
             x2=x2,
         ))
 
     def assertFloatNotSame(self, x1, x2):
-        self.assertFalse(Number._floats_really_same(x1, x2), "{x1} is the same as {x2}".format(
+        self.assertFalse(floats_really_same(x1, x2), "{x1} is the same as {x2}".format(
             x1=x1,
             x2=x2,
         ))
@@ -515,16 +512,16 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q80', Number(0).qstring())
 
     def test_sets_exclusive(self):
-        self.assertTrue (Number._sets_exclusive({1,2,3}, {4,5,6}))
-        self.assertFalse(Number._sets_exclusive({1,2,3}, {3,5,6}))
-        self.assertTrue (Number._sets_exclusive({1,2,3}, {4,5,6}, {7,8,9}))
-        self.assertFalse(Number._sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
+        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}))
+        self.assertFalse(sets_exclusive({1,2,3}, {3,5,6}))
+        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}, {7,8,9}))
+        self.assertFalse(sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
 
     def test_zone_union(self):
-        self.assertEqual({1,2,3,4,5,6}, Number._union_of_distinct_sets({1,2,3}, {4,5,6}))
+        self.assertEqual({1,2,3,4,5,6}, union_of_distinct_sets({1,2,3}, {4,5,6}))
         if not sys.flags.optimize:
             with self.assertRaises(AssertionError):
-                Number._union_of_distinct_sets({1,2,3}, {3,4,5})
+                union_of_distinct_sets({1,2,3}, {3,4,5})
 
     # noinspection PyUnresolvedReferences
     def test_zone_sets(self):
@@ -635,7 +632,7 @@ class NumberBasicTests(NumberTests):
             except Exception as e:
                 print("%s(%s) <--Number--- %s" % (e.__class__.__name__, str(e), s_in))
                 raise
-            match_x = Number._floats_really_same(x_new, x_out)
+            match_x = floats_really_same(x_new, x_out)
 
             try:
                 s_new = str(Number(x_in))
@@ -1782,16 +1779,16 @@ class PythonTests(NumberTests):
     """
 
     def test_01_shift_left(self):
-        self.assertEqual(0b000010000, Number._shift_left(0b000010000, 0))
-        self.assertEqual(0b000100000, Number._shift_left(0b000010000, 1))
-        self.assertEqual(0b000001000, Number._shift_left(0b000010000,-1))
+        self.assertEqual(0b000010000, shift_left(0b000010000, 0))
+        self.assertEqual(0b000100000, shift_left(0b000010000, 1))
+        self.assertEqual(0b000001000, shift_left(0b000010000,-1))
 
     def test_01_pack_integer(self):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers
         """
         def both_pack_methods(packed_bytes, number, nbytes):
-            self.assertEqual(packed_bytes, Number._pack_big_integer_via_hex(number,nbytes))
-            self.assertEqual(packed_bytes, Number._pack_integer(number,nbytes))
+            self.assertEqual(packed_bytes, pack_big_integer_via_hex(number,nbytes))
+            self.assertEqual(packed_bytes, pack_integer(number,nbytes))
 
         both_pack_methods(                b'\x00', 0,1)
         both_pack_methods(    b'\x00\x00\x00\x00', 0,4)
@@ -1825,116 +1822,116 @@ class PythonTests(NumberTests):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual(b'\x11', Number._pack_integer(0x1111,1))
-        self.assertEqual(b'\x11\x11', Number._pack_integer(0x1111,2))
-        self.assertEqual(b'\x00\x11\x11', Number._pack_integer(0x1111,3))
-        self.assertEqual(b'\x00\x00\x11\x11', Number._pack_integer(0x1111,4))
-        self.assertEqual(b'\x00\x00\x00\x11\x11', Number._pack_integer(0x1111,5))
+        self.assertEqual(b'\x11', pack_integer(0x1111,1))
+        self.assertEqual(b'\x11\x11', pack_integer(0x1111,2))
+        self.assertEqual(b'\x00\x11\x11', pack_integer(0x1111,3))
+        self.assertEqual(b'\x00\x00\x11\x11', pack_integer(0x1111,4))
+        self.assertEqual(b'\x00\x00\x00\x11\x11', pack_integer(0x1111,5))
 
     def test_01_pack_integer_not_enough_nbytes_negative(self):
         """
         small int, enforces low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual(b'\xAB', Number._pack_integer(-0x5555,1))
-        self.assertEqual(b'\xAA\xAB', Number._pack_integer(-0x5555,2))
-        self.assertEqual(b'\xFF\xAA\xAB', Number._pack_integer(-0x5555,3))
-        self.assertEqual(b'\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,4))
-        self.assertEqual(b'\xFF\xFF\xFF\xAA\xAB', Number._pack_integer(-0x5555,5))
+        self.assertEqual(b'\xAB', pack_integer(-0x5555,1))
+        self.assertEqual(b'\xAA\xAB', pack_integer(-0x5555,2))
+        self.assertEqual(b'\xFF\xAA\xAB', pack_integer(-0x5555,3))
+        self.assertEqual(b'\xFF\xFF\xAA\xAB', pack_integer(-0x5555,4))
+        self.assertEqual(b'\xFF\xFF\xFF\xAA\xAB', pack_integer(-0x5555,5))
 
     def test_01_pack_big_integer_not_enough_nbytes(self):
         """
         big int, ignores low nbytes, but doesn't matter for Number's purposes
         """
-        self.assertEqual(b'\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,4))
-        self.assertEqual(b'\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,5))
-        self.assertEqual(b'\x00\x11\x11\x11\x11\x11', Number._pack_integer(0x1111111111,6))
+        self.assertEqual(b'\x11\x11\x11\x11\x11', pack_integer(0x1111111111,4))
+        self.assertEqual(b'\x11\x11\x11\x11\x11', pack_integer(0x1111111111,5))
+        self.assertEqual(b'\x00\x11\x11\x11\x11\x11', pack_integer(0x1111111111,6))
 
     def test_01_pack_integer_auto_nbytes(self):
-        self.assertEqual(b'\x01', Number._pack_integer(0x01))
-        self.assertEqual(b'\x04', Number._pack_integer(0x04))
-        self.assertEqual(b'\xFF', Number._pack_integer(0xFF))
-        self.assertEqual(b'\x01\x00', Number._pack_integer(0x100))
-        self.assertEqual(b'\x01\x01', Number._pack_integer(0x101))
-        self.assertEqual(b'\xFF\xFF', Number._pack_integer(0xFFFF))
-        self.assertEqual(b'\x01\x00\x00', Number._pack_integer(0x10000))
-        self.assertEqual(b'\x01\x00\x01', Number._pack_integer(0x10001))
+        self.assertEqual(b'\x01', pack_integer(0x01))
+        self.assertEqual(b'\x04', pack_integer(0x04))
+        self.assertEqual(b'\xFF', pack_integer(0xFF))
+        self.assertEqual(b'\x01\x00', pack_integer(0x100))
+        self.assertEqual(b'\x01\x01', pack_integer(0x101))
+        self.assertEqual(b'\xFF\xFF', pack_integer(0xFFFF))
+        self.assertEqual(b'\x01\x00\x00', pack_integer(0x10000))
+        self.assertEqual(b'\x01\x00\x01', pack_integer(0x10001))
 
     def test_01_pack_integer_auto_nbytes_negative(self):
-        self.assertEqual(b'\xFF', Number._pack_integer(-0x01))
-        self.assertEqual(b'\xFC', Number._pack_integer(-0x04))
-        self.assertEqual(b'\x01', Number._pack_integer(-0xFF))  # an UNSIGNED negative number in two's complement
-        self.assertEqual(b'\xFF\x01', Number._pack_integer(-0xFF,2))  # (nbytes+=1 to get a sign bit)
-        self.assertEqual(b'\xFF\x00', Number._pack_integer(-0x100))
-        self.assertEqual(b'\xFE\xFF', Number._pack_integer(-0x101))
-        self.assertEqual(b'\x00\x01', Number._pack_integer(-0xFFFF))
-        self.assertEqual(b'\xFF\x00\x00', Number._pack_integer(-0x10000))
-        self.assertEqual(b'\xFE\xFF\xFF', Number._pack_integer(-0x10001))
+        self.assertEqual(b'\xFF', pack_integer(-0x01))
+        self.assertEqual(b'\xFC', pack_integer(-0x04))
+        self.assertEqual(b'\x01', pack_integer(-0xFF))  # an UNSIGNED negative number in two's complement
+        self.assertEqual(b'\xFF\x01', pack_integer(-0xFF,2))  # (nbytes+=1 to get a sign bit)
+        self.assertEqual(b'\xFF\x00', pack_integer(-0x100))
+        self.assertEqual(b'\xFE\xFF', pack_integer(-0x101))
+        self.assertEqual(b'\x00\x01', pack_integer(-0xFFFF))
+        self.assertEqual(b'\xFF\x00\x00', pack_integer(-0x10000))
+        self.assertEqual(b'\xFE\xFF\xFF', pack_integer(-0x10001))
 
     def test_01_unpack_big_integer(self):
-        self.assertEqual(0, Number._unpack_big_integer(b''))
-        self.assertEqual(0x1234, Number._unpack_big_integer(b'\x12\x34'))
-        self.assertEqual( 0x807F99DEADBEEF00, Number._unpack_big_integer(    b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
-        self.assertEqual( 0xFFFFFFFFFFFFFF77, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x77'))
-        self.assertEqual( 0xFFFFFFFFFFFFFFFE, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
-        self.assertEqual( 0xFFFFFFFFFFFFFFFF, Number._unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
-        self.assertEqual(0x10000000000000000, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
-        self.assertEqual(0x10000000000000001, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
-        self.assertEqual(0x10000000000000022, Number._unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0, unpack_big_integer(b''))
+        self.assertEqual(0x1234, unpack_big_integer(b'\x12\x34'))
+        self.assertEqual( 0x807F99DEADBEEF00, unpack_big_integer(    b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00'))
+        self.assertEqual( 0xFFFFFFFFFFFFFF77, unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x77'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFE, unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual( 0xFFFFFFFFFFFFFFFF, unpack_big_integer(    b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        self.assertEqual(0x10000000000000000, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
+        self.assertEqual(0x10000000000000001, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
+        self.assertEqual(0x10000000000000022, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
     def test_01_unpack_big_integer_by_brute(self):
-        self.assertEqual(0, Number._unpack_big_integer_by_brute(b''))
-        self.assertEqual(0x1234, Number._unpack_big_integer_by_brute(b'\x12\x34'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, Number._unpack_big_integer_by_brute(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0, unpack_big_integer_by_brute(b''))
+        self.assertEqual(0x1234, unpack_big_integer_by_brute(b'\x12\x34'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer_by_brute(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
     def test_01_unpack_big_integer_by_struct(self):
-        self.assertEqual(0, Number._unpack_big_integer_by_struct(b''))
-        self.assertEqual(0x00, Number._unpack_big_integer_by_struct(b'\x00'))
-        self.assertEqual(0x1234, Number._unpack_big_integer_by_struct(b'\x12\x34'))
-        self.assertEqual(0xFFFFFFFFFFFFFFFE, Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
-        self.assertEqual(0xFFFFFFFFFFFFFFFF, Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
+        self.assertEqual(0, unpack_big_integer_by_struct(b''))
+        self.assertEqual(0x00, unpack_big_integer_by_struct(b'\x00'))
+        self.assertEqual(0x1234, unpack_big_integer_by_struct(b'\x12\x34'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFE, unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE'))
+        self.assertEqual(0xFFFFFFFFFFFFFFFF, unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'))
         with self.assertRaises(Exception):
-            Number._unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
+            unpack_big_integer_by_struct(b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
         with self.assertRaises(Exception):
-            Number._unpack_big_integer_by_struct(b'ninebytes')
+            unpack_big_integer_by_struct(b'ninebytes')
 
     def test_01_exp256(self):
-        self.assertEqual(1, Number._exp256(0))
-        self.assertEqual(256, Number._exp256(1))
-        self.assertEqual(65536, Number._exp256(2))
-        self.assertEqual(16777216, Number._exp256(3))
-        self.assertEqual(4294967296, Number._exp256(4))
-        self.assertEqual(1208925819614629174706176, Number._exp256(10))
-        self.assertEqual(1461501637330902918203684832716283019655932542976, Number._exp256(20))
-        self.assertEqual(2**800, Number._exp256(100))
-        self.assertEqual(2**8000, Number._exp256(1000))
+        self.assertEqual(1, exp256(0))
+        self.assertEqual(256, exp256(1))
+        self.assertEqual(65536, exp256(2))
+        self.assertEqual(16777216, exp256(3))
+        self.assertEqual(4294967296, exp256(4))
+        self.assertEqual(1208925819614629174706176, exp256(10))
+        self.assertEqual(1461501637330902918203684832716283019655932542976, exp256(20))
+        self.assertEqual(2**800, exp256(100))
+        self.assertEqual(2**8000, exp256(1000))
 
-    def test_01_hex_even(self):
-        self.assertEqual('05', Number._hex_even(0x5))
-        self.assertEqual('55', Number._hex_even(0x55))
-        self.assertEqual('0555', Number._hex_even(0x555))
-        self.assertEqual('5555', Number._hex_even(0x5555))
-        self.assertEqual('055555', Number._hex_even(0x55555))
-        self.assertEqual('555555', Number._hex_even(0x555555))
-        self.assertEqual('05555555', Number._hex_even(0x5555555))
-        self.assertEqual('55555555', Number._hex_even(0x55555555))
-        self.assertEqual(  '555555555555555555', Number._hex_even(0x555555555555555555))
-        self.assertEqual('05555555555555555555', Number._hex_even(0x5555555555555555555))
-        self.assertEqual('AAAAAAAA', Number._hex_even(0xAAAAAAAA).upper())
+    def test_01_hex_from_integer(self):
+        self.assertEqual('05', hex_from_integer(0x5))
+        self.assertEqual('55', hex_from_integer(0x55))
+        self.assertEqual('0555', hex_from_integer(0x555))
+        self.assertEqual('5555', hex_from_integer(0x5555))
+        self.assertEqual('055555', hex_from_integer(0x55555))
+        self.assertEqual('555555', hex_from_integer(0x555555))
+        self.assertEqual('05555555', hex_from_integer(0x5555555))
+        self.assertEqual('55555555', hex_from_integer(0x55555555))
+        self.assertEqual(  '555555555555555555', hex_from_integer(0x555555555555555555))
+        self.assertEqual('05555555555555555555', hex_from_integer(0x5555555555555555555))
+        self.assertEqual('AAAAAAAA', hex_from_integer(0xAAAAAAAA).upper())
 
     def test_01_left_pad00(self):
-        self.assertEqual(b'abc', Number._left_pad00(b'abc', 1))
-        self.assertEqual(b'abc', Number._left_pad00(b'abc', 2))
-        self.assertEqual(b'abc', Number._left_pad00(b'abc', 3))
-        self.assertEqual(b'\x00abc', Number._left_pad00(b'abc', 4))
-        self.assertEqual(b'\x00\x00abc', Number._left_pad00(b'abc', 5))
-        self.assertEqual(b'\x00\x00\x00abc', Number._left_pad00(b'abc', 6))
+        self.assertEqual(b'abc', left_pad00(b'abc', 1))
+        self.assertEqual(b'abc', left_pad00(b'abc', 2))
+        self.assertEqual(b'abc', left_pad00(b'abc', 3))
+        self.assertEqual(b'\x00abc', left_pad00(b'abc', 4))
+        self.assertEqual(b'\x00\x00abc', left_pad00(b'abc', 5))
+        self.assertEqual(b'\x00\x00\x00abc', left_pad00(b'abc', 6))
 
     def test_01_right_strip00(self):
-        self.assertEqual(b'abc', Number._right_strip00(b'abc'))
-        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00'))
-        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00'))
-        self.assertEqual(b'abc', Number._right_strip00(b'abc\x00\x00\x00'))
+        self.assertEqual(b'abc', right_strip00(b'abc'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00\x00'))
 
     def test_01_floats_really_same(self):
         self.assertFloatSame(1.0, 1.0)
