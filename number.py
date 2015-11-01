@@ -136,11 +136,18 @@ class Number(numbers.Number):
     __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
     __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
     # FIXME:  Make 0q82 == 0q82_01.
-    # Option one:  different __raw values, complex interpretation in __eq__() et al.
-    #     If so, equality would compare Number.raw_normalized().
+    # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
+    #     If going this way, equality might compare Number.raw_normalized().
     #     What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
-    # Option two:  convert in raw.setter to normalized __raw value.
+    #     Obviously different suffixes should matter:  0q80__FF0100 != 0q80__110100
+    #     This approach may be the way it needs to go in the future.
+    #     For example if lossless rational numbers were supported, you might want 2/10 == 1/5
+    #     So if rational numbers were implemented by approximation in the root number,
+    #     and the denominator in a suffix, this could lead to storage ambiguities that
+    #     should appear unambiguous to __eq__() etc.
+    # Option two:  convert in raw.setter into normalized raw value.
     #     This one feels safer in the long run.
+    #     __eq__() stays simple and direct.
     #     Does this only affect single-byte raw strings??  e.g. 0q82 --> 0q82_01
     #                                                      e.g. 0q7E --> 0q7D_FF
     #     No!                                e.g.  0q81FF_00anything --> 0q81FF_01

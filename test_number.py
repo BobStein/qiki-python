@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Testing qiki number.py
 """
@@ -14,7 +15,10 @@ import six
 from qiki import Number
 
 
-class MoreTests(unittest.TestCase):
+class NumberTests(unittest.TestCase):
+
+    def setUp(self):
+        pass
 
     def assertFloatSame(self, x1, x2):
         self.assertTrue(Number._floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
@@ -36,10 +40,7 @@ class MoreTests(unittest.TestCase):
             ))
 
 
-class NumberTests(MoreTests):
-
-    def setUp(self):
-        pass
+class NumberBasicTests(NumberTests):
 
     def test_raw(self):
         n = Number('0q82')
@@ -1114,14 +1115,8 @@ class NumberTests(MoreTests):
     #     self.assertEqual('0q82_42', Number.from_raw(          b'\x82\x42' ).qstring())
     #     self.assertEqual('0q82_42', Number.from_raw(bytearray(b'\x82\x42')).qstring())
 
-    def test_dictionary_index(self):
-        d = dict()
-        d[Number(2)] = 'dos'
-        d[Number(5)] = 'cinco'
-        self.assertEqual('dos', d[Number(2)])
-        self.assertEqual('cinco', d[Number(5)])
-        with self.assertRaises(KeyError):
-            d[Number(8)]
+    def test_number_subclasses_number(self):
+        self.assertTrue(issubclass(Number, numbers.Number))
 
     def test_number_is_a_number(self):
         n = Number(1)
@@ -1140,10 +1135,7 @@ class NumberTests(MoreTests):
 
 
 
-
-
-
-class NumberComparisonTests(MoreTests):
+class NumberComparisonTests(NumberTests):
 
     def test_equality_operator(self):
         self.assertTrue (Number(0.0) == Number(0.0))
@@ -1244,7 +1236,7 @@ class NumberComparisonTests(MoreTests):
         self.assertTrue (googol_plus_1 == googol_plus_1)
 
 
-class NumberIsTests(MoreTests):
+class NumberIsTests(NumberTests):
 
     def test_is_whole(self):
         self.assertFalse(Number(-2.5).is_whole())
@@ -1300,7 +1292,7 @@ class NumberIsTests(MoreTests):
         # islarge() (ludicrous_large or infinite)
 
 
-class NumberMathTests(MoreTests):
+class NumberMathTests(NumberTests):
 
     def test_neg(self):
         self.assertEqual(Number(-42), -Number(42))
@@ -1374,7 +1366,7 @@ class NumberMathTests(MoreTests):
             power_of_two *= 2
 
 
-class NumberPickleTests(MoreTests):
+class NumberPickleTests(NumberTests):
     """ This isn't so much testing as revealing what pickle does to a qiki.Number."""
 
     def test_pickle_protocol_0_class(self):
@@ -1496,7 +1488,7 @@ class NumberPickleTests(MoreTests):
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
 
-class NumberSuffixTests(MoreTests):
+class NumberSuffixTests(NumberTests):
 
     def test_add_suffix(self):
         self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
@@ -1696,6 +1688,76 @@ class NumberSuffixTests(MoreTests):
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
 
+
+class NumberDictionaryKeyTests(NumberTests):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        self.d = dict()
+        self.d[Number(2)] = 'dos'
+        self.d[Number(5)] = 'cinco'
+
+    def test_dict_lookup(self):
+        self.assertEqual('dos', self.d[Number(2)])
+        self.assertEqual('cinco', self.d[Number(5)])   # Number.__hash__ makes this work
+
+    def test_dict_key_error(self):
+        with self.assertRaises(KeyError):
+            self.d[Number(8)]
+
+    def test_dict_int_behavior(self):
+        with self.assertRaises(KeyError):   # Because hash(2) != hash(Number(2))
+            self.d[2]
+        with self.assertRaises(KeyError):
+            self.d[5]
+        self.assertTrue(2 == Number(2))
+        self.assertTrue(5 == Number(5))
+        # Does this lead to confusion?  Equal things that don't behave the same?  Effing separate but equal??
+        # This violates the line at https://docs.python.org/2/library/functions.html#hash
+        # "Numeric values that compare equal have the same hash value
+        # (even if they are of different types, as is the case for 1 and 1.0)."
+
+    def test_number_hash_isnt_bijective(self):
+        self.assertFalse(hash(2) == hash(Number(2)))
+        self.assertFalse(hash(5) == hash(Number(5)))
+        # This might be fixed if Number.__hash__() returned __int__() when is_whole()
+        # But floats should never be granted that courtesy.
+
+    def test_dict_float_behavior(self):
+        self.assertTrue(2 == 2.0)
+        self.assertTrue(5 == 5.0)
+        with self.assertRaises(KeyError):
+            self.d[2.0]
+        with self.assertRaises(KeyError):
+            self.d[5.0]
+
+    def test_dict_int_versus_float(self):
+        self.d[2.0] = 'deux'
+        self.d[5.0] = 'cinq'
+        self.d[2] = 'два'
+        self.d[5] = 'пять'
+        self.assertEqual('dos', self.d[Number(2)])
+        self.assertEqual('cinco', self.d[Number(5)])
+        self.assertEqual('два', self.d[2.0])
+        self.assertEqual('пять', self.d[5.0])   # See, floats and ints are equal AND behave the same.
+        self.assertEqual('два', self.d[2])
+        self.assertEqual('пять', self.d[5])
+
+        self.d[2] = 'два'
+        self.d[5] = 'пять'
+        self.d[2.0] = 'deux'
+        self.d[5.0] = 'cinq'
+        self.assertEqual('dos', self.d[Number(2)])
+        self.assertEqual('cinco', self.d[Number(5)])
+        self.assertEqual('deux', self.d[2])
+        self.assertEqual('cinq', self.d[5])
+        self.assertEqual('deux', self.d[2.0])
+        self.assertEqual('cinq', self.d[5.0])
+
+        self.assertTrue(2 == 2.0 == hash(2) == hash(2.0))
+        self.assertTrue(5 == 5.0 == hash(5) == hash(5.0))   # Oh.
+
+
 ################### New test GROUPS go above here ##################################
 
 
@@ -1712,7 +1774,7 @@ class NumberSuffixTests(MoreTests):
 
 
 
-class PythonTests(MoreTests):
+class PythonTests(NumberTests):
     """
     Testing internal Python features.
 

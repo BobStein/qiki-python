@@ -490,7 +490,7 @@ class WordListingTests(WordTests):
 class WordListingBasicTests(WordListingTests):
 
     def setUp(self):
-        super(WordListingTests, self).setUp()
+        super(self.__class__, self).setUp()
         self.listing = self.system.noun('listing')
         qiki.Listing.install(self.listing)
         self.names = self.listing('names')
@@ -600,7 +600,7 @@ class WordListingInternalsTests(WordListingTests):
             raise self.NotFound
 
     def setUp(self):
-        super(WordListingInternalsTests, self).setUp()
+        super(self.__class__, self).setUp()
         self.SubStudent.install(self.system.noun('sub_student'))
         self.AnotherListing.install(self.system.noun('another_listing'))
 
