@@ -1514,6 +1514,15 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82014455330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring(underscore=0))
         self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
 
+    # noinspection PyClassHasNoInit
+    def test_suffix_weird_type(self):
+        class WeirdType:
+            pass
+
+        weird_type = WeirdType()
+        with self.assertRaises(TypeError):
+            Number.Suffix(0x11, weird_type)
+
     def test_suffix_class(self):
         suffix = Number.Suffix(0x03)
         self.assertEqual(0x03, suffix.type_)
@@ -1646,7 +1655,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(       -123.75 , Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
         self.assertIs(       Number, type(Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
 
-    def test_suffix_number(self):
+    def test_suffix_number_parse(self):
         n = Number(99).add_suffix(0x11, Number(356))
         (idn, suffix) = n.parse_suffixes()
         self.assertIs(type(idn), Number)
@@ -1700,12 +1709,15 @@ class NumberDictionaryKeyTests(NumberTests):
 
     def test_dict_key_error(self):
         with self.assertRaises(KeyError):
+            # noinspection PyStatementEffect
             self.d[Number(8)]
 
     def test_dict_int_behavior(self):
         with self.assertRaises(KeyError):   # Because hash(2) != hash(Number(2))
+            # noinspection PyStatementEffect
             self.d[2]
         with self.assertRaises(KeyError):
+            # noinspection PyStatementEffect
             self.d[5]
         self.assertTrue(2 == Number(2))
         self.assertTrue(5 == Number(5))
@@ -1724,8 +1736,10 @@ class NumberDictionaryKeyTests(NumberTests):
         self.assertTrue(2 == 2.0)
         self.assertTrue(5 == 5.0)
         with self.assertRaises(KeyError):
+            # noinspection PyStatementEffect
             self.d[2.0]
         with self.assertRaises(KeyError):
+            # noinspection PyStatementEffect
             self.d[5.0]
 
     def test_dict_int_versus_float(self):

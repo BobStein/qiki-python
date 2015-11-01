@@ -299,8 +299,8 @@ class Number(numbers.Number):
         elif i == 0:   self.raw = self.RAW_ZERO
         else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
 
-    @classmethod
-    def _raw_from_float(cls, x, qex_encoder, qigits):
+    @staticmethod
+    def _raw_from_float(x, qex_encoder, qigits):
         """
         Convert nonzero float to internal raw format.
 
@@ -327,8 +327,8 @@ class Number(numbers.Number):
 
         return qex + qan
 
-    @classmethod
-    def _raw_from_int(cls, i, qex_encoder):
+    @staticmethod
+    def _raw_from_int(i, qex_encoder):
         """Convert nonzero integer to internal raw format.
 
         qex_encoder() converts a base-256 exponent to internal qex format
@@ -656,21 +656,34 @@ class Number(numbers.Number):
         The NUL byte is what indicates there is a suffix.
         This is why an unsuffixed number has all its right-end 00-bytes stripped.
 
+        A number can have multiple suffixes.
+        If the payload of a suffix is itself a number, suffixes can be nested.
+
         Example:
             assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
         """
 
         MAX_PAYLOAD_LENGTH = 250
+
         TYPE_LISTING = 0x1D
 
-        def __init__(self, type_=None, payload=b''):
+        LENGTH_RESERVED_FF = 0xFF
+        LENGTH_RESERVED_FE = 0xFE
+        LENGTH_RESERVED_FD = 0xFD
+        LENGTH_RESERVED_FC = 0xFC
+        LENGTH_RESERVED_FB = 0xFB
+
+        def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
-            assert isinstance(payload, (six.binary_type, self.Number))
             self.type_ = type_
-            if isinstance(payload, self.Number):
+            if payload is None:
+                self.payload = b''
+            elif isinstance(payload, self.Number):
                 self.payload = payload.raw
-            else:
+            elif isinstance(payload, six.binary_type):
                 self.payload = payload
+            else:
+                raise TypeError
             if self.type_ is None:
                 assert self.payload == b''
                 self.length_of_payload_plus_type = 0
