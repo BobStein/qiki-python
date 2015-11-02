@@ -561,18 +561,32 @@ class SystemMySQL(System):
                 `txt` varchar(255) NOT NULL,
                 `whn` varbinary(255) NOT NULL,
                 PRIMARY KEY (`idn`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
         self._install_seminal_words()
 
     def _install_seminal_words(self):
+        """
+        Insert the five fundamental sentences into the Lex database.
+        Each sentence uses verbs and nouns defined in some of the other seminal sentences.
+
+        The five seminal sentences:
+                    system.define(verb, 'define')
+             noun = system.define(noun, 'noun')
+             verb = system.define(noun, 'verb')
+            agent = system.define(noun, 'agent')
+                    system.define(agent, 'system')
+
+        At least that's how they'd be defined if forward references were not a problem.
+        """
         self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
         self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
         self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
         self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
         self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
+
 
         if not self.exists:
             self._from_idn(self._ID_SYSTEM)

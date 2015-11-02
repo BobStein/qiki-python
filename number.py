@@ -104,6 +104,17 @@ class Number(numbers.Number):
     RAW_INF_NEG = b'\x00\x7F'
     RAW_NAN     = b''
 
+    @property
+    def raw(self):
+        return self.__raw
+
+    @raw.setter
+    def raw(self, value):
+        assert(isinstance(value, six.binary_type))
+        # noinspection PyAttributeOutsideInit
+        self.__raw = value
+        self._zone_refresh()
+
     def __getstate__(self):
         return self.raw
 
