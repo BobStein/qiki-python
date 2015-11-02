@@ -18,6 +18,8 @@ import six
 
 # noinspection PyUnresolvedReferences
 # (Otherwise there are many warnings about the raw @property violating __slots__.)
+@six.python_2_unicode_compatible
+# TODO:  unit test for Number.__unicode__() ?
 class Number(numbers.Number):
 
     __slots__ = ('__raw', )   # less memory

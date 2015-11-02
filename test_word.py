@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Testing qiki word.py
 """
@@ -260,6 +261,56 @@ class WordFirstTests(WordTests):
     def test_10b_word_by_system_txt(self):
         agent = self.system('agent')
         self.assertEqual(agent.idn, qiki.Word._ID_AGENT)
+
+    def test_11a_utf8_ascii(self):
+        self.system.noun('comment')
+        comment = self.system.comment(b"ascii")
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"ascii", comment_lookup.txt)
+
+    def test_11b_unicode_ascii(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"ascii")
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"ascii", comment_lookup.txt)
+
+    def test_11c_utf8_spanish(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"mañana".encode('utf8'))
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"mañana", comment_lookup.txt)
+
+    def test_11d_unicode_spanish(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"mañana")
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"mañana", comment_lookup.txt)
+
+    def test_11e_utf8_peace(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"♂ on earth".encode('utf8'))
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"♂ on earth", comment_lookup.txt)
+
+    def test_11f_unicode_peace(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"♂ on earth")
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"♂ on earth", comment_lookup.txt)
+
+    def test_11g_utf8_pile_of_poo(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"stinky ?".encode('utf8'))
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"stinky ?", comment_lookup.txt)
+
+    def test_11h_unicode_pile_of_poo(self):
+        self.system.noun('comment')
+        comment = self.system.comment(u"stinky ?")
+        comment_lookup = self.system(comment.idn)
+        self.assertEqual(u"stinky ?", comment_lookup.txt)
+
+
 
 
 class WordMoreTests(WordTests):

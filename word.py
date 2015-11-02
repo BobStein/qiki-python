@@ -12,6 +12,8 @@ import six
 from qiki import Number
 
 
+@six.python_2_unicode_compatible
+# TODO:  unit test for Word.__unicode__() ?
 class Word(object):
     """
     A qiki Word is a subject-verb-object triplet of other words (sbj, vrb, obj).
@@ -34,7 +36,9 @@ class Word(object):
     :type vrb: Number | instancemethod
     :type obj: Number | Word
     :type num: Number
-    :type txt: six.string_types
+    :type txt: six.string_types or six.binary_type, in other words:
+               unicode or str (utf8) in Python 2, e.g. u'noun' or 'noun'
+               str or bytes (utf8) in Python 3, e.g. 'noun' or b'noun'
     :type system: Word
     """
 
@@ -43,7 +47,7 @@ class Word(object):
         self.exists = False
         self._idn = None
         self._word_before_the_dot = None
-        if isinstance(content, six.string_types):
+        if isinstance(content, self.TXT_TYPES):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_definition(content)
@@ -63,7 +67,10 @@ class Word(object):
             self.vrb = vrb
             self.obj = obj
             self.num = num
-            self.txt = txt
+            if isinstance(txt, (six.text_type, type(None))):
+                self.txt = txt
+            else:
+                self.txt = six.text_type(txt.decode('utf-8'))
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -81,6 +88,8 @@ class Word(object):
     _ID_SYSTEM = Number(5)
 
     _ID_MAX_FIXED = Number(5)
+
+    TXT_TYPES = (six.string_types, six.binary_type)
 
     def __getattr__(self, verb):
         assert hasattr(self, '_system'), "No system, can't x.{vrb}".format(vrb=verb)
@@ -182,11 +191,11 @@ class Word(object):
             sentence saves the new word.
             spawn can take in idn or other ways to indicate an existing word.
         """
-        assert isinstance(sbj, Word),             "sbj cannot be a {type}".format(type=type(sbj).__name__)
-        assert isinstance(vrb, Word),             "vrb cannot be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, Word),             "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert isinstance(txt, six.string_types), "txt cannot be a {type}".format(type=type(txt).__name__)
-        assert isinstance(num, Number),           "num cannot be a {type}".format(type=type(num).__name__)
+        assert isinstance(sbj, Word),           "sbj cannot be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, Word),           "vrb cannot be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, Word),           "obj cannot be a {type}".format(type=type(obj).__name__)
+        assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
+        assert isinstance(num, Number),         "num cannot be a {type}".format(type=type(num).__name__)
         new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
@@ -226,7 +235,7 @@ class Word(object):
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
         # TODO:  Move to System
-        assert isinstance(txt, six.string_types)
+        assert isinstance(txt, self.TXT_TYPES)
         self._load_row(
             "SELECT * FROM `{table}` "
                 "WHERE   `vrb` = ? "
@@ -295,7 +304,7 @@ class Word(object):
             self.vrb = Number.from_mysql(dict_row['vrb'])
             self.obj = Number.from_mysql(dict_row['obj'])
             self.num = Number.from_mysql(dict_row['num'])
-            self.txt = str(dict_row['txt'].decode('utf-8'))   # THANKS:  http://stackoverflow.com/q/27566078/673991
+            self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
         cursor.close()
 
     def is_a(self, word, reflexive=True, recursion=10):
