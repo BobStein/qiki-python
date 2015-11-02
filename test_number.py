@@ -12,6 +12,9 @@ import textwrap
 from number import *
 
 
+TEST_NUMBER_PLATEAUS = False
+
+
 class NumberTests(unittest.TestCase):
 
     def setUp(self):
@@ -85,8 +88,9 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q80', Number('0q80').qstring())
         self.assertEqual('0q', Number('0q').qstring())
 
-    def test_redundant_one(self):
-        self.assertEqual(Number('0q82'), Number('0q82_01'))
+    if TEST_NUMBER_PLATEAUS:
+        def test_redundant_one(self):
+            self.assertEqual(Number('0q82'), Number('0q82_01'))
 
     def test_from_bytearray(self):
         self.assertEqual(Number('0q82_2A'), Number.from_bytearray(bytearray(b'\x82\x2A')))
@@ -1574,6 +1578,12 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(
             (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
             Number( 1.75).add_suffix(    111).add_suffix(    222).parse_suffixes()
+        )
+
+    def test_parse_multiple_suffixes(self):
+        self.assertEqual(
+            (Number(1), Number.Suffix(2), Number.Suffix(3)),
+             Number(1)    .add_suffix(2)    .add_suffix(3).parse_suffixes()
         )
 
     def test_parse_suffixes_payload(self):

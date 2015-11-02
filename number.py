@@ -17,6 +17,7 @@ import six
 
 
 # noinspection PyUnresolvedReferences
+# (Otherwise there are many warnings about the raw @property violating __slots__.)
 class Number(numbers.Number):
 
     __slots__ = ('__raw', )   # less memory
@@ -102,17 +103,6 @@ class Number(numbers.Number):
     RAW_ZERO    = b'\x80'
     RAW_INF_NEG = b'\x00\x7F'
     RAW_NAN     = b''
-
-    @property
-    def raw(self):
-        return self.__raw
-
-    @raw.setter
-    def raw(self, value):
-        assert(isinstance(value, six.binary_type))
-        # noinspection PyAttributeOutsideInit
-        self.__raw = value
-        self._zone_refresh()
 
     def __getstate__(self):
         return self.raw
@@ -262,6 +252,26 @@ class Number(numbers.Number):
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
 
+    def _from_int(self, i):
+        if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
+        elif i == 0:   self.raw = self.RAW_ZERO
+        else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
+
+    @staticmethod
+    def _raw_from_int(i, qex_encoder):
+        """Convert nonzero integer to internal raw format.
+
+        qex_encoder() converts a base-256 exponent to internal qex format
+        """
+        qan00 = pack_integer(i)
+        qan = right_strip00(qan00)
+
+        exponent_base_256 = len(qan00)
+        qex_integer = qex_encoder(exponent_base_256)
+        qex = six.int2byte(qex_integer)
+
+        return qex + qan
+
     # float precision
     # ---------------
     # A "qigit" is a qiki Number byte, or base-256 digit.
@@ -294,11 +304,6 @@ class Number(numbers.Number):
         elif x > float('-inf'):  self.raw =           self._raw_from_float(x, lambda e: 0x7E-e, qigits)
         else:                    self.raw =           self.RAW_INF_NEG
 
-    def _from_int(self, i):
-        if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
-        elif i == 0:   self.raw = self.RAW_ZERO
-        else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
-
     @staticmethod
     def _raw_from_float(x, qex_encoder, qigits):
         """
@@ -322,21 +327,6 @@ class Number(numbers.Number):
         qan00 = pack_integer(qan_integer, qigits)
         qan = right_strip00(qan00)
 
-        qex_integer = qex_encoder(exponent_base_256)
-        qex = six.int2byte(qex_integer)
-
-        return qex + qan
-
-    @staticmethod
-    def _raw_from_int(i, qex_encoder):
-        """Convert nonzero integer to internal raw format.
-
-        qex_encoder() converts a base-256 exponent to internal qex format
-        """
-        qan00 = pack_integer(i)
-        qan = right_strip00(qan00)
-
-        exponent_base_256 = len(qan00)
         qex_integer = qex_encoder(exponent_base_256)
         qex = six.int2byte(qex_integer)
 
@@ -375,65 +365,6 @@ class Number(numbers.Number):
                 return_value += suffix.qstring(underscore)
         return return_value
 
-    def hex(self):
-        return hex_from_string(self.raw)
-
-    def x_apostrophe_hex(self):
-        return "x'" + self.hex() + "'"
-
-    def zero_x_hex(self):
-        return "0x" + self.hex()
-
-    def ditto_backslash_hex(self):
-        hex_digits = self.hex()
-        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
-        # THANKS:  http://stackoverflow.com/a/9475354/673991
-        return '"' + ''.join(escaped_hex_pairs) + '"'
-
-    mysql = x_apostrophe_hex
-
-    def qantissa(self):
-        """Extract the base-256 significand in its raw form.
-
-        Returns a tuple:  (integer value of significand, number of qigits)
-        The number of qigits is the amount stored in the qantissa,
-        and is unrelated to the location of the decimal point.
-        """
-        try:
-            qan_offset = self.__qan_offset_dict[self.zone]
-        except KeyError:
-            raise ValueError("qantissa() not defined for %s" % repr(self))
-        number_qantissa = unpack_big_integer(self.raw[qan_offset:])
-        return tuple((number_qantissa, len(self.raw) - qan_offset))
-
-    __qan_offset_dict ={
-        Zone.POSITIVE:       1,
-        Zone.FRACTIONAL:     2,
-        Zone.FRACTIONAL_NEG: 2,
-        Zone.NEGATIVE:       1,
-    }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
-
-    def qexponent(self):
-        try:
-            encoder = self.__qexponent_encode_dict[self.zone]
-        except KeyError:
-            raise ValueError("qexponent() not defined for %s" % repr(self))
-        try:
-            qex = encoder(self)
-        except IndexError:
-            qex = 0   # XXX:  e.g. 0q81.  Though that qex is more like negative infinity.
-        return qex
-
-    __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
-        Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
-        Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
-        Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
-    }   # TODO: ludicrous numbers
-
-    def __long__(self):
-       return long(self.__int__())
-
     def __int__(self):
         int_by_dictionary = self.__int__by_zone_dictionary()
         assert int_by_dictionary == self.__int__by_zone_ifs(), (
@@ -442,6 +373,9 @@ class Number(numbers.Number):
             )
         )
         return int_by_dictionary
+
+    def __long__(self):
+       return long(self.__int__())
 
     def __int__by_zone_dictionary(self):
         return self.__int__zone_dict[self.zone](self)
@@ -465,7 +399,7 @@ class Number(numbers.Number):
 
     def __int__by_zone_ifs(self):
         if self.Zone.LUDICROUS_LARGE <= self.raw:
-            return self._int_cant_be_positive_infinity
+            return self._int_cant_be_positive_infinity()
         elif self.Zone.POSITIVE <= self.raw:
             return self._to_int_positive()
         elif self.Zone.FRACTIONAL_NEG <= self.raw:
@@ -565,6 +499,62 @@ class Number(numbers.Number):
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
 
+    def qantissa(self):
+        """Extract the base-256 significand in its raw form.
+
+        Returns a tuple:  (integer value of significand, number of qigits)
+        The number of qigits is the amount stored in the qantissa,
+        and is unrelated to the location of the decimal point.
+        """
+        try:
+            qan_offset = self.__qan_offset_dict[self.zone]
+        except KeyError:
+            raise ValueError("qantissa() not defined for %s" % repr(self))
+        number_qantissa = unpack_big_integer(self.raw[qan_offset:])
+        return tuple((number_qantissa, len(self.raw) - qan_offset))
+
+    __qan_offset_dict ={
+        Zone.POSITIVE:       1,
+        Zone.FRACTIONAL:     2,
+        Zone.FRACTIONAL_NEG: 2,
+        Zone.NEGATIVE:       1,
+    }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
+
+    def qexponent(self):
+        try:
+            encoder = self.__qexponent_encode_dict[self.zone]
+        except KeyError:
+            raise ValueError("qexponent() not defined for %s" % repr(self))
+        try:
+            qex = encoder(self)
+        except IndexError:
+            qex = 0   # XXX:  e.g. 0q81.  Though that qex is more like negative infinity.
+        return qex
+
+    __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
+        Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
+        Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
+        Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
+    }   # TODO: ludicrous numbers
+
+    def hex(self):
+        return hex_from_string(self.raw)
+
+    def x_apostrophe_hex(self):
+        return "x'" + self.hex() + "'"
+
+    def zero_x_hex(self):
+        return "0x" + self.hex()
+
+    def ditto_backslash_hex(self):
+        hex_digits = self.hex()
+        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
+        # THANKS:  http://stackoverflow.com/a/9475354/673991
+        return '"' + ''.join(escaped_hex_pairs) + '"'
+
+    mysql = x_apostrophe_hex
+
 
     # Zone Determination
     # ------------------
@@ -597,7 +587,7 @@ class Number(numbers.Number):
                 return z
         raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
 
-    def _find_zone_by_if_else_tree(self):  # likely faster than a scan, for most values
+    def _find_zone_by_if_else_tree(self):   # likely faster than a scan, for most values
         if self.raw > self.RAW_ZERO:
             if self.raw >= self.Zone.POSITIVE:
                 if self.raw >= self.Zone.LUDICROUS_LARGE:
@@ -659,6 +649,12 @@ class Number(numbers.Number):
         A number can have multiple suffixes.
         If the payload of a suffix is itself a number, suffixes can be nested.
 
+        Instance properties:
+            payload - byte string
+            type_ - integer 0x00 to 0xFF type code of suffix, or None for the empty suffix
+            length_of_payload_plus_type - integer value of length byte, 0 to MAX_PAYLOAD_LENGTH
+            raw - the encoded byte string suffix, including payload, type, length, and NUL
+
         Example:
             assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
         """
@@ -666,12 +662,6 @@ class Number(numbers.Number):
         MAX_PAYLOAD_LENGTH = 250
 
         TYPE_LISTING = 0x1D
-
-        LENGTH_RESERVED_FF = 0xFF
-        LENGTH_RESERVED_FE = 0xFE
-        LENGTH_RESERVED_FD = 0xFD
-        LENGTH_RESERVED_FC = 0xFC
-        LENGTH_RESERVED_FB = 0xFB
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -697,7 +687,9 @@ class Number(numbers.Number):
                         0x00
                     )))
                 else:
-                    raise ValueError
+                    raise ValueError("Payload is {} bytes too long.".format(
+                        len(self.payload) - self.MAX_PAYLOAD_LENGTH)
+                    )
 
         def __eq__(self, other):
             return self.type_ == other.type_ and self.payload == other.payload
@@ -747,14 +739,22 @@ class Number(numbers.Number):
                 return suffix
         raise IndexError
 
-
     def get_suffix_payload(self, sought_type):
         return self.get_suffix(sought_type).payload
 
     def get_suffix_number(self, sought_type):
-        return self.from_raw(self.get_suffix_payload(sought_type))
+        return self.get_suffix(sought_type).payload_number()
 
     def parse_suffixes(self):
+        """Parse a Number into its root and suffixes.
+
+        Return a tuple of at least one element (the root, unsuffixed Number)
+        followed by zero or more suffixes.
+
+        assert \
+            (Number(1), Number.Suffix(2), Number.Suffix(3)) == \
+             Number(1)    .add_suffix(2)    .add_suffix(3).parse_suffixes()
+        """
         return_array = []
         n = Number(self)   # Is this really necessary? self.raw is immutable is it not?
         while True:
@@ -1003,95 +1003,6 @@ def hex_from_string(s):
 assert 'BEEF' == hex_from_string(b'\xBE\xEF')
 
 
-# Packing and Unpacking Integers
-# ------------------------------
-def pack_integer(the_integer, nbytes=None):
-    """Pack an integer into a binary string, which is like a base-256, big-endian string.
-
-    :param the_integer:  an arbitrarily large integer
-    :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
-    :return:  an unsigned two's complement string, MSB first
-
-    Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
-        assert     b'\xFF' == Number._pack_integer(255)
-        assert b'\x00\xFF' == Number._pack_integer(255,2)
-        assert     b'\x01' == Number._pack_integer(-255)
-        assert b'\xFF\x01' == Number._pack_integer(-255,2)
-    Caution, nbytes lower than minimum may not be enforced, see unit tests.
-    """
-    # GENERIC: This function might be useful elsewhere.
-
-    if nbytes is None:
-        nbytes = len(hex_from_integer(abs(the_integer)))//2
-        # so nbytes defaults to 1 + floor(log(abs(the_integer), 256))
-
-    if nbytes <= 8 and 0 <= the_integer < 4294967296:
-        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
-    elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
-        return struct.pack('>q', the_integer)[8-nbytes:]
-    else:
-        return pack_big_integer_via_hex(the_integer, nbytes)
-
-
-def pack_big_integer_via_hex(num, nbytes):
-    """Pack an integer into a binary string.
-
-    Akin to base-256 encode
-    """
-    # THANKS:  http://stackoverflow.com/a/777774/673991
-    if num >= 0:
-        num_twos_complement = num
-    else:
-        num_twos_complement = num + exp256(nbytes)   # two's complement of big negative integers
-    return left_pad00(
-        string_from_hex(
-            hex_from_integer(
-                num_twos_complement
-            )
-        ),
-        nbytes
-    )
-
-
-def unpack_big_integer(binary_string):
-    """Convert a byte string into an integer.
-
-    Akin to a base-256 decode, big-endian.
-    """
-    if len(binary_string) <= 8:
-        return unpack_big_integer_by_struct(binary_string)
-    else:
-        return unpack_big_integer_by_brute(binary_string)
-
-
-def unpack_big_integer_by_struct(binary_string):   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
-    return struct.unpack('>Q', left_pad00(binary_string, 8))[0]
-
-
-def unpack_big_integer_by_brute(binary_string):
-    return_value = 0
-    for i in range(len(binary_string)):
-        return_value <<= 8
-        return_value |= six.indexbytes(binary_string, i)
-    return return_value
-
-
-def left_pad00(the_string, nbytes):
-    """Make a string nbytes long by padding '\x00's on the left."""
-    # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
-    assert(isinstance(the_string, six.binary_type))
-    return the_string.rjust(nbytes, b'\x00')
-assert b'\x00\x00abcd' == left_pad00(b'abcd', 6)
-
-
-def right_strip00(the_string):
-    """Remove '\x00' NULs from the right end of a string."""
-    assert(isinstance(the_string, six.binary_type))
-    return the_string.rstrip(b'\x00')
-assert b'abcd' == right_strip00(b'abcd\x00\x00')
-
-
-
 # Math
 # ----
 def exp256(e):
@@ -1133,6 +1044,103 @@ def floats_really_same(f1,f2):
     return f1 == f2
 assert True == floats_really_same(float('nan'), float('nan'))
 assert False == floats_really_same(+0.0, -0.0)
+
+
+# Padding and Unpadding Strings
+# -----------------------------
+def left_pad00(the_string, nbytes):
+    """Make a string nbytes long by padding '\x00's on the left."""
+    # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
+    assert(isinstance(the_string, six.binary_type))
+    return the_string.rjust(nbytes, b'\x00')
+assert b'\x00\x00abcd' == left_pad00(b'abcd', 6)
+
+
+def right_strip00(the_string):
+    """Remove '\x00' NULs from the right end of a string."""
+    assert(isinstance(the_string, six.binary_type))
+    return the_string.rstrip(b'\x00')
+assert b'abcd' == right_strip00(b'abcd\x00\x00')
+
+
+# Packing and Unpacking Integers
+# ------------------------------
+def pack_integer(the_integer, nbytes=None):
+    """Pack an integer into a binary string, which is like a base-256, big-endian string.
+
+    :param the_integer:  an arbitrarily large integer
+    :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
+    :return:  an unsigned two's complement string, MSB first
+
+    Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
+        assert     b'\xFF' == pack_integer(255)
+        assert b'\x00\xFF' == pack_integer(255,2)
+        assert     b'\x01' == pack_integer(-255)
+        assert b'\xFF\x01' == pack_integer(-255,2)
+    Caution, nbytes lower than minimum may not be enforced, see unit tests.
+    """
+    # GENERIC: This function might be useful elsewhere.
+
+    if nbytes is None:
+        nbytes = len(hex_from_integer(abs(the_integer)))//2
+        # so nbytes defaults to 1 + floor(log(abs(the_integer), 256))
+
+    if nbytes <= 8 and 0 <= the_integer < 4294967296:
+        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
+    elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
+        return struct.pack('>q', the_integer)[8-nbytes:]
+    else:
+        return pack_big_integer_via_hex(the_integer, nbytes)
+assert b'\x00\xAA' == pack_integer(170,2)
+assert b'\xFF\x56' == pack_integer(-170,2)
+
+
+def pack_big_integer_via_hex(num, nbytes):
+    """Pack an integer into a binary string.
+
+    Akin to base-256 encode.
+    """
+    # THANKS:  http://stackoverflow.com/a/777774/673991
+    if num >= 0:
+        num_twos_complement = num
+    else:
+        num_twos_complement = num + exp256(nbytes)   # two's complement of big negative integers
+    return left_pad00(
+        string_from_hex(
+            hex_from_integer(
+                num_twos_complement
+            )
+        ),
+        nbytes
+    )
+assert b'\x00\xAA' == pack_big_integer_via_hex(170,2)
+assert b'\xFF\x56' == pack_big_integer_via_hex(-170,2)
+
+
+def unpack_big_integer_by_struct(binary_string):
+    """Fast version of unpack_big_integer(), limited to 64 bits."""
+    return struct.unpack('>Q', left_pad00(binary_string, 8))[0]
+
+
+def unpack_big_integer_by_brute(binary_string):
+    """Universal version of unpack_big_integer()."""
+    return_value = 0
+    for i in range(len(binary_string)):
+        return_value <<= 8
+        return_value |= six.indexbytes(binary_string, i)
+    return return_value
+
+
+def unpack_big_integer(binary_string):
+    """Convert a byte string into an integer.
+
+    Akin to a base-256 decode, big-endian.
+    """
+    if len(binary_string) <= 8:
+        return unpack_big_integer_by_struct(binary_string)   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
+    else:
+        return unpack_big_integer_by_brute(binary_string)
+assert 170 == unpack_big_integer(b'\x00\xAA')
 
 
 Number.internal_setup()
