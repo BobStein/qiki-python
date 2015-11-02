@@ -561,7 +561,11 @@ class SystemMySQL(System):
                 `txt` varchar(255) NOT NULL,
                 `whn` varbinary(255) NOT NULL,
                 PRIMARY KEY (`idn`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            )
+                ENGINE = InnoDB
+                DEFAULT CHARACTER SET = utf8mb4
+                DEFAULT COLLATE = utf8mb4_general_ci
+            ;
         """.format(table=self._table))
         # TODO: other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
