@@ -40,6 +40,8 @@ class Word(object):
                unicode or str (utf8) in Python 2, e.g. u'noun' or 'noun'
                str or bytes (utf8) in Python 3, e.g. 'noun' or b'noun'
     :type system: Word
+
+    Note:  instantiation.txt is always Unicode
     """
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, system=None):
@@ -554,6 +556,12 @@ class SystemMySQL(System):
             self._install_seminal_words()
 
         assert self.exists
+        cursor = self._connection.cursor()
+        cursor.execute('SET NAMES utf8mb4')
+        cursor.execute("SET CHARACTER SET utf8mb4")
+        cursor.execute("SET character_set_connection=utf8mb4")
+        cursor.close()
+        # THANKS:  Tomasz Nguyen  http://stackoverflow.com/a/27390024/673991
         assert self.is_system()
         assert self._connection.is_connected()
 

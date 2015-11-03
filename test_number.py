@@ -12,7 +12,7 @@ import textwrap
 from number import *
 
 
-TEST_NUMBER_PLATEAUS = False
+TEST_NUMBER_PLATEAUS = False   # E.g. 0q82 == 0q82_01
 
 
 class NumberTests(unittest.TestCase):

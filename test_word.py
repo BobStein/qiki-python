@@ -8,6 +8,7 @@ import unittest
 import sys
 
 import qiki
+from number import hex_from_string
 
 try:
     import secure.credentials
@@ -32,9 +33,9 @@ except ImportError:
     sys.exit(1)
 
 
-
 LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database over from scratch.
                                      # Set this to True to manually examine the database after running it.
+TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane (beyond the base 64K)
 
 
 class WordTests(unittest.TestCase):
@@ -262,53 +263,58 @@ class WordFirstTests(WordTests):
         agent = self.system('agent')
         self.assertEqual(agent.idn, qiki.Word._ID_AGENT)
 
-    def test_11a_utf8_ascii(self):
+
+class WordUnicode(WordTests):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
         self.system.noun('comment')
-        comment = self.system.comment(b"ascii")
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"ascii", comment_lookup.txt)
+
+    def look_at(self, idn):
+        word = self.system(idn)
+        utf8 = word.txt.encode('utf8')
+        hex = hex_from_string(utf8)
+        print(u"'{txt}'".format(txt=word.txt.encode('unicode_escape')), end=" ")
+        print(u"in utf8 is {hex}".format(hex=hex))
+
+    def test_11a_utf8_ascii(self):
+        self.assertEqual(u"ascii", self.system(self.system.comment(b"ascii").idn).txt)
 
     def test_11b_unicode_ascii(self):
-        self.system.noun('comment')
-        comment = self.system.comment(u"ascii")
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"ascii", comment_lookup.txt)
+        self.assertEqual(u"ascii", self.system(self.system.comment(u"ascii").idn).txt)
+        self.look_at(self.system.max_idn())
 
     def test_11c_utf8_spanish(self):
-        self.system.noun('comment')
+        assert u"mañana" == u"ma\u00F1ana"
         comment = self.system.comment(u"mañana".encode('utf8'))
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"mañana", comment_lookup.txt)
+        self.assertEqual(u"ma\u00F1ana", self.system(comment.idn).txt)
 
     def test_11d_unicode_spanish(self):
-        self.system.noun('comment')
         comment = self.system.comment(u"mañana")
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"mañana", comment_lookup.txt)
+        self.assertEqual(u"ma\u00F1ana", self.system(comment.idn).txt)
+        self.look_at(self.system.max_idn())
 
     def test_11e_utf8_peace(self):
-        self.system.noun('comment')
-        comment = self.system.comment(u"♂ on earth".encode('utf8'))
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"♂ on earth", comment_lookup.txt)
+        assert u"☮ on earth" == u"\u262E on earth"
+        comment = self.system.comment(u"☮ on earth".encode('utf8'))
+        self.assertEqual(u"\u262E on earth", self.system(comment.idn).txt)
 
     def test_11f_unicode_peace(self):
-        self.system.noun('comment')
-        comment = self.system.comment(u"♂ on earth")
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"♂ on earth", comment_lookup.txt)
+        comment = self.system.comment(u"☮ on earth")
+        self.assertEqual(u"\u262E on earth", self.system(comment.idn).txt)
+        self.look_at(self.system.max_idn())
 
-    def test_11g_utf8_pile_of_poo(self):
-        self.system.noun('comment')
-        comment = self.system.comment(u"stinky ?".encode('utf8'))
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"stinky ?", comment_lookup.txt)
+    if TEST_ASTRAL_PLANE:
 
-    def test_11h_unicode_pile_of_poo(self):
-        self.system.noun('comment')
-        comment = self.system.comment(u"stinky ?")
-        comment_lookup = self.system(comment.idn)
-        self.assertEqual(u"stinky ?", comment_lookup.txt)
+        def test_11g_utf8_pile_of_poo(self):
+            # Source code is base plane only, so cannot:  assert u"stinky ?" == u"stinky \U0001F4A9"
+            comment = self.system.comment(u"stinky \U0001F4A9".encode('utf8'))
+            self.assertEqual(u"stinky \U0001F4A9", self.system(comment.idn).txt)
+
+        def test_11h_unicode_pile_of_poo(self):
+            comment = self.system.comment(u"stinky \U0001F4A9")
+            self.assertEqual(u"stinky \U0001F4A9", self.system(comment.idn).txt)
+            self.look_at(self.system.max_idn())
 
 
 
