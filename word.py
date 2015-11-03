@@ -27,7 +27,7 @@ class Word(object):
     This helps a little in searching for the symbol, and avoiding Python reserved words.
 
     A word is fundamentally, uniquely, and forever defined by its idn,
-    within the context of its System,
+    within the context of its Lex,
     as long as it has been saved (exists is true).
 
     :type content: six.string_types | Word | instancemethod
@@ -39,13 +39,13 @@ class Word(object):
     :type txt: six.string_types or six.binary_type, in other words:
                unicode or str (utf8) in Python 2, e.g. u'noun' or 'noun'
                str or bytes (utf8) in Python 3, e.g. 'noun' or b'noun'
-    :type system: Word
+    :type lex: Word
 
     Note:  instantiation.txt is always Unicode
     """
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, system=None):
-        self._system = system
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
+        self.lex = lex
         self.exists = False
         self._idn = None
         self._word_before_the_dot = None
@@ -87,31 +87,31 @@ class Word(object):
     _ID_NOUN   = Number(2)
     _ID_VERB   = Number(3)
     _ID_AGENT  = Number(4)
-    _ID_SYSTEM = Number(5)
+    _ID_LEX    = Number(5)
 
     _ID_MAX_FIXED = Number(5)
 
     TXT_TYPES = (six.string_types, six.binary_type)
 
     def __getattr__(self, verb):
-        assert hasattr(self, '_system'), "No system, can't x.{vrb}".format(vrb=verb)
-        return_value = self._system(verb)
+        assert hasattr(self, 'lex'), "No lex, can't x.{vrb}".format(vrb=verb)
+        return_value = self.lex(verb)
         return_value._word_before_the_dot = self   # In s.v(o) this is how we remember the s.
         return return_value
 
     def __call__(self, *args, **kwargs):
-        if self.is_system():   # system('text') - find a word by its txt
-            assert self.idn == self._ID_SYSTEM
+        if self.is_lex():   # lex('text') - find a word by its txt
+            assert self.idn == self._ID_LEX
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
             if existing_word.idn == self.idn:
-                return self   # system is a singleton.  Why is this important?
+                return self   # lex is a singleton.  Why is this important?
             else:
                 return existing_word
         elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
-            assert hasattr(self, '_system')
-            assert self._system.exists
-            assert self._system.is_system()
+            assert hasattr(self, 'lex')
+            assert self.lex.exists
+            assert self.lex.is_lex()
 
             # TODO:  keyword-only or flexible positional arguments?
             # SEE:  https://www.python.org/dev/peps/pep-3102/
@@ -154,11 +154,11 @@ class Word(object):
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
-        elif self.is_definition():   # object('text') ==> system.define(object, 'text')
-            assert hasattr(self, '_system')
-            assert self._system.exists
-            assert self._system.is_system()
-            existing_or_new_word = self._system.define(self, *args, **kwargs)
+        elif self.is_definition():   # object('text') ==> lex.define(object, 'text')
+            assert hasattr(self, 'lex')
+            assert self.lex.exists
+            assert self.lex.is_lex()
+            existing_or_new_word = self.lex.define(self, *args, **kwargs)
             return existing_or_new_word
         else:
             raise self.NonVerbUndefinedAsFunctionException(
@@ -171,18 +171,18 @@ class Word(object):
         possibly_existing_word = self.spawn(txt)
         if possibly_existing_word.exists:
             return possibly_existing_word
-        new_word = self.sentence(sbj=self, vrb=self._system('define'), obj=obj, txt=txt, num=num)
+        new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
         return new_word
 
     def spawn(self, *args, **kwargs):
         """
-        Construct a Word() using the same _system as another word.
+        Construct a Word() using the same lex as another word.
 
         The constructed word may exist in the database already.
         Otherwise it will be prepared to .save().
         """
-        assert hasattr(self, '_system')
-        kwargs['system'] = self._system
+        assert hasattr(self, 'lex')
+        kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
 
     def sentence(self, sbj, vrb, obj, txt, num):
@@ -221,11 +221,11 @@ class Word(object):
             self.txt = listed_instance.txt
             self.exists = True
         else:
-            # TODO:  Move this part to System
+            # TODO:  Move this part to Lex
             self._load_row(
                 "SELECT * FROM `{table}` WHERE `idn` = ?"
                 .format(
-                    table=self._system._table,
+                    table=self.lex._table,
                 ),
                 (
                     idn.raw,
@@ -236,14 +236,14 @@ class Word(object):
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
-        # TODO:  Move to System
+        # TODO:  Move to Lex
         assert isinstance(txt, self.TXT_TYPES)
         self._load_row(
             "SELECT * FROM `{table}` "
                 "WHERE   `vrb` = ? "
                     "AND `txt` = ?"
             .format(
-                table=self._system._table,
+                table=self.lex._table,
             ),
             (
                 self._ID_DEFINE.raw,
@@ -254,10 +254,10 @@ class Word(object):
             self.txt = txt
 
     def _from_word(self, word):
-        if word.is_system():
-            raise ValueError   # system is a singleton.  TODO: Explain why this should be.
+        if word.is_lex():
+            raise ValueError   # lex is a singleton.  TODO: Explain why this should be.
         assert word.exists
-        self._system = word._system
+        self.lex = word.lex
         self._from_idn(word.idn)
         # if word.exists:
         #     self._from_idn(word.idn)
@@ -266,7 +266,7 @@ class Word(object):
 
     def _from_sbj_vrb_obj(self):
         """Construct a word from its subject-verb-object"""
-        # TODO:  Move to System
+        # TODO:  Move to Lex
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
@@ -278,7 +278,7 @@ class Word(object):
                 "ORDER BY `idn` DESC "
                 "LIMIT 1"
             .format(
-                table=self._system._table,
+                table=self.lex._table,
             ),
             (
                 self.sbj.raw,
@@ -293,8 +293,8 @@ class Word(object):
         Same parameters as cursor.execute,
         namely a MySQL string and a tuple of ?-value parameters.
         """
-        # TODO:  Move to System.  Along with every function that calls it.
-        cursor = self._system._connection.cursor(prepared=True)
+        # TODO:  Move to Lex.  Along with every function that calls it.
+        cursor = self.lex._connection.cursor(prepared=True)
         cursor.execute(sql, parameters)
         tuple_row = cursor.fetchone()
         assert cursor.fetchone() is None
@@ -325,12 +325,12 @@ class Word(object):
         return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO: limit recursion
 
     def is_a_noun(self, reflexive=True, **kwargs):
-        assert hasattr(self, '_system')
-        return self.is_a(self._system.noun, reflexive=reflexive, **kwargs)
+        assert hasattr(self, 'lex')
+        return self.is_a(self.lex.noun, reflexive=reflexive, **kwargs)
 
     def is_a_verb(self, reflexive=False, **kwargs):
-        assert hasattr(self, '_system')
-        return self.is_a(self._system.verb, reflexive=reflexive, **kwargs)
+        assert hasattr(self, 'lex')
+        return self.is_a(self.lex.verb, reflexive=reflexive, **kwargs)
 
     def is_define(self):
         return self.idn == self._ID_DEFINE
@@ -347,8 +347,8 @@ class Word(object):
     def is_agent(self):
         return self.idn == self._ID_AGENT
 
-    def is_system(self):
-        return self.idn == self._ID_SYSTEM
+    def is_lex(self):
+        return self.idn == self._ID_LEX
 
     def description(self):
         sbj = self.spawn(self.sbj)
@@ -414,8 +414,8 @@ class Word(object):
         raise RuntimeError("Cannot set a Word's idn")
 
     def max_idn(self):
-        cursor = self._system._connection.cursor()
-        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._system._table))
+        cursor = self.lex._connection.cursor()
+        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self.lex._table))
         max_idn_sql_row = cursor.fetchone()
         if max_idn_sql_row is None:
             return Number(0)
@@ -446,7 +446,7 @@ class Word(object):
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
 
-        self._system.insert_word(self)
+        self.lex.insert_word(self)
         self.exists = True
 
     # noinspection PyClassHasNoInit
@@ -478,7 +478,7 @@ class Listing(Word):
         self.num = None
         self.txt = None
         self.lookup(self.index, self.lookup_callback)
-        self._system = self.meta_word._system
+        self.lex = self.meta_word.lex
 
     # TODO:  @abstractmethod
     def lookup(self, index, callback):
@@ -535,22 +535,22 @@ class Listing(Word):
         pass
 
 
-class System(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
+class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
                       #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                       # Eventually, this will encapsulate other word repositories
     pass
 
 
-class SystemMySQL(System):
+class LexMySQL(Lex):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
         self._connection = mysql.connector.connect(**kwargs)
-        self._system = self
+        self.lex = self
         try:
-            super(SystemMySQL, self).__init__(self._ID_SYSTEM, system=self)
+            super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
             assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
@@ -558,7 +558,7 @@ class SystemMySQL(System):
                 self.install_from_scratch()
                 # TODO: Don't super() twice -- cuz it's not D.R.Y.
                 # TODO: Don't install in unit tests if we're about to uninstall.
-                super(SystemMySQL, self).__init__(self._ID_SYSTEM, system=self)
+                super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
             else:
                 assert False, exception_message
         except Word.MissingFromLex:
@@ -566,12 +566,10 @@ class SystemMySQL(System):
 
         assert self.exists
         cursor = self._connection.cursor()
-        cursor.execute('SET NAMES utf8mb4')
-        cursor.execute("SET CHARACTER SET utf8mb4")
-        cursor.execute("SET character_set_connection=utf8mb4")
+        cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         cursor.close()
         # THANKS:  Tomasz Nguyen  http://stackoverflow.com/a/27390024/673991
-        assert self.is_system()
+        assert self.is_lex()
         assert self._connection.is_connected()
 
     def install_from_scratch(self):
@@ -579,13 +577,13 @@ class SystemMySQL(System):
         cursor = self._connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS `{table}` (
-                `idn` varbinary(255) NOT NULL,
-                `sbj` varbinary(255) NOT NULL,
-                `vrb` varbinary(255) NOT NULL,
-                `obj` varbinary(255) NOT NULL,
-                `num` varbinary(255) NOT NULL,
-                `txt` varchar(255) NOT NULL,
-                `whn` varbinary(255) NOT NULL,
+                `idn` VARBINARY(255) NOT NULL,
+                `sbj` VARBINARY(255) NOT NULL,
+                `vrb` VARBINARY(255) NOT NULL,
+                `obj` VARBINARY(255) NOT NULL,
+                `num` VARBINARY(255) NOT NULL,
+                `txt` TEXT NOT NULL,
+                `whn` VARBINARY(255) NOT NULL,
                 PRIMARY KEY (`idn`)
             )
                 ENGINE = InnoDB
@@ -603,11 +601,11 @@ class SystemMySQL(System):
         Each sentence uses verbs and nouns defined in some of the other seminal sentences.
 
         The five seminal sentences:
-                    system.define(verb, 'define')
-             noun = system.define(noun, 'noun')
-             verb = system.define(noun, 'verb')
-            agent = system.define(noun, 'agent')
-                    system.define(agent, 'system')
+                    lex.define(verb, 'define')
+             noun = lex.define(noun, 'noun')
+             verb = lex.define(noun, 'verb')
+            agent = lex.define(noun, 'agent')
+                    lex.define(agent, 'lex')
 
         At least that's how they'd be defined if forward references were not a problem.
         """
@@ -615,18 +613,18 @@ class SystemMySQL(System):
         self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
         self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
         self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
-        self._seminal_word(self._ID_SYSTEM, self._ID_AGENT, u'system')
+        self._seminal_word(self._ID_LEX, self._ID_AGENT, u'lex')
 
 
         if not self.exists:
-            self._from_idn(self._ID_SYSTEM)
+            self._from_idn(self._ID_LEX)
         assert self.exists
-        assert self.is_system()
+        assert self.is_lex()
 
     def _seminal_word(self, _idn, _obj, _txt):
         """Insert important, fundamental word into the table, if it's not already there.
 
-        Subject is always 'system'.  Verb is always 'define'."""
+        Subject is always 'lex'.  Verb is always 'define'."""
         try:
             word = self.spawn(_idn)
         except Word.MissingFromLex:
@@ -639,7 +637,7 @@ class SystemMySQL(System):
 
     def _install_word(self, _idn, _obj, _txt):
         word = self.spawn(
-            sbj = self._ID_SYSTEM,
+            sbj = self._ID_LEX,
             vrb = self._ID_DEFINE,
             obj = _obj,
             num = Number(1),
@@ -706,10 +704,10 @@ class SystemMySQL(System):
         cursor.close()
 
 
-# DONE:  Combine connection and table?  We could subclass like so:  System(MySQLConnection)
-# DONE:  ...No, make them properties of System.  And make all Words refer to a System
-# DONE:  ...So combine all three.  Maybe System shouldn't subclass Word?
-# DONE:  Or make a class SystemMysql(System)
+# DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
+# DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
+# DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
+# DONE:  Or make a class LexMysql(Lex)
 
 # TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
