@@ -459,8 +459,15 @@ class Word(object):
 
 
 class Listing(Word):
-    meta_word = None   # word associated with each derived class, assigned by install()
-    class_dictionary = dict()   # master list of derived classes, indexed by meta_word.idn
+    meta_word = None   # This is the Word associated with Listing,
+                       # or the Word associated with each derived class,
+                       # in both cases assigned by install().
+                       # Listing.meta_word.idn is an unsuffixed qiki.Number.
+                       # Subclass.meta_word.idn is another unsuffixed qiki.Number.
+                       # An instance_of_subclass.idn is a suffixed qiki.Number
+                       # and the root of that idn is its class's meta_word.idn.
+                       # See examples in test_example_idn().
+    class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
 
     def __init__(self, index):
         super(Listing, self).__init__()
@@ -473,6 +480,7 @@ class Listing(Word):
         self.lookup(self.index, self.lookup_callback)
         self._system = self.meta_word._system
 
+    # TODO:  @abstractmethod
     def lookup(self, index, callback):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
 
@@ -542,7 +550,7 @@ class SystemMySQL(System):
         self._connection = mysql.connector.connect(**kwargs)
         self._system = self
         try:
-            super(self.__class__, self).__init__(self._ID_SYSTEM, system=self)
+            super(SystemMySQL, self).__init__(self._ID_SYSTEM, system=self)
             assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
@@ -550,7 +558,7 @@ class SystemMySQL(System):
                 self.install_from_scratch()
                 # TODO: Don't super() twice -- cuz it's not D.R.Y.
                 # TODO: Don't install in unit tests if we're about to uninstall.
-                super(self.__class__, self).__init__(self._ID_SYSTEM, system=self)
+                super(SystemMySQL, self).__init__(self._ID_SYSTEM, system=self)
             else:
                 assert False, exception_message
         except Word.MissingFromLex:

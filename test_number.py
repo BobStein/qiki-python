@@ -1641,6 +1641,7 @@ class NumberSuffixTests(NumberTests):
 
     def test_suffix_number(self):
         self.assertEqual('0q83_01FF__823F_FF0300', Number(511).add_suffix(255, Number(63)))
+        # TODO:  Should '0q83_01FF__82_3F_FF0300' have an underscore in its payload Number?
 
     def test_suffix_extract_raw(self):
         self.assertEqual(b'\x33\x44', Number(1).add_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
@@ -1708,7 +1709,7 @@ class NumberSuffixTests(NumberTests):
 class NumberDictionaryKeyTests(NumberTests):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(NumberDictionaryKeyTests, self).setUp()
         self.d = dict()
         self.d[Number(2)] = 'dos'
         self.d[Number(5)] = 'cinco'

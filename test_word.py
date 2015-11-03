@@ -276,7 +276,7 @@ class WordFirstTests(WordTests):
 class WordUnicode(WordTests):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(WordUnicode, self).setUp()
         self.system.noun('comment')
 
     def test_11a_utf8_ascii(self):
@@ -545,15 +545,15 @@ class WordListingTests(WordTests):
             grade = name_and_grade[1]
             callback(name, grade)
 
-
-class WordListingBasicTests(WordListingTests):
-
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(WordListingTests, self).setUp()
         self.listing = self.system.noun('listing')
         qiki.Listing.install(self.listing)
         self.names = self.listing('names')
         self.Student.install(self.names)
+
+
+class WordListingBasicTests(WordListingTests):
 
     def test_listing_suffix(self):
         number_two = qiki.Number(2)
@@ -659,7 +659,7 @@ class WordListingInternalsTests(WordListingTests):
             raise self.NotFound
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(WordListingInternalsTests, self).setUp()
         self.SubStudent.install(self.system.noun('sub_student'))
         self.AnotherListing.install(self.system.noun('another_listing'))
 
@@ -669,14 +669,33 @@ class WordListingInternalsTests(WordListingTests):
         self.assertIs(qiki.Listing.class_dictionary, self.AnotherListing.class_dictionary)
 
     def test_one_meta_word_per_subclass(self):
-        self.assertIsNot(qiki.Listing.meta_word, self.Student.meta_word)
-        self.assertIsNot(qiki.Listing.meta_word, self.SubStudent.meta_word)
-        self.assertIsNot(qiki.Listing.meta_word, self.AnotherListing.meta_word)
+        self.assertNotEqual(qiki.Listing.meta_word.idn, self.Student.meta_word.idn)
+        self.assertNotEqual(qiki.Listing.meta_word.idn, self.SubStudent.meta_word.idn)
+        self.assertNotEqual(qiki.Listing.meta_word.idn, self.AnotherListing.meta_word.idn)
 
-        self.assertIsNot(self.Student.meta_word, self.SubStudent.meta_word)
-        self.assertIsNot(self.Student.meta_word, self.AnotherListing.meta_word)
+        self.assertNotEqual(self.Student.meta_word.idn, self.SubStudent.meta_word.idn)
+        self.assertNotEqual(self.Student.meta_word.idn, self.AnotherListing.meta_word.idn)
 
-        self.assertIsNot(self.SubStudent.meta_word, self.AnotherListing.meta_word)
+        self.assertNotEqual(self.SubStudent.meta_word.idn, self.AnotherListing.meta_word.idn)
+
+    def test_idn_suffixed(self):
+        chad = self.Student(2)
+        deanne = self.Student(3)
+        self.assertFalse(qiki.Listing.meta_word.idn.is_suffixed())
+        self.assertFalse(self.Student.meta_word.idn.is_suffixed())
+        self.assertFalse(self.SubStudent.meta_word.idn.is_suffixed())
+        self.assertTrue(chad.idn.is_suffixed())
+        self.assertTrue(deanne.idn.is_suffixed())
+
+    def test_example_idn(self):
+        chad = self.Student(2)
+        # Serious assumption here, that only 5 words were defined before system.noun('listing').
+        # But this helps to demonstrate Listing meta_word and instance idn contents.
+        self.assertEqual('0q82_06', qiki.Listing.meta_word.idn.qstring())
+        self.assertEqual('0q82_07', self.Student.meta_word.idn.qstring())   # Number(7)
+        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root is Number(7), payload is Number(2).
+        self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
+        self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
 
 
 
