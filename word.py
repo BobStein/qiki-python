@@ -459,21 +459,22 @@ class Word(object):
 
 
 class Listing(Word):
-    _meta_word = None   # word associated with the derived CLASS, not the INSTANCE
-    class_dictionary = dict()   # master list of derived classes
+    meta_word = None   # word associated with each derived class, assigned by install()
+    class_dictionary = dict()   # master list of derived classes, indexed by meta_word.idn
 
     def __init__(self, index):
+        super(Listing, self).__init__()
         assert isinstance(index, (int, Number))   # TODO:  Support a non-Number index.
-        assert self._meta_word is not None
+        assert self.meta_word is not None
         self.index = Number(index)
-        self._idn = Number(self._meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
+        self._idn = Number(self.meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
         self.num = None
         self.txt = None
         self.lookup(self.index, self.lookup_callback)
-        self._system = self._meta_word._system
+        self._system = self.meta_word._system
 
     def lookup(self, index, callback):
-        raise NotImplementedError("Subclasses of Listing must define a lookup() function.")
+        raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
 
     def lookup_callback(self, txt, num):
         self.num = num
@@ -492,7 +493,7 @@ class Listing(Word):
         assert isinstance(meta_word.idn, Number)
         # TODO:  Make sure if already defined that it's the same class.
         cls.class_dictionary[meta_word.idn] = cls
-        cls._meta_word = meta_word
+        cls.meta_word = meta_word
 
     @classmethod
     def word_lookup(cls, idn):
@@ -519,7 +520,7 @@ class Listing(Word):
         # print(repr(cls.class_dictionary))
         return_value = cls.class_dictionary[meta_idn]
         assert issubclass(return_value, cls), repr(return_value) + " is not a subclass of " + repr(cls)
-        assert return_value._meta_word.idn == meta_idn
+        assert return_value.meta_word.idn == meta_idn
         return return_value
 
     class NotFound(Exception):

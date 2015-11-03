@@ -59,6 +59,15 @@ class WordTests(unittest.TestCase):
         for _idn in idn_array:
             print(int(_idn), self.system(_idn).description())
 
+    def show_txt_in_utf8(self, idn):
+        word = self.system(idn)
+        utf8 = word.txt.encode('utf8')
+        hexadecimal = hex_from_string(utf8)
+        print("\"{txt}\" in utf8 is {hex}".format(
+            txt=word.txt.encode('unicode_escape'),   # Python 3 doubles up the backslashes.  Shrug.
+            hex=hexadecimal,
+        ))
+
 
 class WordFirstTests(WordTests):
 
@@ -270,29 +279,22 @@ class WordUnicode(WordTests):
         super(self.__class__, self).setUp()
         self.system.noun('comment')
 
-    def look_at(self, idn):
-        word = self.system(idn)
-        utf8 = word.txt.encode('utf8')
-        hex = hex_from_string(utf8)
-        print(u"'{txt}'".format(txt=word.txt.encode('unicode_escape')), end=" ")
-        print(u"in utf8 is {hex}".format(hex=hex))
-
     def test_11a_utf8_ascii(self):
         self.assertEqual(u"ascii", self.system(self.system.comment(b"ascii").idn).txt)
 
     def test_11b_unicode_ascii(self):
         self.assertEqual(u"ascii", self.system(self.system.comment(u"ascii").idn).txt)
-        self.look_at(self.system.max_idn())
+        self.show_txt_in_utf8(self.system.max_idn())
 
     def test_11c_utf8_spanish(self):
-        assert u"mañana" == u"ma\u00F1ana"
+        assert u"mañana" == u"ma\xF1ana"
         comment = self.system.comment(u"mañana".encode('utf8'))
-        self.assertEqual(u"ma\u00F1ana", self.system(comment.idn).txt)
+        self.assertEqual(u"ma\xF1ana", self.system(comment.idn).txt)
 
     def test_11d_unicode_spanish(self):
         comment = self.system.comment(u"mañana")
-        self.assertEqual(u"ma\u00F1ana", self.system(comment.idn).txt)
-        self.look_at(self.system.max_idn())
+        self.assertEqual(u"ma\xF1ana", self.system(comment.idn).txt)
+        self.show_txt_in_utf8(self.system.max_idn())
 
     def test_11e_utf8_peace(self):
         assert u"☮ on earth" == u"\u262E on earth"
@@ -302,7 +304,7 @@ class WordUnicode(WordTests):
     def test_11f_unicode_peace(self):
         comment = self.system.comment(u"☮ on earth")
         self.assertEqual(u"\u262E on earth", self.system(comment.idn).txt)
-        self.look_at(self.system.max_idn())
+        self.show_txt_in_utf8(self.system.max_idn())
 
     if TEST_ASTRAL_PLANE:
 
@@ -314,9 +316,7 @@ class WordUnicode(WordTests):
         def test_11h_unicode_pile_of_poo(self):
             comment = self.system.comment(u"stinky \U0001F4A9")
             self.assertEqual(u"stinky \U0001F4A9", self.system(comment.idn).txt)
-            self.look_at(self.system.max_idn())
-
-
+            self.show_txt_in_utf8(self.system.max_idn())
 
 
 class WordMoreTests(WordTests):
@@ -535,6 +535,7 @@ class WordListingTests(WordTests):
             ("Chad", 3.0),
             ("Deanne", 1.0),
         ]
+
         def lookup(self, index, callback):
             try:
                 name_and_grade = self.names_and_grades[int(index)]
@@ -668,14 +669,14 @@ class WordListingInternalsTests(WordListingTests):
         self.assertIs(qiki.Listing.class_dictionary, self.AnotherListing.class_dictionary)
 
     def test_one_meta_word_per_subclass(self):
-        self.assertIsNot(qiki.Listing._meta_word, self.Student._meta_word)
-        self.assertIsNot(qiki.Listing._meta_word, self.SubStudent._meta_word)
-        self.assertIsNot(qiki.Listing._meta_word, self.AnotherListing._meta_word)
+        self.assertIsNot(qiki.Listing.meta_word, self.Student.meta_word)
+        self.assertIsNot(qiki.Listing.meta_word, self.SubStudent.meta_word)
+        self.assertIsNot(qiki.Listing.meta_word, self.AnotherListing.meta_word)
 
-        self.assertIsNot(self.Student._meta_word, self.SubStudent._meta_word)
-        self.assertIsNot(self.Student._meta_word, self.AnotherListing._meta_word)
+        self.assertIsNot(self.Student.meta_word, self.SubStudent.meta_word)
+        self.assertIsNot(self.Student.meta_word, self.AnotherListing.meta_word)
 
-        self.assertIsNot(self.SubStudent._meta_word, self.AnotherListing._meta_word)
+        self.assertIsNot(self.SubStudent.meta_word, self.AnotherListing.meta_word)
 
 
 
