@@ -96,7 +96,7 @@ class Word(object):
     def __getattr__(self, verb):
         assert hasattr(self, 'lex'), "No lex, can't x.{vrb}".format(vrb=verb)
         return_value = self.lex(verb)
-        return_value._word_before_the_dot = self   # In s.v(o) this is how we remember the s.
+        return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
         return return_value
 
     def __call__(self, *args, **kwargs):
@@ -124,6 +124,7 @@ class Word(object):
             # TODO:  s.v(o,t)
             # DONE:  s.v(o,n,t)
             # TODO:  s.v(o,t,n)
+            # TODO:  Avoid ambiguity of s.v(o, '0q80', '0q82_01') -- which is txt, which is num?
 
             # TODO:  support keyword arguments:
             # TODO:  s.v(o,num=n)
