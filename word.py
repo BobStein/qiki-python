@@ -100,7 +100,9 @@ class Word(object):
         return return_value
 
     def __call__(self, *args, **kwargs):
-        if self.is_lex():   # lex('text') - find a word by its txt
+        if self.is_lex():
+            # lex(t) in English:  Lex defines a word named t.
+            # lex('text') - find a word by its txt
             assert self.idn == self._ID_LEX
             existing_word = self.spawn(*args, **kwargs)
             assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
@@ -113,26 +115,23 @@ class Word(object):
             assert self.lex.exists
             assert self.lex.is_lex()
 
-            # TODO:  keyword-only or flexible positional arguments?
+            # TODO:  s.v(o,t)
+            # TODO:  s.v(o,t,n)
+            # DONE:  s.v(o)
+            # DONE:  s.v(o,n)
+            # DONE:  s.v(o,n,t)
+            # DONE:  o(t) -- shorthand for lex.define(o,1,t)
+            # TODO:  Disallow s.v(o,t,n,etc)
+
+            # TODO:  Avoid ambiguity of s.v(o, '0q80', '0q82_01') -- which is txt, which is num?
+            # TODO:  Disallow positional n,t?  Keyword-only num=n,txt=t would have flexible order.
             # SEE:  https://www.python.org/dev/peps/pep-3102/
             # SEE:  http://code.activestate.com/recipes/577940-emulate-keyword-only-arguments-in-python-2/
-
-            # DONE:  s.v(o)
-
-            # TODO:  disallow positional arguments?
-            # DONE:  s.v(o,n)
-            # TODO:  s.v(o,t)
-            # DONE:  s.v(o,n,t)
-            # TODO:  s.v(o,t,n)
-            # TODO:  Avoid ambiguity of s.v(o, '0q80', '0q82_01') -- which is txt, which is num?
-
-            # TODO:  support keyword arguments:
+            # TODO:  Keyword arguments would look like:
             # TODO:  s.v(o,num=n)
             # TODO:  s.v(o,txt=t)
             # TODO:  s.v(o,num=n,txt=t)
             # TODO:  s.v(o,txt=t,num=n)
-
-            # DONE: o(t)
 
             assert len(args) >= 1
             obj = args[0]
@@ -145,6 +144,7 @@ class Word(object):
             except IndexError:
                 txt=''
             assert self._word_before_the_dot is not None
+            # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
             if len(args) == 1:   # subject.verb(object)
                 existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
@@ -155,7 +155,9 @@ class Word(object):
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
-        elif self.is_definition():   # object('text') ==> lex.define(object, 'text')
+        elif self.is_definition():
+            # o(t) in English:  Lex defines an o named t.  And o is a noun.
+            # object('text') ==> lex.define(object, Number(1), 'text')
             assert hasattr(self, 'lex')
             assert self.lex.exists
             assert self.lex.is_lex()
@@ -566,7 +568,7 @@ class LexMySQL(Lex):
             self._install_seminal_words()
 
         assert self.exists
-        cursor = self._connection.cursor()
+        cursor = self._cursor()
         cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         cursor.close()
         # THANKS:  Tomasz Nguyen  http://stackoverflow.com/a/27390024/673991
@@ -575,7 +577,7 @@ class LexMySQL(Lex):
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
-        cursor = self._connection.cursor()
+        cursor = self._cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS `{table}` (
                 `idn` VARBINARY(255) NOT NULL,
@@ -660,7 +662,7 @@ class LexMySQL(Lex):
 
     def uninstall_to_scratch(self):
         """Deletes table.  Opposite of install_from_scratch()."""
-        cursor = self._connection.cursor(prepared=True)
+        cursor = self._cursor()
         try:
             cursor.execute("DELETE FROM `{table}`".format(table=self._table))
         except mysql.connector.ProgrammingError:
@@ -675,14 +677,14 @@ class LexMySQL(Lex):
     def get_all_idns(self):
         """Return an array of all word ids in the database."""
         # TODO:  Start and number parameters, for LIMIT clause.
-        cursor = self._connection.cursor()
+        cursor = self._cursor()
         cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
         ids = [Number.from_mysql(row[0]) for row in cursor]
         cursor.close()
         return ids
 
     def insert_word(self, word):
-        cursor = self._connection.cursor(prepared=True)
+        cursor = self._cursor()
         assert not word.idn.is_nan()
         cursor.execute(
             "INSERT INTO `{table}` "
@@ -703,6 +705,14 @@ class LexMySQL(Lex):
         )
         self._connection.commit()
         cursor.close()
+
+    def _cursor(self):
+        return self._connection.cursor(prepared=True)
+
+    def find_obj_by_vrb(self, noun, verb):
+        # cursor = self._cursor()
+        # cursor.execute("SELECT qq.idn ")
+        return [noun, verb]
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
