@@ -1,0 +1,35 @@
+<h2>Installing MySQL for qiki Unit Tests</h2>
+<ul>
+    <li>
+        <a href="https://www.google.com/search?q=mysql+download&btnI">
+            Download MySQL Server
+        </a>.
+        You will have to log in to Oracle.
+        You may choose either the installer, or the full download.
+        If you choose the installer, be sure to add the Python connector for your version of Python.
+    </li>
+    <li>
+        <code>pip install six</code>
+    </li>
+    <li>
+        If you didn't already, install the MySQL Python Connector<br>
+        <code>pip install %1 --allow-external mysql-connector-python mysql-connector-python</code><br>
+        Thanks to <a href="https://geert.vanderkelen.org/installing-coy-using-pip/">Geert JM Vanderkelen</a>
+        for these instructions.
+    </li>
+    <li>
+        <code>
+            mysql --port NNNNNN -uroot -p
+        </code>
+    </li>
+    <li>
+        <code>
+            CREATE DATABASE unittest_database;<br>
+            GRANT CREATE,INSERT,SELECT,DROP ON unittest_database.* TO 'unittest-bot'@localhost;
+        </code>
+    </li>
+    <li>
+        <code>secure/credentials.py</code> (see test_word.py)<br>
+        <code>secure/__init__.py</code> (empty file)
+    </li>
+</ul>

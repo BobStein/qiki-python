@@ -41,13 +41,16 @@ TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane
 class WordTests(unittest.TestCase):
 
     def setUp(self):
-        self.lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-        self.lex.uninstall_to_scratch()
-        self.lex.install_from_scratch()
-        # cursor = self.lex._connection.cursor()
-        # cursor.execute("SELECT txt FROM `{table}` ORDER BY idn ASC".format(table=self.lex._table))
-        # print("Word database:", ", ".join([row[0] for row in cursor]))
-        # cursor.close()
+        try:
+            self.lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+            self.lex.uninstall_to_scratch()
+            self.lex.install_from_scratch()
+            # cursor = self.lex._connection.cursor()
+            # cursor.execute("SELECT txt FROM `{table}` ORDER BY idn ASC".format(table=self.lex._table))
+            # print("Word database:", ", ".join([row[0] for row in cursor]))
+            # cursor.close()
+        except:
+            self.fail()
 
     def tearDown(self):
         if not LET_DATABASE_RECORDS_REMAIN:
