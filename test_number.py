@@ -1302,23 +1302,23 @@ class NumberMathTests(NumberTests):
 
     def test_add(self):
         self.assertEqual(Number(4), Number(2) + Number(2))
-        self.assertEqual(Number(4), Number(2) +       (2))
-        self.assertEqual(Number(4),       (2) + Number(2))
+        self.assertEqual(Number(4), Number(2) +        2 )
+        self.assertEqual(Number(4),        2  + Number(2))
 
     def test_add_real(self):
         self.assertEqual(Number(4.375), Number(2.125) + Number(2.25))
-        self.assertEqual(Number(4.375), Number(2.125) +       (2.25))
-        self.assertEqual(Number(4.375),       (2.125) + Number(2.25))
+        self.assertEqual(Number(4.375), Number(2.125) +        2.25 )
+        self.assertEqual(Number(4.375),        2.125  + Number(2.25))
 
     def test_sub(self):
         self.assertEqual(Number(42), Number(8642) - Number(8600))
-        self.assertEqual(Number(42), Number(8642) -       (8600))
-        self.assertEqual(Number(42),       (8642) - Number(8600))
+        self.assertEqual(Number(42), Number(8642) -        8600 )
+        self.assertEqual(Number(42),        8642  - Number(8600))
 
     def test_sub_real(self):
         self.assertEqual(Number(-0.125), Number(2.125) - Number(2.25))
-        self.assertEqual(Number(-0.125), Number(2.125) -       (2.25))
-        self.assertEqual(Number(-0.125),       (2.125) - Number(2.25))
+        self.assertEqual(Number(-0.125), Number(2.125) -        2.25 )
+        self.assertEqual(Number(-0.125),        2.125  - Number(2.25))
 
     def test_big_int_add(self):
         self.assertEqual(Number('0q8A_010000000000000001'), Number('0q8A_01') + Number('0q82_01'))
