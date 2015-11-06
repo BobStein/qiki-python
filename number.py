@@ -227,7 +227,8 @@ class Number(numbers.Number):
     # ------------------------------------------
     @classmethod
     def from_raw(cls, value):
-        """Construct a Number from its raw, internal binary string of qigits
+        """Construct a Number from its raw, internal binary string of qigits.
+        value - an 8-bit binary string (e.g. another Number's raw)
 
         Right:  assert Number(1) == Number(0q82_01')
         Wrong:                      Number(b'\x82\x01')
@@ -1206,3 +1207,5 @@ Number.Suffix.internal_setup(Number)
 # TODO: subclass numbers.Complex?
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
 #  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__, conjugate, imag, real
+
+# TODO:  Better to store (qex, qan, suffixes,) than (raw,) ?

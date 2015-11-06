@@ -1372,20 +1372,15 @@ class NumberPickleTests(NumberTests):
 
     def test_pickle_protocol_0_class(self):
         if six.PY2:
-            self.assertIn(pickle.dumps(Number), (
-                # textwrap.dedent("""\
-                #     cNumber.Number
-                #     Number
-                #     p0
-                #     ."""
-                # ),   # when run via qiki_take_one
+            self.assertEqual(
+                pickle.dumps(Number),
                 textwrap.dedent("""\
                     cnumber
                     Number
                     p0
                     ."""
                 ),   # when run via qiki-python or number_playground
-            ))
+            )
         else:
             self.assertEqual(
                 pickle.dumps(Number),
@@ -1395,42 +1390,24 @@ class NumberPickleTests(NumberTests):
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
         if six.PY2:
-            self.assertIn(
+            self.assertEqual(
                 pickle.dumps(x314),
-                (
-                    # textwrap.dedent("""\
-                    #     ccopy_reg
-                    #     _reconstructor
-                    #     p0
-                    #     (cNumber.Number
-                    #     Number
-                    #     p1
-                    #     c__builtin__
-                    #     object
-                    #     p2
-                    #     Ntp3
-                    #     Rp4
-                    #     S{x314_raw}
-                    #     p5
-                    #     b."""
-                    # ).format(x314_raw=repr(x314.raw)),   # when run via qiki_take_one
-                    textwrap.dedent("""\
-                        ccopy_reg
-                        _reconstructor
-                        p0
-                        (cnumber
-                        Number
-                        p1
-                        c__builtin__
-                        object
-                        p2
-                        Ntp3
-                        Rp4
-                        S{x314_raw}
-                        p5
-                        b."""
-                    ).format(x314_raw=repr(x314.raw)),   # when run via qiki-python or number_playground
-                )
+                textwrap.dedent("""\
+                    ccopy_reg
+                    _reconstructor
+                    p0
+                    (cnumber
+                    Number
+                    p1
+                    c__builtin__
+                    object
+                    p2
+                    Ntp3
+                    Rp4
+                    S{x314_raw}
+                    p5
+                    b."""
+                ).format(x314_raw=repr(x314.raw)),   # via qiki-python or number_playground
             )
         else:
             self.assertEqual(
