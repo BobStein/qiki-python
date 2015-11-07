@@ -151,7 +151,33 @@ class Word(object):
                 assert existing_word.exists, "The form subject.verb(object) is a getter, not a setter."
             else:   # subject.verb(object, number)
                     # subject.verb(object, number, text)
-                existing_word = self.sentence(sbj=self._word_before_the_dot, vrb=self, obj=obj, num=num, txt=txt)
+                if kwargs.get('use_already', False):
+                    existing_word = self.spawn(
+                        sbj=self._word_before_the_dot.idn,
+                        vrb=self.idn,
+                        obj=obj.idn,
+                        num=num,
+                        txt=txt,
+                    )
+                    existing_word._from_sbj_vrb_obj_num_txt()
+                    if not existing_word.exists:
+                        existing_word = self.sentence(
+                            sbj=self._word_before_the_dot,
+                            vrb=self,
+                            obj=obj,
+                            num=num,
+                            txt=txt,
+                            **kwargs
+                        )
+                else:
+                    existing_word = self.sentence(
+                        sbj=self._word_before_the_dot,
+                        vrb=self,
+                        obj=obj,
+                        num=num,
+                        txt=txt,
+                        **kwargs
+                    )
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
@@ -169,6 +195,9 @@ class Word(object):
                     idn=int(self.idn)
                 )
             )
+
+    def my_txt(self):
+        return "fooey"
 
     def define(self, obj, txt, num=Number(1)):
         possibly_existing_word = self.spawn(txt)
@@ -188,8 +217,9 @@ class Word(object):
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
 
-    def sentence(self, sbj, vrb, obj, txt, num):
-        """ Construct a new sentence from a 3-word subject-verb-object
+    def sentence(self, sbj, vrb, obj, txt, num, **kwargs):
+        """
+        Construct a new sentence from a 3-word subject-verb-object.
 
         Differences between Word.sentence() and Word.spawn():
             sentence takes a Word-triple, spawn takes an idn-triple.
@@ -268,7 +298,7 @@ class Word(object):
         #     self._from_definition(word.txt)
 
     def _from_sbj_vrb_obj(self):
-        """Construct a word from its subject-verb-object"""
+        """Construct a word from its subject-verb-object."""
         # TODO:  Move to Lex
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
@@ -287,6 +317,35 @@ class Word(object):
                 self.sbj.raw,
                 self.vrb.raw,
                 self.obj.raw,
+            )
+        )
+
+    def _from_sbj_vrb_obj_num_txt(self):
+        """Construct a word from its subject-verb-object and its num and txt."""
+        # TODO:  Move to Lex
+        assert isinstance(self.sbj, Number)
+        assert isinstance(self.vrb, Number)
+        assert isinstance(self.obj, Number)
+        assert isinstance(self.num, Number)
+        assert isinstance(self.txt, six.string_types)
+        self._load_row(
+            "SELECT * FROM `{table}` "
+                "WHERE   `sbj` = ? "
+                    "AND `vrb` = ? "
+                    "AND `obj` = ? "
+                    "AND `num` = ? "
+                    "AND `txt` = ? "
+                "ORDER BY `idn` DESC "
+                "LIMIT 1"
+            .format(
+                table=self.lex._table,
+            ),
+            (
+                self.sbj.raw,
+                self.vrb.raw,
+                self.obj.raw,
+                self.num.raw,
+                self.txt,
             )
         )
 

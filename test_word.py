@@ -41,7 +41,7 @@ TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane
 class WordTests(unittest.TestCase):
 
     def setUp(self):
-        try:
+        # try:
             self.lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
             self.lex.uninstall_to_scratch()
             self.lex.install_from_scratch()
@@ -49,8 +49,8 @@ class WordTests(unittest.TestCase):
             # cursor.execute("SELECT txt FROM `{table}` ORDER BY idn ASC".format(table=self.lex._table))
             # print("Word database:", ", ".join([row[0] for row in cursor]))
             # cursor.close()
-        except:
-            self.fail()
+        # except:
+        #     self.fail()
 
     def tearDown(self):
         if not LET_DATABASE_RECORDS_REMAIN:
@@ -699,6 +699,91 @@ class WordListingInternalsTests(WordListingTests):
         self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root is Number(7), payload is Number(2).
         self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
         self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
+
+class WordUseAlready(WordTests):
+
+    def setUp(self):
+        super(WordUseAlready, self).setUp()
+        self.narcissus = self.lex.agent('narcissus')
+        self.lex.verb('like')
+
+    def test_use_already_same_default(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_same_false(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_same_true(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn, word2.idn)
+        self.assertEqual(max_idn_1, max_idn_2)
+
+
+    def test_use_already_differ_txt_default(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Puddle")
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_differ_txt_false(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_differ_txt_true(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+
+    def test_use_already_differ_num_default(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 200, "Mirror")
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_differ_num_false(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+    def test_use_already_differ_num_true(self):
+        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        max_idn_1 = self.lex.max_idn()
+        word2 = self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
+        max_idn_2 = self.lex.max_idn()
+        self.assertEqual(word1.idn+1, word2.idn)
+        self.assertEqual(max_idn_1+1, max_idn_2)
+
+
+
+
 
 
 
