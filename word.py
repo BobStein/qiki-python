@@ -96,6 +96,7 @@ class Word(object):
     def __getattr__(self, noun_txt):
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         return_value = self.lex(noun_txt)
+        # FIXME:  catch NotExist: raise NoSuchAttribute (a gross internal error)
         return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
         return return_value
 
@@ -104,8 +105,9 @@ class Word(object):
             # lex(t) in English:  Lex defines a word named t.
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
+            # FIXME:  if not exists: raise NotExist
             assert existing_word.exists, "{word} has no property {name}".format(
-                word=repr(existing_word),
+                word=repr(self),
                 name=repr(args[0]),
             )
             if existing_word.idn == self.idn:
@@ -439,7 +441,7 @@ class Word(object):
 
     def __repr__(self):
         if self.exists:
-            if self.txt:
+            if self.is_defined() and self.txt:
                 return "Word('{}')".format(self.txt)
             else:
                 return "Word({})".format(int(self.idn))

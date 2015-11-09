@@ -281,7 +281,7 @@ class WordFirstTests(WordTests):
         agent = self.lex('agent')
         self.assertEqual(agent.idn, qiki.Word._ID_AGENT)
 
-    def test_11a_noun(self):
+    def test_11a_noun_inserted(self):
         new_word = self.lex.noun('something')
         max_idn = self.lex.max_idn()
 
@@ -296,6 +296,8 @@ class WordFirstTests(WordTests):
     def test_11b_whn(self):
         define = self.lex('define')
         new_word = self.lex.noun('something')
+        self.assertReasonableWhen(define.whn)
+        self.assertReasonableWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
 
