@@ -93,9 +93,9 @@ class Word(object):
 
     TXT_TYPES = (six.string_types, six.binary_type)
 
-    def __getattr__(self, verb):
-        assert hasattr(self, 'lex'), "No lex, can't x.{vrb}".format(vrb=verb)
-        return_value = self.lex(verb)
+    def __getattr__(self, noun_txt):
+        assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
+        return_value = self.lex(noun_txt)
         return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
         return return_value
 
@@ -103,9 +103,11 @@ class Word(object):
         if self.is_lex():
             # lex(t) in English:  Lex defines a word named t.
             # lex('text') - find a word by its txt
-            assert self.idn == self._ID_LEX
             existing_word = self.spawn(*args, **kwargs)
-            assert existing_word.exists, "There is no {name}".format(name=repr(args[0]))
+            assert existing_word.exists, "{word} has no property {name}".format(
+                word=repr(existing_word),
+                name=repr(args[0]),
+            )
             if existing_word.idn == self.idn:
                 return self   # lex is a singleton.  Why is this important?
             else:
@@ -181,7 +183,7 @@ class Word(object):
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
-        elif self.is_definition():
+        elif self.is_defined():
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
             assert hasattr(self, 'lex')
@@ -369,6 +371,7 @@ class Word(object):
             self.obj = Number.from_mysql(dict_row['obj'])
             self.num = Number.from_mysql(dict_row['num'])
             self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
+            self.whn = Number.from_mysql(dict_row['whn'])
         cursor.close()
 
     def is_a(self, word, reflexive=True, recursion=10):
@@ -397,7 +400,10 @@ class Word(object):
     def is_define(self):
         return self.idn == self._ID_DEFINE
 
-    def is_definition(self):
+    def is_defined(self):
+        """Test whether a word is the product of a definition.
+
+        That is, whether the sentence that creates it uses the verb 'define'."""
         return self.vrb == self._ID_DEFINE
 
     def is_noun(self):
@@ -433,8 +439,22 @@ class Word(object):
 
     def __repr__(self):
         if self.exists:
-            return "Word({})".format(int(self.idn))
-        else:
+            if self.txt:
+                return "Word('{}')".format(self.txt)
+            else:
+                return "Word({})".format(int(self.idn))
+        elif (
+            hasattr(self, 'sbj') and
+            hasattr(self, 'vrb') and
+            hasattr(self, 'obj') and
+            hasattr(self, 'txt') and
+            hasattr(self, 'num') and
+            isinstance(self.sbj, qiki.Number) and
+            isinstance(self.vrb, qiki.Number) and
+            isinstance(self.obj, qiki.Number) and
+            isinstance(self.txt, six.string_types) and
+            isinstance(self.num, qiki.Number)
+        ):
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
                 sbj=self.sbj.qstring(),
                 vrb=self.vrb.qstring(),
@@ -442,8 +462,10 @@ class Word(object):
                 txt=repr(self.txt),
                 num=self.num.qstring(),
             ))
+        else:
+            return "Word(in a strange state)"
 
-        # if hasattr(self, 'txt') and self.is_definition():
+        # if hasattr(self, 'txt') and self.is_defined():
         #     return "Word('{0}')".format(self.txt)
         # elif self.exists:
         #     return "Word(Number({idn_qstring}))".format(idn_qstring=self.idn.qstring())
@@ -471,6 +493,7 @@ class Word(object):
                                    # TODO: but then what about w.sbj.add_suffix(n), etc.?
                                    # So this passing through Number() is a bad idea.
                                    # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
+
     @idn.setter
     def idn(self, value):
         raise RuntimeError("Cannot set a Word's idn")
@@ -509,7 +532,6 @@ class Word(object):
         # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
 
         self.lex.insert_word(self)
-        self.exists = True
 
     # noinspection PyClassHasNoInit
     class DefineDuplicateException(Exception):
@@ -611,15 +633,17 @@ class LexMySQL(Lex):
         self._table = kwargs.pop('table')
         self._connection = mysql.connector.connect(**kwargs)
         self.lex = self
+        self.last_inserted_whn = None
         try:
             super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
             assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
+                # TODO:  Better detection of automatic table creation opportunity.
                 self.install_from_scratch()
-                # TODO: Don't super() twice -- cuz it's not D.R.Y.
-                # TODO: Don't install in unit tests if we're about to uninstall.
+                # TODO:  Don't super() twice -- cuz it's not D.R.Y.
+                # TODO:  Don't install in unit tests if we're about to uninstall.
                 super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
             else:
                 assert False, exception_message
@@ -653,7 +677,7 @@ class LexMySQL(Lex):
                 DEFAULT COLLATE = utf8mb4_general_ci
             ;
         """.format(table=self._table))
-        # TODO: other keys?  sbj-vrb?   obj-vrb?
+        # TODO:  other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
         self._install_seminal_words()
 
@@ -738,13 +762,17 @@ class LexMySQL(Lex):
         # TODO:  Start and number parameters, for LIMIT clause.
         cursor = self._cursor()
         cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
-        ids = [Number.from_mysql(row[0]) for row in cursor]
+        idns = []
+        for row in cursor:
+            idn = Number.from_mysql(row[0])
+            idns.append(idn)
         cursor.close()
-        return ids
+        return idns
 
     def insert_word(self, word):
         cursor = self._cursor()
         assert not word.idn.is_nan()
+        whn = Number(time.time())
         cursor.execute(
             "INSERT INTO `{table}` "
                    "(idn, sbj, vrb, obj, num, txt, whn) "
@@ -759,19 +787,54 @@ class LexMySQL(Lex):
                 word.obj.raw,
                 word.num.raw,
                 word.txt,
-                Number(time.time()).raw,
+                whn.raw,
             )
         )
         self._connection.commit()
         cursor.close()
+        word.whn = whn
+        word.exists = True
 
     def _cursor(self):
         return self._connection.cursor(prepared=True)
 
-    def find_obj_by_vrb(self, noun, verb):
-        # cursor = self._cursor()
-        # cursor.execute("SELECT qq.idn ")
-        return [noun, verb]
+    def find(self, sbj=None, vrb=None, obj=None):
+        query = "SELECT idn FROM {table} WHERE 1 ".format(table=self._table)
+        parameters = []
+        if sbj is not None:   query += " AND sbj=? ";   parameters.append(sbj.raw)
+        if vrb is not None:   query += " AND vrb=? ";   parameters.append(vrb.raw)
+        if obj is not None:   query += " AND obj=? ";   parameters.append(obj.raw)
+        query += " ORDER BY idn "
+        return self._select_words(query, parameters)
+
+    def _select_words(self, sql, parameters):
+        """
+        Read an array of words based on an SELECT idn FROM {table} query.
+
+        Same parameters as cursor.execute,
+        namely a MySQL string and a tuple of ?-value parameters.
+        """
+        cursor = self.lex._connection.cursor(prepared=True)
+        # TODO:  Give up prepared=True so we can buffered=True so we can have one for-loop below?
+        # Another reason to use prepared=False:  http://stackoverflow.com/a/24842296/673991
+        # Or use cursor(cursor_class=MySQLCursorPrepared) - see last line of:
+        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
+        cursor.execute(sql, parameters)
+        idns = []
+        for row in cursor:
+            assert len(row) == 1, "Expecting 1 column only, got " + repr(row)
+            idn = Number.from_mysql(row[0])
+            # word = self(idn)   # InternalError: Unread result found.
+            # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
+            # SEE:  http://stackoverflow.com/a/17268389/673991
+            # And a cursor can't be both prepared and buffered.
+            idns.append(idn)
+        words = []
+        for idn in idns:
+            word = self(idn)
+            words.append(word)
+        cursor.close()
+        return words
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
@@ -779,11 +842,27 @@ class LexMySQL(Lex):
 # DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
 # DONE:  Or make a class LexMysql(Lex)
 
-# TODO: Do not raise built-in classes, raise subclasses of built-in exceptions
-# TODO: Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
-# TODO: ...If so they would need to be dynamic properties -- and avoid infinite recursion!
-# TODO: ...One way to do this might be x = Word(idn) would not generate database activity
-# TODO: ......unless some other method were called, e.g. x.vrb
-# TODO: Singleton pattern, so e.g. Word('noun') is Word('noun')
-# TODO: Logging callback
-# TODO: MySQL decouple -- reinvent some db abstraction class?
+# TODO:  Do not raise built-in classes, raise subclasses of built-in exceptions
+# TODO:  Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
+# TODO:  ...If so they would need to be dynamic properties -- and avoid infinite recursion!
+# TODO:  ...One way to do this might be x = Word(idn) would not generate database activity
+# TODO:  ......unless some other method were called, e.g. x.vrb
+# TODO:  Singleton pattern, so e.g. Word('noun') is Word('noun')
+# TODO:  Logging callback
+# TODO:  MySQL decouple -- reinvent some db abstraction class?
+
+# TODO:  Exotic syntax?
+#        (s)[v](o)
+#        (s)[v](o, 2)
+#        (s)[v](o, "why")
+#    Or:
+#        [s](v)[o]
+#        [s](v, 2)[o]
+#        [s](v, "why")[o]
+
+# TODO:  Implement use_already as a "verb property".  Aka "adverb"??
+# lex.noun('adverb')
+# lex.adverb('use_already')
+# like = lex.verb('like')
+# lex.use_already(like, 0 for defaults-to-False or 1 for True)
+# alice.like(bob, "but just as a friend")   # use_already=True unnecessary
