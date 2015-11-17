@@ -133,9 +133,12 @@ class NumberBasicTests(NumberTests):
         n =               Number('0q83_03E8')
         self.assertEqual("Number('0q83_03E8')", repr(n))
 
+    def test_zero(self):
+        self.assertEqual('0q80', str(Number.ZERO))
+        self.assertEqual(0, int(Number.ZERO))
+        self.assertEqual(0.0, float(Number.ZERO))
 
-
-    # noinspection PyUnresolvedReferences
+    # yes_inspection PyUnresolvedReferences
     def test_nan(self):
         self.assertEqual('0q', str(Number.NAN))
         self.assertEqual(b'', Number.NAN.raw)
@@ -146,7 +149,7 @@ class NumberBasicTests(NumberTests):
     def test_nan_default(self):
         self.assertEqual('0q', Number().qstring())
 
-    # noinspection PyUnresolvedReferences
+    # yes_inspection PyUnresolvedReferences
     def test_nan_equality(self):
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
@@ -155,7 +158,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(nan, Number(float('nan')))
         self.assertEqual(nan, float('nan'))
 
-    # noinspection PyUnresolvedReferences
+    # yes_inspection PyUnresolvedReferences
     def test_nan_inequality(self):
         nan = Number.NAN
         self.assertNotEqual(nan, Number(0))
@@ -254,13 +257,13 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(1.0, float(Number('0q82_00C0')))
         self.assertEqual(1.0, float(Number('0q82_0080')))
         self.assertEqual(1.0, float(Number('0q82_0040')))
-        self.assertEqual(1.0, float(Number('0q82_00000000')))
-        self.assertEqual(1.0, float(Number('0q82_00')))
+        self.assertEqual(1.0, float(Number('0q82__0000__0000')))
+        self.assertEqual(1.0, float(Number('0q82__0000')))
         self.assertEqual(1.0, float(Number('0q82')))
 
     def test_alias_one_neg(self):
         self.assertEqual(-1.0, float(Number('0q7D_FF')))
-        self.assertEqual(-1.0, float(Number('0q7D_FF00')))
+        self.assertEqual(-1.0, float(Number('0q7D_FF__0000')))
         self.assertEqual(-1.0, float(Number('0q7D_FF3C7A38A1F250DE7E9071')))
         self.assertEqual(-1.0, float(Number('0q7D_FF40')))
         self.assertEqual(-1.0, float(Number('0q7D_FF80')))
@@ -275,8 +278,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(256.0, float(Number('0q83_00C0')))
         self.assertEqual(256.0, float(Number('0q83_0080')))
         self.assertEqual(256.0, float(Number('0q83_0040')))
-        self.assertEqual(256.0, float(Number('0q83_00000000')))
-        self.assertEqual(256.0, float(Number('0q83_00')))
+        self.assertEqual(256.0, float(Number('0q83__0000__0000')))
+        self.assertEqual(256.0, float(Number('0q83__0000')))
         self.assertEqual(256.0, float(Number('0q83')))
 
         self.assertEqual(65536.0, float(Number('0q84_01')))
@@ -284,13 +287,13 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(65536.0, float(Number('0q84_00C0')))
         self.assertEqual(65536.0, float(Number('0q84_0080')))
         self.assertEqual(65536.0, float(Number('0q84_0040')))
-        self.assertEqual(65536.0, float(Number('0q84_00000000')))
-        self.assertEqual(65536.0, float(Number('0q84_00')))
+        self.assertEqual(65536.0, float(Number('0q84__0000__0000')))
+        self.assertEqual(65536.0, float(Number('0q84__0000')))
         self.assertEqual(65536.0, float(Number('0q84')))
 
     def test_alias_negative(self):
         self.assertEqual(-256.0, float(Number('0q7C_FF')))
-        self.assertEqual(-256.0, float(Number('0q7C_FF00')))
+        self.assertEqual(-256.0, float(Number('0q7C_FF__0000')))
         self.assertEqual(-256.0, float(Number('0q7C_FF3C7A38A1F250DE7E9071')))
         self.assertEqual(-256.0, float(Number('0q7C_FF40')))
         self.assertEqual(-256.0, float(Number('0q7C_FF80')))
@@ -300,7 +303,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-256.0, float(Number('0q7D')))
 
         self.assertEqual(-65536.0, float(Number('0q7B_FF')))
-        self.assertEqual(-65536.0, float(Number('0q7B_FF00')))
+        self.assertEqual(-65536.0, float(Number('0q7B_FF__0000')))
         self.assertEqual(-65536.0, float(Number('0q7B_FF3C7A38A1F250DE7E9071')))
         self.assertEqual(-65536.0, float(Number('0q7B_FF40')))
         self.assertEqual(-65536.0, float(Number('0q7B_FF80')))
@@ -315,8 +318,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(1.0/256.0, float(Number('0q81FF_00C0')))
         self.assertEqual(1.0/256.0, float(Number('0q81FF_0080')))
         self.assertEqual(1.0/256.0, float(Number('0q81FF_0040')))
-        self.assertEqual(1.0/256.0, float(Number('0q81FF_00000000')))
-        self.assertEqual(1.0/256.0, float(Number('0q81FF_00')))
+        self.assertEqual(1.0/256.0, float(Number('0q81FF__0000__0000')))
+        self.assertEqual(1.0/256.0, float(Number('0q81FF__0000')))
         self.assertEqual(1.0/256.0, float(Number('0q81FF')))
 
         self.assertEqual(1.0/65536.0, float(Number('0q81FE_01')))
@@ -325,12 +328,12 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(1.0/65536.0, float(Number('0q81FE_0080')))
         self.assertEqual(1.0/65536.0, float(Number('0q81FE_0040')))
         self.assertEqual(1.0/65536.0, float(Number('0q81FE_00000000')))
-        self.assertEqual(1.0/65536.0, float(Number('0q81FE_00')))
+        self.assertEqual(1.0/65536.0, float(Number('0q81FE__0000')))
         self.assertEqual(1.0/65536.0, float(Number('0q81FE')))
 
     def test_alias_negative_fractional(self):
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF')))
-        self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF00')))
+        self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF__0000')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF3C7A38A1F250DE7E9071')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF40')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FF80')))
@@ -340,7 +343,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-1.0/256.0, float(Number('0q7E01')))
 
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF')))
-        self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF00')))
+        self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF__0000')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF3C7A38A1F250DE7E9071')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF40')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF80')))
@@ -1123,7 +1126,8 @@ class NumberBasicTests(NumberTests):
         n = Number(1)
         self.assertIsInstance(n, numbers.Number)
 
-    ################## new INDIVIDUAL tests go above here ###########################
+
+################## new INDIVIDUAL tests go above here ###########################
 
 
 
@@ -1265,7 +1269,7 @@ class NumberIsTests(NumberTests):
         self.assertTrue(Number.NAN.is_nan())
 
     # noinspection PyUnresolvedReferences,PyUnusedLocal
-    def assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
+    def someday_assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
         number = Number(number_able)
         if is_zero is not None:
             self.assertEqual(is_zero, number.is_zero())
@@ -1365,6 +1369,48 @@ class NumberMathTests(NumberTests):
             self.assert_inc_works_on(power_of_two+1)
             self.assert_inc_works_on(power_of_two+2)
             power_of_two *= 2
+
+
+class NumberComplex(NumberTests):
+
+    def test_01_real(self):
+        n = Number(1)
+        self.assertEqual(1.0, float(n))
+        self.assertEqual(1.0, float(n.real))
+
+    def test_02_imag_zero(self):
+        n = Number(1)
+        self.assertEqual(1.0, float(n))
+        self.assertEqual(0.0, float(n.imag))
+
+    def test_03_imag(self):
+        n = Number('0q82_07__8209_6A0300')
+        self.assertEqual('0q82_07', str(n.real))
+        self.assertEqual('0q82_09', str(n.imag))
+        self.assertEqual(7.0, float(n.real))
+        self.assertEqual(9.0, float(n.imag))
+        self.assertEqual('0q82_07__8209_6A0300', str(n))   # make sure n unchanged by all that
+
+    def test_04_complex(self):
+        n = Number(888+111j)
+        self.assertEqual(888.0, float(n.real))
+        self.assertEqual(111.0, float(n.imag))
+        self.assertEqual(888.0+111.0j, complex(n))
+        self.assertEqual(888.0, float(n))
+
+    def test_09_imag_first(self):
+        n = Number('0q82_07__8209_6A0300__8205_6A0300')
+        self.assertEqual(7.0, float(n.real))
+        self.assertEqual(9.0, float(n.imag))
+        n = Number('0q82_07__8205_6A0300__8209_6A0300')
+        self.assertEqual(7.0, float(n.real))
+        self.assertEqual(5.0, float(n.imag))
+
+# TODO:  Test for all the operations in this TypeError:
+# Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
+# __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__,
+# conjugate,
+# DONE:  imag, real
 
 
 class NumberPickleTests(NumberTests):
@@ -1494,6 +1540,34 @@ class NumberSuffixTests(NumberTests):
     def test_add_suffix_qstring_payload(self):
         self.assertEqual('0q82014455330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring(underscore=0))
         self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
+
+    def test_delete_suffix(self):
+        n = Number('0q82_01__990100')
+        n11 = Number(n)
+        n11.delete_suffix(0x11)
+        n99 = Number(n)
+        n99.delete_suffix(0x99)
+        self.assertEqual('0q82_01__990100', str(n))
+        self.assertEqual('0q82_01__990100', str(n11))
+        self.assertEqual('0q82_01', str(n99))
+
+    def test_delete_suffix_among_many(self):
+        n = Number('0q82_01__990100__880100__770100')
+        n77 = Number(n)
+        n77.delete_suffix(0x77)
+        n88 = Number(n)
+        n88.delete_suffix(0x88)
+        n99 = Number(n)
+        n99.delete_suffix(0x99)
+        self.assertEqual('0q82_01__990100__880100', str(n77))
+        self.assertEqual('0q82_01__990100__770100', str(n88))
+        self.assertEqual('0q82_01__880100__770100', str(n99))
+
+    def test_delete_suffix_multiple(self):
+        n = Number('0q82_01__990100__880100__880100__110100__880100__880100__770100')
+        n88 = Number(n)
+        n88.delete_suffix(0x88)
+        self.assertEqual('0q82_01__990100__110100__770100', str(n88))
 
     # noinspection PyClassHasNoInit
     def test_suffix_weird_type(self):
@@ -1642,6 +1716,13 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(Number(-123.75), Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
         self.assertEqual(       -123.75 , Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
         self.assertIs(       Number, type(Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
+
+    def test_suffix_extract_number_missing(self):
+        self.assertEqual(Number(88), Number(1).add_suffix(0x11, Number(88)).get_suffix_number(0x11))
+        with self.assertRaises(IndexError):
+            Number(1).add_suffix(0x99, Number(88)).get_suffix_number(0x11)
+        with self.assertRaises(IndexError):
+            Number(1).get_suffix_number(0x11)
 
     def test_suffix_number_parse(self):
         n = Number(99).add_suffix(0x11, Number(356))
@@ -1946,6 +2027,7 @@ class PythonTests(NumberTests):
         self.assertFloatNotSame(+0.0, -0.0)
         self.assertFloatNotSame(-0.0, +0.0)
         self.assertFloatSame(-0.0, -0.0)
+
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])

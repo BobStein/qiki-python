@@ -38,6 +38,8 @@ class Number(numbers.Number):
             self._from_string(content)
         elif content is None:
             self.raw = self.RAW_NAN
+        elif isinstance(content, complex):
+            self._from_complex(content)
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -222,6 +224,26 @@ class Number(numbers.Number):
     def _inc_via_integer(self):
         return Number(int(self) + 1).raw
 
+    @property
+    def real(self):
+        if not self.is_suffixed():
+            return self
+        return_value = type(self)(self)
+        # THANKS:  http://stackoverflow.com/a/14209708/673991
+        return_value.delete_suffix(self.Suffix.TYPE_IMAGINARY)
+        return return_value
+
+    @property
+    def imag(self):
+        if not self.is_suffixed():
+            return self.ZERO
+        try:
+            return self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
+        except IndexError:
+            return self.ZERO
+
+
+
 
     # "from" conversions:  Number <-- other type
     # ------------------------------------------
@@ -346,6 +368,9 @@ class Number(numbers.Number):
 
         return qex + qan
 
+    def _from_complex(self, c):
+        self._from_float(c.real)
+        self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
 
     # "to" conversions:  Number --> other type
     # ----------------------------------------
@@ -390,6 +415,9 @@ class Number(numbers.Number):
 
     def __long__(self):
        return long(self.__int__())
+
+    def __complex__(self):
+        return complex(float(self.real), float(self.imag))
 
     def __int__by_zone_dictionary(self):
         return self.__int__zone_dict[self.zone](self)
@@ -455,10 +483,11 @@ class Number(numbers.Number):
         return the_int
 
     def __float__(self):
-        float_by_dictionary = self.__float__by_zone_dictionary()
-        assert floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
+        x = self.real
+        float_by_dictionary = x.__float__by_zone_dictionary()
+        assert floats_really_same(float_by_dictionary, x.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
-                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
+                repr(x), float_by_dictionary, x.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
@@ -675,7 +704,8 @@ class Number(numbers.Number):
 
         MAX_PAYLOAD_LENGTH = 250
 
-        TYPE_LISTING = 0x1D
+        TYPE_LISTING = 0x1D   # "ID" in 1337
+        TYPE_IMAGINARY = 0x6A   # 'j' in ASCII
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -739,11 +769,22 @@ class Number(numbers.Number):
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
 
+    # TODO: def add_suffix(Suffix)?
+
     def add_suffix(self, new_type=None, payload=b''):
         if self.is_nan():
             raise ValueError
         suffix = self.Suffix(new_type, payload)
         self.raw += suffix.raw
+        return self
+
+    def delete_suffix(self, old_type=None):
+        pieces = self.parse_suffixes()
+        new_self = pieces[0]
+        for piece in pieces[1:]:
+            if piece.type_ != old_type:
+                new_self.add_suffix(piece.type_, piece.payload)
+        self.raw = new_self.raw
         return self
 
     def get_suffix(self, sought_type):
@@ -816,6 +857,7 @@ class Number(numbers.Number):
         # Constants
         # ---------
         cls.NAN = cls(None)
+        cls.ZERO = cls(0)
         cls.POSITIVE_INFINITY = cls.from_raw(cls.RAW_INF)
         cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
 

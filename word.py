@@ -64,7 +64,7 @@ class Word(object):
             self._from_word(content)
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
-            # TODO: If this is only used via spawn(), then move this code there somehow?
+            # TODO:  If this is only used via spawn(), then move this code there somehow?
             self.sbj = sbj
             self.vrb = vrb
             self.obj = obj
@@ -292,7 +292,7 @@ class Word(object):
 
     def _from_word(self, word):
         if word.is_lex():
-            raise ValueError   # lex is a singleton.  TODO: Explain why this should be.
+            raise ValueError   # lex is a singleton.  TODO:  Explain why this should be.
         assert word.exists
         self.lex = word.lex
         self._from_idn(word.idn)
@@ -389,7 +389,7 @@ class Word(object):
         parent = self.spawn(self.obj)
         if parent.idn == self.idn:
             return False
-        return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO: limit recursion
+        return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO:  limit recursion
 
     def is_a_noun(self, reflexive=True, **kwargs):
         assert hasattr(self, 'lex')
@@ -451,11 +451,11 @@ class Word(object):
             hasattr(self, 'obj') and
             hasattr(self, 'txt') and
             hasattr(self, 'num') and
-            isinstance(self.sbj, qiki.Number) and
-            isinstance(self.vrb, qiki.Number) and
-            isinstance(self.obj, qiki.Number) and
+            isinstance(self.sbj, Number) and
+            isinstance(self.vrb, Number) and
+            isinstance(self.obj, Number) and
             isinstance(self.txt, six.string_types) and
-            isinstance(self.num, qiki.Number)
+            isinstance(self.num, Number)
         ):
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
                 sbj=self.sbj.qstring(),
@@ -492,7 +492,7 @@ class Word(object):
     @property
     def idn(self):
         return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
-                                   # TODO: but then what about w.sbj.add_suffix(n), etc.?
+                                   # TODO:  but then what about w.sbj.add_suffix(n), etc.?
                                    # So this passing through Number() is a bad idea.
                                    # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
 
@@ -526,13 +526,11 @@ class Word(object):
         assert not self.exists
         if self._idn is None:
             self._idn = self.max_idn().inc()   # AUTO sorta INCREMENT
-            # TODO: Race condition?
+            # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
+            # Or store latest idn in another table
+            # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
             assert not self.idn.is_nan()
         assert isinstance(self.idn, Number)
-        # TODO: named substitutions with NON-prepared statements??
-        # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
-        # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
-
         self.lex.insert_word(self)
 
     # noinspection PyClassHasNoInit
@@ -718,7 +716,7 @@ class LexMySQL(Lex):
         except Word.MissingFromLex:
             self._install_word(_idn, _obj, _txt)
             word = self.spawn(_idn)
-        # if not word.exists:   # TODO: is this really necessary any longer?
+        # if not word.exists:   # TODO:  is this really necessary any longer?
         #     self._install_word(_idn, _obj, _txt)
         #     word = self.spawn(_idn)
         assert word.exists
@@ -792,6 +790,9 @@ class LexMySQL(Lex):
                 whn.raw,
             )
         )
+        # TODO:  named substitutions with NON-prepared statements??
+        # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+        # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
         self._connection.commit()
         cursor.close()
         word.whn = whn
@@ -826,7 +827,7 @@ class LexMySQL(Lex):
         for row in cursor:
             assert len(row) == 1, "Expecting 1 column only, got " + repr(row)
             idn = Number.from_mysql(row[0])
-            # word = self(idn)   # InternalError: Unread result found.
+            # word = self(idn)   # Doing this raises InternalError: Unread result found.
             # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
             # SEE:  http://stackoverflow.com/a/17268389/673991
             # And a cursor can't be both prepared and buffered.
