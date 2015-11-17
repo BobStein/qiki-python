@@ -228,10 +228,8 @@ class Number(numbers.Number):
     def real(self):
         if not self.is_suffixed():
             return self
-        return_value = type(self)(self)
-        # THANKS:  http://stackoverflow.com/a/14209708/673991
-        return_value.delete_suffix(self.Suffix.TYPE_IMAGINARY)
-        return return_value
+        pieces = self.parse_suffixes()
+        return pieces[0]
 
     @property
     def imag(self):
@@ -371,6 +369,7 @@ class Number(numbers.Number):
     def _from_complex(self, c):
         self._from_float(c.real)
         self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
+        # THANKS:  http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
     # ----------------------------------------
@@ -704,8 +703,8 @@ class Number(numbers.Number):
 
         MAX_PAYLOAD_LENGTH = 250
 
-        TYPE_LISTING = 0x1D   # "ID" in 1337
-        TYPE_IMAGINARY = 0x6A   # 'j' in ASCII
+        TYPE_LISTING   = 0x1D   # "ID" in 1337
+        TYPE_IMAGINARY = 0x6A   # 'j' in ASCII (three 0x6A suffixes for quaternions, etc.)
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))

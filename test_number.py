@@ -1398,6 +1398,12 @@ class NumberComplex(NumberTests):
         self.assertEqual(888.0+111.0j, complex(n))
         self.assertEqual(888.0, float(n))
 
+    def test_05_real_suffixed(self):
+        self.assertEqual('0q82_11', str(Number('0q82_11').real))
+        self.assertEqual('0q82_11', str(Number('0q82_11__0000').real))
+        self.assertEqual('0q82_11', str(Number('0q82_11__8201_0200').real))
+        self.assertEqual('0q82_11', str(Number('0q82_11__8201_0200').real))
+
     def test_09_imag_first(self):
         n = Number('0q82_07__8209_6A0300__8205_6A0300')
         self.assertEqual(7.0, float(n.real))
@@ -1513,6 +1519,12 @@ class NumberPickleTests(NumberTests):
 
 
 class NumberSuffixTests(NumberTests):
+
+    # TODO:  Replace the indiscriminate use of suffix types here with a single
+    # suffix type, e.g. Number.Suffix.TYPE_NOP,
+    # that's reserved for testing, and has no value implications.
+    # (So, for example, a suffix someday for rational numbers might modify
+    # the value returned by float(), and not break tests here when it's implemented.)
 
     def test_add_suffix(self):
         self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
@@ -1762,6 +1774,20 @@ class NumberSuffixTests(NumberTests):
         self.assertTrue(Number(22).add_suffix(0x11, Number(42)).is_suffixed())
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
+
+    def test_suffix_float(self):
+        self.assertEqual(16.0, float(Number('0q82_10')))
+        self.assertEqual(16.0, float(Number('0q82_10__0000')))
+        self.assertEqual(16.0, float(Number('0q82_10__000100')))
+        self.assertEqual(16.0, float(Number('0q82_10__010100')))
+        self.assertEqual(16.0, float(Number('0q82_10__020100')))
+        self.assertEqual(16.0, float(Number('0q82_10__110100')))
+        self.assertEqual(16.0, float(Number('0q82_10__880100')))
+        self.assertEqual(16.0, float(Number('0q82_10__FE0100')))
+        self.assertEqual(16.0, float(Number('0q82_10__FF0100')))
+        self.assertEqual(16.0, float(Number('0q82_10__FFFFFF_FF0400')))
+        self.assertEqual(16.0, float(Number('0q82_10__123456_780400')))
+        self.assertEqual(16.0625, float(Number('0q82_1010')))
 
 
 class NumberDictionaryKeyTests(NumberTests):
