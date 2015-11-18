@@ -240,6 +240,13 @@ class Number(numbers.Number):
         except IndexError:
             return self.ZERO
 
+    def conjugate(self):
+        return_value = self.real
+        imag = self.imag
+        if imag != self.ZERO:
+            return_value.add_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
+        return return_value
+
 
 
 
@@ -673,23 +680,26 @@ class Number(numbers.Number):
     class Suffix(object):
         """A Number can have suffixes.
 
-        Format of a nonempty suffix (in hexadecimal digits):
+        Format of a nonempty suffix (uppercase letters represent hexadecimal digits):
             PPPPPP_TTLL00
         where:
             PPPPPP - 0 to 250 byte payload
-            _  - underscore is a conventional qstring delimiter between payload and the rest
-            TT - type code of the suffix
-            LL - length, number of bytes in the type and payload, 0x00 to 0xFA
-            00 - NUL byte
+                 _ - underscore is a conventional qstring delimiter between payload and the rest
+                TT - type code of the suffix
+                LL - length, number of bytes in the type and payload, 0x00 to 0xFA
+                00 - NUL byte
 
-        The empty suffix is two NUL bytes (or LL length is zero, and there is no type and no payload):
+        The "empty" suffix is two NUL bytes:
             0000
+
+        That's like saying LL is 00 and there are no type or payload parts.
+        (It is not type 00, which is otherwise available.)
 
         The NUL byte is what indicates there is a suffix.
         This is why an unsuffixed number has all its right-end 00-bytes stripped.
 
         A number can have multiple suffixes.
-        If the payload of a suffix is itself a number, suffixes can be nested.
+        If the payload of a suffix is itself a number, suffixes could be nested.
 
         Instance properties:
             payload - byte string
@@ -703,8 +713,9 @@ class Number(numbers.Number):
 
         MAX_PAYLOAD_LENGTH = 250
 
-        TYPE_LISTING   = 0x1D   # "ID" in 1337
+        TYPE_LISTING   = 0x1D   # 'ID' in 1337
         TYPE_IMAGINARY = 0x6A   # 'j' in ASCII (three 0x6A suffixes for quaternions, etc.)
+        TYPE_TEST      = 0x7F   # for unit testing, no value, arbitrary payload.
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -1214,6 +1225,7 @@ Number.Suffix.internal_setup(Number)
 # TODO:  Numpy types
 # SEE:  http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO:  other Numpy compatibilities?
+# TODO:  fractions.Fraction -- rational numbers
 
 # TODO:  Number.inc() native - taking advantage of raw encodings
 # TODO:  __neg__ native - taking advantage of two's complement encoding
@@ -1228,7 +1240,8 @@ Number.Suffix.internal_setup(Number)
 # TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should be '0q'
-# TODO:  Number.natural() should be int() if whole, float if non-whole -- and .__str__() should call .natural()
+# TODO:  Number.natural() should be int() if whole, float if non-whole.
+# Maybe .__str__() should call .natural()
 
 # FIXME:  Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
 #   Is that an IEEE float problem or a qiki.Number problem?
@@ -1240,13 +1253,14 @@ Number.Suffix.internal_setup(Number)
 # Number class is unsuffixed, and derived class is suffixed?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
 
-# TODO:  subclass numbers.Integral?
+# TODO:  (big deal) subclass numbers.Integral?
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
 # __floordiv__, __invert__, __lshift__, __mod__, __mul__, __or__, __pos__, __pow__, __rand__, __rdiv__,
 # __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
 # __rxor__, __truediv__, __trunc__, __xor__
-# TODO: subclass numbers.Complex?
+
+# TODO:  (little deal) subclass numbers.Complex?
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
 #  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__, conjugate, imag, real
 
-# TODO:  Better to store (qex, qan, suffixes,) than (raw,) ?
+# TODO:  Better object internals:  store separate qex, qan, suffixes (and synthesize raw on demand)

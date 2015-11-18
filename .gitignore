@@ -1,10 +1,10 @@
 # Anachronistic code goes in the museum
 museum/
 
-# Qiki Database credentials
+# Database credentials
 secure/
 
-# Django SQLite database
+# Django SQLite experimental database
 db.sqlite3
 
 

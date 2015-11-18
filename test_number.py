@@ -1374,43 +1374,82 @@ class NumberMathTests(NumberTests):
 class NumberComplex(NumberTests):
 
     def test_01_real(self):
+        """Test Number.real."""
         n = Number(1)
         self.assertEqual(1.0, float(n))
         self.assertEqual(1.0, float(n.real))
 
-    def test_02_imag_zero(self):
+    def test_02a_imag_zero(self):
+        """Test Number.imag for a real number."""
         n = Number(1)
         self.assertEqual(1.0, float(n))
         self.assertEqual(0.0, float(n.imag))
 
-    def test_03_imag(self):
+    def test_02b_imag(self):
+        """Test Number.imag for a complex number."""
         n = Number('0q82_07__8209_6A0300')
-        self.assertEqual('0q82_07', str(n.real))
-        self.assertEqual('0q82_09', str(n.imag))
+        self.assertEqual('0q82_07', n.real.qstring())
+        self.assertEqual('0q82_09', n.imag.qstring())
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
-        self.assertEqual('0q82_07__8209_6A0300', str(n))   # make sure n unchanged by all that
+        self.assertEqual('0q82_07__8209_6A0300', n.qstring())   # make sure n unchanged by all that
 
-    def test_04_complex(self):
+    def test_03a_complex_conversion(self):
+        """Test complex --> Number --> complex."""
         n = Number(888+111j)
         self.assertEqual(888.0, float(n.real))
         self.assertEqual(111.0, float(n.imag))
         self.assertEqual(888.0+111.0j, complex(n))
         self.assertEqual(888.0, float(n))
 
-    def test_05_real_suffixed(self):
-        self.assertEqual('0q82_11', str(Number('0q82_11').real))
-        self.assertEqual('0q82_11', str(Number('0q82_11__0000').real))
-        self.assertEqual('0q82_11', str(Number('0q82_11__8201_0200').real))
-        self.assertEqual('0q82_11', str(Number('0q82_11__8201_0200').real))
+    def test_03b_complex_phantom_real(self):
+        """Test complex with a zero imaginary --> Number --> real."""
+        self.assertEqual('0q82_2A__826F_6A0300', Number((42+111j)).qstring())
+        self.assertEqual('0q82_2A', Number((42+111j) + (42-111j)).qstring())
+
+    def test_04_real_suffixed(self):
+        """Test Number.real ignores other suffixes."""
+        self.assertEqual('0q82_11', Number('0q82_11').real.qstring())
+        self.assertEqual('0q82_11', Number('0q82_11__0000').real.qstring())
+        self.assertEqual('0q82_11', Number('0q82_11__8201_7F0300').real.qstring())
+        self.assertEqual('0q82_11', Number('0q82_11__8201_7F0300').real.qstring())
+
+    def test_05a_conjugate(self):
+        self.assertEqual(42.0, complex(Number(42.0).conjugate()))
+        self.assertEqual('0q82_2A', Number(42.0).qstring())
+        self.assertEqual('0q82_2A', Number(42.0).conjugate().qstring())
+
+    def test_05b_conjugate(self):
+        n = 888+111j
+        self.assertEqual(888-111j, n.conjugate())
+        self.assertEqual(888-111j, complex(Number(n).conjugate()))
+
+    def test_06a_equal(self):
+        self.assertEqual(888+111j, Number(888+111j))
+        self.assertNotEqual(888-111j, Number(888+111j))
+        self.assertNotEqual(888+111j, Number(888-111j))
+        self.assertEqual(888-111j, Number(888-111j))
+
+    def test_06b_greater(self):
+        """Complex comparisons are not allowed."""
+        x = 888+111j
+        x_bar = 888-111j
+        with self.assertRaises(TypeError):
+            x_bar < x
+        n = Number(x)
+        n_bar = Number(x_bar)
+        with self.assertRaises(TypeError):
+            n_bar < n
 
     def test_09_imag_first(self):
+        """Number.imag only gts the first imaginary suffix, ignoring others."""
         n = Number('0q82_07__8209_6A0300__8205_6A0300')
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
         n = Number('0q82_07__8205_6A0300__8209_6A0300')
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(5.0, float(n.imag))
+
 
 # TODO:  Test for all the operations in this TypeError:
 # Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
@@ -2229,3 +2268,8 @@ def py23(if2, if3):
 if __name__ == '__main__':
     import unittest
     unittest.main()
+
+
+# TODO:  Don't test verbatim against str().  Test .qstring() instead.
+# Because now '0q82_01' == str(Number(1))
+# But someday maybe '1' == str(Number(1))
