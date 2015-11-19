@@ -12,7 +12,8 @@ import textwrap
 from number import *
 
 
-TEST_NUMBER_PLATEAUS = False   # E.g. 0q82 == 0q82_01
+TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL = False   # E.g. 0q82 == 0q82_01
+TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL = False   # E.g. 0q82_01 == 0q82_01__80_6A0200
 
 
 class NumberTests(unittest.TestCase):
@@ -87,10 +88,6 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q82', Number('0q82').qstring())
         self.assertEqual('0q80', Number('0q80').qstring())
         self.assertEqual('0q', Number('0q').qstring())
-
-    if TEST_NUMBER_PLATEAUS:
-        def test_redundant_one(self):
-            self.assertEqual(Number('0q82'), Number('0q82_01'))
 
     def test_from_bytearray(self):
         self.assertEqual(Number('0q82_2A'), Number.from_bytearray(bytearray(b'\x82\x2A')))
@@ -351,6 +348,20 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FFF0')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FFFF')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E02')))
+
+    if TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL:
+        def test_alias_equality(self):
+            """Test number plateaus at +/-256**+/-n for n=0,1,2."""
+            self.assertEqual(Number('0q84'), Number('0q84_01'))        #  256**2
+            self.assertEqual(Number('0q83'), Number('0q83_01'))        #  256**1
+            self.assertEqual(Number('0q82'), Number('0q82_01'))        #  256**0
+            self.assertEqual(Number('0q81FF'), Number('0q81FF_01'))    #  256**-1
+            self.assertEqual(Number('0q7E02'), Number('0q7E01_FF'))    #  256**-2
+            self.assertEqual(Number('0q81FE'), Number('0q81FE_01'))    # -256**-2
+            self.assertEqual(Number('0q7E01'), Number('0q7E00_FF'))    # -256**-1
+            self.assertEqual(Number('0q7E'), Number('0q7D_FF'))        # -256**0
+            self.assertEqual(Number('0q7D'), Number('0q7C_FF'))        # -256**1
+            self.assertEqual(Number('0q7C'), Number('0q7B_FF'))        # -256**2
 
     def test_ints_and_strings(self):
 
@@ -836,8 +847,9 @@ class NumberBasicTests(NumberTests):
         f__s(         0.0001220703125,    '0q81FE_08')
         f__s(         0.00006103515625,   '0q81FE_04')
         f__s(         0.000030517578125,  '0q81FE_02')
-        f__s(         0.0000152587890625, '0q81FE_01')
         f__s(math.pow(256, -2),           '0q81FE_01')
+        f__s(         0.0000152587890625, '0q81FE_01')                 # 1/65536
+        f__s(         0.0000152587890625, '0q81FE_01', '0q81FE')       # 1/65536 alias
         f__s(         0.00000762939453125,'0q81FD_80')
         f__s(math.pow(256, -3),           '0q81FD_01')
         f__s(math.pow(256, -4),           '0q81FC_01')
@@ -1404,8 +1416,20 @@ class NumberComplex(NumberTests):
 
     def test_03b_complex_phantom_real(self):
         """Test complex with a zero imaginary --> Number --> real."""
-        self.assertEqual('0q82_2A__826F_6A0300', Number((42+111j)).qstring())
-        self.assertEqual('0q82_2A', Number((42+111j) + (42-111j)).qstring())
+        self.assertEqual('0q82_2A__830457_6A0400', Number((42+1111j)).qstring())
+        self.assertEqual('0q82_2A', Number((42+0j)).qstring())
+        self.assertEqual('0q82_2A', Number((42+1111j) + (0-1111j)).qstring())
+        self.assertEqual(Number(42), Number((42+0j)))
+
+    def test_03c_complex_phantom_deliberate(self):
+        """Zero imaginary parts must be possible to support quaternions, maybe."""
+        self.assertNotEqual('0q82_2A', Number('0q82_2A__80_6A0200').qstring())
+        self.assertEqual('0q82_2A__80_6A0200', Number('0q82_2A__80_6A0200').qstring())
+
+    if TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL:
+        def test_03c_complex_phantom_immaterial(self):
+            """Zero imaginary parts must not thwart numbers being equal."""
+            self.assertEqual(Number('0q82_2A'), Number('0q82_2A__80_6A0200'))
 
     def test_04_real_suffixed(self):
         """Test Number.real ignores other suffixes."""
@@ -1431,7 +1455,7 @@ class NumberComplex(NumberTests):
         self.assertEqual(888-111j, Number(888-111j))
 
     def test_06b_greater(self):
-        """Complex comparisons are not allowed."""
+        """Complex comparisons should raise a TypeError."""
         x = 888+111j
         x_bar = 888-111j
         with self.assertRaises(TypeError):
@@ -1440,6 +1464,8 @@ class NumberComplex(NumberTests):
         n_bar = Number(x_bar)
         with self.assertRaises(TypeError):
             n_bar < n
+
+        # TODO: Number.is_complex()
 
     def test_09_imag_first(self):
         """Number.imag only gts the first imaginary suffix, ignoring others."""

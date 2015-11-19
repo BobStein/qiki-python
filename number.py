@@ -375,7 +375,8 @@ class Number(numbers.Number):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
+        if c.imag != 0.0:
+            self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
         # THANKS:  http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
