@@ -59,6 +59,16 @@ class NumberBasicTests(NumberTests):
         n = Number('0q83_03E8')
         self.assertEqual("0q83_03E8", str(n))
 
+    def test_unicode_output(self):
+        n = Number('0q83_03E8')
+        self.assertEqual(u"0q83_03E8", six.text_type(n))
+        self.assertIsInstance(six.text_type(n), six.text_type)
+
+    def test_unicode_input(self):
+        n = Number(u'0q83_03E8')
+        self.assertEqual("0q83_03E8", str(n))
+        self.assertEqual(u"0q83_03E8", six.text_type(n))
+
     def test_isinstance(self):
         n = Number(1)
         self.assertIsInstance(n, Number)
@@ -1459,6 +1469,7 @@ class NumberComplex(NumberTests):
         x = 888+111j
         x_bar = 888-111j
         with self.assertRaises(TypeError):
+            # noinspection PyStatementEffect
             x_bar < x
         n = Number(x)
         n_bar = Number(x_bar)

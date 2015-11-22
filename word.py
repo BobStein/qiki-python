@@ -13,7 +13,6 @@ from qiki import Number
 
 
 @six.python_2_unicode_compatible
-# TODO:  unit test for Word.__unicode__() ?
 class Word(object):
     """
     A qiki Word is a subject-verb-object triplet of other words (sbj, vrb, obj).
@@ -844,15 +843,18 @@ class LexMySQL(Lex):
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
 # DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
 # DONE:  Or make a class LexMysql(Lex)
+# DONE:  MySQL decouple -- reinvent some db abstraction class?  (Lex)
 
 # TODO:  Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO:  Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
-# TODO:  ...If so they would need to be dynamic properties -- and avoid infinite recursion!
+# TODO:  ...If so they would need to be dynamic properties.
+# TODO:  ......And avoid infinite recursion!  That is, e.g. sbj.vrb.vrb.vrb.obj....
 # TODO:  ...One way to do this might be x = Word(idn) would not generate database activity
 # TODO:  ......unless some other method were called, e.g. x.vrb
+# TODO:  ...Perhaps they could stay numbers until treated as words
+# TODO:  ......and then "become" (i.e. by a database read and some shenanigans) words?
 # TODO:  Singleton pattern, so e.g. Word('noun') is Word('noun')
-# TODO:  Logging callback
-# TODO:  MySQL decouple -- reinvent some db abstraction class?
+# TODO:  Logging callbacks
 
 # TODO:  Exotic syntax?
 #        (s)[v](o)

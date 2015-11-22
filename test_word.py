@@ -5,6 +5,7 @@ Testing qiki word.py
 
 from __future__ import print_function
 import unittest
+import six
 import sys
 import time
 
@@ -101,6 +102,10 @@ class WordFirstTests(WordTests):
 
     def test_02a_str(self):
         self.assertEqual('noun', str(self.lex('noun')))
+
+    def test_02b_unicode(self):
+        self.assertEqual(u'noun', six.text_type(self.lex('noun')))
+        self.assertIsInstance(six.text_type(self.lex('noun')), six.text_type)
 
     def test_02b_repr(self):
         self.assertEqual("Word('noun')", repr(self.lex('noun')))
