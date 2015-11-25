@@ -19,14 +19,14 @@ except ImportError:
     print("""
         Example secure/credentials.py
 
-            for_example_database = dict(
-                language= 'MySQL',
-                host=     'localhost',
-                port=     8000,
-                user=     'user',
-                password= 'password',
-                database= 'database',
-                table=    'word',
+            for_unit_testing_database = dict(
+                language='MySQL',
+                host=    'localhost',
+                port=    8000,
+                user=    'user',
+                password='password',
+                database='database',
+                table=   'word',
             )
 
         You also need an empty secure/__init__.py
@@ -38,7 +38,8 @@ except ImportError:
 LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database over from scratch.
                                      # Set this to True to manually examine the database after running it.
 TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane (beyond the base 64K)
-SHOW_UTF8_EXAMPLES = False
+SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \uNNNN escape syntax and UTF-8 hexadecimal.
+                             # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 
 class WordTests(unittest.TestCase):
 

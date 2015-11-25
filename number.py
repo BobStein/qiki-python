@@ -281,14 +281,14 @@ class Number(numbers.Number):
         """
         assert(isinstance(s, six.string_types))
         if s[:2] == '0q':
-            sdigits = s[2:].replace('_', '')
-            if len(sdigits) % 2 != 0:
-                sdigits += '0'
+            digits = s[2:].replace('_', '')
+            if len(digits) % 2 != 0:
+                digits += '0'
             try:
-                sdecoded = string_from_hex(sdigits)
+                byte_string = string_from_hex(digits)
             except TypeError:
                 raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s))
-            self.raw = six.binary_type(sdecoded)
+            self.raw = six.binary_type(byte_string)
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
 
