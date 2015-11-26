@@ -4,10 +4,10 @@ Testing qiki number.py
 """
 
 from __future__ import print_function
-import unittest
-import sys
 import pickle
+import sys
 import textwrap
+import unittest
 
 from number import *
 
@@ -1427,7 +1427,6 @@ class NumberComplex(NumberTests):
         self.assertEqual(888.0, float(n.real))
         self.assertEqual(111.0, float(n.imag))
         self.assertEqual(888.0+111.0j, complex(n))
-        self.assertEqual(888.0, float(n))
 
     def test_03b_complex_phantom_real(self):
         """Test complex with a zero imaginary --> Number --> real."""
@@ -1495,14 +1494,36 @@ class NumberComplex(NumberTests):
     def test_06d_mixed_compare(self):
         x, x_bar = 888+111j, 888-111j
         n, n_bar = Number(x), Number(x_bar)
-        with self.assertRaises(TypeError):   # Neither Number() in a comparison can have a nonzero imaginary.
-            n_bar.real < n
-        with self.assertRaises(TypeError):
-            n_bar < n.real
         self.assertTrue(n.real <= n_bar.real)   # Only okay if both imaginaries are zero.
         self.assertTrue(n.real >= n_bar.real)
+        with self.assertRaises(TypeError):
+            n_bar < n.real
+        with self.assertRaises(TypeError):   # Neither Number() in a comparison can have a nonzero imaginary.
+            n_bar.real < n
+            # FIXME:  Does Number.__float__() need to return a complex number??
+            # Assuming this comparison automagically calls float() on the right operand, right?
+            # Or maybe some Number method could be coaxed into being called in this case?
+            # Ah no, __float__() itself should raise a TypeError on a complex number!
+            # Why in the world didn't that work?!?
+            # So float.__lt__(float, qiki.Number) must not be calling float() on the right argument!  Bug??
 
-        # TODO: Number.is_complex()
+    def test_07a_is_complex(self):
+        self.assertFalse(Number(42).is_complex())
+        self.assertTrue(Number(42+99j).is_complex())
+
+    if TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL:
+        def test_07b_zero_imag_isnt_complex(self):
+            self.assertFalse(Number(42+0j).is_complex())
+
+    def test_07c_is_real(self):
+        self.assertTrue(Number(42).is_real())
+        self.assertFalse(Number(42+99j).is_real())
+
+    def test_08_float_complex(self):
+        self.assertEqual(42.0, float(Number(42.0)))
+        complex_number = Number(42.0+99.0j)
+        with self.assertRaises(TypeError):
+            float(complex_number)
 
     def test_09_imag_first(self):
         """Number.imag only gts the first imaginary suffix, ignoring others."""
@@ -1880,20 +1901,14 @@ class NumberSuffixTests(NumberTests):
     def test_suffix_float(self):
         self.assertEqual(16.0, float(Number('0q82_10')))
         self.assertEqual(16.0, float(Number('0q82_10__0000')))
-        self.assertEqual(16.0, float(Number('0q82_10__000100')))
-        self.assertEqual(16.0, float(Number('0q82_10__010100')))
-        self.assertEqual(16.0, float(Number('0q82_10__020100')))
-        self.assertEqual(16.0, float(Number('0q82_10__110100')))
-        self.assertEqual(16.0, float(Number('0q82_10__880100')))
-        self.assertEqual(16.0, float(Number('0q82_10__FE0100')))
-        self.assertEqual(16.0, float(Number('0q82_10__FF0100')))
-        self.assertEqual(16.0, float(Number('0q82_10__FFFFFF_FF0400')))
-        self.assertEqual(16.0, float(Number('0q82_10__123456_780400')))
+        self.assertEqual(16.0, float(Number('0q82_10__7F0100')))
+        self.assertEqual(16.0, float(Number('0q82_10__FFFFFF_7F0400')))
+        self.assertEqual(16.0, float(Number('0q82_10__123456_7F0400')))
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
 
 class NumberDictionaryKeyTests(NumberTests):
-
+    """qiki.Number() should work as a dictionary key."""
     def setUp(self):
         super(NumberDictionaryKeyTests, self).setUp()
         self.d = dict()
@@ -1919,7 +1934,7 @@ class NumberDictionaryKeyTests(NumberTests):
         self.assertTrue(2 == Number(2))
         self.assertTrue(5 == Number(5))
         # Does this lead to confusion?  Equal things that don't behave the same?  Effing separate but equal??
-        # This violates the line at https://docs.python.org/2/library/functions.html#hash
+        # This violates the statement at https://docs.python.org/2/library/functions.html#hash
         # "Numeric values that compare equal have the same hash value
         # (even if they are of different types, as is the case for 1 and 1.0)."
 
@@ -1982,11 +1997,9 @@ class NumberDictionaryKeyTests(NumberTests):
 
 
 
-class PythonTests(NumberTests):
+class NumberUtilitiesTests(NumberTests):
     """
-    Testing internal Python features.
-
-    Checking assumptions about Python itself.
+    Testing utility functions in number.py.
     """
 
     def test_01_shift_left(self):
@@ -2117,6 +2130,24 @@ class PythonTests(NumberTests):
         self.assertEqual(2**800, exp256(100))
         self.assertEqual(2**8000, exp256(1000))
 
+    def test_01_log256(self):
+        self.assertEqual(0, log256(1))
+        self.assertEqual(0, log256(2))
+        self.assertEqual(0, log256(3))
+        self.assertEqual(0, log256(4))
+        self.assertEqual(0, log256(255))
+        self.assertEqual(1, log256(256))
+        self.assertEqual(1, log256(257))
+        self.assertEqual(1, log256(65535))
+        self.assertEqual(2, log256(65536))
+        self.assertEqual(2, log256(65537))
+        self.assertEqual(2, log256(16777215))
+        self.assertEqual(3, log256(16777216))
+        self.assertEqual(3, log256(16777217))
+        self.assertEqual(3, log256(4294967295))
+        self.assertEqual(4, log256(4294967296))
+        self.assertEqual(4, log256(4294967297))
+
     def test_01_hex_from_integer(self):
         self.assertEqual('05', hex_from_integer(0x5))
         self.assertEqual('55', hex_from_integer(0x55))
@@ -2167,7 +2198,12 @@ class PythonTests(NumberTests):
         self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
 
 
-    ################## checking python assumptions ###########################
+class PythonTests(NumberTests):
+    """
+    Testing internal Python features.
+
+    Checking assumptions about Python itself.
+    """
 
     def test_00_python_float_equality_weirdnesses(self):
         self.assertEqual(+0.0, -0.0)

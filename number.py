@@ -133,12 +133,12 @@ class Number(numbers.Number):
 
     # Math
     # ----
-    __eq__ = lambda self, other:  Number(self).raw == Number(other).raw
-    __ne__ = lambda self, other:  Number(self).raw != Number(other).raw
-    __lt__ = lambda self, other:  Number(self).raw <  Number(other).raw
-    __le__ = lambda self, other:  Number(self).raw <= Number(other).raw
-    __gt__ = lambda self, other:  Number(self).raw >  Number(other).raw
-    __ge__ = lambda self, other:  Number(self).raw >= Number(other).raw
+    def __eq__(self, other):                   return Number(self).raw == Number(other).raw
+    def __ne__(self, other):                   return Number(self).raw != Number(other).raw
+    def __lt__(self, other):  self._be_real(); return Number(self).raw <  Number(other).raw
+    def __le__(self, other):  self._be_real(); return Number(self).raw <= Number(other).raw
+    def __gt__(self, other):  self._be_real(); return Number(self).raw >  Number(other).raw
+    def __ge__(self, other):  self._be_real(); return Number(self).raw >= Number(other).raw
     # FIXME:  Make 0q82 == 0q82_01.
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
@@ -215,6 +215,16 @@ class Number(numbers.Number):
 
     def is_nan(self):
         return self == self.NAN
+
+    def is_real(self):
+        return not self.is_complex()
+
+    def is_complex(self):
+        return self.imag != self.ZERO
+
+    def _be_real(self):
+        if self.is_complex():
+            raise TypeError("Cannot compare complex values.")
 
     def inc(self):
         self.raw = self._inc_via_integer()
@@ -489,6 +499,8 @@ class Number(numbers.Number):
         return the_int
 
     def __float__(self):
+        if self.is_complex():
+            raise TypeError("{} has an imaginary part, use complex(n) instead of float(n)".format(self.qstring()))
         x = self.real
         float_by_dictionary = x.__float__by_zone_dictionary()
         assert floats_really_same(float_by_dictionary, x.__float__by_zone_ifs()), (
@@ -778,6 +790,7 @@ class Number(numbers.Number):
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
+        # XXX:  This would be much less sneaky if raw were not the primary internal representation.
 
     # TODO: def add_suffix(Suffix)?
 
@@ -1080,6 +1093,15 @@ assert 256 == exp256(1)
 assert 65536 == exp256(2)
 
 
+def log256(i):
+    """Compute the log base 256 of an integer.  Return the floor integer."""
+    assert i > 0
+    return_value = (i.bit_length()-1) >> 3
+    assert return_value == math.floor(math.log(i, 256)) or i > 2**56, "{0} {1} {2}".format(i, return_value, math.floor(math.log(i, 256)))
+    assert return_value == len(hex_from_integer(i))//2 - 1
+    return return_value
+
+
 def shift_left(n, nbits):
     """Shift positive left, or negative right."""
     # GENERIC:  This function might be useful elsewhere.
@@ -1148,8 +1170,7 @@ def pack_integer(the_integer, nbytes=None):
     # GENERIC: This function might be useful elsewhere.
 
     if nbytes is None:
-        nbytes = len(hex_from_integer(abs(the_integer)))//2
-        # so nbytes defaults to 1 + floor(log(abs(the_integer), 256))
+        nbytes =  log256(abs(the_integer)) + 1
 
     if nbytes <= 8 and 0 <= the_integer < 4294967296:
         return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way

@@ -15,4 +15,7 @@ Usage example:
 """
 
 from number import Number
-from word import Word, Lex, LexMySQL, Listing
+from word import Word
+from word import Lex
+from word import LexMySQL
+from word import Listing
