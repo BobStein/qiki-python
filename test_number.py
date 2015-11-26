@@ -14,7 +14,7 @@ from number import *
 
 TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL = False   # E.g. 0q82 == 0q82_01
 TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL = False   # E.g. 0q82_01 == 0q82_01__80_6A0200
-
+TEST_INC_ON_ALL_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (12 seconds on slow laptops)
 
 class NumberTests(unittest.TestCase):
 
@@ -1382,15 +1382,16 @@ class NumberMathTests(NumberTests):
         googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         self.assert_inc_works_on(googol)
 
-    def test_inc_powers_of_2(self):   # This takes take a long time, about 2 seconds
-        power_of_two = 1
-        for binary_exponent in range(0,1000):
-            self.assert_inc_works_on(power_of_two-2)
-            self.assert_inc_works_on(power_of_two-1)
-            self.assert_inc_works_on(power_of_two)
-            self.assert_inc_works_on(power_of_two+1)
-            self.assert_inc_works_on(power_of_two+2)
-            power_of_two *= 2
+    if TEST_INC_ON_ALL_POWERS_OF_TWO:
+        def test_inc_powers_of_2(self):   # This takes take a long time, about 2 seconds
+            power_of_two = 1
+            for binary_exponent in range(0,1000):
+                self.assert_inc_works_on(power_of_two-2)
+                self.assert_inc_works_on(power_of_two-1)
+                self.assert_inc_works_on(power_of_two)
+                self.assert_inc_works_on(power_of_two+1)
+                self.assert_inc_works_on(power_of_two+2)
+                power_of_two *= 2
 
 
 class NumberComplex(NumberTests):
@@ -1400,6 +1401,8 @@ class NumberComplex(NumberTests):
         n = Number(1)
         self.assertEqual(1.0, float(n))
         self.assertEqual(1.0, float(n.real))
+        self.assertIsInstance(n, Number)
+        self.assertIsInstance(n.real, Number)
 
     def test_02a_imag_zero(self):
         """Test Number.imag for a real number."""
@@ -1415,6 +1418,8 @@ class NumberComplex(NumberTests):
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
         self.assertEqual('0q82_07__8209_6A0300', n.qstring())   # make sure n unchanged by all that
+        self.assertIsInstance(n, Number)
+        self.assertIsInstance(n.imag, Number)
 
     def test_03a_complex_conversion(self):
         """Test complex --> Number --> complex."""
@@ -1459,22 +1464,43 @@ class NumberComplex(NumberTests):
         self.assertEqual(888-111j, complex(Number(n).conjugate()))
 
     def test_06a_equal(self):
+        """Complex equality comparisons (== !=) should work."""
         self.assertEqual(888+111j, Number(888+111j))
         self.assertNotEqual(888-111j, Number(888+111j))
         self.assertNotEqual(888+111j, Number(888-111j))
         self.assertEqual(888-111j, Number(888-111j))
 
-    def test_06b_greater(self):
-        """Complex comparisons should raise a TypeError."""
-        x = 888+111j
-        x_bar = 888-111j
-        with self.assertRaises(TypeError):
+    def test_06b_compare(self):
+        """Complex ordered comparisons (< <= >= >) should raise a TypeError."""
+        x, x_bar = 888+111j, 888-111j
+        n, n_bar = Number(x), Number(x_bar)
+        with self.assertRaises(TypeError):   # Comparing native complex comparisons raise a TypeError.
             # noinspection PyStatementEffect
             x_bar < x
-        n = Number(x)
-        n_bar = Number(x_bar)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(TypeError):   # So Number() comparisons with a nonzero imaginary,
             n_bar < n
+
+    def test_06c_more_or_less(self):
+        x, x_bar = 888+111j, 888-111j
+        n, n_bar = Number(x), Number(x_bar)
+        with self.assertRaises(TypeError):   # Check all comparison operators.
+            n_bar < n
+        with self.assertRaises(TypeError):
+            n_bar <= n
+        with self.assertRaises(TypeError):
+            n_bar > n
+        with self.assertRaises(TypeError):
+            n_bar >= n
+
+    def test_06d_mixed_compare(self):
+        x, x_bar = 888+111j, 888-111j
+        n, n_bar = Number(x), Number(x_bar)
+        with self.assertRaises(TypeError):   # Neither Number() in a comparison can have a nonzero imaginary.
+            n_bar.real < n
+        with self.assertRaises(TypeError):
+            n_bar < n.real
+        self.assertTrue(n.real <= n_bar.real)   # Only okay if both imaginaries are zero.
+        self.assertTrue(n.real >= n_bar.real)
 
         # TODO: Number.is_complex()
 
