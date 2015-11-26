@@ -24,20 +24,23 @@ class Number(numbers.Number):
     __slots__ = ('__raw', )   # less memory
     # __slots__ = ('__raw', '_zone')   # faster
 
-    def __init__(self, content=None, qigits=None):
+    def __init__(self, content=None, qigits=None, normalize=False):
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        elif isinstance(content, type(self)):  # Number(SonOfNumber())
-            self.raw = content.raw
-        elif isinstance(self, type(content)):  # SonOfNumber(Number())
+        # elif isinstance(content, type(self)):  # Number(SonOfNumber())
+        #     self.raw = content.raw
+        # elif isinstance(self, type(content)):  # SonOfNumber(Number())
+        #     self.raw = content.raw
+        elif isinstance(content, Number):  # SonOfNumber(DaughterOfNumber())
             self.raw = content.raw
         elif isinstance(content, six.string_types):
             self._from_string(content)
         elif content is None:
             self.raw = self.RAW_NAN
         elif isinstance(content, complex):
+            # TODO:  Check instead isinstance(content, numbers.Complex)
             self._from_complex(content)
         else:
             typename = type(content).__name__
@@ -48,6 +51,8 @@ class Number(numbers.Number):
                 inner=typename,
             ))
         assert(isinstance(self.__raw, six.binary_type))
+        if normalize:
+            self._normalize_all()
 
 
     # Zone
@@ -164,6 +169,7 @@ class Number(numbers.Number):
     #     This approach would vindicate making raw a @property
     # Option three:  give up on Number('0q82') == Number('0q82_01')
     # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
+    # By the way, zero has no plateau, only 0q80 with no suffix is zero.
 
     def __hash__(self):
         return hash(self.raw)
@@ -195,6 +201,65 @@ class Number(numbers.Number):
             return Number(float(n1) + float(n2))
     __radd__ = __add__
 
+    def _normalize_all(self):
+        self._normalize_plateau()
+        self._normalize_imaginary()
+
+    def _normalize_imaginary(self):
+        """Eliminate imaginary suffix if it's zero."""
+        try:
+            if self.get_suffix_number(self.Suffix.TYPE_IMAGINARY) == self.ZERO:
+                # We don't check self.imag == self.ZERO because that would try to delete a missing suffix.
+                self.delete_suffix(self.Suffix.TYPE_IMAGINARY)
+        except self.Suffix.NoSuchType:
+            pass
+
+    def _normalize_plateau(self):
+        """Eliminate redundancies in the internal representation of +/-256**+/-n."""
+        if self.zone in self.ZONE_MAYBE_PLATEAU:
+            pieces = self.parse_suffixes()
+            raw_qantissa = pieces[0].qan_raw()
+            if self.is_positive():
+                msb_at_plateau = b'\x01'
+            else:
+                msb_at_plateau = b'\FF'
+            if len(raw_qantissa) == 0:
+                is_plateau = True
+                # FIXME:  Make a special case of negative numbers with empty qan:  increment the qex and append FF
+            else:
+                msb_qantissa = raw_qantissa[0]
+                is_plateau = msb_qantissa == msb_at_plateau
+            if is_plateau:
+                self.raw = self.qex_raw() + msb_at_plateau
+                for piece in pieces[1:]:
+                    self.add_suffix(piece)
+
+    def is_negative(self):
+        # TODO:  Unit test.
+        return_value = (six.indexbytes(self.raw, 0) & 0x80) == 0
+        assert return_value == (self.raw < self.RAW_ZERO)
+        try:
+            assert return_value == (self < self.ZERO)
+        except TypeError:
+            pass
+        return return_value
+
+    def is_positive(self):
+        # TODO:  Unit test.
+        return_value = not self.is_negative() and not self.is_zero()
+        assert return_value == (self.raw > self.RAW_ZERO)
+        try:
+            assert return_value == (self > self.ZERO)
+        except TypeError:
+            pass
+        return return_value
+
+    def is_zero(self):
+        # TODO:  Unit test.
+        return_value = self.raw == self.RAW_ZERO
+        assert return_value == (self == self.ZERO)
+        return return_value
+
     def is_whole(self):
         if self.zone in self.ZONE_WHOLE_MAYBE:
             (qan, qanlength) = self.qantissa()
@@ -225,6 +290,7 @@ class Number(numbers.Number):
     def _be_real(self):
         if self.is_complex():
             raise TypeError("Cannot compare complex values.")
+            # TODO:  Subclass TypeError for more specificity.  Yay, TypeError catcher would still work.
 
     def inc(self):
         self.raw = self._inc_via_integer()
@@ -246,7 +312,7 @@ class Number(numbers.Number):
             return self.ZERO
         try:
             return self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
-        except IndexError:
+        except self.Suffix.NoSuchType:
             return self.ZERO
 
     def conjugate(self):
@@ -384,9 +450,8 @@ class Number(numbers.Number):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        if c.imag != 0.0:
-            self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
-        # THANKS:  http://stackoverflow.com/a/14209708/673991
+        self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
+        # THANKS:  http://stackoverflow.com/a/14209708/673991 (how to call the constructor of whatever class we're in)
 
     # "to" conversions:  Number --> other type
     # ----------------------------------------
@@ -546,15 +611,16 @@ class Number(numbers.Number):
             return float('nan')
 
     def _to_float(self):
-        qexp = self.qexponent()
+        try:
+            qexp = self.qexponent()
+        except ValueError:
+            return 0.0
         (qan, qanlength) = self.qantissa()
         if self.raw < self.RAW_ZERO:
             qan -= exp256(qanlength)
             if qanlength > 0 and qan >= - exp256(qanlength-1):
                 (qan, qanlength) = (-1,1)
         else:
-            if qanlength < 0:
-                return 0.0
             if qanlength == 0 or qan <=  exp256(qanlength-1):
                 (qan, qanlength) = (1,1)
         exponent_base_2 = 8 * (qexp-qanlength)
@@ -567,12 +633,25 @@ class Number(numbers.Number):
         The number of qigits is the amount stored in the qantissa,
         and is unrelated to the location of the decimal point.
         """
+        raw_qantissa = self.qan_raw()
+        number_qantissa = unpack_big_integer(raw_qantissa)
+        return tuple((number_qantissa, len(raw_qantissa)))
+
+    def qan_raw(self):
+        # TODO:  unit test
+        return self.raw[self.qan_offset():]
+
+    def qex_raw(self):
+        # TODO:  unit test
+        return self.raw[:self.qan_offset()]
+
+    def qan_offset(self):
+        # TODO:  unit test
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
             raise ValueError("qantissa() not defined for %s" % repr(self))
-        number_qantissa = unpack_big_integer(self.raw[qan_offset:])
-        return tuple((number_qantissa, len(self.raw) - qan_offset))
+        return qan_offset
 
     __qan_offset_dict ={
         Zone.POSITIVE:       1,
@@ -585,11 +664,11 @@ class Number(numbers.Number):
         try:
             encoder = self.__qexponent_encode_dict[self.zone]
         except KeyError:
-            raise ValueError("qexponent() not defined for %s" % repr(self))
+            raise ValueError("qexponent() not defined for {}".format(repr(self)))
         try:
             qex = encoder(self)
         except IndexError:
-            qex = 0   # XXX:  e.g. 0q81.  Though that qex is more like negative infinity.
+            raise ValueError("qexponent() broken for {}".format(repr(self)))
         return qex
 
     __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
@@ -742,6 +821,7 @@ class Number(numbers.Number):
                 raise TypeError
             if self.type_ is None:
                 assert self.payload == b''
+                # TODO:  Unit test this case?  Suffix(type None, payload not empty)
                 self.length_of_payload_plus_type = 0
                 self.raw = b'\x00\x00'
             else:
@@ -788,25 +868,56 @@ class Number(numbers.Number):
         def internal_setup(cls, number_class):
             cls.Number = number_class
 
+        class NoSuchType(Exception):
+            pass
+
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
         # XXX:  This would be much less sneaky if raw were not the primary internal representation.
 
-    # TODO: def add_suffix(Suffix)?
+    def add_suffix(self, suffix_or_type=None, payload=None):
+        """Add a suffix to this Number.
 
-    def add_suffix(self, new_type=None, payload=b''):
+        Forms:
+            n.add_suffix(Number.Suffix.TYPE_TEST, b'byte string')
+            n.add_suffix(Number.Suffix.TYPE_TEST, Number(x))
+            n.add_suffix(Number.Suffix(...))
+            n.add_suffix()
+        """
+        assert (
+            isinstance(suffix_or_type, int) and isinstance(payload, six.binary_type) or
+            isinstance(suffix_or_type, int) and payload is None or
+            isinstance(suffix_or_type, int) and isinstance(payload, Number) or
+            isinstance(suffix_or_type, self.Suffix) and payload is None or
+            suffix_or_type is None and payload is None
+        ), "Bad call to add_suffix({suffix_or_type}, {payload})".format(
+            suffix_or_type=repr(suffix_or_type),
+            payload=repr(payload),
+        )
         if self.is_nan():
+            # TODO:  Is this really so bad?  A suffixed NAN?  e.g. 0q__7F0100
             raise ValueError
-        suffix = self.Suffix(new_type, payload)
-        self.raw += suffix.raw
+        if isinstance(suffix_or_type, self.Suffix):
+            the_suffix = suffix_or_type
+            self.raw += the_suffix.raw
+            # TODO:  Unit test this flavor of add_suffix().
+            return self
+        the_type = suffix_or_type
+        suffix = self.Suffix(the_type, payload)
+        self.add_suffix(suffix)
         return self
 
     def delete_suffix(self, old_type=None):
         pieces = self.parse_suffixes()
         new_self = pieces[0]
+        any_deleted = False
         for piece in pieces[1:]:
-            if piece.type_ != old_type:
+            if piece.type_ == old_type:
+                any_deleted = True
+            else:
                 new_self.add_suffix(piece.type_, piece.payload)
+        if not any_deleted:
+            raise self.Suffix.NoSuchType
         self.raw = new_self.raw
         return self
 
@@ -815,7 +926,7 @@ class Number(numbers.Number):
         for suffix in suffixes[1:]:
             if suffix.type_ == sought_type:
                 return suffix
-        raise IndexError
+        raise self.Suffix.NoSuchType
 
     def get_suffix_payload(self, sought_type):
         return self.get_suffix(sought_type).payload
@@ -995,6 +1106,8 @@ class Number(numbers.Number):
             cls.Zone.LUDICROUS_LARGE_NEG,
             cls.Zone.TRANSFINITE_NEG,
         }
+
+        cls.ZONE_MAYBE_PLATEAU = cls.ZONE_REASONABLY_NONZERO
 
         cls.ZONE_NAN = {
             cls.Zone.NAN

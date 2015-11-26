@@ -10,7 +10,7 @@ import sys
 import time
 
 import qiki
-import number
+from number import hex_from_string
 
 try:
     import secure.credentials
@@ -68,7 +68,7 @@ class WordTests(unittest.TestCase):
     def show_txt_in_utf8(self, idn):
         word = self.lex(idn)
         utf8 = word.txt.encode('utf8')
-        hexadecimal = number.hex_from_string(utf8)
+        hexadecimal = hex_from_string(utf8)
         print("\"{txt}\" in utf8 is {hex}".format(
             txt=word.txt.encode('unicode_escape'),   # Python 3 doubles up the backslashes ... shrug.
             hex=hexadecimal,
