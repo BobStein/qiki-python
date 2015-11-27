@@ -222,7 +222,7 @@ class Number(numbers.Number):
             if self.is_positive():
                 msb_at_plateau = b'\x01'
             else:
-                msb_at_plateau = b'\FF'
+                msb_at_plateau = b'\xFF'
             if len(raw_qantissa) == 0:
                 is_plateau = True
                 # FIXME:  Make a special case of negative numbers with empty qan:  increment the qex and append FF
