@@ -170,7 +170,6 @@ class Word(object):
                             obj=obj,
                             num=num,
                             txt=txt,
-                            **kwargs
                         )
                 else:
                     existing_word = self.sentence(
@@ -179,7 +178,6 @@ class Word(object):
                         obj=obj,
                         num=num,
                         txt=txt,
-                        **kwargs
                     )
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
@@ -199,9 +197,6 @@ class Word(object):
                 )
             )
 
-    def my_txt(self):
-        return "fooey"
-
     def define(self, obj, txt, num=Number(1)):
         possibly_existing_word = self.spawn(txt)
         if possibly_existing_word.exists:
@@ -220,7 +215,7 @@ class Word(object):
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
 
-    def sentence(self, sbj, vrb, obj, txt, num, **kwargs):
+    def sentence(self, sbj, vrb, obj, txt, num):
         """
         Construct a new sentence from a 3-word subject-verb-object.
 
@@ -801,7 +796,7 @@ class LexMySQL(Lex):
         return self._connection.cursor(prepared=True)
 
     def find(self, sbj=None, vrb=None, obj=None):
-        query = "SELECT idn FROM {table} WHERE 1 ".format(table=self._table)
+        query = "SELECT idn FROM " + self._table + " WHERE 1 "
         parameters = []
         if sbj is not None:   query += " AND sbj=? ";   parameters.append(sbj.raw)
         if vrb is not None:   query += " AND vrb=? ";   parameters.append(vrb.raw)

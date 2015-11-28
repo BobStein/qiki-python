@@ -33,15 +33,14 @@ class Number(numbers.Number):
         #     self.raw = content.raw
         # elif isinstance(self, type(content)):  # SonOfNumber(Number())
         #     self.raw = content.raw
-        elif isinstance(content, Number):  # SonOfNumber(DaughterOfNumber())
+        elif isinstance(content, Number):  # SomeDerivationOfNumber(AnotherDerivationOfNumber())
             self.raw = content.raw
         elif isinstance(content, six.string_types):
             self._from_string(content)
+        elif isinstance(content, complex):
+            self._from_complex(content)
         elif content is None:
             self.raw = self.RAW_NAN
-        elif isinstance(content, complex):
-            # TODO:  Check instead isinstance(content, numbers.Complex)
-            self._from_complex(content)
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -88,11 +87,17 @@ class Number(numbers.Number):
     # Raw internal format
     # -------------------
     # The raw string is the internal representation of a qiki Number.
-    # It is an 8-bit binary string.
+    # It is an 8-bit binary string of bytes.
     # E.g. b"\x82\x01" in Python version 2 or 3.
+    # Any storage mechanism for the raw format (such as a database)
+    # should expect any of the 256 values for any of the bytes.
+    # So for example they couldn't be stored in a C-language string.
+    # The length must be stored extrinsic to the raw string
+    # though it can be limited, such as 255 bytes max.
     # It is represented textually by a "qstring" which is hexadecimal digits,
     # preceded by '0q', and containing optional '_' underscores.
-    # The raw string consists of a qex and a qan.  Conventionally one underscore separates them.
+    # The raw string consists of a qex and a qan.
+    # Conventionally one underscore separates the qex and qan.
     # These are analogous to a floating point exponent and a significand or mantissa.
     # The qex and qan are encoded so that the raw mapping is monotonic.
     # That is, if x1.raw < x2.raw then x1 < x2.
@@ -105,7 +110,9 @@ class Number(numbers.Number):
     # Storage (e.g. a database) may opt for brevity (0q82).
     # All 8-bit binary strings have exactly one interpretation as the raw part of a Number.
     # Some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
-    # FIXME:  Well dammit they should be equal.
+    # The qex and qan may be followed by suffixes.
+    # Two underscores conventionally precede each suffix.
+    # See the Number.Suffix class for underscore conventions within a suffix.
 
     RAW_INF     = b'\xFF\x81'
     RAW_ZERO    = b'\x80'
@@ -138,13 +145,12 @@ class Number(numbers.Number):
 
     # Math
     # ----
-    def __eq__(self, other):                   return Number(self).raw == Number(other).raw
-    def __ne__(self, other):                   return Number(self).raw != Number(other).raw
+    def __eq__(self, other):                   return Number(self, normalize=True).raw == Number(other, normalize=True).raw
+    def __ne__(self, other):                   return Number(self, normalize=True).raw != Number(other, normalize=True).raw
     def __lt__(self, other):  self._be_real(); return Number(self).raw <  Number(other).raw
     def __le__(self, other):  self._be_real(); return Number(self).raw <= Number(other).raw
     def __gt__(self, other):  self._be_real(); return Number(self).raw >  Number(other).raw
     def __ge__(self, other):  self._be_real(); return Number(self).raw >= Number(other).raw
-    # FIXME:  Make 0q82 == 0q82_01.
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
     #     What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
@@ -218,46 +224,57 @@ class Number(numbers.Number):
         """Eliminate redundancies in the internal representation of +/-256**+/-n."""
         if self.zone in self.ZONE_MAYBE_PLATEAU:
             pieces = self.parse_suffixes()
+            raw_qexponent = pieces[0].qex_raw()
             raw_qantissa = pieces[0].qan_raw()
-            if self.is_positive():
-                msb_at_plateau = b'\x01'
-            else:
-                msb_at_plateau = b'\xFF'
+            is_plateau = False
             if len(raw_qantissa) == 0:
                 is_plateau = True
-                # FIXME:  Make a special case of negative numbers with empty qan:  increment the qex and append FF
+                if self.is_positive():
+                    self.raw = raw_qexponent + b'\x01'
+                else:
+                    new_qex_lsb = six.indexbytes(raw_qexponent,-1)
+                    new_qex = raw_qexponent[0:-1] + six.int2byte(new_qex_lsb-1)
+                    self.raw = new_qex + b'\xFF'
             else:
-                msb_qantissa = raw_qantissa[0]
-                is_plateau = msb_qantissa == msb_at_plateau
+                if self.is_positive():
+                    if raw_qantissa[0:1] == b'\x00':
+                        is_plateau = True
+                        self.raw = raw_qexponent + b'\x01'
+                else:
+                    if raw_qantissa[0:1] == b'\xFF':
+                        is_plateau = True
+                        self.raw = raw_qexponent + b'\xFF'
             if is_plateau:
-                self.raw = self.qex_raw() + msb_at_plateau
                 for piece in pieces[1:]:
                     self.add_suffix(piece)
+
+    def normalized(self):
+        return type(self)(self, normalize=True)
 
     def is_negative(self):
         # TODO:  Unit test.
         return_value = (six.indexbytes(self.raw, 0) & 0x80) == 0
         assert return_value == (self.raw < self.RAW_ZERO)
-        try:
-            assert return_value == (self < self.ZERO)
-        except TypeError:
-            pass
+        # try:
+        #     assert return_value == (self < self.ZERO)   # Infinite recursion
+        # except TypeError:
+        #     pass
         return return_value
 
     def is_positive(self):
         # TODO:  Unit test.
         return_value = not self.is_negative() and not self.is_zero()
         assert return_value == (self.raw > self.RAW_ZERO)
-        try:
-            assert return_value == (self > self.ZERO)
-        except TypeError:
-            pass
+        # try:
+        #     assert return_value == (self > self.ZERO)   # Infinite recursion
+        # except TypeError:
+        #     pass
         return return_value
 
     def is_zero(self):
         # TODO:  Unit test.
         return_value = self.raw == self.RAW_ZERO
-        assert return_value == (self == self.ZERO)
+        # assert return_value == (self == self.ZERO)   # Infinite recursion
         return return_value
 
     def is_whole(self):

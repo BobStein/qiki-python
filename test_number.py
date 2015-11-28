@@ -12,10 +12,15 @@ import unittest
 from number import *
 
 
-TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL = False   # E.g. 0q82 == 0q82_01
-TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL = False   # E.g. 0q82_01 == 0q82_01__80_6A0200
+# Up and coming feature tests:
+TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL = True   # E.g. 0q82 == 0q82_01
+TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL = True   # E.g. 0q82_01 == 0q82_01__80_6A0200
+TEST_REAL_VERSUS_COMPLEX_TYPE_ERROR = False   # E.g. float(42.0) < Number(42.0+99j)
+
+
+# Slow tests:
 TEST_INC_ON_ALL_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (12 seconds on slow laptops)
-TEST_REAL_OP_COMPLEX_TYPE_ERROR = False   # E.g. 42.0 < Number(42.0+99j)
+
 
 class NumberTests(unittest.TestCase):
 
@@ -52,9 +57,10 @@ class NumberBasicTests(NumberTests):
         n = Number(u'0q82')
         self.assertEqual(b'\x82', n.raw)
 
-    def test_raw_from_byte_string(self):
-        n = Number(b'0q82')
-        self.assertEqual(b'\x82', n.raw)
+    if six.PY3:
+        def test_raw_from_byte_string(self):
+            with self.assertRaises(TypeError):
+                Number(b'0q82')
 
     def test_hex(self):
         n = Number('0q82')
@@ -368,44 +374,62 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FFFF')))
         self.assertEqual(-1.0/65536.0, float(Number('0q7E02')))
 
+    def test_normalize_plateau_compact_256(self):   # 256**1
+        self.assertEqual('0q83'   , Number('0q83'                 ).qstring())
+        self.assertEqual('0q83'   , Number('0q83', normalize=False).qstring())
+        self.assertEqual('0q83_01', Number('0q83', normalize=True).qstring())
+        self.assertEqual('0q83_01', Number('0q83').normalized().qstring())
+
+    def test_normalize_plateau_compact_one(self):   # 256**0
+        self.assertEqual('0q82'   , Number('0q82'                 ).qstring())
+        self.assertEqual('0q82'   , Number('0q82', normalize=False).qstring())
+        self.assertEqual('0q82_01', Number('0q82', normalize=True).qstring())
+        self.assertEqual('0q82_01', Number('0q82').normalized().qstring())
+
+    def test_normalize_plateau_compact_positive_fractional(self):   # 256**-1
+        self.assertEqual('0q81FF'   , Number('0q81FF'                 ).qstring())
+        self.assertEqual('0q81FF'   , Number('0q81FF', normalize=False).qstring())
+        self.assertEqual('0q81FF_01', Number('0q81FF', normalize=True).qstring())
+        self.assertEqual('0q81FF_01', Number('0q81FF').normalized().qstring())
+
+    def test_normalize_plateau_compact_negative_fractional(self):   # -256**-1
+        self.assertEqual('0q7E01'   , Number('0q7E01'                 ).qstring())
+        self.assertEqual('0q7E01'   , Number('0q7E01', normalize=False).qstring())
+        self.assertEqual('0q7E00_FF', Number('0q7E01', normalize=True).qstring())
+        self.assertEqual('0q7E00_FF', Number('0q7E01').normalized().qstring())
+
+    def test_normalize_plateau_compact_one_negative(self):   # -256**0
+        self.assertEqual('0q7E'   , Number('0q7E'                 ).qstring())
+        self.assertEqual('0q7E'   , Number('0q7E', normalize=False).qstring())
+        self.assertEqual('0q7D_FF', Number('0q7E', normalize=True).qstring())
+        self.assertEqual('0q7D_FF', Number('0q7E').normalized().qstring())
+
+    def test_normalize_plateau_compact_256_negative(self):   # -256**1
+        self.assertEqual('0q7D'   , Number('0q7D'                 ).qstring())
+        self.assertEqual('0q7D'   , Number('0q7D', normalize=False).qstring())
+        self.assertEqual('0q7C_FF', Number('0q7D', normalize=True).qstring())
+        self.assertEqual('0q7C_FF', Number('0q7D').normalized().qstring())
+
     def test_normalize_plateau_gibberish(self):
         self.assertEqual('0q82_00DEADBEEF', Number('0q82_00DEADBEEF'                 ).qstring())
         self.assertEqual('0q82_00DEADBEEF', Number('0q82_00DEADBEEF', normalize=False).qstring())
         self.assertEqual('0q82_01',         Number('0q82_00DEADBEEF', normalize=True).qstring())
+        self.assertEqual('0q82_01',         Number('0q82_00DEADBEEF').normalized().qstring())
+
+        self.assertEqual('0q81FF_00DEADBEEF', Number('0q81FF_00DEADBEEF'                 ).qstring())
+        self.assertEqual('0q81FF_00DEADBEEF', Number('0q81FF_00DEADBEEF', normalize=False).qstring())
+        self.assertEqual('0q81FF_01',         Number('0q81FF_00DEADBEEF', normalize=True).qstring())
+        self.assertEqual('0q81FF_01',         Number('0q81FF_00DEADBEEF').normalized().qstring())
 
         self.assertEqual('0q7E00_FFDEADBEEF', Number('0q7E00_FFDEADBEEF'                 ).qstring())
         self.assertEqual('0q7E00_FFDEADBEEF', Number('0q7E00_FFDEADBEEF', normalize=False).qstring())
         self.assertEqual('0q7E00_FF',         Number('0q7E00_FFDEADBEEF', normalize=True).qstring())
+        self.assertEqual('0q7E00_FF',         Number('0q7E00_FFDEADBEEF').normalized().qstring())
 
-    def test_normalize_plateau_compact_256(self):
-        self.assertEqual('0q83'   , Number('0q83'                 ).qstring())
-        self.assertEqual('0q83'   , Number('0q83', normalize=False).qstring())
-        self.assertEqual('0q83_01', Number('0q83', normalize=True).qstring())
-
-    def test_normalize_plateau_compact_one(self):
-        self.assertEqual('0q82'   , Number('0q82'                 ).qstring())
-        self.assertEqual('0q82'   , Number('0q82', normalize=False).qstring())
-        self.assertEqual('0q82_01', Number('0q82', normalize=True).qstring())
-
-    def test_normalize_plateau_compact_positive_fractional(self):
-        self.assertEqual('0q81FF'   , Number('0q81FF'                 ).qstring())
-        self.assertEqual('0q81FF'   , Number('0q81FF', normalize=False).qstring())
-        self.assertEqual('0q81FF_01', Number('0q81FF', normalize=True).qstring())
-
-    def test_normalize_plateau_compact_negative_fractional(self):
-        self.assertEqual('0q7E01'   , Number('0q7E01'                 ).qstring())
-        self.assertEqual('0q7E01'   , Number('0q7E01', normalize=False).qstring())
-        self.assertEqual('0q7E00_FF', Number('0q7E01', normalize=True).qstring())
-
-    def test_normalize_plateau_compact_one_negative(self):
-        self.assertEqual('0q7E'   , Number('0q7E'                 ).qstring())
-        self.assertEqual('0q7E'   , Number('0q7E', normalize=False).qstring())
-        self.assertEqual('0q7D_FF', Number('0q7E', normalize=True).qstring())
-
-    def test_normalize_plateau_compact_256_negative(self):
-        self.assertEqual('0q7D'   , Number('0q7D'                 ).qstring())
-        self.assertEqual('0q7D'   , Number('0q7D', normalize=False).qstring())
-        self.assertEqual('0q7C_FF', Number('0q7D', normalize=True).qstring())
+        self.assertEqual('0q7D_FFDEADBEEF', Number('0q7D_FFDEADBEEF'                 ).qstring())
+        self.assertEqual('0q7D_FFDEADBEEF', Number('0q7D_FFDEADBEEF', normalize=False).qstring())
+        self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF', normalize=True).qstring())
+        self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF').normalized().qstring())
 
     if TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL:
         def test_alias_equality(self):
@@ -1574,15 +1598,17 @@ class NumberComplex(NumberTests):
         with self.assertRaises(TypeError):
             n_bar >= n
 
-    if TEST_REAL_OP_COMPLEX_TYPE_ERROR:
+    if TEST_REAL_VERSUS_COMPLEX_TYPE_ERROR:
         def test_06d_mixed_compare(self):
             x, x_bar = 888+111j, 888-111j
             n, n_bar = Number(x), Number(x_bar)
             self.assertTrue(n.real <= n_bar.real)   # Only okay if both imaginaries are zero.
             self.assertTrue(n.real >= n_bar.real)
             with self.assertRaises(TypeError):
+                # noinspection PyStatementEffect
                 n_bar < n.real
             with self.assertRaises(TypeError):   # Neither Number() in a comparison can have a nonzero imaginary.
+                # noinspection PyStatementEffect
                 n_bar.real < n
                 # FIXME:  Does Number.__float__() need to return a complex number??
                 # Assuming this comparison automagically calls float() on the right operand, right?
