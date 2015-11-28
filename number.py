@@ -153,10 +153,12 @@ class Number(numbers.Number):
     def __le__(self, other):  self._be_real(); return self._op_ready(self) <= self._op_ready(other)
     def __gt__(self, other):  self._be_real(); return self._op_ready(self) >  self._op_ready(other)
     def __ge__(self, other):  self._be_real(); return self._op_ready(self) >= self._op_ready(other)
+    # TODO:  Turn the blather below into documentation
+    # (By the way, I went with Option one.)
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
-    #     What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
-    #     Obviously different suffixes should matter:  0q80__FF0100 != 0q80__110100
+    #     TODO:  What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
+    #     TODO:  Obviously different suffixes should matter:  0q80__FF0100 != 0q80__110100
     #     This approach may be the way it needs to go in the future.
     #     For example if lossless rational numbers were supported, you might want 2/10 == 1/5
     #     So if rational numbers were implemented by approximation in the root number,
@@ -178,6 +180,10 @@ class Number(numbers.Number):
     # Option three:  give up on Number('0q82') == Number('0q82_01')
     # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
     # By the way, zero has no plateau, only 0q80 with no suffix is zero.
+    # TODO:  What about numbers embedded in suffixes, should 0q80__82_7F0200 == 0q80__8201_7F0200 ?
+    # TODO:  Number.compacted() that fights against normalize
+    # Compacted forms are desirable in suffix numbers
+    # TODO:  Should normalization strip empty suffixes?  (__0000)
 
     def __hash__(self):
         return hash(self.raw)
