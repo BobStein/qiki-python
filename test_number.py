@@ -431,6 +431,30 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF', normalize=True).qstring())
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF').normalized().qstring())
 
+    def test_normalize_less(self):
+        self.assertFalse(Number('0q82') < Number('0q82_01'))
+        self.assertFalse(Number('0q81FF') < Number('0q81FF_01'))
+        self.assertFalse(Number('0q7E00_FF') < Number('0q7E01'))
+        self.assertFalse(Number('0q7D_FF') < Number('0q7E'))
+
+    def test_normalize_greater(self):
+        self.assertFalse(Number('0q82_01') > Number('0q82'))
+        self.assertFalse(Number('0q81FF_01') > Number('0q81FF'))
+        self.assertFalse(Number('0q7E01') > Number('0q7E00_FF'))
+        self.assertFalse(Number('0q7E') > Number('0q7D_FF'))
+
+    def test_normalize_less_equal(self):
+        self.assertTrue(Number('0q82_01') <= Number('0q82'))
+        self.assertTrue(Number('0q81FF_01') <= Number('0q81FF'))
+        self.assertTrue(Number('0q7E01') <= Number('0q7E00_FF'))
+        self.assertTrue(Number('0q7E') <= Number('0q7D_FF'))
+
+    def test_normalize_greater_equal(self):
+        self.assertTrue(Number('0q82') >= Number('0q82_01'))
+        self.assertTrue(Number('0q81FF') >= Number('0q81FF_01'))
+        self.assertTrue(Number('0q7E00_FF') >= Number('0q7E01'))
+        self.assertTrue(Number('0q7D_FF') >= Number('0q7E'))
+
     if TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL:
         def test_alias_equality(self):
             """Test number plateaus at +/-256**+/-n for n=0,1,2."""
@@ -2110,10 +2134,10 @@ class NumberUtilitiesTests(NumberTests):
     Testing utility functions in number.py.
     """
 
-    def test_01_shift_left(self):
-        self.assertEqual(0b000010000, shift_left(0b000010000, 0))
-        self.assertEqual(0b000100000, shift_left(0b000010000, 1))
-        self.assertEqual(0b000001000, shift_left(0b000010000,-1))
+    def test_01_shift_leftward(self):
+        self.assertEqual(0b000010000, shift_leftward(0b000010000, 0))
+        self.assertEqual(0b000100000, shift_leftward(0b000010000, 1))
+        self.assertEqual(0b000001000, shift_leftward(0b000010000,-1))
 
     def test_01_pack_integer(self):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers

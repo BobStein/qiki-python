@@ -53,7 +53,6 @@ class Number(numbers.Number):
         if normalize:
             self._normalize_all()
 
-
     # Zone
     # ----
     # qiki Numbers fall into zones.
@@ -82,7 +81,6 @@ class Number(numbers.Number):
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
         NAN                 = b''   # NAN means Not-a-number, Ass-is-out-of-range, or Nullificationalized.
-
 
     # Raw internal format
     # -------------------
@@ -142,15 +140,19 @@ class Number(numbers.Number):
     def __str__(self):
         return self.qstring()
 
+    @classmethod
+    def _op_ready(cls, x):
+        """Get some kind of value ready for comparison operators."""
+        return cls(x, normalize=True).raw
 
     # Math
     # ----
-    def __eq__(self, other):                   return Number(self, normalize=True).raw == Number(other, normalize=True).raw
-    def __ne__(self, other):                   return Number(self, normalize=True).raw != Number(other, normalize=True).raw
-    def __lt__(self, other):  self._be_real(); return Number(self).raw <  Number(other).raw
-    def __le__(self, other):  self._be_real(); return Number(self).raw <= Number(other).raw
-    def __gt__(self, other):  self._be_real(); return Number(self).raw >  Number(other).raw
-    def __ge__(self, other):  self._be_real(); return Number(self).raw >= Number(other).raw
+    def __eq__(self, other):                   return self._op_ready(self) == self._op_ready(other)
+    def __ne__(self, other):                   return self._op_ready(self) != self._op_ready(other)
+    def __lt__(self, other):  self._be_real(); return self._op_ready(self) <  self._op_ready(other)
+    def __le__(self, other):  self._be_real(); return self._op_ready(self) <= self._op_ready(other)
+    def __gt__(self, other):  self._be_real(); return self._op_ready(self) >  self._op_ready(other)
+    def __ge__(self, other):  self._be_real(); return self._op_ready(self) >= self._op_ready(other)
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
     #     What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
@@ -338,9 +340,6 @@ class Number(numbers.Number):
         if imag != self.ZERO:
             return_value.add_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
         return return_value
-
-
-
 
     # "from" conversions:  Number <-- other type
     # ------------------------------------------
@@ -566,13 +565,13 @@ class Number(numbers.Number):
     def _to_int_positive(self):
         (qan, qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
-        return shift_left(qan, qexp*8)
+        return shift_leftward(qan, qexp*8)
 
     def _to_int_negative(self):
         (qan,qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
         qan_negative = qan - exp256(qanlength)
-        the_int = shift_left(qan_negative, qexp*8)
+        the_int = shift_leftward(qan_negative, qexp*8)
         if qexp < 0:
             extraneous_mask = exp256(-qexp) - 1
             extraneous = qan_negative & extraneous_mask   # XXX:  a more graceful way to floor to 0 instead of to -inf
@@ -712,7 +711,6 @@ class Number(numbers.Number):
 
     mysql = x_apostrophe_hex
 
-
     # Zone Determination
     # ------------------
     @property
@@ -781,7 +779,6 @@ class Number(numbers.Number):
                     return                      self.Zone.TRANSFINITE_NEG
                 else:
                     return                      self.Zone.NAN
-
 
     # Suffixes
     # --------
@@ -987,7 +984,6 @@ class Number(numbers.Number):
         return_array.append(n)
         return tuple(reversed(return_array))
 
-
     # Setup
     # -----
     name_of_zone = None
@@ -1004,14 +1000,12 @@ class Number(numbers.Number):
 
         cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes, desc order == defined order
 
-
         # Constants
         # ---------
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
         cls.POSITIVE_INFINITY = cls.from_raw(cls.RAW_INF)
         cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
-
 
         # Sets of Zones   TODO:  draw a Venn Diagram or table or something
         # -------------
@@ -1227,20 +1221,26 @@ def log256(i):
     """Compute the log base 256 of an integer.  Return the floor integer."""
     assert i > 0
     return_value = (i.bit_length()-1) >> 3
-    assert return_value == math.floor(math.log(i, 256)) or i > 2**56, "{0} {1} {2}".format(i, return_value, math.floor(math.log(i, 256)))
+    assert return_value == math.floor(math.log(i, 256)) or i > 2**47, "{0} {1} {2}".format(
+        i,
+        return_value,
+        math.floor(math.log(i, 256))
+    )
     assert return_value == len(hex_from_integer(i))//2 - 1
     return return_value
+assert 1 == log256(256)
+assert 2 == log256(65536)
 
 
-def shift_left(n, nbits):
+def shift_leftward(n, nbits):
     """Shift positive left, or negative right."""
     # GENERIC:  This function might be useful elsewhere.
     if nbits < 0:
         return n >> -nbits
     else:
         return n << nbits
-assert 64 == shift_left(32, 1)
-assert 16 == shift_left(32, -1)
+assert 64 == shift_leftward(32, 1)
+assert 16 == shift_leftward(32, -1)
 
 
 def floats_really_same(f1,f2):
