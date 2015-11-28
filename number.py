@@ -261,7 +261,8 @@ class Number(numbers.Number):
 
     def is_negative(self):
         # TODO:  Unit test.
-        return_value = (six.indexbytes(self.raw, 0) & 0x80) == 0
+        return_value = ((six.indexbytes(self.raw, 0) & 0x80) == 0)
+        assert return_value == (self.zone in self.ZONE_NEGATIVE)
         assert return_value == (self.raw < self.RAW_ZERO)
         # try:
         #     assert return_value == (self < self.ZERO)   # Infinite recursion
@@ -271,7 +272,8 @@ class Number(numbers.Number):
 
     def is_positive(self):
         # TODO:  Unit test.
-        return_value = not self.is_negative() and not self.is_zero()
+        return_value = (not self.is_negative() and not self.is_zero())
+        assert return_value == (self.zone in self.ZONE_POSITIVE)
         assert return_value == (self.raw > self.RAW_ZERO)
         # try:
         #     assert return_value == (self > self.ZERO)   # Infinite recursion
@@ -281,7 +283,8 @@ class Number(numbers.Number):
 
     def is_zero(self):
         # TODO:  Unit test.
-        return_value = self.raw == self.RAW_ZERO
+        return_value = (self.raw == self.RAW_ZERO)
+        assert return_value == (self.zone in self.ZONE_ZERO)
         # assert return_value == (self == self.ZERO)   # Infinite recursion
         return return_value
 
@@ -385,7 +388,9 @@ class Number(numbers.Number):
             try:
                 byte_string = string_from_hex(digits)
             except TypeError:
-                raise ValueError("A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s))
+                raise ValueError(
+                    "A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s)
+                )
             self.raw = six.binary_type(byte_string)
         else:
             raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
@@ -426,6 +431,11 @@ class Number(numbers.Number):
     def _from_float(self, x, qigits = None):
         """Construct a Number from a Python IEEE 754 double-precision floating point number
 
+        The big unwrapped if reveals this conversion in its lambdas:
+
+            qex <-- base 256 exponent
+
+        Contrast __qexponent_encode_dict().
         Example:  assert Number(1) == Number(1.0)
         Example:  assert '0q82_01' == Number(1.0).qstring()
         Example:  assert '0q82_03243F6A8885A3' = Number(math.pi).qstring()
@@ -435,7 +445,7 @@ class Number(numbers.Number):
 
         if math.isnan(x):        self.raw =           self.RAW_NAN
         elif x >= float('+inf'): self.raw =           self.RAW_INF
-        elif x >=  1.0:          self.raw =           self._raw_from_float(x, lambda e: 0x81+e, qigits)   # qex <-- e256
+        elif x >=  1.0:          self.raw =           self._raw_from_float(x, lambda e: 0x81+e, qigits)
         elif x >   0.0:          self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e, qigits)
         elif x ==  0.0:          self.raw =           self.RAW_ZERO
         elif x >  -1.0:          self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e, qigits)
@@ -693,8 +703,13 @@ class Number(numbers.Number):
             raise ValueError("qexponent() broken for {}".format(repr(self)))
         return qex
 
+    # The following dictionary reveals this conversion in its lambdas:
+    #
+    #     base 256 exponent <-- qex
+    #
+    # Contrast _from_float().
     __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,   # e256 <-- qex
+        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
         Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
@@ -973,7 +988,8 @@ class Number(numbers.Number):
                     length_of_payload_plus_type = six.indexbytes(n.raw, -2)
                 except IndexError:
                     raise ValueError
-                if length_of_payload_plus_type >= len(n.raw)-2:   # Suffix may neither be larger than raw, nor consume all of it.
+                if length_of_payload_plus_type >= len(n.raw)-2:
+                    # Suffix may neither be larger than raw, nor consume all of it.
                     raise ValueError
                 if length_of_payload_plus_type == 0x00:
                     return_array.append(Number.Suffix())
@@ -990,6 +1006,8 @@ class Number(numbers.Number):
         return_array.append(n)
         return tuple(reversed(return_array))
 
+    # TODO:  def unsuffixed()
+
     # Setup
     # -----
     name_of_zone = None
@@ -1004,7 +1022,8 @@ class Number(numbers.Number):
         }
         assert cls.name_of_zone[cls.Zone.ZERO] == 'ZERO'
 
-        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)   # zone codes, desc order == defined order
+        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)
+        # Zone codes, in descending order, the same as defined order.
 
         # Constants
         # ---------
@@ -1014,7 +1033,7 @@ class Number(numbers.Number):
         cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
 
         # Sets of Zones   TODO:  draw a Venn Diagram or table or something
-        # -------------
+        # -------------   TODO:  spawn is_xxx() routines??
         cls.ZONE_REASONABLE = {
             cls.Zone.POSITIVE,
             cls.Zone.FRACTIONAL,
@@ -1360,7 +1379,8 @@ def unpack_big_integer(binary_string):
     Akin to a base-256 decode, big-endian.
     """
     if len(binary_string) <= 8:
-        return unpack_big_integer_by_struct(binary_string)   # 1.1 to 4 times as fast as _unpack_big_integer_by_brute()
+        return unpack_big_integer_by_struct(binary_string)
+        # NOTE:  1.1 to 4 times as fast as _unpack_big_integer_by_brute()
     else:
         return unpack_big_integer_by_brute(binary_string)
 assert 170 == unpack_big_integer(b'\x00\xAA')
