@@ -488,9 +488,9 @@ class Number(numbers.Number):
     # "to" conversions:  Number --> other type
     # ----------------------------------------
     def qstring(self, underscore=1):
-        """Output Number in '0qHHHHHH' string form.
+        """Output Number as a q-string, e.g.  '0q82_01'
 
-        assert '0q85_1234ABCD' == Number(0x1234ABCD).qstring()
+        assert '0q85_12345678' == Number(0x12345678).qstring()
         Q-string is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
         Except q for x, underscores optional, and of course the value interpretation differs.
@@ -807,13 +807,13 @@ class Number(numbers.Number):
         """A Number can have suffixes.
 
         Format of a nonempty suffix (uppercase letters represent hexadecimal digits):
-            PPPPPP_TTLL00
+            PP _ TT LL 00
         where:
-            PPPPPP - 0 to 250 byte payload
-                 _ - underscore is a conventional qstring delimiter between payload and the rest
-                TT - type code of the suffix
-                LL - length, number of bytes in the type and payload, 0x00 to 0xFA
-                00 - NUL byte
+            PP - 0 to 250 byte payload
+             _ - underscore is a conventional qstring delimiter between payload and type-length-NUL
+            TT - type code of the suffix
+            LL - length, number of bytes in the type and payload, 0x00 to 0xFA
+            00 - NUL byte
 
         The "empty" suffix is two NUL bytes:
             0000
@@ -1296,14 +1296,14 @@ def left_pad00(the_string, nbytes):
     # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
     assert(isinstance(the_string, six.binary_type))
     return the_string.rjust(nbytes, b'\x00')
-assert b'\x00\x00abcd' == left_pad00(b'abcd', 6)
+assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
 def right_strip00(the_string):
     """Remove '\x00' NULs from the right end of a string."""
     assert(isinstance(the_string, six.binary_type))
     return the_string.rstrip(b'\x00')
-assert b'abcd' == right_strip00(b'abcd\x00\x00')
+assert b'string' == right_strip00(b'string\x00\x00')
 
 
 # Packing and Unpacking Integers
@@ -1426,7 +1426,7 @@ Number.Suffix.internal_setup(Number)
 #   This may not be worth solving, or it may indicate a negative number bug.
 #   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
 
-# TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?
+# TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?  For the unsuffixed part of a suffixed number?
 # Number class is unsuffixed, and derived class is suffixed?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
 

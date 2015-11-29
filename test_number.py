@@ -47,6 +47,7 @@ class NumberTests(unittest.TestCase):
             ))
 
 
+# noinspection SpellCheckingInspection
 class NumberBasicTests(NumberTests):
 
     def test_raw(self):
@@ -1385,6 +1386,7 @@ class NumberComparisonTests(NumberTests):
         self.assertTrue (googol_plus_1 == googol_plus_1)
 
 
+# noinspection SpellCheckingInspection
 class NumberIsTests(NumberTests):
 
     def test_is_whole(self):
@@ -1441,6 +1443,7 @@ class NumberIsTests(NumberTests):
         # islarge() (ludicrous_large or infinite)
 
 
+# noinspection SpellCheckingInspection
 class NumberMathTests(NumberTests):
 
     def test_neg(self):
@@ -1516,6 +1519,7 @@ class NumberMathTests(NumberTests):
                 power_of_two *= 2
 
 
+# noinspection SpellCheckingInspection
 class NumberComplex(NumberTests):
 
     def test_01_real(self):
@@ -1676,6 +1680,7 @@ class NumberComplex(NumberTests):
 # DONE:  imag, real
 
 
+# noinspection SpellCheckingInspection
 class NumberPickleTests(NumberTests):
     """ This isn't so much testing as revealing what pickle does to a qiki.Number."""
 
@@ -1771,6 +1776,7 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(x314, y314)
 
 
+# noinspection SpellCheckingInspection
 class NumberSuffixTests(NumberTests):
 
     # TODO:  Replace the indiscriminate use of suffix types here with a single
@@ -2039,6 +2045,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
 
+# noinspection SpellCheckingInspection
 class NumberDictionaryKeyTests(NumberTests):
     """qiki.Number() should work as a dictionary key."""
     def setUp(self):
@@ -2129,6 +2136,7 @@ class NumberDictionaryKeyTests(NumberTests):
 
 
 
+# noinspection SpellCheckingInspection
 class NumberUtilitiesTests(NumberTests):
     """
     Testing utility functions in number.py.

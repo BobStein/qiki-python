@@ -232,10 +232,6 @@ class Word(object):
         new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
-    #
-    # @classmethod
-    # def make_verb_a_method(cls, verb):
-    #     setattr(cls, verb.txt, verb)
 
     class MissingFromLex(Exception):
         pass
@@ -494,20 +490,6 @@ class Word(object):
     def idn(self, value):
         raise RuntimeError("Cannot set a Word's idn")
 
-    def max_idn(self):
-        cursor = self.lex._connection.cursor()
-        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self.lex._table))
-        max_idn_sql_row = cursor.fetchone()
-        if max_idn_sql_row is None:
-            return Number(0)
-        max_idn_sql = max_idn_sql_row[0]
-        if max_idn_sql is None:
-            return Number(0)
-        return_value = Number.from_mysql(max_idn_sql)
-        assert not return_value.is_nan()
-        assert return_value.is_whole()
-        return return_value
-
     def save(self, override_idn=None):
         if override_idn is not None:
             self._idn = override_idn
@@ -519,7 +501,7 @@ class Word(object):
         assert isinstance(self.txt, six.string_types)
         assert not self.exists
         if self._idn is None:
-            self._idn = self.max_idn().inc()   # AUTO sorta INCREMENT
+            self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
             # Or store latest idn in another table
             # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
@@ -613,10 +595,11 @@ class Listing(Word):
         pass
 
 
-class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Booq, Lex, Lexicon
+class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
                       #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
                       #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                       # Eventually, this will encapsulate other word repositories
+                      # Make this an abstract base class
     pass
 
 
@@ -648,7 +631,7 @@ class LexMySQL(Lex):
         cursor = self._cursor()
         cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         cursor.close()
-        # THANKS:  Tomasz Nguyen  http://stackoverflow.com/a/27390024/673991
+        # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
 
@@ -763,6 +746,7 @@ class LexMySQL(Lex):
         cursor.close()
         return idns
 
+    # noinspection SpellCheckingInspection
     def insert_word(self, word):
         cursor = self._cursor()
         assert not word.idn.is_nan()
@@ -804,6 +788,7 @@ class LexMySQL(Lex):
         query += " ORDER BY idn "
         return self._select_words(query, parameters)
 
+    # noinspection SpellCheckingInspection
     def _select_words(self, sql, parameters):
         """
         Read an array of words based on an SELECT idn FROM {table} query.
@@ -832,6 +817,21 @@ class LexMySQL(Lex):
             words.append(word)
         cursor.close()
         return words
+
+    def max_idn(self):
+        # TODO:  Store max_idn in a singleton table.
+        cursor = self._connection.cursor()
+        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._table))
+        max_idn_sql_row = cursor.fetchone()
+        if max_idn_sql_row is None:
+            return Number(0)
+        max_idn_sql = max_idn_sql_row[0]
+        if max_idn_sql is None:
+            return Number(0)
+        return_value = Number.from_mysql(max_idn_sql)
+        assert not return_value.is_nan()
+        assert return_value.is_whole()
+        return return_value
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
