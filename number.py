@@ -331,15 +331,10 @@ class Number(numbers.Number):
 
     @property
     def real(self):
-        if not self.is_suffixed():
-            return Number(self)
-        pieces = self.parse_suffixes()
-        return pieces[0]
+        return self.parse_suffixes()[0]
 
     @property
     def imag(self):
-        if not self.is_suffixed():
-            return self.ZERO
         try:
             return self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
         except self.Suffix.NoSuchType:
@@ -966,20 +961,22 @@ class Number(numbers.Number):
         raise self.Suffix.NoSuchType
 
     def get_suffix_payload(self, sought_type):
+        # TODO:  Default value instead of NoSuchType?
         return self.get_suffix(sought_type).payload
 
     def get_suffix_number(self, sought_type):
+        # TODO:  Default value instead of NoSuchType?
         return self.get_suffix(sought_type).payload_number()
 
     def parse_suffixes(self):
         """Parse a Number into its root and suffixes.
 
-        Return a tuple of at least one element (the root, unsuffixed Number)
+        Return a tuple of at least one element (the root unsuffixed Number)
         followed by zero or more suffixes.
 
         assert \
-            (Number(1), Number.Suffix(2), Number.Suffix(3)) == \
-             Number(1)    .add_suffix(2)    .add_suffix(3).parse_suffixes()
+            (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')) == \
+             Number(1)    .add_suffix(2)    .add_suffix(3, b'\x4567').parse_suffixes()
         """
         return_array = []
         n = Number(self)   # Is this really necessary? self.raw is immutable is it not?

@@ -12,12 +12,6 @@ import unittest
 from number import *
 
 
-# Up and coming feature tests:
-TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL = True   # E.g. 0q82 == 0q82_01
-TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL = True   # E.g. 0q82_01 == 0q82_01__80_6A0200
-TEST_REAL_VERSUS_COMPLEX_TYPE_ERROR = True   # E.g. float(42.0) < Number(42.0+99j)
-
-
 # Slow tests:
 TEST_INC_ON_ALL_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (12 seconds on slow laptops)
 
@@ -456,19 +450,18 @@ class NumberBasicTests(NumberTests):
         self.assertTrue(Number('0q7E00_FF') >= Number('0q7E01'))
         self.assertTrue(Number('0q7D_FF') >= Number('0q7E'))
 
-    if TEST_NUMBER_ALIASES_AT_PLATEAUS_SHOULD_BE_EQUAL:
-        def test_alias_equality(self):
-            """Test number plateaus at +/-256**+/-n for n=0,1,2."""
-            self.assertEqual(Number('0q84'), Number('0q84_01'))        #  256**2
-            self.assertEqual(Number('0q83'), Number('0q83_01'))        #  256**1
-            self.assertEqual(Number('0q82'), Number('0q82_01'))        #  256**0
-            self.assertEqual(Number('0q81FF'), Number('0q81FF_01'))    #  256**-1
-            self.assertEqual(Number('0q7E02'), Number('0q7E01_FF'))    #  256**-2
-            self.assertEqual(Number('0q81FE'), Number('0q81FE_01'))    # -256**-2
-            self.assertEqual(Number('0q7E01'), Number('0q7E00_FF'))    # -256**-1
-            self.assertEqual(Number('0q7E'), Number('0q7D_FF'))        # -256**0
-            self.assertEqual(Number('0q7D'), Number('0q7C_FF'))        # -256**1
-            self.assertEqual(Number('0q7C'), Number('0q7B_FF'))        # -256**2
+    def test_alias_equality(self):
+        """Test number plateaus at +/-256**+/-n for n=0,1,2."""
+        self.assertEqual(Number('0q84'), Number('0q84_01'))        #  256**2
+        self.assertEqual(Number('0q83'), Number('0q83_01'))        #  256**1
+        self.assertEqual(Number('0q82'), Number('0q82_01'))        #  256**0
+        self.assertEqual(Number('0q81FF'), Number('0q81FF_01'))    #  256**-1
+        self.assertEqual(Number('0q7E02'), Number('0q7E01_FF'))    #  256**-2
+        self.assertEqual(Number('0q81FE'), Number('0q81FE_01'))    # -256**-2
+        self.assertEqual(Number('0q7E01'), Number('0q7E00_FF'))    # -256**-1
+        self.assertEqual(Number('0q7E'), Number('0q7D_FF'))        # -256**0
+        self.assertEqual(Number('0q7D'), Number('0q7C_FF'))        # -256**1
+        self.assertEqual(Number('0q7C'), Number('0q7B_FF'))        # -256**2
 
     def test_ints_and_strings(self):
 
@@ -1574,25 +1567,24 @@ class NumberComplex(NumberTests):
         self.assertEqual(111.0, float(n.imag))
         self.assertEqual(888.0+111.0j, complex(n))
 
-    if TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL:
-        def test_03b_complex_phantom_real(self):
-            """Test complex with a zero imaginary --> Number --> real."""
-            self.assertEqual('0q82_2A__830457_6A0400', Number((42+1111j)).qstring())
-            self.assertEqual('0q82_2A__80_6A0200', Number(42+0j).qstring())
-            self.assertEqual('0q82_2A', Number(42).qstring())
-            self.assertEqual(Number(42), Number((42+0j)))
+    def test_03b_complex_phantom_real(self):
+        """Test complex with a zero imaginary --> Number --> real."""
+        self.assertEqual('0q82_2A__830457_6A0400', Number((42+1111j)).qstring())
+        self.assertEqual('0q82_2A__80_6A0200', Number(42+0j).qstring())
+        self.assertEqual('0q82_2A', Number(42).qstring())
+        self.assertEqual(Number(42), Number((42+0j)))
 
     def test_03c_complex_phantom_deliberate(self):
         """Zero imaginary parts must be possible to support quaternions, maybe."""
         self.assertNotEqual('0q82_2A', Number('0q82_2A__80_6A0200').qstring())
         self.assertEqual('0q82_2A__80_6A0200', Number('0q82_2A__80_6A0200').qstring())
 
-    if TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL:
-        def test_03d_complex_phantom_immaterial(self):
-            """Zero imaginary parts must not thwart numbers being equal."""
-            self.assertEqual(Number('0q82_2A'), Number('0q82_2A__80_6A0200'))
+    def test_03d_complex_phantom_immaterial(self):
+        """Zero imaginary parts must not thwart numbers being equal."""
+        self.assertEqual(Number('0q82_2A'), Number('0q82_2A__80_6A0200'))
 
-    def test_03e_complex_zero_imag_normalixzed(self):
+    def test_03e_complex_zero_imag_normalized(self):
+        """A zero imaginary suffix is normalized away."""
         self.assertEqual('0q82_2A__8211_6A0300', Number(42+17j).qstring())
         self.assertEqual('0q82_2A__8211_6A0300', Number(42+17j, normalize=True).qstring())
 
@@ -1601,40 +1593,49 @@ class NumberComplex(NumberTests):
         self.assertEqual('0q82_2A',            Number(42+0j, normalize=True).qstring())
 
     def test_04_real_suffixed(self):
-        """Test Number.real ignores other suffixes."""
+        """Number.real ignores other suffixes."""
         self.assertEqual('0q82_11', Number('0q82_11').real.qstring())
         self.assertEqual('0q82_11', Number('0q82_11__0000').real.qstring())
         self.assertEqual('0q82_11', Number('0q82_11__8201_7F0300').real.qstring())
-        self.assertEqual('0q82_11', Number('0q82_11__8201_7F0300').real.qstring())
 
     def test_05a_conjugate(self):
+        """Number.conjugate() passes through when imaginary is zero."""
         self.assertEqual(42.0, complex(Number(42.0).conjugate()))
         self.assertEqual('0q82_2A', Number(42.0).qstring())
         self.assertEqual('0q82_2A', Number(42.0).conjugate().qstring())
 
     def test_05b_conjugate(self):
-        n = 888+111j
-        self.assertEqual(888-111j, n.conjugate())
-        self.assertEqual(888-111j, complex(Number(n).conjugate()))
+        """Number.conjugate() should work like native complex.conjugate()."""
+        native_complex = 888+111j
+        self.assertEqual(888-111j, native_complex.conjugate())
+        self.assertEqual(888-111j, complex(Number(native_complex).conjugate()))
+        self.assertEqual(Number(888-111j), Number(888+111j).conjugate())
+
+    def test_05c_conjugate(self):
+        """Number.conjugate(), when it passes through, must not return self."""
+        qiki_complex = Number(888)
+        qiki_conjugate = qiki_complex.conjugate()
+        self.assertIsNot(qiki_complex, qiki_conjugate)
 
     def test_06a_equal(self):
-        """Complex equality comparisons (== !=) should work."""
+        """Complex equality-comparisons (== !=) should work."""
         self.assertEqual(888+111j, Number(888+111j))
         self.assertNotEqual(888-111j, Number(888+111j))
         self.assertNotEqual(888+111j, Number(888-111j))
         self.assertEqual(888-111j, Number(888-111j))
 
     def test_06b_compare(self):
-        """Complex ordered comparisons (< <= >= >) should raise a TypeError."""
+        """Complex ordered-comparison < should raise a TypeError, both native and qiki numbers."""
         x, x_bar = 888+111j, 888-111j
         n, n_bar = Number(x), Number(x_bar)
-        with self.assertRaises(TypeError):   # Comparing native complex comparisons raise a TypeError.
+        with self.assertRaises(TypeError):   # Comparing native complex numbers raises a TypeError.
             # noinspection PyStatementEffect
             x_bar < x
-        with self.assertRaises(TypeError):   # So Number() comparisons with a nonzero imaginary,
+        with self.assertRaises(TypeError):   # So should Number() comparisons with a nonzero imaginary.
             n_bar < n
 
     def test_06c_more_or_less_complex_comparisons(self):
+        """Complex ordered-comparisons < <= > >= should raise a TypeError, qiki numbers. """
         x, x_bar = 888+111j, 888-111j
         n, n_bar = Number(x), Number(x_bar)
         with self.assertRaises(TypeError):   # Check all comparison operators.
@@ -1646,60 +1647,47 @@ class NumberComplex(NumberTests):
         with self.assertRaises(TypeError):
             n_bar >= n
 
-    if TEST_REAL_VERSUS_COMPLEX_TYPE_ERROR:
-        def test_06d_mixed_types_and_mixed_complexities_comparison(self):
-            native_complex1, native_complex2 = 888+111j, 888-111j
-            qiki_complex1, qiki_complex2 = Number(native_complex1), Number(native_complex2)
-            qiki_real1, qiki_real2 = qiki_complex1.real, qiki_complex2.real
-            native_real1, native_real2 = float(qiki_real1), float(qiki_real2)
-            self.assertEqual(native_real1, native_complex1.real)
-            self.assertEqual(native_real2, native_complex2.real)
-            self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
-            self.assertTrue(qiki_real1 >= qiki_real2)
-            with self.assertRaises(TypeError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
-                # noinspection PyStatementEffect
-                qiki_complex2 < qiki_real1
-            with self.assertRaises(TypeError):
-                # noinspection PyStatementEffect
-                qiki_real2 < qiki_complex1
-            with self.assertRaises(TypeError):   # n vs q
-                # noinspection PyStatementEffect
-                native_complex2 < qiki_real1
-            with self.assertRaises(TypeError):
-                # noinspection PyStatementEffect
-                native_real2 < qiki_complex1
-            with self.assertRaises(TypeError):   # q vs n
-                # noinspection PyStatementEffect
-                qiki_complex2 < native_real1
-            with self.assertRaises(TypeError):
-                # noinspection PyStatementEffect
-                qiki_real2 < native_complex1
-            with self.assertRaises(TypeError):   # n vs n
-                # noinspection PyStatementEffect
-                native_complex2 < native_real1
-            with self.assertRaises(TypeError):
-                # noinspection PyStatementEffect
-                native_real2 < native_complex1
+    # noinspection PyStatementEffect
+    def test_06d_mixed_types_and_mixed_complexities_comparison(self):
+        """Doubly mixed ordered-comparison < should raise a Type Error.
 
-            # TODO:  Check doubly mixed comparisons for <= > >=
+        Doubly mixed, meaning:
+            1. One side is complex, the other side real.
+            2. One side is a qiki.Number, the other a native Python number.
+        """
+        native_complex1, native_complex2 = 888+111j, 888-111j
+        qiki_complex1, qiki_complex2 = Number(native_complex1), Number(native_complex2)
+        qiki_real1, qiki_real2 = qiki_complex1.real, qiki_complex2.real
+        native_real1, native_real2 = float(qiki_real1), float(qiki_real2)
+        self.assertEqual(native_real1, native_complex1.real)
+        self.assertEqual(native_real2, native_complex2.real)
+        self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
+        self.assertTrue(qiki_real1 >= qiki_real2)
+        with self.assertRaises(TypeError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
+            qiki_complex2 < qiki_real1
+        with self.assertRaises(TypeError):
+            qiki_real2 < qiki_complex1
+        with self.assertRaises(TypeError):   # n vs q
+            native_complex2 < qiki_real1
+        with self.assertRaises(TypeError):
+            native_real2 < qiki_complex1
+        with self.assertRaises(TypeError):   # q vs n
+            qiki_complex2 < native_real1
+        with self.assertRaises(TypeError):
+            qiki_real2 < native_complex1
+        with self.assertRaises(TypeError):   # n vs n
+            native_complex2 < native_real1
+        with self.assertRaises(TypeError):
+            native_real2 < native_complex1
 
-                # The following whining should all be fixed now...
-                # FIXME:  Does Number.__float__() need to return a complex number??
-                # Assuming this comparison automagically calls float() on the right operand, right?
-                # Or maybe some Number method could be coaxed into being called in this case?
-                # Ah no, Number.__float__() should never return complex...
-                # Instead, Number.__float__() itself should raise a TypeError on a complex number!
-                # Now it does, see test...float_complex().
-                # But why in the world didn't that work?!?  It should make native_real < qiki_complex a TypeError.
-                # So float.__lt__(float, qiki.Number) must not be calling float() on the right argument!  Bug??
+    # TODO:  Check doubly mixed comparisons for <= > >=
 
     def test_07a_is_complex(self):
         self.assertFalse(Number(42).is_complex())
         self.assertTrue(Number(42+99j).is_complex())
 
-    if TEST_COMPLEX_WITH_ZERO_IMAG_SHOULD_EQUAL_REAL:
-        def test_07b_zero_imag_isnt_complex(self):
-            self.assertFalse(Number(42+0j).is_complex())
+    def test_07b_zero_imag_isnt_complex(self):
+        self.assertFalse(Number(42+0j).is_complex())
 
     def test_07c_is_real(self):
         self.assertTrue(Number(42).is_real())
@@ -1949,6 +1937,12 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(
             (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
             Number( 1.75).add_suffix(    111).add_suffix(    222).parse_suffixes()
+        )
+
+    def test_parse_suffixes_example_in_docstring(self):
+        self.assertEqual(
+            (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')),
+             Number(1)    .add_suffix(2)    .add_suffix(3, b'\x4567').parse_suffixes()
         )
 
     def test_parse_multiple_suffixes(self):
