@@ -1425,6 +1425,7 @@ Number.Suffix.internal_setup(Number)
 #   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
 #   This may not be worth solving, or it may indicate a negative number bug.
 #   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
+#   But things work as expected in f__s() unit test.  Why do they fail at the playground?
 
 # TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?  For the unsuffixed part of a suffixed number?
 # Number class is unsuffixed, and derived class is suffixed?
