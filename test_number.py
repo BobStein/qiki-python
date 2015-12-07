@@ -813,6 +813,8 @@ class NumberBasicTests(NumberTests):
         zone_boundary()
         f__s(float('+inf'),               '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
         zone_boundary()
+        # f__s(math.pow(2,65536),           '0qFF_01')   # TODO:  Should normalize to 2**65536 == 0qFFFF000000010000_01 > 0qFF00FFFF == 2**65535.
+        # f__s(math.pow(2,1000),            '0qFF0003E8_01')   # TODO:  Ludicrous number +2 ** +1000.
         f__s(math.pow(2,999),             '0qFE_80')
         f__s(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
         f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol
