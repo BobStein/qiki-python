@@ -1709,11 +1709,11 @@ class NumberComplex(NumberTests):
         self.assertEqual(5.0, float(n.imag))
 
 
-# TODO:  Test for all the operations in this TypeError:
+# TODO:  Pave the way for Number to be a subclass of abstract base class numbers.Complex.
+# Test for all the operations named in the following TypeError:
 # Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
 # __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__,
-# conjugate,
-# DONE:  imag, real
+# DONE:  imag, real, conjugate
 
 
 # noinspection SpellCheckingInspection
