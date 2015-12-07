@@ -147,12 +147,12 @@ class Number(numbers.Number):
 
     # Math
     # ----
-    def __eq__(self, other):                   return self._op_ready(self) == self._op_ready(other)
-    def __ne__(self, other):                   return self._op_ready(self) != self._op_ready(other)
-    def __lt__(self, other):  self._be_real(); return self._op_ready(self) <  self._op_ready(other)
-    def __le__(self, other):  self._be_real(); return self._op_ready(self) <= self._op_ready(other)
-    def __gt__(self, other):  self._be_real(); return self._op_ready(self) >  self._op_ready(other)
-    def __ge__(self, other):  self._be_real(); return self._op_ready(self) >= self._op_ready(other)
+    def __eq__(self, other):                          return self._op_ready(self) == self._op_ready(other)
+    def __ne__(self, other):                          return self._op_ready(self) != self._op_ready(other)
+    def __lt__(self, other):  self._both_real(other); return self._op_ready(self) <  self._op_ready(other)
+    def __le__(self, other):  self._both_real(other); return self._op_ready(self) <= self._op_ready(other)
+    def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
+    def __ge__(self, other):  self._both_real(other); return self._op_ready(self) >= self._op_ready(other)
     # TODO:  Turn the blather below into documentation
     # (By the way, I went with Option one.)
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
@@ -184,6 +184,13 @@ class Number(numbers.Number):
     # TODO:  Number.compacted() that fights against normalize
     # Compacted forms are desirable in suffix numbers
     # TODO:  Should normalization strip empty suffixes?  (__0000)
+
+    def _both_real(self, other):
+        if self.is_complex():
+            raise TypeError("Cannot compare complex values.")
+            # TODO:  Subclass TypeError for more specificity.  Yay, TypeError catcher would still work.
+        if type(self)(other).is_complex():
+            raise TypeError("Cannot compare complex values.")
 
     def __hash__(self):
         return hash(self.raw)
@@ -315,11 +322,6 @@ class Number(numbers.Number):
     def is_complex(self):
         return self.imag != self.ZERO
 
-    def _be_real(self):
-        if self.is_complex():
-            raise TypeError("Cannot compare complex values.")
-            # TODO:  Subclass TypeError for more specificity.  Yay, TypeError catcher would still work.
-
     def inc(self):
         self.raw = self._inc_via_integer()
         return self
@@ -330,7 +332,7 @@ class Number(numbers.Number):
     @property
     def real(self):
         if not self.is_suffixed():
-            return self
+            return Number(self)
         pieces = self.parse_suffixes()
         return pieces[0]
 
