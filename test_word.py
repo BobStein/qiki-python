@@ -78,6 +78,48 @@ class WordTests(unittest.TestCase):
         self.assertGreaterEqual(time.time(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
+    # noinspection PyPep8Naming
+    # TODO:  Oops, this has to be a function after all.
+    class assertNewWordCount(object):
+        def __init__(self, num_new_words):
+            self.num_new_words = num_new_words
+
+
+        def __enter__(self):
+            self.word_count_before = self.lex.max_idn()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+        class Failure(Exception):
+            pass
+
+    def assertNoNewWords(self):
+        return self.assertNewWordCount(0)
+
+
+class InternalTestWordTests(WordTests):
+    """Test WordTests class itself."""
+
+    def test_assertNoNewWords(self):
+        with self.assertNoNewWords():
+            pass
+        with self.assertRaises(self.assertNewWordCount.Failure):
+            with self.assertNoNewWords():
+                self._make_one_new_word()
+
+    def test_assertNewWordCount(self):
+        with self.assertNewWordCount(1):
+            self._make_one_new_word()
+        with self.assertRaises(self.assertNewWordCount.Failure):
+            with self.assertNewWordCount(1):
+                pass
+
+    def _make_one_new_word(self):
+        self.lex.define(
+            self.lex('noun'),
+            'shrubbery'
+        )
 
 class WordFirstTests(WordTests):
 
@@ -565,6 +607,13 @@ class WordMoreTests(WordTests):
         suffixed_lex_idn = lex.idn.add_suffix(3)
         self.assertEqual(lex.idn, self.lex._ID_LEX)
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
+
+    def test_verb_paren_object(self):
+        verb = self.lex('verb')
+        oobleck = verb('oobleck')
+        self.describe_all_words()
+        with self.assertNewWordCount(1):
+            self.assertTrue(oobleck.is_a_verb())
 
 
 class WordListingTests(WordTests):

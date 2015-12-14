@@ -135,6 +135,7 @@ class Word(object):
             # TODO:  s.v(o,txt=t)
             # TODO:  s.v(o,num=n,txt=t)
             # TODO:  s.v(o,txt=t,num=n)
+            # TODO:  v(o,t,n) -- lex is the implicit subject
 
             assert len(args) >= 1
             obj = args[0]
@@ -199,6 +200,8 @@ class Word(object):
 
     def define(self, obj, txt, num=Number(1)):
         possibly_existing_word = self.spawn(txt)
+        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
+        # How to handle "duplications"
         if possibly_existing_word.exists:
             return possibly_existing_word
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
@@ -223,6 +226,11 @@ class Word(object):
             sentence takes a Word-triple, spawn takes an idn-triple.
             sentence saves the new word.
             spawn can take in idn or other ways to indicate an existing word.
+        Differences between Word.sentence() and Word.define():
+            sentence takes a Word-triple,
+            define takes only one word for the object (sbj and vrb are implied)
+            sentence requires an explicit num, define defaults to 1
+
         """
         assert isinstance(sbj, Word),           "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),           "vrb cannot be a {type}".format(type=type(vrb).__name__)
@@ -402,6 +410,11 @@ class Word(object):
         return self.idn == self._ID_NOUN
 
     def is_verb(self):
+        """Not to be confused with is_a_verb().
+
+        is_a_verb() -- is this word in a []-(define)-[verb] sentence, recursively.
+        is_verb() -- is this the one-and-only "verb" word, i.e. [lex]-(define)-[noun]"verb", i.e. id == _ID_VERB
+        """
         return self.idn == self._ID_VERB
 
     def is_agent(self):
