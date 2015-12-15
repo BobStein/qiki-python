@@ -78,21 +78,28 @@ class WordTests(unittest.TestCase):
         self.assertGreaterEqual(time.time(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
-    # noinspection PyPep8Naming
-    # TODO:  Oops, this has to be a function after all.
-    class assertNewWordCount(object):
-        def __init__(self, num_new_words):
-            self.num_new_words = num_new_words
-
+    class _CheckNewWordCount(object):
+        def __init__(self, lex, expected_new_words):
+            self.lex = lex
+            self.expected_new_words = expected_new_words
 
         def __enter__(self):
             self.word_count_before = self.lex.max_idn()
 
         def __exit__(self, exc_type, exc_val, exc_tb):
+            word_count_after = self.lex.max_idn()
+            actual_new_words = int(word_count_after - self.word_count_before)
+            if actual_new_words != self.expected_new_words and exc_type is None:
+                raise self.WordCountFailure("Expected {expected} new words, actually there were {actual}.".format(
+                    expected=self.expected_new_words,
+                    actual=actual_new_words,
+                ))
+
+        class WordCountFailure(unittest.TestCase.failureException):
             pass
 
-        class Failure(Exception):
-            pass
+    def assertNewWordCount(self, expected_new_words):
+        return self._CheckNewWordCount(self.lex, expected_new_words)
 
     def assertNoNewWords(self):
         return self.assertNewWordCount(0)
@@ -104,14 +111,14 @@ class InternalTestWordTests(WordTests):
     def test_assertNoNewWords(self):
         with self.assertNoNewWords():
             pass
-        with self.assertRaises(self.assertNewWordCount.Failure):
+        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNoNewWords():
                 self._make_one_new_word()
 
     def test_assertNewWordCount(self):
         with self.assertNewWordCount(1):
             self._make_one_new_word()
-        with self.assertRaises(self.assertNewWordCount.Failure):
+        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNewWordCount(1):
                 pass
 
@@ -611,10 +618,24 @@ class WordMoreTests(WordTests):
     def test_verb_paren_object(self):
         verb = self.lex('verb')
         oobleck = verb('oobleck')
-        self.describe_all_words()
+        self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWordCount(1):
-            self.assertTrue(oobleck.is_a_verb())
+            blob = oobleck(self.lex)
+        self.assertTrue(blob.exists)
+        self.assertEqual(blob.obj, self.lex)
+        self.assertEqual(blob.num, qiki.Number(1))
+        self.assertEqual(blob.txt, "")
 
+    def test_verb_paren_object_text_number(self):
+        verb = self.lex('verb')
+        oobleck = verb('oobleck')
+        self.assertTrue(oobleck.is_a_verb())
+        with self.assertNewWordCount(1):
+            blob = oobleck(self.lex, qiki.Number(11), "blob")
+        self.assertTrue(blob.exists)
+        self.assertEqual(blob.obj, self.lex)
+        self.assertEqual(blob.num, qiki.Number(11))
+        self.assertEqual(blob.txt, "blob")
 
 class WordListingTests(WordTests):
 

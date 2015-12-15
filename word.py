@@ -135,7 +135,7 @@ class Word(object):
             # TODO:  s.v(o,txt=t)
             # TODO:  s.v(o,num=n,txt=t)
             # TODO:  s.v(o,txt=t,num=n)
-            # TODO:  v(o,t,n) -- lex is the implicit subject
+            # TODO:  v(o,n,t) -- lex is the implicit subject
 
             assert len(args) >= 1
             obj = args[0]
