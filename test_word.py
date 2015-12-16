@@ -617,24 +617,26 @@ class WordMoreTests(WordTests):
 
     def test_verb_paren_object(self):
         """Lex is the implicit subject."""
+        some_object = self.lex.noun('some object')
         verb = self.lex('verb')
         oobleck = verb('oobleck')
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWordCount(1):
-            blob = oobleck(self.lex)
+            blob = oobleck(some_object)
         self.assertTrue(blob.exists)
-        self.assertEqual(blob.obj, self.lex)
+        self.assertEqual(blob.obj, some_object)
         self.assertEqual(blob.num, qiki.Number(1))
         self.assertEqual(blob.txt, "")
 
     def test_verb_paren_object_text_number(self):
+        some_object = self.lex.noun('some object')
         verb = self.lex('verb')
         oobleck = verb('oobleck')
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWordCount(1):
-            blob = oobleck(self.lex, qiki.Number(11), "blob")
+            blob = oobleck(some_object, qiki.Number(11), "blob")
         self.assertTrue(blob.exists)
-        self.assertEqual(blob.obj, self.lex)
+        self.assertEqual(blob.obj, some_object)
         self.assertEqual(blob.num, qiki.Number(11))
         self.assertEqual(blob.txt, "blob")
 
@@ -645,6 +647,38 @@ class WordMoreTests(WordTests):
         self.assertEqual(oobleck.obj, self.lex('verb'))
         self.assertEqual(oobleck.num, qiki.Number(1))
         self.assertEqual(oobleck.txt, "oobleck")
+
+    def test_verb_paren_object_deferred_subject(self):
+        """Verb word derived from an explicit subject can spawn a new word."""
+        some_object = self.lex.noun('some object')
+        self.lex.verb('oobleck')
+        lex_oobleck = self.lex('oobleck')
+
+        xavier = self.lex.agent('xavier')
+        xavier_oobleck = xavier.oobleck
+
+        self.assertEqual(lex_oobleck, xavier_oobleck)
+        self.assertNotEqual(lex_oobleck._word_before_the_dot, xavier_oobleck._word_before_the_dot)
+        self.assertNotEqual(xavier, self.lex)
+
+        lex_blob = lex_oobleck(some_object, qiki.Number(42), "lex blob")
+        self.assertTrue(lex_blob.exists)
+        self.assertEqual(lex_blob.sbj, self.lex)
+        self.assertEqual(lex_blob.vrb, lex_oobleck)
+        self.assertEqual(lex_blob.obj, some_object)
+        self.assertEqual(lex_blob.num, qiki.Number(1))
+        self.assertEqual(lex_blob.txt, "lex blob")
+
+        xavier_blob = xavier_oobleck(some_object, qiki.Number(42), "lex blob")
+        self.assertTrue(lex_blob.exists)
+        self.assertEqual(xavier_blob.sbj, xavier)
+        self.assertEqual(xavier_blob.vrb, xavier_oobleck)
+        self.assertEqual(xavier_blob.obj, some_object)
+        self.assertEqual(xavier_blob.num, qiki.Number(1))
+        self.assertEqual(xavier_blob.txt, "lex blob")
+
+
+
 
 
 class WordListingTests(WordTests):
