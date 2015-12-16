@@ -149,12 +149,12 @@ class Word(object):
                 txt=''
             assert self._word_before_the_dot is not None
             # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
-            if len(args) == 1:   # subject.verb(object)
+            if len(args) == 1:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists, "The form subject.verb(object) is a getter, not a setter."
-            else:   # subject.verb(object, number)
-                    # subject.verb(object, number, text)
+            else:   # subject.verb(object, number)        \ <-- these are getter or setter
+                    # subject.verb(object, number, text)  /
                 if kwargs.get('use_already', False):
                     existing_word = self.spawn(
                         sbj=self._word_before_the_dot.idn,

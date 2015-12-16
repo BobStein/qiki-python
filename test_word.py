@@ -616,6 +616,7 @@ class WordMoreTests(WordTests):
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
 
     def test_verb_paren_object(self):
+        """Lex is the implicit subject."""
         verb = self.lex('verb')
         oobleck = verb('oobleck')
         self.assertTrue(oobleck.is_a_verb())
@@ -636,6 +637,15 @@ class WordMoreTests(WordTests):
         self.assertEqual(blob.obj, self.lex)
         self.assertEqual(blob.num, qiki.Number(11))
         self.assertEqual(blob.txt, "blob")
+
+    def test_define_object_type_string(self):
+        """Specify the object of a definition by its txt."""
+        oobleck = self.lex.define('verb', 'oobleck')
+        self.assertTrue(oobleck.exists)
+        self.assertEqual(oobleck.obj, self.lex('verb'))
+        self.assertEqual(oobleck.num, qiki.Number(1))
+        self.assertEqual(oobleck.txt, "oobleck")
+
 
 class WordListingTests(WordTests):
 
