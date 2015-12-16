@@ -74,7 +74,7 @@ class WordTests(unittest.TestCase):
             hex=hexadecimal,
         ))
 
-    def assertReasonableWhen(self, whn):
+    def assertSensibleWhen(self, whn):
         self.assertGreaterEqual(time.time(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
@@ -141,7 +141,7 @@ class WordFirstTests(WordTests):
         self.assertEqual(self.lex('agent').idn,    self.lex.obj)
         self.assertEqual(qiki.Number(1),           self.lex.num)
         self.assertEqual('lex',                    self.lex.txt)
-        self.assertReasonableWhen(                 self.lex.whn)
+        self.assertSensibleWhen(                   self.lex.whn)
         self.assertTrue(self.lex.is_lex())
 
     def test_02_noun(self):
@@ -346,13 +346,13 @@ class WordFirstTests(WordTests):
         self.assertEqual(self.lex('noun').idn,     new_word.obj)
         self.assertEqual(qiki.Number(1),           new_word.num)
         self.assertEqual('something',              new_word.txt)
-        self.assertReasonableWhen(                 new_word.whn)
+        self.assertSensibleWhen(                   new_word.whn)
 
     def test_11b_whn(self):
         define = self.lex('define')
         new_word = self.lex.noun('something')
-        self.assertReasonableWhen(define.whn)
-        self.assertReasonableWhen(new_word.whn)
+        self.assertSensibleWhen(define.whn)
+        self.assertSensibleWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
 
