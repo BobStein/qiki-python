@@ -147,7 +147,7 @@ class Word(object):
                 txt = args[2]
             except IndexError:
                 txt=''
-            assert self._word_before_the_dot is not None, "Word can't (yet) be called without a preceding subject."
+            assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
             if len(args) == 1:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
