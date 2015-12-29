@@ -1441,3 +1441,6 @@ Number.Suffix.internal_setup(Number)
 #  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__, conjugate, imag, real
 
 # TODO:  Better object internals:  store separate qex, qan, suffixes (and synthesize raw on demand)
+
+# TODO:  Number.to_JSON()
+# THANKS:  http://stackoverflow.com/q/3768895/673991
