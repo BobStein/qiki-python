@@ -79,9 +79,11 @@ class WordTests(unittest.TestCase):
         self.assertLessEqual(1447029882.792, float(whn))
 
     class _CheckNewWordCount(object):
-        def __init__(self, lex, expected_new_words):
+        """Expect the creation of a specific number of words."""
+        def __init__(self, lex, expected_new_words, message=None):
             self.lex = lex
             self.expected_new_words = expected_new_words
+            self.message = message
 
         def __enter__(self):
             self.word_count_before = self.lex.max_idn()
@@ -90,19 +92,33 @@ class WordTests(unittest.TestCase):
             word_count_after = self.lex.max_idn()
             actual_new_words = int(word_count_after - self.word_count_before)
             if actual_new_words != self.expected_new_words and exc_type is None:
-                raise self.WordCountFailure("Expected {expected} new words, actually there were {actual}.".format(
+                stock_message = "Expected {expected} new words, actually there were {actual}.".format(
                     expected=self.expected_new_words,
                     actual=actual_new_words,
-                ))
+                )
+                if self.message is None:
+                    use_message = stock_message
+                else:
+                    use_message = stock_message + "\n" + self.message
+                raise self.WordCountFailure(use_message)
 
         class WordCountFailure(unittest.TestCase.failureException):
             pass
 
-    def assertNewWordCount(self, expected_new_words):
-        return self._CheckNewWordCount(self.lex, expected_new_words)
+    def assertNewWords(self, expected_new_words, message=None):
+        """Expect n words to be created.
 
-    def assertNoNewWords(self):
-        return self.assertNewWordCount(0)
+        with self.assertNewWords(2):
+            do_something_that_should_create_exactly_2_new_words()
+
+        """
+        return self._CheckNewWordCount(self.lex, expected_new_words, message)
+
+    def assertNoNewWords(self, message=None):
+        return self.assertNewWords(0, message)
+
+    def assertNewWord(self, message=None):
+        return self.assertNewWords(1, message)
 
 
 class InternalTestWordTests(WordTests):
@@ -113,20 +129,31 @@ class InternalTestWordTests(WordTests):
             pass
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNoNewWords():
-                self._make_one_new_word()
+                self._make_one_new_word('shrubbery')
 
-    def test_assertNewWordCount(self):
-        with self.assertNewWordCount(1):
-            self._make_one_new_word()
+    def test_assertNewWords(self):
+        with self.assertNewWords(1):
+            self._make_one_new_word('shrubbery')
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
-            with self.assertNewWordCount(1):
+            with self.assertNewWords(1):
                 pass
 
-    def _make_one_new_word(self):
-        self.lex.define(
-            self.lex('noun'),
-            'shrubbery'
-        )
+    def test_assertNewWord(self):
+        with self.assertNewWord():   # Succeeds if just the right number of words are created.
+            self._make_one_new_word('shrubbery')
+        with self.assertNewWords(2):
+            self._make_one_new_word('swallow')
+            self._make_one_new_word('gopher')
+        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+            with self.assertNewWord():   # Fails if too few.
+                pass
+        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+            with self.assertNewWord():   # Fails if too many.
+                self._make_one_new_word('knight')
+                self._make_one_new_word('rabbit')
+
+    def _make_one_new_word(self, txt):
+        self.lex.define(self.lex('noun'), txt)
 
 class WordFirstTests(WordTests):
 
@@ -281,11 +308,10 @@ class WordFirstTests(WordTests):
 
     def test_08_noun_twice(self):
         noun = self.lex('noun')
-        base_max_idn = self.lex.max_idn()
-        thing1 = noun('thing')
-        self.assertEqual(base_max_idn+1, self.lex.max_idn())
-        thing2 = noun('thing')
-        self.assertEqual(base_max_idn+1, self.lex.max_idn())
+        with self.assertNewWord():
+            thing1 = noun('thing')
+        with self.assertNoNewWords():
+            thing2 = noun('thing')
         self.assertEqual(thing1.idn, thing2.idn)
 
     def test_09a_equality(self):
@@ -338,15 +364,13 @@ class WordFirstTests(WordTests):
 
     def test_11a_noun_inserted(self):
         new_word = self.lex.noun('something')
-        max_idn = self.lex.max_idn()
-
-        self.assertEqual(max_idn,                  new_word.idn)
-        self.assertEqual(self.lex._ID_LEX,         new_word.sbj)
-        self.assertEqual(self.lex('define').idn,   new_word.vrb)
-        self.assertEqual(self.lex('noun').idn,     new_word.obj)
-        self.assertEqual(qiki.Number(1),           new_word.num)
-        self.assertEqual('something',              new_word.txt)
-        self.assertSensibleWhen(                   new_word.whn)
+        self.assertEqual(self.lex.max_idn(),     new_word.idn)
+        self.assertEqual(self.lex._ID_LEX,       new_word.sbj)
+        self.assertEqual(self.lex('define').idn, new_word.vrb)
+        self.assertEqual(self.lex('noun').idn,   new_word.obj)
+        self.assertEqual(qiki.Number(1),         new_word.num)
+        self.assertEqual('something',            new_word.txt)
+        self.assertSensibleWhen(                 new_word.whn)
 
     def test_11b_whn(self):
         define = self.lex('define')
@@ -515,18 +539,19 @@ class WordMoreTests(WordTests):
         anna = human('anna')
         bart = human('bart')
         self.lex.verb('like')
-        max_idn = self.lex.max_idn()
 
-        anna.like(bart, 8)
-        self.assertEqual(max_idn+1, self.lex.max_idn())
+        with self.assertNewWord():
+            anna.like(bart, 8)
+        with self.assertNoNewWords():
+            anna.like(bart)
         self.assertEqual(8, anna.like(bart).num)
 
-        anna.like(bart, 10)
-        self.assertEqual(max_idn+2, self.lex.max_idn())
+        with self.assertNewWord():
+            anna.like(bart, 10)
         self.assertEqual(10, anna.like(bart).num)
 
-        anna.like(bart, 2)
-        self.assertEqual(max_idn+3, self.lex.max_idn())
+        with self.assertNewWord():
+            anna.like(bart, 2)
         self.assertEqual(2, anna.like(bart).num)
 
     def test_verb_overlay_duplicate(self):
@@ -534,31 +559,30 @@ class WordMoreTests(WordTests):
         anna = human('anna')
         bart = human('bart')
         self.lex.verb('like')
-        max_idn = self.lex.max_idn()
 
-        anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_idn+1, self.lex.max_idn())
+        with self.assertNewWord():
+            anna.like(bart, 5, "just as friends")
 
-        # anna.like(bart, 5, "just as friends")
-        # self.assertEqual(max_idn+1, self.lex.max_idn(), "Identical s.v(o,n,t) shouldn't generate a new word.")
+        # with self.assertNoNewWords("Identical s.v(o,n,t) shouldn't generate a new word."):
+        #     anna.like(bart, 5, "just as friends")
         # TODO:  Decide whether these "duplicates" should be errors or insert new records or not...
         # TODO:  Probably it should be an error for some verbs (e.g. like) and not for others (e.g. comment)
         # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
 
-        anna.like(bart, 5, "maybe more than friends")
-        self.assertEqual(max_idn+2, self.lex.max_idn(), "New t should generate a new word.")
+        with self.assertNewWord():
+            anna.like(bart, 5, "maybe more than friends")
 
-        anna.like(bart, 6, "maybe more than friends")
-        self.assertEqual(max_idn+3, self.lex.max_idn(), "New n should generate a new word.")
+        with self.assertNewWord():
+            anna.like(bart, 6, "maybe more than friends")
 
-        anna.like(bart, 7, "maybe more than friends")
-        self.assertEqual(max_idn+4, self.lex.max_idn())
+        with self.assertNewWord():
+            anna.like(bart, 7, "maybe more than friends")
 
-        # anna.like(bart, 7, "maybe more than friends")
-        # self.assertEqual(max_idn+4, self.lex.max_idn())
+        # with self.assertNoNewWords():
+        #     anna.like(bart, 7, "maybe more than friends")
 
-        anna.like(bart, 5, "just as friends")
-        self.assertEqual(max_idn+5, self.lex.max_idn(), "Reverting to an old n,t should generate a new word.")
+        with self.assertNewWord():
+            anna.like(bart, 5, "just friends")
 
     def test_is_defined(self):
         self.assertTrue(self.lex('noun').is_defined())
@@ -621,7 +645,7 @@ class WordMoreTests(WordTests):
         verb = self.lex('verb')
         oobleck = verb('oobleck')
         self.assertTrue(oobleck.is_a_verb())
-        with self.assertNewWordCount(1):
+        with self.assertNewWord():
             blob = oobleck(some_object)
         self.assertTrue(blob.exists)
         self.assertEqual(blob.obj, some_object)
@@ -633,7 +657,7 @@ class WordMoreTests(WordTests):
         verb = self.lex('verb')
         oobleck = verb('oobleck')
         self.assertTrue(oobleck.is_a_verb())
-        with self.assertNewWordCount(1):
+        with self.assertNewWord():
             blob = oobleck(some_object, qiki.Number(11), "blob")
         self.assertTrue(blob.exists)
         self.assertEqual(blob.obj, some_object)
@@ -861,80 +885,65 @@ class WordUseAlready(WordTests):
     # When num and txt are the same
 
     def test_use_already_same_default(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_2 = self.lex.max_idn()
+        with self.assertNewWord():
+            word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
         self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
 
     def test_use_already_same_false(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
 
     def test_use_already_same_true(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn, word2.idn)
-        self.assertEqual(max_idn_1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNoNewWords():
+            self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
 
     # When txt differs
 
     def test_use_already_differ_txt_default(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Puddle")
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Puddle")
 
     def test_use_already_differ_txt_false(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
 
     def test_use_already_differ_txt_true(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
 
     # When num differs
 
     def test_use_already_differ_num_default(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 200, "Mirror")
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+             self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 200, "Mirror")
 
     def test_use_already_differ_num_false(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
 
     def test_use_already_differ_num_true(self):
-        word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        max_idn_1 = self.lex.max_idn()
-        word2 = self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
-        max_idn_2 = self.lex.max_idn()
-        self.assertEqual(word1.idn+1, word2.idn)
-        self.assertEqual(max_idn_1+1, max_idn_2)
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():
+            self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
+
+    # TODO:  Deal with the inconsistency that when defining a word, use_already defaults to True.
 
 
 class WordFindTests(WordTests):
