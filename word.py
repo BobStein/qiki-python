@@ -100,7 +100,7 @@ class Word(object):
         return return_value
 
     def __call__(self, *args, **kwargs):
-        if self.is_lex():
+        if self.is_lex():   # Get a word by its text:  lex(t)  e.g.  lex('anna')
             # lex(t) in English:  Lex defines a word named t.
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
@@ -113,7 +113,8 @@ class Word(object):
                 return self   # lex is a singleton.  Why is this important?
             else:
                 return existing_word
-        elif self.is_a_verb(reflexive=False):   # subject.verb(object, ...)
+        elif self.is_a_verb(reflexive=False):   # Quintessential word creation:  s.v(o)  e.g. anna.like(bart)
+            # (But not s.verb(o) -- the 'verb' word is not a verb.)
             assert hasattr(self, 'lex')
             assert self.lex.exists
             assert self.lex.is_lex()
@@ -124,6 +125,7 @@ class Word(object):
             # DONE:  s.v(o,n)
             # DONE:  s.v(o,n,t)
             # DONE:  o(t) -- shorthand for lex.define(o,1,t)
+            # DONE:  x = s.v; x(o...) -- s.v(o...) with an intermediate variable
             # TODO:  Disallow s.v(o,t,n,etc)
 
             # TODO:  Avoid ambiguity of s.v(o, '0q80', '0q82_01') -- which is txt, which is num?
@@ -183,7 +185,7 @@ class Word(object):
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             return existing_word
-        elif self.is_defined():
+        elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
             assert hasattr(self, 'lex')
@@ -200,8 +202,10 @@ class Word(object):
 
     def define(self, obj, txt, num=Number(1)):
         possibly_existing_word = self.spawn(txt)
-        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
         # How to handle "duplications"
+        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
+        # TODO:  use_already option?
+        # But why would anyone want to duplicate a definition with the same txt and num?
         if possibly_existing_word.exists:
             return possibly_existing_word
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
@@ -232,6 +236,9 @@ class Word(object):
             sentence requires an explicit num, define defaults to 1
 
         """
+        # TODO:  Move use_already option to here, from __call__()?
+        # Then define() could just call sentence() without checking spawn() first?
+        # Only callers to sentence() are __call__() and define().
         assert isinstance(sbj, Word),           "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),           "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, Word),           "obj cannot be a {type}".format(type=type(obj).__name__)
@@ -490,6 +497,7 @@ class Word(object):
             return repr(self)
 
     def __eq__(self, other):
+        # TODO:  Should this if self._word_before_the_dot != other._word_before_the_dot return False ?
         return self.exists and other.exists and self.idn == other.idn
 
     @property
@@ -879,3 +887,4 @@ class LexMySQL(Lex):
 # like = lex.verb('like')
 # lex.use_already(like, 0 for defaults-to-False or 1 for True)
 # alice.like(bob, "but just as a friend")   # use_already=True unnecessary
+# lex.use_already(lex.define, 1)

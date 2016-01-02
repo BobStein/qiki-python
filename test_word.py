@@ -615,6 +615,7 @@ class WordMoreTests(WordTests):
             liking(bart)
 
     def test_lex_is_lex(self):
+        """Various ways a lex is a singleton, with it's lex."""
         sys1 = self.lex
         sys2 = self.lex('lex')
         sys3 = self.lex('lex')('lex')('lex')
@@ -634,6 +635,7 @@ class WordMoreTests(WordTests):
         self.assertEqual(lex.idn, self.lex._ID_LEX)
 
     def test_idn_suffix(self):
+        """Make sure adding a suffix to the lex's idn does not modify lex.idn."""
         lex = self.lex('lex')
         self.assertEqual(lex.idn, self.lex._ID_LEX)
         suffixed_lex_idn = lex.idn.add_suffix(3)
@@ -641,7 +643,9 @@ class WordMoreTests(WordTests):
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
 
     def test_verb_paren_object(self):
-        """Lex is the implicit subject."""
+        """An orphan verb can spawn a sentence.
+        v = lex('name of a verb'); v(o) is equivalent to lex.v(o).
+        Lex is the implicit subject."""
         some_object = self.lex.noun('some object')
         verb = self.lex('verb')
         oobleck = verb('oobleck')
@@ -649,11 +653,14 @@ class WordMoreTests(WordTests):
         with self.assertNewWord():
             blob = oobleck(some_object)
         self.assertTrue(blob.exists)
-        self.assertEqual(blob.obj, some_object)
+        self.assertEqual(blob.sbj, self.lex.idn)
+        self.assertEqual(blob.vrb, oobleck.idn)
+        self.assertEqual(blob.obj, some_object.idn)
         self.assertEqual(blob.num, qiki.Number(1))
         self.assertEqual(blob.txt, "")
 
     def test_verb_paren_object_text_number(self):
+        """More orphan verb features.  v = lex(...); v(o,t,n) is also equivalent to lex.v(o,t,n)."""
         some_object = self.lex.noun('some object')
         verb = self.lex('verb')
         oobleck = verb('oobleck')
@@ -674,7 +681,10 @@ class WordMoreTests(WordTests):
         self.assertEqual(oobleck.txt, "oobleck")
 
     def test_verb_paren_object_deferred_subject(self):
-        """Verb word derived from an explicit subject can spawn a new word."""
+        """A subject.verb can spawn a sentence.
+        x = s.v; x(o) is equivalent to s.v(o).
+        A verb word can remember its subject for later spawning a new word."""
+
         some_object = self.lex.noun('some object')
         self.lex.verb('oobleck')
         lex_oobleck = self.lex('oobleck')
@@ -682,25 +692,17 @@ class WordMoreTests(WordTests):
         xavier = self.lex.agent('xavier')
         xavier_oobleck = xavier.oobleck
 
-        self.assertEqual(lex_oobleck, xavier_oobleck)
+        self.assertEqual(lex_oobleck, xavier_oobleck)   # TODO:  Should these be unequal??
         self.assertNotEqual(lex_oobleck._word_before_the_dot, xavier_oobleck._word_before_the_dot)
         self.assertNotEqual(xavier, self.lex)
 
-        lex_blob = lex_oobleck(some_object, qiki.Number(42), "lex blob")
-        self.assertTrue(lex_blob.exists)
-        self.assertEqual(lex_blob.sbj, self.lex)
-        self.assertEqual(lex_blob.vrb, lex_oobleck)
-        self.assertEqual(lex_blob.obj, some_object)
-        self.assertEqual(lex_blob.num, qiki.Number(1))
-        self.assertEqual(lex_blob.txt, "lex blob")
-
-        xavier_blob = xavier_oobleck(some_object, qiki.Number(42), "lex blob")
-        self.assertTrue(lex_blob.exists)
-        self.assertEqual(xavier_blob.sbj, xavier)
-        self.assertEqual(xavier_blob.vrb, xavier_oobleck)
-        self.assertEqual(xavier_blob.obj, some_object)
-        self.assertEqual(xavier_blob.num, qiki.Number(1))
-        self.assertEqual(xavier_blob.txt, "lex blob")
+        xavier_blob = xavier_oobleck(some_object, qiki.Number(42), "xavier blob")
+        self.assertTrue(xavier_blob.exists)
+        self.assertEqual(xavier_blob.sbj, xavier.idn)
+        self.assertEqual(xavier_blob.vrb, xavier_oobleck.idn)
+        self.assertEqual(xavier_blob.obj, some_object.idn)
+        self.assertEqual(xavier_blob.num, qiki.Number(42))
+        self.assertEqual(xavier_blob.txt, "xavier blob")
 
 
 class WordListingTests(WordTests):
