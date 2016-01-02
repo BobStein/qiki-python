@@ -88,6 +88,7 @@ class WordTests(unittest.TestCase):
         def __enter__(self):
             self.word_count_before = self.lex.max_idn()
 
+        # noinspection PyUnusedLocal
         def __exit__(self, exc_type, exc_val, exc_tb):
             word_count_after = self.lex.max_idn()
             actual_new_words = int(word_count_after - self.word_count_before)
@@ -702,9 +703,6 @@ class WordMoreTests(WordTests):
         self.assertEqual(xavier_blob.txt, "lex blob")
 
 
-
-
-
 class WordListingTests(WordTests):
 
     class Student(qiki.Listing):
@@ -882,66 +880,48 @@ class WordUseAlready(WordTests):
         self.narcissus = self.lex.agent('narcissus')
         self.lex.verb('like')
 
-    # When num and txt are the same
-
-    def test_use_already_same_default(self):
-        with self.assertNewWord():
-            word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        self.assertEqual(word1.idn+1, word2.idn)
-
-    def test_use_already_same_false(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
-
-    def test_use_already_same_true(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNoNewWords():
-            self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
-
     # When txt differs
 
     def test_use_already_differ_txt_default(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Puddle")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle")
 
     def test_use_already_differ_txt_false(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
 
     def test_use_already_differ_txt_true(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
 
     # When num differs
 
     def test_use_already_differ_num_default(self):
-        with self.assertNewWord():
-             self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 200, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror")
 
     def test_use_already_differ_num_false(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
 
     def test_use_already_differ_num_true(self):
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():
-            self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
+
+    # When num and txt are the same
+
+    def test_use_already_same_default(self):
+        with self.assertNewWord():  word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        self.assertEqual(word1.idn+1, word2.idn)
+
+    def test_use_already_same_false(self):
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
+
+    def test_use_already_same_true(self):
+        with self.assertNewWord():     self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNoNewWords():  self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
 
     # TODO:  Deal with the inconsistency that when defining a word, use_already defaults to True.
 
