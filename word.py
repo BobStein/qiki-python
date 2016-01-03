@@ -149,17 +149,21 @@ class Word(object):
                 txt = args[2]
             except IndexError:
                 txt=''
-            assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
+            if self._word_before_the_dot is None:
+                sbj = self.lex
+            else:
+                sbj = self._word_before_the_dot
+            # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
             if len(args) == 1:   # subject.verb(object) <-- getter only
-                existing_word = self.spawn(sbj=self._word_before_the_dot.idn, vrb=self.idn, obj=obj.idn)
+                existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists, "The form subject.verb(object) is a getter, not a setter."
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
                 if kwargs.get('use_already', False):
                     existing_word = self.spawn(
-                        sbj=self._word_before_the_dot.idn,
+                        sbj=sbj.idn,
                         vrb=self.idn,
                         obj=obj.idn,
                         num=num,
@@ -168,7 +172,7 @@ class Word(object):
                     existing_word._from_sbj_vrb_obj_num_txt()
                     if not existing_word.exists:
                         existing_word = self.sentence(
-                            sbj=self._word_before_the_dot,
+                            sbj=sbj,
                             vrb=self,
                             obj=obj,
                             num=num,
@@ -176,7 +180,7 @@ class Word(object):
                         )
                 else:
                     existing_word = self.sentence(
-                        sbj=self._word_before_the_dot,
+                        sbj=sbj,
                         vrb=self,
                         obj=obj,
                         num=num,
@@ -207,7 +211,10 @@ class Word(object):
         # TODO:  use_already option?
         # But why would anyone want to duplicate a definition with the same txt and num?
         if possibly_existing_word.exists:
+            # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
+        if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
+            obj = self.spawn(obj)
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
         return new_word
 
@@ -497,7 +504,7 @@ class Word(object):
             return repr(self)
 
     def __eq__(self, other):
-        # TODO:  Should this if self._word_before_the_dot != other._word_before_the_dot return False ?
+        # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
         return self.exists and other.exists and self.idn == other.idn
 
     @property
@@ -803,9 +810,9 @@ class LexMySQL(Lex):
     def find(self, sbj=None, vrb=None, obj=None):
         query = "SELECT idn FROM " + self._table + " WHERE 1 "
         parameters = []
-        if sbj is not None:   query += " AND sbj=? ";   parameters.append(sbj.raw)
-        if vrb is not None:   query += " AND vrb=? ";   parameters.append(vrb.raw)
-        if obj is not None:   query += " AND obj=? ";   parameters.append(obj.raw)
+        if sbj is not None:   query += " AND sbj=? ";   parameters.append(_idn_by_word_or_number(sbj).raw)
+        if vrb is not None:   query += " AND vrb=? ";   parameters.append(_idn_by_word_or_number(vrb).raw)
+        if obj is not None:   query += " AND obj=? ";   parameters.append(_idn_by_word_or_number(obj).raw)
         query += " ORDER BY idn "
         return self._select_words(query, parameters)
 
@@ -853,6 +860,17 @@ class LexMySQL(Lex):
         assert not return_value.is_nan()
         assert return_value.is_whole()
         return return_value
+
+
+def _idn_by_word_or_number(x):
+    if isinstance(x, Word):
+        return x.idn
+    elif isinstance(x, Number):
+        return x
+    else:
+        raise TypeError("_idn_by_word_or_number({}) is not supported, only Word or Number.".format(
+            type(x).__name__,
+        ))
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
