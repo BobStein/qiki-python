@@ -114,7 +114,7 @@ class Word(object):
             else:
                 return existing_word
         elif self.is_a_verb(reflexive=False):   # Quintessential word creation:  s.v(o)  e.g. anna.like(bart)
-            # (But not s.verb(o) -- the 'verb' word is not a verb.)
+            # (But not s.verb(o) -- the 'verb' word is not itself a verb.)
             assert hasattr(self, 'lex')
             assert self.lex.exists
             assert self.lex.is_lex()
@@ -150,15 +150,18 @@ class Word(object):
             except IndexError:
                 txt=''
             if self._word_before_the_dot is None:
-                sbj = self.lex
+                sbj = self.lex   # Lex can be the implicit subject. Renounce?
             else:
                 sbj = self._word_before_the_dot
             # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
+            # But this looks a lot like v(o) where o could be identified by a string, so maybe support neither?
+            # In other words, don't v(t), instead lex.define(v,n,t)
+            # And no v(object_name), instead s.v(lex(object_name),n,t)
             if len(args) == 1:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
-                assert existing_word.exists, "The form subject.verb(object) is a getter, not a setter."
+                assert existing_word.exists, "The form s.v(o) is a getter.  A setter looks like: s.v(o,1,'')"
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
                 if kwargs.get('use_already', False):
@@ -505,6 +508,16 @@ class Word(object):
 
     def __eq__(self, other):
         # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
+        # I think so, but I wonder if this would throw off other things.
+        # Because the "identity" of a word should be fully contained in its idn.
+        # And yet a patronized instance (s.v) behaves differently from an orphan instance (lex('v')).
+        if other is None:
+            return False   # Needed for a particular word == none comparison in Python 3
+            # Mystery:  Why isn't that test needed in Python 2?
+            # The actual distinction is comparing two word's _word_before_the_dot members when one is None.
+            # That should be a comparison of a word instance with None.
+            # Yet a simple Word() == None does seem to come here.
+            # See test_word.py test_verb_paren_object_deferred_subject()
         return self.exists and other.exists and self.idn == other.idn
 
     @property
@@ -810,9 +823,9 @@ class LexMySQL(Lex):
     def find(self, sbj=None, vrb=None, obj=None):
         query = "SELECT idn FROM " + self._table + " WHERE 1 "
         parameters = []
-        if sbj is not None:   query += " AND sbj=? ";   parameters.append(_idn_by_word_or_number(sbj).raw)
-        if vrb is not None:   query += " AND vrb=? ";   parameters.append(_idn_by_word_or_number(vrb).raw)
-        if obj is not None:   query += " AND obj=? ";   parameters.append(_idn_by_word_or_number(obj).raw)
+        if sbj is not None:   query += " AND sbj=? ";   parameters.append(idn_from_word_or_number(sbj).raw)
+        if vrb is not None:   query += " AND vrb=? ";   parameters.append(idn_from_word_or_number(vrb).raw)
+        if obj is not None:   query += " AND obj=? ";   parameters.append(idn_from_word_or_number(obj).raw)
         query += " ORDER BY idn "
         return self._select_words(query, parameters)
 
@@ -862,13 +875,13 @@ class LexMySQL(Lex):
         return return_value
 
 
-def _idn_by_word_or_number(x):
+def idn_from_word_or_number(x):
     if isinstance(x, Word):
         return x.idn
     elif isinstance(x, Number):
         return x
     else:
-        raise TypeError("_idn_by_word_or_number({}) is not supported, only Word or Number.".format(
+        raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
             type(x).__name__,
         ))
 
