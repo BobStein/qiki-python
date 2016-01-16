@@ -692,7 +692,7 @@ class WordMoreTests(WordTests):
 
         some_object = self.lex.noun('some object')
         self.lex.verb('oobleck')
-        lex_oobleck = self.lex('oobleck')   # word from an unpatronized verb
+        lex_oobleck = self.lex('oobleck')   # word from an orphan verb
 
         xavier = self.lex.agent('xavier')
         self.assertNotEqual(xavier, self.lex)

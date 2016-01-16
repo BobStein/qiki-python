@@ -510,7 +510,7 @@ class Word(object):
         # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
         # I think so, but I wonder if this would throw off other things.
         # Because the "identity" of a word should be fully contained in its idn.
-        # And yet a patronized instance (s.v) behaves differently from an orphan instance (lex('v')).
+        # And yet a patronized word (s.v) behaves differently from an orphan word (lex('v')).
         if other is None:
             return False   # Needed for a particular word == none comparison in Python 3
             # Mystery:  Why isn't that test needed in Python 2?
@@ -648,7 +648,9 @@ class LexMySQL(Lex):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
-        self._table = kwargs.pop('table')
+        self._table = kwargs.pop('table', 'word')
+        self._engine = kwargs.pop('engine', 'InnoDB')
+        self._txt_type = kwargs.pop('txt_type', 'TEXT')
         self._connection = mysql.connector.connect(**kwargs)
         self.lex = self
         self.last_inserted_whn = None
@@ -679,22 +681,26 @@ class LexMySQL(Lex):
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
         cursor = self._cursor()
-        cursor.execute("""
+        cursor.execute(("""
             CREATE TABLE IF NOT EXISTS `{table}` (
                 `idn` VARBINARY(255) NOT NULL,
                 `sbj` VARBINARY(255) NOT NULL,
                 `vrb` VARBINARY(255) NOT NULL,
                 `obj` VARBINARY(255) NOT NULL,
                 `num` VARBINARY(255) NOT NULL,
-                `txt` TEXT NOT NULL,
+                `txt` """ + self._txt_type + """ NOT NULL,
                 `whn` VARBINARY(255) NOT NULL,
                 PRIMARY KEY (`idn`)
             )
-                ENGINE = InnoDB
+                ENGINE = `{engine}`
                 DEFAULT CHARACTER SET = utf8mb4
                 DEFAULT COLLATE = utf8mb4_general_ci
             ;
-        """.format(table=self._table))
+        """).format(
+            table=self._table,
+            txt_type=self._txt_type,
+            engine=self._engine,
+        ))
         # TODO:  other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
         self._install_seminal_words()
@@ -821,6 +827,7 @@ class LexMySQL(Lex):
         return self._connection.cursor(prepared=True)
 
     def find(self, sbj=None, vrb=None, obj=None):
+        """Select words by subject, verb, and/or object."""
         query = "SELECT idn FROM " + self._table + " WHERE 1 "
         parameters = []
         if sbj is not None:   query += " AND sbj=? ";   parameters.append(idn_from_word_or_number(sbj).raw)
@@ -855,6 +862,8 @@ class LexMySQL(Lex):
         words = []
         for idn in idns:
             word = self(idn)
+            # This calls Word._from_idn(), which calls Word._load_row().
+            # TODO:  Move them here.
             words.append(word)
         cursor.close()
         return words
