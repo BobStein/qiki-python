@@ -648,7 +648,7 @@ class LexMySQL(Lex):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
-        self._table = kwargs.pop('table', 'word')
+        self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
         self._txt_type = kwargs.pop('txt_type', 'TEXT')
         self._connection = mysql.connector.connect(**kwargs)
@@ -681,14 +681,14 @@ class LexMySQL(Lex):
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
         cursor = self._cursor()
-        cursor.execute(("""
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS `{table}` (
                 `idn` VARBINARY(255) NOT NULL,
                 `sbj` VARBINARY(255) NOT NULL,
                 `vrb` VARBINARY(255) NOT NULL,
                 `obj` VARBINARY(255) NOT NULL,
                 `num` VARBINARY(255) NOT NULL,
-                `txt` """ + self._txt_type + """ NOT NULL,
+                `txt` {txt_type} NOT NULL,
                 `whn` VARBINARY(255) NOT NULL,
                 PRIMARY KEY (`idn`)
             )
@@ -696,7 +696,7 @@ class LexMySQL(Lex):
                 DEFAULT CHARACTER SET = utf8mb4
                 DEFAULT COLLATE = utf8mb4_general_ci
             ;
-        """).format(
+        """.format(
             table=self._table,
             txt_type=self._txt_type,
             engine=self._engine,
