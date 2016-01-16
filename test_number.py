@@ -57,6 +57,14 @@ class NumberBasicTests(NumberTests):
             with self.assertRaises(TypeError):
                 Number(b'0q82')
 
+    def test_unsupported_type(self):
+        class SomeType:
+            pass
+        with self.assertRaises(TypeError):
+            Number(SomeType)
+        with self.assertRaises(Number.ConstructorTypeError):
+            Number(SomeType)
+
     def test_hex(self):
         n = Number('0q82')
         self.assertEqual('82', n.hex())

@@ -45,13 +45,16 @@ class Number(numbers.Number):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            raise TypeError("{outer}({inner}) is not supported".format(
+            raise self.ConstructorTypeError("{outer}({inner}) is not supported".format(
                 outer=type(self).__name__,
                 inner=typename,
             ))
         assert(isinstance(self.__raw, six.binary_type))
         if normalize:
             self._normalize_all()
+
+    class ConstructorTypeError(TypeError):
+        pass
 
     # Zone
     # ----
