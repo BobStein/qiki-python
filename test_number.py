@@ -434,6 +434,20 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF', normalize=True).qstring())
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF').normalized().qstring())
 
+    def test_int_plateau(self):
+        self.assertEqual(65536, int(Number('0q84_01')))
+        self.assertEqual(65536, int(Number('0q84')))
+        self.assertEqual(256, int(Number('0q83_01')))
+        self.assertEqual(256, int(Number('0q83')))
+        self.assertEqual(1, int(Number('0q82_01')))
+        self.assertEqual(1, int(Number('0q82')))
+        self.assertEqual(-1, int(Number('0q7E')))
+        self.assertEqual(-1, int(Number('0q7D_FF')))
+        self.assertEqual(-256, int(Number('0q7D')))
+        self.assertEqual(-256, int(Number('0q7C_FF')))
+        self.assertEqual(-65536, int(Number('0q7C')))
+        self.assertEqual(-65536, int(Number('0q7B_FF')))
+
     def test_normalize_less(self):
         self.assertFalse(Number('0q82') < Number('0q82_01'))
         self.assertFalse(Number('0q81FF') < Number('0q81FF_01'))

@@ -579,8 +579,9 @@ class Number(numbers.Number):
         raise ValueError("Not-A-Number cannot be represented by integers")
 
     def _to_int_positive(self):
-        (qan, qanlength) = self.qantissa()
-        qexp = self.qexponent() - qanlength
+        n = self.normalized()
+        (qan, qanlength) = n.qantissa()
+        qexp = n.qexponent() - qanlength
         return shift_leftward(qan, qexp*8)
 
     def _to_int_negative(self):

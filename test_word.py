@@ -712,6 +712,13 @@ class WordMoreTests(WordTests):
         self.assertEqual(xavier_blob.num, qiki.Number(42))
         self.assertEqual(xavier_blob.txt, "xavier blob")
 
+    def test_lex_number(self):
+        agent_by_txt = self.lex('agent')
+        agent_by_idn = self.lex(qiki.Word._ID_AGENT)
+        self.assertEqual(agent_by_txt, agent_by_idn)
+        self.assertEqual('agent', agent_by_idn.txt)
+        self.assertEqual(qiki.Word._ID_AGENT, agent_by_txt.idn)
+
 
 class WordListingTests(WordTests):
 
