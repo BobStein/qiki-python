@@ -841,7 +841,7 @@ class Number(numbers.Number):
         MAX_PAYLOAD_LENGTH = 250
 
         TYPE_LISTING   = 0x1D   # 'ID' in 1337
-        TYPE_IMAGINARY = 0x6A   # 'j' in ASCII (three 0x6A suffixes for quaternions, etc.)
+        TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
         TYPE_TEST      = 0x7F   # for unit testing, no value, arbitrary payload.
 
         def __init__(self, type_=None, payload=None):

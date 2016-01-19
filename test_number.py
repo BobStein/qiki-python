@@ -1575,12 +1575,12 @@ class NumberComplex(NumberTests):
 
     def test_02b_imag(self):
         """Test Number.imag for a complex number."""
-        n = Number('0q82_07__8209_6A0300')
+        n = Number('0q82_07__8209_690300')
         self.assertEqual('0q82_07', n.real.qstring())
         self.assertEqual('0q82_09', n.imag.qstring())
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
-        self.assertEqual('0q82_07__8209_6A0300', n.qstring())   # make sure n unchanged by all that
+        self.assertEqual('0q82_07__8209_690300', n.qstring())   # make sure n unchanged by all that
         self.assertIsInstance(n, Number)
         self.assertIsInstance(n.imag, Number)
 
@@ -1593,27 +1593,27 @@ class NumberComplex(NumberTests):
 
     def test_03b_complex_phantom_real(self):
         """Test complex with a zero imaginary --> Number --> real."""
-        self.assertEqual('0q82_2A__830457_6A0400', Number((42+1111j)).qstring())
-        self.assertEqual('0q82_2A__80_6A0200', Number(42+0j).qstring())
+        self.assertEqual('0q82_2A__830457_690400', Number((42+1111j)).qstring())
+        self.assertEqual('0q82_2A__80_690200', Number(42+0j).qstring())
         self.assertEqual('0q82_2A', Number(42).qstring())
         self.assertEqual(Number(42), Number((42+0j)))
 
     def test_03c_complex_phantom_deliberate(self):
         """Zero imaginary parts must be possible to support quaternions, maybe."""
-        self.assertNotEqual('0q82_2A', Number('0q82_2A__80_6A0200').qstring())
-        self.assertEqual('0q82_2A__80_6A0200', Number('0q82_2A__80_6A0200').qstring())
+        self.assertNotEqual('0q82_2A', Number('0q82_2A__80_690200').qstring())
+        self.assertEqual('0q82_2A__80_690200', Number('0q82_2A__80_690200').qstring())
 
     def test_03d_complex_phantom_immaterial(self):
         """Zero imaginary parts must not thwart numbers being equal."""
-        self.assertEqual(Number('0q82_2A'), Number('0q82_2A__80_6A0200'))
+        self.assertEqual(Number('0q82_2A'), Number('0q82_2A__80_690200'))
 
     def test_03e_complex_zero_imag_normalized(self):
         """A zero imaginary suffix is normalized away."""
-        self.assertEqual('0q82_2A__8211_6A0300', Number(42+17j).qstring())
-        self.assertEqual('0q82_2A__8211_6A0300', Number(42+17j, normalize=True).qstring())
+        self.assertEqual('0q82_2A__8211_690300', Number(42+17j).qstring())
+        self.assertEqual('0q82_2A__8211_690300', Number(42+17j, normalize=True).qstring())
 
-        self.assertEqual('0q82_2A__80_6A0200', Number(42+0j).qstring())
-        self.assertEqual('0q82_2A__80_6A0200', Number(42+0j, normalize=False).qstring())
+        self.assertEqual('0q82_2A__80_690200', Number(42+0j).qstring())
+        self.assertEqual('0q82_2A__80_690200', Number(42+0j, normalize=False).qstring())
         self.assertEqual('0q82_2A',            Number(42+0j, normalize=True).qstring())
 
     def test_04_real_suffixed(self):
@@ -1724,11 +1724,11 @@ class NumberComplex(NumberTests):
             float(complex_number)
 
     def test_09_imag_first(self):
-        """Number.imag only gts the first imaginary suffix, ignoring others."""
-        n = Number('0q82_07__8209_6A0300__8205_6A0300')
+        """Number.imag only gets the first imaginary suffix, ignoring others."""
+        n = Number('0q82_07__8209_690300__8205_690300')
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
-        n = Number('0q82_07__8205_6A0300__8209_6A0300')
+        n = Number('0q82_07__8205_690300__8209_690300')
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(5.0, float(n.imag))
 
