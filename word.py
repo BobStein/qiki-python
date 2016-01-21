@@ -261,6 +261,9 @@ class Word(object):
     class MissingFromLex(Exception):
         pass
 
+    class NotAWord(Exception):
+        pass
+
     def _from_idn(self, idn):
         """
         Construct a Word from its idn.
@@ -269,9 +272,13 @@ class Word(object):
         """
         assert isinstance(idn, Number)
         if idn.is_suffixed():
-            listed_instance = Listing.word_lookup(idn)
-            self.txt = listed_instance.txt
-            self.exists = True
+            try:
+                listed_instance = Listing.word_lookup(idn)
+            except Listing.NotAListing:
+                raise self.NotAWord("Not a Word identifier: " + idn.qstring())
+            else:
+                self.txt = listed_instance.txt
+                self.exists = True
         else:
             # TODO:  Move this part to Lex
             self._load_row(
@@ -604,6 +611,9 @@ class Listing(Word):
         cls.class_dictionary[meta_word.idn] = cls
         cls.meta_word = meta_word
 
+    class NotAListing(Exception):
+        pass
+
     @classmethod
     def word_lookup(cls, idn):
         """
@@ -616,7 +626,11 @@ class Listing(Word):
         This class will be a subclass of Listing.
         Second we call that class's lookup on the suffix of the idn.
         """
-        (identifier, suffix) = idn.parse_suffixes()
+        pieces = idn.parse_suffixes()
+        try:
+            (identifier, suffix) = pieces
+        except ValueError:
+            raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
         assert isinstance(identifier, Number)
         assert isinstance(suffix, Number.Suffix)
         subclass = cls.class_from_meta_idn(identifier)
@@ -627,7 +641,10 @@ class Listing(Word):
     @classmethod
     def class_from_meta_idn(cls, meta_idn):
         # print(repr(cls.class_dictionary))
-        return_value = cls.class_dictionary[meta_idn]
+        try:
+            return_value = cls.class_dictionary[meta_idn]
+        except KeyError:
+            raise cls.NotAListing("Not a Listing class identifier: " + meta_idn.qstring())
         assert issubclass(return_value, cls), repr(return_value) + " is not a subclass of " + repr(cls)
         assert return_value.meta_word.idn == meta_idn
         return return_value
@@ -719,11 +736,11 @@ class LexMySQL(Lex):
 
         At least that's how they'd be defined if forward references were not a problem.
         """
-        self._seminal_word(self._ID_DEFINE, self._ID_VERB, u'define')
-        self._seminal_word(self._ID_NOUN, self._ID_NOUN, u'noun')
-        self._seminal_word(self._ID_VERB, self._ID_NOUN, u'verb')
-        self._seminal_word(self._ID_AGENT, self._ID_NOUN, u'agent')
-        self._seminal_word(self._ID_LEX, self._ID_AGENT, u'lex')
+        self._seminal_word(self._ID_DEFINE, self._ID_VERB,  u'define')
+        self._seminal_word(self._ID_NOUN,   self._ID_NOUN,  u'noun')
+        self._seminal_word(self._ID_VERB,   self._ID_NOUN,  u'verb')
+        self._seminal_word(self._ID_AGENT,  self._ID_NOUN,  u'agent')
+        self._seminal_word(self._ID_LEX,    self._ID_AGENT, u'lex')
 
 
         if not self.exists:
@@ -826,8 +843,14 @@ class LexMySQL(Lex):
     def _cursor(self):
         return self._connection.cursor(prepared=True)
 
-    def find(self, sbj=None, vrb=None, obj=None):
-        """Select words by subject, verb, and/or object."""
+    def find_words(self, sbj=None, vrb=None, obj=None):
+        idns = self.find_idns(sbj,vrb,obj)
+        return self. words_from_idns(idns)
+
+    def find_idns(self, sbj=None, vrb=None, obj=None):
+        """Select words by subject, verb, and/or object.
+
+        Return list of words."""
         query = "SELECT idn FROM " + self._table + " WHERE 1 "
         parameters = []
         if sbj is not None:   query += " AND sbj=? ";   parameters.append(idn_from_word_or_number(sbj).raw)
@@ -836,8 +859,12 @@ class LexMySQL(Lex):
         query += " ORDER BY idn "
         return self._select_words(query, parameters)
 
-    # noinspection SpellCheckingInspection
     def _select_words(self, sql, parameters):
+        idns = self._select_idns(sql, parameters)
+        return self.words_from_idns(idns)
+
+    # noinspection SpellCheckingInspection
+    def _select_idns(self, sql, parameters):
         """
         Read an array of words based on an SELECT idn FROM {table} query.
 
@@ -859,13 +886,16 @@ class LexMySQL(Lex):
             # SEE:  http://stackoverflow.com/a/17268389/673991
             # And a cursor can't be both prepared and buffered.
             idns.append(idn)
+        cursor.close()
+        return idns
+
+    def words_from_idns(self, idns):
         words = []
         for idn in idns:
             word = self(idn)
             # This calls Word._from_idn(), which calls Word._load_row().
             # TODO:  Move them here.
             words.append(word)
-        cursor.close()
         return words
 
     def max_idn(self):

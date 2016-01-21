@@ -889,6 +889,48 @@ class WordListingInternalsTests(WordListingTests):
         self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
         self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
 
+    def test_listing_word_lookup(self):
+        chad = self.Student(2)
+        self.assertEqual("Chad", chad.txt)
+        chad_clone = qiki.Listing.word_lookup(chad.idn)
+        self.assertEqual(chad, chad_clone)
+
+    def test_listing_word_lookup_not_suffixed(self):
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.word_lookup(qiki.Number(666))
+
+    def test_listing_word_lookup_wrong_suffixed(self):
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.word_lookup(qiki.Number(666+666j))
+
+    def test_listing_word_lookup_not_listing(self):
+        chad = self.Student(2)
+        (listing_class_idn, listed_thing_number) = chad.idn.parse_suffixes()
+        not_a_listing_idn = qiki.Number(listing_class_idn + 666)
+        not_a_listing_idn.add_suffix(listed_thing_number)
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.word_lookup(not_a_listing_idn)
+
+    def test_class_from_meta_idn(self):
+        chad = self.Student(2)
+        chad_class_idn = chad.idn.parse_suffixes()[0]
+        chad_class = qiki.Listing.class_from_meta_idn(chad_class_idn)
+
+        self.assertEqual(self.Student, chad_class)
+        self.assertNotEqual(qiki.Listing, chad_class)
+
+        self.assertTrue(issubclass(chad_class, self.Student))
+        self.assertTrue(issubclass(chad_class, qiki.Listing))
+
+    def test_class_from_meta_idn_bogus(self):
+        some_word = self.lex.noun('some word')
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.class_from_meta_idn(some_word.idn)
+
+    def test_non_listing_suffix(self):
+        with self.assertRaises(qiki.Word.NotAWord):
+            self.lex(qiki.Number(1+2j))
+
 
 class WordUseAlready(WordTests):
 
@@ -956,6 +998,11 @@ class WordFindTests(WordTests):
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
 
+    def test_select_idns_txt(self):
+        apple_words = self.lex._select_idns("SELECT idn FROM word WHERE txt=?", ['apple'])
+        self.assertEqual(1, len(apple_words))
+        self.assertEqual(self.apple.idn, apple_words[0])
+
     def test_select_words_txt(self):
         apple_words = self.lex._select_words("SELECT idn FROM word WHERE txt=?", ['apple'])
         self.assertEqual(1, len(apple_words))
@@ -969,7 +1016,7 @@ class WordFindTests(WordTests):
         self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
 
     def test_find_obj(self):
-        apple_words = self.lex.find(obj=self.apple.idn)
+        apple_words = self.lex.find_words(obj=self.apple.idn)
         self.assertEqual(3, len(apple_words))
         self.assertEqual(self.macintosh, apple_words[0])
         self.assertEqual(self.braburn, apple_words[1])
@@ -977,43 +1024,43 @@ class WordFindTests(WordTests):
         self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], apple_words)
 
     def test_find_obj_word(self):
-        self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], self.lex.find(obj=self.apple))
+        self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], self.lex.find_words(obj=self.apple))
 
     def test_find_sbj(self):
         self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
-        fred_words = self.lex.find(sbj=self.fred.idn)
+        fred_words = self.lex.find_words(sbj=self.fred.idn)
         self.assertEqual(1, len(fred_words))
         self.assertEqual("Yummy.", fred_words[0].txt)
 
     def test_find_sbj_word(self):
         fred_word = self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
-        self.assertEqual([fred_word], self.lex.find(sbj=self.fred))
+        self.assertEqual([fred_word], self.lex.find_words(sbj=self.fred))
 
     def test_find_vrb(self):
         self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
-        crave_words = self.lex.find(vrb=self.crave.idn)
+        crave_words = self.lex.find_words(vrb=self.crave.idn)
         self.assertEqual(1, len(crave_words))
         self.assertEqual("Yummy.", crave_words[0].txt)
 
     def test_find_vrb_word(self):
         crave_word = self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
-        self.assertEqual([crave_word], self.lex.find(vrb=self.crave))
+        self.assertEqual([crave_word], self.lex.find_words(vrb=self.crave))
 
     def test_find_chronology(self):
         craving_apple = self.fred.crave(self.apple, qiki.Number(1))
         craving_berry = self.fred.crave(self.berry, qiki.Number(1))
         craving_curry = self.fred.crave(self.curry, qiki.Number(1))
 
-        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find(sbj=self.fred))
-        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find(vrb=self.crave))
+        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find_words(sbj=self.fred))
+        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find_words(vrb=self.crave))
 
     def test_find_empty(self):
         self.fred.crave(self.apple, qiki.Number(1))
         self.fred.crave(self.berry, qiki.Number(1))
         self.fred.crave(self.curry, qiki.Number(1))
 
-        self.assertEqual([], self.lex.find(sbj=self.crave))
-        self.assertEqual([], self.lex.find(vrb=self.fred))
+        self.assertEqual([], self.lex.find_words(sbj=self.crave))
+        self.assertEqual([], self.lex.find_words(vrb=self.fred))
 
 
 class WordUtilities(WordTests):
@@ -1027,6 +1074,20 @@ class WordUtilities(WordTests):
         with self.assertRaises(TypeError):
             idn_from_word_or_number(0)
 
+
+class WordQoolbarTests(WordTests):
+
+    def setUp(self):
+        super(WordQoolbarTests, self).setUp()
+        qool = self.lex.verb('qool')
+        like = self.lex.verb('like')
+        delete = self.lex.verb('delete')
+        self.lex.qool(like, qiki.Number(1))
+        self.lex.qool(delete, qiki.Number(1))
+        self.qools = self.lex.find_words(vrb=self.lex('define'), obj=qool)
+
+    def test_get_all_qools(self):
+        pass
 
 
     ################## obsolete or maybe someday #################################

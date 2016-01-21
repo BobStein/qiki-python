@@ -909,7 +909,8 @@ class Number(numbers.Number):
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
-        # XXX:  This would be much less sneaky if raw were not the primary internal representation.
+        # XXX:  This could be much less sneaky if raw were not the primary internal representation.
+        # TODO:  is_suffixed(type)?
 
     def add_suffix(self, suffix_or_type=None, payload=None):
         """Add a suffix to this Number.
