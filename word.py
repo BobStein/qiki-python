@@ -258,6 +258,9 @@ class Word(object):
         new_word.save()
         return new_word
 
+    class NotAVerb(Exception):
+        pass
+
     class MissingFromLex(Exception):
         pass
 
@@ -847,9 +850,15 @@ class LexMySQL(Lex):
         Return list of idns."""
         query = 'SELECT idn FROM ' + self._table + ' WHERE 1 '
         parameters = []
-        if sbj is not None:   query += ' AND sbj=? ';   parameters.append(idn_from_word_or_number(sbj).raw)
-        if vrb is not None:   query += ' AND vrb=? ';   parameters.append(idn_from_word_or_number(vrb).raw)
-        if obj is not None:   query += ' AND obj=? ';   parameters.append(idn_from_word_or_number(obj).raw)
+        if sbj is not None:
+            query += ' AND sbj=? '
+            parameters.append(idn_from_word_or_number(sbj).raw)
+        if vrb is not None:
+            query += ' AND vrb=? '
+            parameters.append(idn_from_word_or_number(vrb).raw)
+        if obj is not None:
+            query += ' AND obj=? '
+            parameters.append(idn_from_word_or_number(obj).raw)
         query += ' ' + sql
         return self._select_idns(query, parameters)
 

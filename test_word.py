@@ -382,6 +382,16 @@ class WordFirstTests(WordTests):
         self.assertSensibleWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
+    def test_12_vrb(self):
+        anna = self.lex.agent('anna')
+        self.lex.verb('like')
+        yurt = self.lex.noun('yurt')
+        zarf = self.lex.noun('zarf')
+        anna.like(zarf, 1)
+        with self.assertRaises(qiki.Word.NotAVerb):
+            anna.yurt(zarf, 1)
+
+
 
 class WordUnicode(WordTests):
 
@@ -998,9 +1008,6 @@ class WordFindTests(WordTests):
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
 
-    def test_00(self):
-        self.describe_all_words()
-
     def test_select_idns_txt(self):
         apple_words = self.lex._select_idns("SELECT idn FROM word WHERE txt=?", ['apple'])
         self.assertEqual(1, len(apple_words))
@@ -1103,16 +1110,37 @@ class WordQoolbarTests(WordTests):
 
     def setUp(self):
         super(WordQoolbarTests, self).setUp()
-        qool = self.lex.verb('qool')
-        like = self.lex.verb('like')
-        delete = self.lex.verb('delete')
-        self.lex.qool(like, qiki.Number(1))
-        self.lex.qool(delete, qiki.Number(1))
-        self.qools = self.lex.find_words(vrb=self.lex('define'), obj=qool)
+        self.qool = self.lex.verb('qool')
+        self.like = self.lex.verb('like')
+        self.delete = self.lex.verb('delete')
+        self.lex.qool(self.like, qiki.Number(1))
+        self.lex.qool(self.delete, qiki.Number(1))
+        self.anna = self.lex.agent('anna')
+        self.bart = self.lex.agent('bart')
+        self.youtube = self.lex.noun('youtube')
+        self.zigzags = self.lex.noun('zigzags')
+        self.anna.like(self.youtube, 1)
+        self.bart.like(self.youtube, 10)
+        self.anna.like(self.zigzags, 2)
+        self.bart.delete(self.zigzags, 1)
+        qool_declarations = self.lex.find_words(vrb=self.qool.idn)
+        self.qool_idns = [w.obj for w in qool_declarations]
+
 
     def test_get_all_qools(self):
-        pass
+        self.describe_all_words()
+        self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
+        # print(", ".join([w.idn.qstring() for w in qool_words]))
+        # print(", ".join([n.qstring() for n in qool_idns]))
 
+    def test_find_qool_uses(self):
+        """Find by a list of verbs."""
+        qool_uses = self.lex.find_words(vrb=self.qool_idns)
+        self.assertEqual(4, len(qool_uses))
+        self.assertEqual(qool_uses[0].sbj, self.anna.idn)
+        self.assertEqual(qool_uses[1].sbj, self.bart.idn)
+        self.assertEqual(qool_uses[2].sbj, self.anna.idn)
+        self.assertEqual(qool_uses[3].sbj, self.bart.idn)
 
     ################## obsolete or maybe someday #################################
 
