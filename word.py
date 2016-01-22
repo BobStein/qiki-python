@@ -843,21 +843,26 @@ class LexMySQL(Lex):
     def _cursor(self):
         return self._connection.cursor(prepared=True)
 
-    def find_words(self, sbj=None, vrb=None, obj=None):
-        idns = self.find_idns(sbj,vrb,obj)
-        return self. words_from_idns(idns)
+    _default_find_sql = 'ORDER BY idn ASC'
 
-    def find_idns(self, sbj=None, vrb=None, obj=None):
+    def find_words(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
-        query = "SELECT idn FROM " + self._table + " WHERE 1 "
+        idns = self.find_idns(sbj,vrb,obj, sql)
+        return self. words_from_idns(idns)
+
+    def find_idns(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
+        """Select words by subject, verb, and/or object.
+
+        Return list of idns."""
+        query = 'SELECT idn FROM ' + self._table + ' WHERE 1 '
         parameters = []
-        if sbj is not None:   query += " AND sbj=? ";   parameters.append(idn_from_word_or_number(sbj).raw)
-        if vrb is not None:   query += " AND vrb=? ";   parameters.append(idn_from_word_or_number(vrb).raw)
-        if obj is not None:   query += " AND obj=? ";   parameters.append(idn_from_word_or_number(obj).raw)
-        query += " ORDER BY idn "
-        return self._select_words(query, parameters)
+        if sbj is not None:   query += ' AND sbj=? ';   parameters.append(idn_from_word_or_number(sbj).raw)
+        if vrb is not None:   query += ' AND vrb=? ';   parameters.append(idn_from_word_or_number(vrb).raw)
+        if obj is not None:   query += ' AND obj=? ';   parameters.append(idn_from_word_or_number(obj).raw)
+        query += ' ' + sql
+        return self._select_idns(query, parameters)
 
     def _select_words(self, sql, parameters):
         idns = self._select_idns(sql, parameters)

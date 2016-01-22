@@ -1062,6 +1062,27 @@ class WordFindTests(WordTests):
         self.assertEqual([], self.lex.find_words(sbj=self.crave))
         self.assertEqual([], self.lex.find_words(vrb=self.fred))
 
+    def test_find_idns(self):
+        idns = self.lex.find_idns()
+        for idn in idns:
+            self.assertIsInstance(idn, qiki.Number)
+
+    def test_find_words(self):
+        words = self.lex.find_words()
+        for word in words:
+            self.assertIsInstance(word, qiki.Word)
+
+    def test_find_idns_sql(self):
+        idns = self.lex.find_idns(sql='ORDER BY idn ASC')
+        self.assertLess(idns[0], idns[-1])
+        idns = self.lex.find_idns(sql='ORDER BY idn DESC')
+        self.assertGreater(idns[0], idns[-1])
+
+    def test_find_words_sql(self):
+        words = self.lex.find_words(sql='ORDER BY idn ASC')
+        self.assertLess(words[0].idn, words[-1].idn)
+        words = self.lex.find_words(sql='ORDER BY idn DESC')
+        self.assertGreater(words[0].idn, words[-1].idn)
 
 class WordUtilities(WordTests):
 
