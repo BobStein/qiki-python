@@ -62,9 +62,9 @@ class WordTests(unittest.TestCase):
         self.lex.disconnect()
 
     def describe_all_words(self):
-        idn_array = self.lex.get_all_idns()
-        for _idn in idn_array:
-            print(int(_idn), self.lex(_idn).description())
+        words = self.lex.find_words()
+        for word in words:
+            print(int(word.idn), word.description())
 
     def show_txt_in_utf8(self, idn):
         word = self.lex(idn)
@@ -997,6 +997,9 @@ class WordFindTests(WordTests):
         self.honeycrisp = self.lex.apple('honeycrisp')
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
+
+    def test_00(self):
+        self.describe_all_words()
 
     def test_select_idns_txt(self):
         apple_words = self.lex._select_idns("SELECT idn FROM word WHERE txt=?", ['apple'])

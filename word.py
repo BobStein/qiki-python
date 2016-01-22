@@ -798,18 +798,6 @@ class LexMySQL(Lex):
     def disconnect(self):
         self._connection.close()
 
-    def get_all_idns(self):
-        """Return an array of all word ids in the database."""
-        # TODO:  Start and number parameters, for LIMIT clause.
-        cursor = self._cursor()
-        cursor.execute("SELECT idn FROM `{table}` ORDER BY idn ASC".format(table=self._table))
-        idns = []
-        for row in cursor:
-            idn = Number.from_mysql(row[0])
-            idns.append(idn)
-        cursor.close()
-        return idns
-
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
         cursor = self._cursor()
@@ -844,6 +832,7 @@ class LexMySQL(Lex):
         return self._connection.cursor(prepared=True)
 
     _default_find_sql = 'ORDER BY idn ASC'
+    # TODO:  Start and number parameters, for LIMIT clause.
 
     def find_words(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select words by subject, verb, and/or object.
