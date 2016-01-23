@@ -388,8 +388,12 @@ class WordFirstTests(WordTests):
         yurt = self.lex.noun('yurt')
         zarf = self.lex.noun('zarf')
         anna.like(zarf, 1)
+        self.assertTrue(anna.like.is_a_verb())
+        self.assertFalse(anna.yurt.is_a_verb())
+        self.assertEqual('yurt', anna.yurt.txt)
         with self.assertRaises(qiki.Word.NotAVerb):
-            anna.yurt(zarf, 1)
+            anna.yurt(zarf, 1, '')
+            self.describe_all_words()
 
 
 
@@ -480,13 +484,16 @@ class WordMoreTests(WordTests):
         verb = self.lex('verb')
         noun = self.lex('noun')
         like = verb('like')
+        yurt = self.lex.noun('yurt')
         self.assertTrue(like.is_a_verb())
         self.assertTrue(verb.is_a_verb(reflexive=True))
         self.assertFalse(verb.is_a_verb(reflexive=False))
         self.assertFalse(verb.is_a_verb())
         self.assertFalse(noun.is_a_verb())
+        self.assertFalse(yurt.is_a_verb())
 
         self.assertFalse(self.lex('noun').is_a_verb())
+        self.assertFalse(self.lex('verb').is_a_verb())
         self.assertTrue(self.lex('define').is_a_verb())
         self.assertFalse(self.lex('agent').is_a_verb())
         self.assertFalse(self.lex('lex').is_a_verb())
@@ -1104,6 +1111,34 @@ class WordUtilities(WordTests):
             idn_from_word_or_number('')
         with self.assertRaises(TypeError):
             idn_from_word_or_number(0)
+
+    def test_words_from_idns(self):
+        noun = self.lex('noun')
+        agent = self.lex('agent')
+        define = self.lex('define')
+        self.assertEqual([
+            noun,
+            agent,
+            define
+        ], self.lex.words_from_idns([
+            noun.idn,
+            agent.idn,
+            define.idn
+        ]))
+
+    def test_raws_from_idns(self):
+        noun = self.lex('noun')
+        agent = self.lex('agent')
+        define = self.lex('define')
+        self.assertEqual([
+            noun.idn.raw,
+            agent.idn.raw,
+            define.idn.raw,
+        ], self.lex.raws_from_idns([
+            noun.idn,
+            agent.idn,
+            define.idn,
+        ]))
 
 
 class WordQoolbarTests(WordTests):

@@ -115,8 +115,6 @@ class Word(object):
                 return existing_word
         elif self.is_a_verb(reflexive=False):   # Quintessential word creation:  s.v(o)  e.g. anna.like(bart)
             # (But not s.verb(o) -- the 'verb' word is not itself a verb.)
-            assert hasattr(self, 'lex')
-            assert self.lex.exists
             assert self.lex.is_lex()
 
             # TODO:  s.v(o,t)
@@ -195,8 +193,6 @@ class Word(object):
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
-            assert hasattr(self, 'lex')
-            assert self.lex.exists
             assert self.lex.is_lex()
             existing_or_new_word = self.lex.define(self, *args, **kwargs)
             return existing_or_new_word
@@ -208,6 +204,9 @@ class Word(object):
             )
 
     def define(self, obj, txt, num=Number(1)):
+        assert isinstance(obj, (Word, self.TXT_TYPES))
+        assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
+        assert isinstance(num, Number)
         possibly_existing_word = self.spawn(txt)
         # How to handle "duplications"
         # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
@@ -220,17 +219,6 @@ class Word(object):
             obj = self.spawn(obj)
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
         return new_word
-
-    def spawn(self, *args, **kwargs):
-        """
-        Construct a Word() using the same lex as another word.
-
-        The constructed word may exist in the database already.
-        Otherwise it will be prepared to .save().
-        """
-        assert hasattr(self, 'lex')
-        kwargs['lex'] = self.lex
-        return Word(*args, **kwargs)
 
     def sentence(self, sbj, vrb, obj, txt, num):
         """
@@ -254,9 +242,22 @@ class Word(object):
         assert isinstance(obj, Word),           "obj cannot be a {type}".format(type=type(obj).__name__)
         assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
         assert isinstance(num, Number),         "num cannot be a {type}".format(type=type(num).__name__)
+        if not vrb.is_a_verb():
+            raise self.NotAVerb("Sentence verb {} is not a verb.".format(vrb.qstring()))
         new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
+
+    def spawn(self, *args, **kwargs):
+        """
+        Construct a Word() using the same lex as another word.
+
+        The constructed word may exist in the database already.
+        Otherwise it will be prepared to .save().
+        """
+        assert hasattr(self, 'lex')
+        kwargs['lex'] = self.lex
+        return Word(*args, **kwargs)
 
     class NotAVerb(Exception):
         pass
@@ -448,7 +449,7 @@ class Word(object):
         return self.idn == self._ID_AGENT
 
     def is_lex(self):
-        return self.idn == self._ID_LEX
+        return isinstance(self, Lex) and self.exists and self.idn == self._ID_LEX
 
     def description(self):
         sbj = self.spawn(self.sbj)
@@ -900,6 +901,13 @@ class LexMySQL(Lex):
             # TODO:  Move them here.
             words.append(word)
         return words
+
+    @classmethod
+    def raws_from_idns(cls, idns):
+        raws = []
+        for idn in idns:
+            raws.append(idn.raw)
+        return raws
 
     def max_idn(self):
         # TODO:  Store max_idn in a singleton table.
