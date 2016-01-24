@@ -517,6 +517,9 @@ class Word(object):
         else:
             return repr(self)
 
+    class Incomparable(TypeError):
+        pass
+
     def __eq__(self, other):
         # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
         # I think so, but I wonder if this would throw off other things.
@@ -529,7 +532,13 @@ class Word(object):
             # That should be a comparison of a word instance with None.
             # Yet a simple Word() == None does seem to come here.
             # See test_word.py test_verb_paren_object_deferred_subject()
-        return self.exists and other.exists and self.idn == other.idn
+        try:
+            other_exists = other.exists
+            other_idn = other.idn
+        except AttributeError:
+            raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
+        else:
+            return self.exists and other_exists and self.idn == other_idn
 
     @property
     def idn(self):

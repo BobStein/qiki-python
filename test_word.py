@@ -393,6 +393,7 @@ class WordFirstTests(WordTests):
         self.assertEqual('yurt', anna.yurt.txt)
         with self.assertRaises(qiki.Word.NotAVerb):
             anna.yurt(zarf, 1, '')
+            # FIXME:  Can we even come up with a s.v(o) where v is not a verb, and something else isn't happening?
             self.describe_all_words()
 
 
@@ -1111,6 +1112,16 @@ class WordUtilities(WordTests):
             idn_from_word_or_number('')
         with self.assertRaises(TypeError):
             idn_from_word_or_number(0)
+
+    def test_inequality_words_and_numbers(self):
+        """Sanity check to make sure words and idns aren't intrinsically equal or something."""
+        word = self.lex.agent
+        idn = word.idn
+        exceptions = (qiki.Number.Incomparable, qiki.Word.Incomparable)
+        with self.assertRaises(exceptions):   idn == word
+        with self.assertRaises(exceptions):   idn != word
+        with self.assertRaises(exceptions):   word == idn
+        with self.assertRaises(exceptions):   word != idn
 
     def test_words_from_idns(self):
         noun = self.lex('noun')

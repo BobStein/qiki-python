@@ -176,6 +176,7 @@ class NumberBasicTests(NumberTests):
 
     # yes_inspection PyUnresolvedReferences
     def test_nan_equality(self):
+        """Is this right?  Number.NAN behaves like any other number, not at all like float('nan')?"""
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
         self.assertEqual(nan, Number(None))
@@ -1188,7 +1189,6 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q83_03E8', GrandSonOfNumber(GrandDaughterOfNumber('0q83_03E8')).qstring())
         self.assertEqual('0q7C_FEFF', GrandDaughterOfNumber(GrandSonOfNumber('0q7C_FEFF')).qstring())
 
-
     def test_sizeof(self):
         self.assertIn(sys.getsizeof(Number('0q')), (28, 32))  # depends on Zone.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q80')), (28, 32))
@@ -1415,6 +1415,24 @@ class NumberComparisonTests(NumberTests):
         self.assertFalse(googol        == googol_plus_1)
         self.assertFalse(googol_plus_1 == googol)
         self.assertTrue (googol_plus_1 == googol_plus_1)
+
+    def test_incomparable(self):
+        # noinspection PyClassHasNoInit
+        class SomeType:
+            pass
+
+        with self.assertRaises(Number.Incomparable):   Number(1) <  SomeType()
+        with self.assertRaises(Number.Incomparable):   Number(1) <= SomeType()
+        with self.assertRaises(Number.Incomparable):   Number(1) == SomeType()
+        with self.assertRaises(Number.Incomparable):   Number(1) != SomeType()
+        with self.assertRaises(Number.Incomparable):   Number(1) >  SomeType()
+        with self.assertRaises(Number.Incomparable):   Number(1) >= SomeType()
+        with self.assertRaises(Number.Incomparable):   SomeType() <  Number(1)
+        with self.assertRaises(Number.Incomparable):   SomeType() <= Number(1)
+        with self.assertRaises(Number.Incomparable):   SomeType() == Number(1)
+        with self.assertRaises(Number.Incomparable):   SomeType() != Number(1)
+        with self.assertRaises(Number.Incomparable):   SomeType() >  Number(1)
+        with self.assertRaises(Number.Incomparable):   SomeType() >= Number(1)
 
 
 # noinspection SpellCheckingInspection
@@ -1687,17 +1705,17 @@ class NumberComplex(NumberTests):
         self.assertEqual(native_real2, native_complex2.real)
         self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
         self.assertTrue(qiki_real1 >= qiki_real2)
-        with self.assertRaises(TypeError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
+        with self.assertRaises(Number.Incomparable):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
             qiki_complex2 < qiki_real1
-        with self.assertRaises(TypeError):
+        with self.assertRaises(Number.Incomparable):
             qiki_real2 < qiki_complex1
-        with self.assertRaises(TypeError):   # n vs q
+        with self.assertRaises(Number.Incomparable):   # n vs q
             native_complex2 < qiki_real1
-        with self.assertRaises(TypeError):
+        with self.assertRaises(Number.Incomparable):
             native_real2 < qiki_complex1
-        with self.assertRaises(TypeError):   # q vs n
+        with self.assertRaises(Number.Incomparable):   # q vs n
             qiki_complex2 < native_real1
-        with self.assertRaises(TypeError):
+        with self.assertRaises(Number.Incomparable):
             qiki_real2 < native_complex1
         with self.assertRaises(TypeError):   # n vs n
             native_complex2 < native_real1
@@ -2562,6 +2580,17 @@ class PythonTests(NumberTests):
         self.assertFalse(googol        == googol_plus_1)
         self.assertFalse(googol_plus_1 == googol)
         self.assertTrue (googol_plus_1 == googol_plus_1)
+
+    def test_03_nan_comparisons(self):
+        self.assertFalse(float('nan') <  float('nan'))
+        self.assertFalse(float('nan') <= float('nan'))
+        self.assertFalse(float('nan') == float('nan'))
+        self.assertTrue (float('nan') != float('nan'))
+        self.assertFalse(float('nan') >  float('nan'))
+        self.assertFalse(float('nan') >= float('nan'))
+
+        self.assertIsNot(float('nan'), float('nan'))
+        self.assertIsInstance(float('nan'), float)
 
 
 def py23(if2, if3):

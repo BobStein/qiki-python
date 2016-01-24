@@ -143,10 +143,18 @@ class Number(numbers.Number):
     def __str__(self):
         return self.qstring()
 
+    class Incomparable(TypeError):
+        pass
+
     @classmethod
     def _op_ready(cls, x):
         """Get some kind of value ready for comparison operators."""
-        return cls(x, normalize=True).raw
+        try:
+            return_value = cls(x, normalize=True).raw
+        except cls.ConstructorTypeError:
+            raise cls.Incomparable("Numbers cannot be compared with " + type(x).__name__)
+        else:
+            return return_value
 
     # Math
     # ----
@@ -189,11 +197,17 @@ class Number(numbers.Number):
     # TODO:  Should normalization strip empty suffixes?  (__0000)
 
     def _both_real(self, other):
+        """Make sure both operands are real (not complex) before comparison."""
         if self.is_complex():
-            raise TypeError("Cannot compare complex values.")
-            # TODO:  Subclass TypeError for more specificity.  Yay, TypeError catcher would still work.
-        if type(self)(other).is_complex():
-            raise TypeError("Cannot compare complex values.")
+            raise self.Incomparable("Complex values are unordered.")
+            # TODO:  Should this exception be "Unordered" instead?  Test other.is_complex() too??
+        try:
+            other_as_a_number = type(self)(other)
+        except self.ConstructorTypeError:
+            raise self.Incomparable("Number cannot be compared with a " + type(other).__name__)
+        else:
+            if other_as_a_number.is_complex():
+                raise self.Incomparable("Cannot compare complex values.")
 
     def __hash__(self):
         return hash(self.raw)
