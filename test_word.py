@@ -1200,14 +1200,13 @@ class WordQoolbarTests(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj for w in qool_declarations]
 
-
-    def test_get_all_qool_words(self):
+    def test_get_all_qool_verbs(self):
         self.describe_all_words()
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
         # print(", ".join([w.idn.qstring() for w in qool_words]))
         # print(", ".join([n.qstring() for n in qool_idns]))
 
-    def test_find_qool_uses(self):
+    def test_find_qool_(self):
         """Find by a list of verbs."""
         qool_uses = self.lex.find_words(vrb=self.qool_idns)
         self.assertEqual(4, len(qool_uses))
@@ -1215,6 +1214,20 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[1].sbj, self.bart.idn)
         self.assertEqual(qool_uses[2].sbj, self.anna.idn)
         self.assertEqual(qool_uses[3].sbj, self.bart.idn)
+
+        qool_uses = self.lex.find_words(vrb=self.qool_idns, obj=self.youtube)
+        self.assertEqual(2, len(qool_uses))
+        self.assertEqual(qool_uses[0].sbj, self.anna.idn)
+        self.assertEqual(qool_uses[0].num, qiki.Number(1))
+        self.assertEqual(qool_uses[1].sbj, self.bart.idn)
+        self.assertEqual(qool_uses[1].num, qiki.Number(10))
+
+        qool_uses = self.lex.find_words(vrb=self.qool_idns, sbj=self.bart)
+        self.assertEqual(2, len(qool_uses))
+        self.assertEqual(qool_uses[0].obj, self.youtube.idn)
+        self.assertEqual(qool_uses[0].num, qiki.Number(10))
+        self.assertEqual(qool_uses[1].obj, self.zigzags.idn)
+        self.assertEqual(qool_uses[1].num, qiki.Number(1))
 
     ################## obsolete or maybe someday #################################
 
