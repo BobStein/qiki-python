@@ -105,7 +105,7 @@ class Word(object):
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
             # FIXME:  if not exists: raise NotExist
-            assert existing_word.exists, "{word} has no property {name}".format(
+            assert existing_word.exists, "{word} has no method {name}".format(
                 word=repr(self),
                 name=repr(args[0]),
             )
@@ -913,7 +913,7 @@ class LexMySQL(Lex):
     # noinspection SpellCheckingInspection
     def _select_idns(self, sql, parameters):
         """
-        Read an array of words based on an SELECT idn FROM {table} query.
+        Read an array of idns based on a query like:  SELECT idn FROM {table} ...
 
         Same parameters as cursor.execute,
         namely a MySQL string and a tuple of ?-value parameters.
@@ -928,13 +928,37 @@ class LexMySQL(Lex):
         for row in cursor:
             assert len(row) == 1, "Expecting 1 column only, got " + repr(row)
             idn = Number.from_mysql(row[0])
-            # word = self(idn)   # Doing this raises InternalError: Unread result found.
+            # word = self(idn)   # Doing this here raises InternalError: Unread result found.
             # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
             # SEE:  http://stackoverflow.com/a/17268389/673991
             # And a cursor can't be both prepared and buffered.
             idns.append(idn)
         cursor.close()
         return idns
+
+    def _select_fields(self, sql, parameters):
+        """
+        Read a 2D array of raw field contents based on a SELECT.
+
+        Same parameters as cursor.execute,
+        namely a MySQL string and a tuple of ?-value parameters.
+        """
+        cursor = self.lex._connection.cursor(prepared=True)
+        # TODO:  Give up prepared=True so we can buffered=True so we can do more in the for-loop below?
+        # Another reason to use prepared=False:  http://stackoverflow.com/a/24842296/673991
+        # Or use cursor(cursor_class=MySQLCursorPrepared) - see last line of:
+        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
+        cursor.execute(sql, parameters)
+        rows_of_fields = []
+        for row in cursor:
+            rows_of_fields.append(row)
+            # word = self(idn)   # By the way, doing this here (inside a cursor loop) raises
+            #     InternalError: Unread result found.
+            # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
+            # SEE:  http://stackoverflow.com/a/17268389/673991
+            # And a cursor can't be both prepared and buffered.
+        cursor.close()
+        return rows_of_fields
 
     def words_from_idns(self, idns):
         words = []

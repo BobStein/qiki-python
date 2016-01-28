@@ -1019,21 +1019,31 @@ class WordFindTests(WordTests):
         self.fred = self.lex.agent('fred')
 
     def test_select_idns_txt(self):
-        apple_words = self.lex._select_idns("SELECT idn FROM word WHERE txt=?", ['apple'])
+        apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
         self.assertEqual(1, len(apple_words))
         self.assertEqual(self.apple.idn, apple_words[0])
 
     def test_select_words_txt(self):
-        apple_words = self.lex._select_words("SELECT idn FROM word WHERE txt=?", ['apple'])
+        apple_words = self.lex._select_words('SELECT idn FROM word WHERE txt=?', ['apple'])
         self.assertEqual(1, len(apple_words))
         self.assertEqual(self.apple.idn, apple_words[0].idn)
 
     def test_select_words_obj(self):
-        apple_words = self.lex._select_words("SELECT idn FROM word WHERE obj=?", [self.apple.idn.raw])
+        apple_words = self.lex._select_words('SELECT idn FROM word WHERE obj=?', [self.apple.idn.raw])
         self.assertEqual(3, len(apple_words))
         self.assertEqual(self.macintosh.idn, apple_words[0].idn)
         self.assertEqual(self.braburn.idn, apple_words[1].idn)
         self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
+
+    def test_select_fields(self):
+        apple_fields = self.lex._select_fields('SELECT txt,idn FROM word WHERE obj=?', [self.apple.idn.raw])
+        self.assertEqual(3, len(apple_fields))
+        self.assertEqual(2, len(apple_fields[0]))
+        self.assertEqual(2, len(apple_fields[1]))
+        self.assertEqual(2, len(apple_fields[2]))
+        self.assertEqual((b'macintosh',   self.macintosh.idn.raw), apple_fields[0])
+        self.assertEqual((b'braburn',       self.braburn.idn.raw), apple_fields[1])
+        self.assertEqual((b'honeycrisp', self.honeycrisp.idn.raw), apple_fields[2])
 
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)
