@@ -385,15 +385,17 @@ class WordFirstTests(WordTests):
     def test_12_vrb(self):
         anna = self.lex.agent('anna')
         self.lex.verb('like')
-        yurt = self.lex.noun('yurt')
+        self.lex.noun('yurt')
         zarf = self.lex.noun('zarf')
         anna.like(zarf, 1)
         self.assertTrue(anna.like.is_a_verb())
         self.assertFalse(anna.yurt.is_a_verb())
         self.assertEqual('yurt', anna.yurt.txt)
-        with self.assertRaises(qiki.Word.NotAVerb):
-            anna.yurt(zarf, 1, '')
-            # FIXME:  Can we even come up with a s.v(o) where v is not a verb, and something else isn't happening?
+        with self.assertRaises(TypeError):
+            anna.yurt(zarf, txt='', num=1)
+            # FIXME:  Can we even come up with a s.v(o) where v is not a verb,
+            # and something else isn't happening?  This example is at best a highly
+            # corrupted form of o(t), aka lex.define(o,t).
             self.describe_all_words()
 
 
@@ -1085,12 +1087,35 @@ class WordFindTests(WordTests):
         for idn in idns:
             self.assertIsInstance(idn, qiki.Number)
 
+    def test_find_by_vrb(self):
+        crave1 = self.fred.crave(self.apple, 1)
+        crave2 = self.fred.crave(self.braburn, 10)
+        crave3 = self.fred.crave(self.macintosh, 0.5)
+        self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave))
+        self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave.idn))
+        self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave))
+        self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave.idn))
+
+    def test_find_by_vrb_list(self):
+        c1 = self.fred.crave(self.apple, 1)
+        c2 = self.fred.crave(self.braburn, 10)
+        retch = self.lex.verb('retch')
+        r3 = self.fred.retch(self.macintosh, -1)
+        self.assertEqual([c1, c2    ], self.lex.find_words(vrb=[self.crave        ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch    ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch.idn]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch    ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch.idn]))
+        self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave    , retch    ]))
+        self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave.idn, retch.idn]))
+        self.assertEqual([                r3.idn], self.lex.find_idns(vrb=[                retch.idn]))
+
     def test_find_words(self):
         words = self.lex.find_words()
         for word in words:
             self.assertIsInstance(word, qiki.Word)
 
-    def test_find_idns_sql(self):
+    def test_find_idns_with_sql(self):
         idns = self.lex.find_idns(sql='ORDER BY idn ASC')
         self.assertLess(idns[0], idns[-1])
         idns = self.lex.find_idns(sql='ORDER BY idn DESC')
@@ -1113,6 +1138,7 @@ class WordUtilities(WordTests):
         with self.assertRaises(TypeError):
             idn_from_word_or_number(0)
 
+    # noinspection PyStatementEffect
     def test_inequality_words_and_numbers(self):
         """Sanity check to make sure words and idns aren't intrinsically equal or something."""
         word = self.lex.agent
@@ -1137,7 +1163,7 @@ class WordUtilities(WordTests):
             define.idn
         ]))
 
-    def test_raws_from_idns(self):
+    def test_raw_values_from_idns(self):
         noun = self.lex('noun')
         agent = self.lex('agent')
         define = self.lex('define')
@@ -1165,15 +1191,17 @@ class WordQoolbarTests(WordTests):
         self.bart = self.lex.agent('bart')
         self.youtube = self.lex.noun('youtube')
         self.zigzags = self.lex.noun('zigzags')
+
         self.anna.like(self.youtube, 1)
         self.bart.like(self.youtube, 10)
         self.anna.like(self.zigzags, 2)
         self.bart.delete(self.zigzags, 1)
+
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj for w in qool_declarations]
 
 
-    def test_get_all_qools(self):
+    def test_get_all_qool_words(self):
         self.describe_all_words()
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
         # print(", ".join([w.idn.qstring() for w in qool_words]))

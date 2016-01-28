@@ -194,7 +194,16 @@ class Word(object):
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
             assert self.lex.is_lex()
-            existing_or_new_word = self.lex.define(self, *args, **kwargs)
+            txt = kwargs.get('txt', args[0] if len(args) > 0 else None)
+            assert isinstance(txt, self.TXT_TYPES), "Defining a new noun, but txt is a " + type(txt).__name__
+            try:
+                existing_or_new_word = self.lex.define(self, *args, **kwargs)
+            except TypeError:
+                raise
+                # FIXME:  Problems with the o(t) format:
+                # - similar to s.v(o) and so error messages are likely to be confusing
+                # - haven't thought of a simpler way to do lex.define(o,t) than o(t) yet.
+                # - But if o(t) is acceptable, allow s.o(t) shorthand for s.define(o,t), yuck
             return existing_or_new_word
         else:
             raise self.NonVerbUndefinedAsFunctionException(
@@ -204,6 +213,15 @@ class Word(object):
             )
 
     def define(self, obj, txt, num=Number(1)):
+        """Define a word.  Name it txt.  Its type or class is obj.
+
+        Example:
+            agent = lex('agent')
+            lex.define(agent, 'fred')
+
+        The obj may be identified by its txt, example:
+            lex.define('agent', 'fred')
+        """
         assert isinstance(obj, (Word, self.TXT_TYPES))
         assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
         assert isinstance(num, Number)
@@ -244,6 +262,7 @@ class Word(object):
         assert isinstance(num, Number),         "num cannot be a {type}".format(type=type(num).__name__)
         if not vrb.is_a_verb():
             raise self.NotAVerb("Sentence verb {} is not a verb.".format(vrb.qstring()))
+            # NOTE:  Rare error, because sentence() almost always comes from s.v(o).
         new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
         new_word.save()
         return new_word
@@ -711,14 +730,14 @@ class LexMySQL(Lex):
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
         cursor = self._cursor()
-        cursor.execute("""
+        query = """
             CREATE TABLE IF NOT EXISTS `{table}` (
                 `idn` VARBINARY(255) NOT NULL,
                 `sbj` VARBINARY(255) NOT NULL,
                 `vrb` VARBINARY(255) NOT NULL,
                 `obj` VARBINARY(255) NOT NULL,
                 `num` VARBINARY(255) NOT NULL,
-                `txt` {txt_type} NOT NULL,
+                `txt` TEXT NOT NULL,
                 `whn` VARBINARY(255) NOT NULL,
                 PRIMARY KEY (`idn`)
             )
@@ -728,9 +747,11 @@ class LexMySQL(Lex):
             ;
         """.format(
             table=self._table,
-            txt_type=self._txt_type,
+            txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
             engine=self._engine,
-        ))
+        )
+        query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
+        cursor.execute(query)
         # TODO:  other keys?  sbj-vrb?   obj-vrb?
         cursor.close()
         self._install_seminal_words()
@@ -864,8 +885,21 @@ class LexMySQL(Lex):
             query += ' AND sbj=? '
             parameters.append(idn_from_word_or_number(sbj).raw)
         if vrb is not None:
-            query += ' AND vrb=? '
-            parameters.append(idn_from_word_or_number(vrb).raw)
+            vrb_raws = []
+            try:
+                for v in vrb:
+                    vrb_raws.append(idn_from_word_or_number(v).raw)
+            except TypeError:
+                vrb_raws.append(idn_from_word_or_number(vrb).raw)
+            if len(vrb_raws) < 1:
+                pass
+            elif len(vrb_raws) == 1:
+                query += ' AND vrb=? '
+                parameters.append(vrb_raws[0])
+            else:
+                question_marks = ['?'] * len(vrb_raws)
+                query += ' AND vrb IN(' + ','.join(question_marks) + ') '
+                parameters += vrb_raws
         if obj is not None:
             query += ' AND obj=? '
             parameters.append(idn_from_word_or_number(obj).raw)

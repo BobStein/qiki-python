@@ -176,7 +176,9 @@ class NumberBasicTests(NumberTests):
 
     # yes_inspection PyUnresolvedReferences
     def test_nan_equality(self):
-        """Is this right?  Number.NAN behaves like any other number, not at all like float('nan')?"""
+        # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
+        # SEE:  http://stackoverflow.com/questions/1565164/what-is-the-rationale-for-all-comparisons-returning-false-for-ieee754-nan-values
+        # TODO:  Make a Number.isnan() and any other comparisons with NAN raise Number.Incomparable.
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
         self.assertEqual(nan, Number(None))
