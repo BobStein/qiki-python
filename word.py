@@ -880,7 +880,7 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of idns."""
-        query = 'SELECT idn FROM ' + self._table + ' WHERE 1 '
+        query = 'SELECT idn FROM ' + self._table + ' WHERE TRUE '
         parameters = []
         if sbj is not None:
             query += ' AND sbj=? '
@@ -979,8 +979,9 @@ class LexMySQL(Lex):
                 not isinstance(arg_next, Text)
             ):
                 raise self.SuperSelectStringString(
-                    "Consecutive super_select() arguments shouldn't be strings. "
-                    "Pass string data through qiki.Text()."
+                    "Consecutive super_select() arguments shouldn't be strings.  " +
+                    "Pass string fields through qiki.Text().  " +
+                    "Or make a class to encapsulate "
                 )
         for index_zero_based, arg in enumerate(args):
             if isinstance(arg, Text):
@@ -1014,8 +1015,6 @@ class LexMySQL(Lex):
                 field_dictionary[name] = value
             rows_of_fields.append(field_dictionary)
         return rows_of_fields
-
-    NUM_MYSQL_TYPE = 'VARBINARY(255)'
 
     def words_from_idns(self, idns):
         words = []
@@ -1061,7 +1060,7 @@ def idn_from_word_or_number(x):
 
 
 
-class Text(str):
+class Text(six.text_type):
     """The only use of qiki.Text() so far is for identifying parameters to Lex.super_select()."""
     pass
 
