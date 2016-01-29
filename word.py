@@ -82,13 +82,13 @@ class Word(object):
                 inner=typename,
             ))
 
-    _ID_DEFINE = Number(1)
-    _ID_NOUN   = Number(2)
-    _ID_VERB   = Number(3)
-    _ID_AGENT  = Number(4)
-    _ID_LEX    = Number(5)
+    _IDN_DEFINE = Number(1)
+    _IDN_NOUN   = Number(2)
+    _IDN_VERB   = Number(3)
+    _IDN_AGENT  = Number(4)
+    _IDN_LEX    = Number(5)
 
-    _ID_MAX_FIXED = Number(5)
+    _IDN_MAX_FIXED = Number(5)
 
     TXT_TYPES = (six.string_types, six.binary_type)
 
@@ -328,7 +328,7 @@ class Word(object):
                 table=self.lex._table,
             ),
             (
-                self._ID_DEFINE.raw,
+                self._IDN_DEFINE.raw,
                 txt,
             )
         )
@@ -413,6 +413,7 @@ class Word(object):
             self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
             self._idn = Number.from_mysql(dict_row['idn'])
+            # self.sbj = self.lex.sbj_from_mysql(dict_row['sbj'])
             self.sbj = Number.from_mysql(dict_row['sbj'])
             self.vrb = Number.from_mysql(dict_row['vrb'])
             self.obj = Number.from_mysql(dict_row['obj'])
@@ -427,7 +428,7 @@ class Word(object):
             return True
         if recursion <= 0:
             return False
-        if self.vrb != self._ID_DEFINE:
+        if self.vrb != self._IDN_DEFINE:
             return False
         if self.obj == word.idn:
             return True
@@ -445,30 +446,30 @@ class Word(object):
         return self.is_a(self.lex.verb, reflexive=reflexive, **kwargs)
 
     def is_define(self):
-        return self.idn == self._ID_DEFINE
+        return self.idn == self._IDN_DEFINE
 
     def is_defined(self):
         """Test whether a word is the product of a definition.
 
         That is, whether the sentence that creates it uses the verb 'define'."""
-        return self.vrb == self._ID_DEFINE
+        return self.vrb == self._IDN_DEFINE
 
     def is_noun(self):
-        return self.idn == self._ID_NOUN
+        return self.idn == self._IDN_NOUN
 
     def is_verb(self):
         """Not to be confused with is_a_verb().
 
         is_a_verb() -- is this word in a []-(define)-[verb] sentence, recursively.
-        is_verb() -- is this the one-and-only "verb" word, i.e. [lex]-(define)-[noun]"verb", i.e. id == _ID_VERB
+        is_verb() -- is this the one-and-only "verb" word, i.e. [lex]-(define)-[noun]"verb", i.e. id == _IDN_VERB
         """
-        return self.idn == self._ID_VERB
+        return self.idn == self._IDN_VERB
 
     def is_agent(self):
-        return self.idn == self._ID_AGENT
+        return self.idn == self._IDN_AGENT
 
     def is_lex(self):
-        return isinstance(self, Lex) and self.exists and self.idn == self._ID_LEX
+        return isinstance(self, Lex) and self.exists and self.idn == self._IDN_LEX
 
     def description(self):
         sbj = self.spawn(self.sbj)
@@ -704,7 +705,7 @@ class LexMySQL(Lex):
         self.lex = self
         self.last_inserted_whn = None
         try:
-            super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
+            super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
@@ -713,7 +714,7 @@ class LexMySQL(Lex):
                 self.install_from_scratch()
                 # TODO:  Don't super() twice -- cuz it's not D.R.Y.
                 # TODO:  Don't install in unit tests if we're about to uninstall.
-                super(LexMySQL, self).__init__(self._ID_LEX, lex=self)
+                super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
                 assert False, exception_message
         except Word.MissingFromLex:
@@ -770,15 +771,15 @@ class LexMySQL(Lex):
 
         At least that's how they'd be defined if forward references were not a problem.
         """
-        self._seminal_word(self._ID_DEFINE, self._ID_VERB,  u'define')
-        self._seminal_word(self._ID_NOUN,   self._ID_NOUN,  u'noun')
-        self._seminal_word(self._ID_VERB,   self._ID_NOUN,  u'verb')
-        self._seminal_word(self._ID_AGENT,  self._ID_NOUN,  u'agent')
-        self._seminal_word(self._ID_LEX,    self._ID_AGENT, u'lex')
+        self._seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')
+        self._seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')
+        self._seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')
+        self._seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')
+        self._seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')
 
 
         if not self.exists:
-            self._from_idn(self._ID_LEX)
+            self._from_idn(self._IDN_LEX)
         assert self.exists
         assert self.is_lex()
 
@@ -798,8 +799,8 @@ class LexMySQL(Lex):
 
     def _install_word(self, _idn, _obj, _txt):
         word = self.spawn(
-            sbj = self._ID_LEX,
-            vrb = self._ID_DEFINE,
+            sbj = self._IDN_LEX,
+            vrb = self._IDN_DEFINE,
             obj = _obj,
             num = Number(1),
             txt = _txt,
@@ -936,6 +937,7 @@ class LexMySQL(Lex):
         cursor.close()
         return idns
 
+    # noinspection SpellCheckingInspection
     def _select_fields(self, sql, parameters):
         """
         Read a 2D array of raw field contents based on a SELECT.
@@ -959,6 +961,66 @@ class LexMySQL(Lex):
             # And a cursor can't be both prepared and buffered.
         cursor.close()
         return rows_of_fields
+
+    class SuperSelectTypeError(TypeError):
+        pass
+
+    class SuperSelectStringString(TypeError):
+        pass
+
+    def super_select(self, *args):
+        query = ""
+        parameters = []
+        for arg_previous, arg_next in zip(args[:-1], args[1:]):
+            if (
+                    isinstance(arg_previous, six.string_types) and
+                not isinstance(arg_previous, Text) and
+                    isinstance(arg_next, six.string_types) and
+                not isinstance(arg_next, Text)
+            ):
+                raise self.SuperSelectStringString(
+                    "Consecutive super_select() arguments shouldn't be strings. "
+                    "Pass string data through qiki.Text()."
+                )
+        for index_zero_based, arg in enumerate(args):
+            if isinstance(arg, Text):
+                query += '?'
+                parameters.append(arg)
+            elif isinstance(arg, six.string_types):
+                query += arg
+            elif isinstance(arg, Number):
+                query += '?'
+                parameters.append(arg.raw)
+            elif isinstance(arg, Lex):
+                query += arg._table
+            else:
+                raise self.SuperSelectTypeError(
+                    "Argument {index_one_based} type {type} is not supported.".format(
+                        index_one_based=index_zero_based+1,
+                        type=type(arg).__name__
+                    )
+                )
+            query += ' '
+        cursor = self.lex._connection.cursor(prepared=True)
+        cursor.execute(query, parameters)
+        rows_of_fields = []
+        for row in cursor:
+            field_dictionary = dict()
+            for field, name_and_type in zip(row, cursor.description):
+                _name, _type = name_and_type[:2]
+                # THANKS:  Field types, https://dev.mysql.com/doc/connector-python/en/connector-python-api-fieldtype.html
+                # print(_type, mysql.connector.FieldType.get_info(_type))
+                # Hint, they're all 253 VAR_STRING
+                if _name == 'txt':
+                    value = six.text_type(field.decode('utf-8'))
+                else:
+                    value = Number.from_mysql(field)
+                field_dictionary[_name] = value
+
+            rows_of_fields.append(field_dictionary)
+        return rows_of_fields
+
+    NUM_MYSQL_TYPE = 'VARBINARY(255)'
 
     def words_from_idns(self, idns):
         words = []
@@ -1003,6 +1065,11 @@ def idn_from_word_or_number(x):
         ))
 
 
+
+class Text(str):
+    """The only use of qiki.Text() so far is for identifying parameters to Lex.super_select()."""
+    pass
+
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
 # DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
@@ -1036,3 +1103,8 @@ def idn_from_word_or_number(x):
 # lex.use_already(like, 0 for defaults-to-False or 1 for True)
 # alice.like(bob, "but just as a friend")   # use_already=True unnecessary
 # lex.use_already(lex.define, 1)
+
+# TODO:  w=lex(idn) etc. should start out as a phantom Word,
+# which does, not read the database until or unless needed, e.g. w.sbj is used.
+# That way when w.sbj is used, its members can become phantom Words themselves instead of mere Numbers
+# until and unless they are used, e.g. w.sbj.sbj

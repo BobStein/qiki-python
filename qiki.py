@@ -19,3 +19,4 @@ from word import Word
 from word import Lex
 from word import LexMySQL
 from word import Listing
+from word import Text
