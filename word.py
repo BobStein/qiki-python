@@ -1006,17 +1006,12 @@ class LexMySQL(Lex):
         rows_of_fields = []
         for row in cursor:
             field_dictionary = dict()
-            for field, name_and_type in zip(row, cursor.description):
-                _name, _type = name_and_type[:2]
-                # THANKS:  Field types, https://dev.mysql.com/doc/connector-python/en/connector-python-api-fieldtype.html
-                # print(_type, mysql.connector.FieldType.get_info(_type))
-                # Hint, they're all 253 VAR_STRING
-                if _name == 'txt':
+            for field, name in zip(row, cursor.column_names):
+                if name == 'txt':
                     value = six.text_type(field.decode('utf-8'))
                 else:
                     value = Number.from_mysql(field)
-                field_dictionary[_name] = value
-
+                field_dictionary[name] = value
             rows_of_fields.append(field_dictionary)
         return rows_of_fields
 
