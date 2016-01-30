@@ -405,6 +405,7 @@ class Word(object):
         namely a MySQL string and a tuple of ?-value parameters.
         """
         # TODO:  Move to Lex.  Along with every function that calls it.
+        # TODO:  Belay that, actually all calls to _load_row() should be recast to use Lex.find()
         cursor = self.lex._connection.cursor(prepared=True)
         cursor.execute(sql, parameters)
         tuple_row = cursor.fetchone()
@@ -900,16 +901,16 @@ class LexMySQL(Lex):
         if obj is not None:
             query_args += ['AND obj=', idn_from_word_or_number(obj)]
         query_args += [sql]
-        idns_2d = self.super_select(*query_args)
-        idns = [row['idn'] for row in idns_2d]
+        rows_of_idns = self.super_select(*query_args)
+        idns = [row['idn'] for row in rows_of_idns]
         return idns
 
-    def _select_words(self, sql, parameters):
+    def _select_words(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
         idns = self._select_idns(sql, parameters)
         return self.words_from_idns(idns)
 
     # noinspection SpellCheckingInspection
-    def _select_idns(self, sql, parameters):
+    def _select_idns(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
         """
         Read an array of idns based on a query like:  SELECT idn FROM {table} ...
 
@@ -966,6 +967,7 @@ class LexMySQL(Lex):
         pass
 
     def super_select(self, *query_args):
+        # TODO:  Recursive lists in query_args?
         query = ""
         parameters = []
         for arg_previous, arg_next in zip(query_args[:-1], query_args[1:]):
@@ -980,6 +982,13 @@ class LexMySQL(Lex):
                     "Pass string fields through qiki.Text().  " +
                     "Or make a class to encapsulate "
                 )
+                # TODO:  Complete report of all the query_args types
+                # TODO:  Or maybe this can all just go away...
+                # Main purpose was to detect mistakes like this:
+                #     super_select('SELECT * in word WHERE txt=', 'define')
+                # Which could be an SQL injection bug.
+                # But that would break anyway (unless searching for .e.g 'txt').
+                # And I'm getting tired of all the Nones.
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
@@ -990,6 +999,7 @@ class LexMySQL(Lex):
                 query += '?'
                 parameters.append(query_arg.raw)
             elif isinstance(query_arg, Lex):
+                # noinspection PyProtectedMember
                 query += query_arg._table
             elif query_arg is None:
                 pass
@@ -1060,8 +1070,9 @@ def idn_from_word_or_number(x):
 
 
 class Text(six.text_type):
-    """The only use of qiki.Text() so far is for identifying parameters to Lex.super_select()."""
+    """The only use of qiki.Text() so far is for identifying txt field values to Lex.super_select()."""
     pass
+
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
@@ -1101,3 +1112,13 @@ class Text(six.text_type):
 # which does, not read the database until or unless needed, e.g. w.sbj is used.
 # That way when w.sbj is used, its members can become phantom Words themselves instead of mere Numbers
 # until and unless they are used, e.g. w.sbj.sbj
+# There should be __init_shallow() for Word(idn) and __init_deep() for everything else.
+# And __init_deep() is called when a shallow/phantom word is used for any other purpose.
+# So a shallow Word needs only properties ._idn and .lex
+# Maybe this is a use for a meta-class!
+    # We could get rid of the .lex property.
+    # Word would be abstract, and subclassed by each database (aka Lex aka Listing).
+    # For a word in one database to point to (to have an idn for) a word in another database,
+    # the idn would be suffixed.
+    # class Word(object); class WordInMySQL(Word); class WordQiki(WordInMySQL); class WordDjango(Word);
+    # Duh, Lex already IS kinda the metaclass for Word.

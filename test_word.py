@@ -1017,10 +1017,12 @@ class WordFindTests(WordTests):
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
 
-    def test_select_idns_txt(self):
-        apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
+    def test_was_select_idns_now_super_select(self):
+        # apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
+        apple_words = self.lex.super_select('SELECT idn FROM', self.lex, 'WHERE txt=', qiki.Text('apple'))
         self.assertEqual(1, len(apple_words))
-        self.assertEqual(self.apple.idn, apple_words[0])
+        # self.assertEqual(self.apple.idn, apple_words[0])
+        self.assertEqual({'idn': self.apple.idn}, apple_words[0])
 
     def test_select_words_txt(self):
         apple_words = self.lex._select_words('SELECT idn FROM word WHERE txt=?', ['apple'])
