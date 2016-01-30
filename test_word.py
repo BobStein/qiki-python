@@ -157,6 +157,11 @@ class InternalTestWordTests(WordTests):
     def _make_one_new_word(self, txt):
         self.lex.define(self.lex('noun'), txt)
 
+    def test_missing_from_lex(self):
+        self.lex(qiki.Word._IDN_DEFINE)
+        with self.assertRaises(qiki.Word.MissingFromLex):
+            self.lex(qiki.Number(-42))
+
 
 class WordFirstTests(WordTests):
 

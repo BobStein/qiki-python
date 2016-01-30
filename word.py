@@ -48,6 +48,7 @@ class Word(object):
         self.exists = False
         self._idn = None
         self._word_before_the_dot = None
+        self.whn = None
         if isinstance(content, self.TXT_TYPES):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -303,17 +304,7 @@ class Word(object):
                 self.txt = listed_instance.txt
                 self.exists = True
         else:
-            self.lex.populate_word_from_idn(self, idn)
-            # self._load_row(
-            #     "SELECT * FROM `{table}` WHERE `idn` = ?"
-            #     .format(
-            #         table=self.lex._table,
-            #     ),
-            #     (
-            #         idn.raw,
-            #     )
-            # )
-            if not self.exists:
+            if not self.lex.populate_word_from_idn(self, idn):
                 raise self.MissingFromLex
 
     def _from_definition(self, txt):
@@ -882,11 +873,12 @@ class LexMySQL(Lex):
 
     def populate_word_from_idn(self, word, idn):
         one_row = self.super_select("SELECT * FROM", self, "WHERE idn =", idn)
-        # TODO:  Custom exception when not found?
         assert len(one_row) in (0,1)
         if len(one_row) > 0:
             row = one_row[0]
             word.populate_from_row(row)
+            return True
+        return False
 
     def find_words(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select words by subject, verb, and/or object.
