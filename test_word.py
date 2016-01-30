@@ -1282,6 +1282,22 @@ class WordQoolbarTests(WordTests):
         with self.assertRaises(qiki.LexMySQL.SuperSelectTypeError):
             self.lex.super_select(ExoticType)
 
+
+    def test_lex_from_idn(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_idn(word, self.zigzags.idn)
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
+
+
+
+
+
     ################## obsolete or maybe someday #################################
 
     # def test_02_word_by_name(self):

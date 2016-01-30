@@ -303,16 +303,16 @@ class Word(object):
                 self.txt = listed_instance.txt
                 self.exists = True
         else:
-            # TODO:  Move this part to Lex
-            self._load_row(
-                "SELECT * FROM `{table}` WHERE `idn` = ?"
-                .format(
-                    table=self.lex._table,
-                ),
-                (
-                    idn.raw,
-                )
-            )
+            self.lex.populate_word_from_idn(self, idn)
+            # self._load_row(
+            #     "SELECT * FROM `{table}` WHERE `idn` = ?"
+            #     .format(
+            #         table=self.lex._table,
+            #     ),
+            #     (
+            #         idn.raw,
+            #     )
+            # )
             if not self.exists:
                 raise self.MissingFromLex
 
@@ -422,6 +422,16 @@ class Word(object):
             self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
             self.whn = Number.from_mysql(dict_row['whn'])
         cursor.close()
+
+    def populate_from_row(self, row):
+        self._idn = row['idn']
+        self.sbj = row['sbj']
+        self.vrb = row['vrb']
+        self.obj = row['obj']
+        self.num = row['num']
+        self.txt = row['txt']
+        self.whn = row['whn']
+        self.exists = True
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
@@ -870,12 +880,21 @@ class LexMySQL(Lex):
     _default_find_sql = 'ORDER BY idn ASC'
     # TODO:  Start and number parameters, for LIMIT clause.
 
+    def populate_word_from_idn(self, word, idn):
+        one_row = self.super_select("SELECT * FROM", self, "WHERE idn =", idn)
+        # TODO:  Custom exception when not found?
+        assert len(one_row) in (0,1)
+        if len(one_row) > 0:
+            row = one_row[0]
+            word.populate_from_row(row)
+
     def find_words(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
         idns = self.find_idns(sbj,vrb,obj, sql)
         return self. words_from_idns(idns)
+        # TODO:  More efficient to do one SELECT-* than one SELECT-* plus a buncha SELECT-idns
 
     def find_idns(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select words by subject, verb, and/or object.
@@ -1115,10 +1134,11 @@ class Text(six.text_type):
 # There should be __init_shallow() for Word(idn) and __init_deep() for everything else.
 # And __init_deep() is called when a shallow/phantom word is used for any other purpose.
 # So a shallow Word needs only properties ._idn and .lex
-# Maybe this is a use for a meta-class!
-    # We could get rid of the .lex property.
-    # Word would be abstract, and subclassed by each database (aka Lex aka Listing).
-    # For a word in one database to point to (to have an idn for) a word in another database,
-    # the idn would be suffixed.
-    # class Word(object); class WordInMySQL(Word); class WordQiki(WordInMySQL); class WordDjango(Word);
-    # Duh, Lex already IS kinda the metaclass for Word.
+
+# TODO:  Maybe this is a use for a meta-class!
+# We could get rid of the .lex property.
+# Word would be abstract, and subclassed by each database (aka Lex aka Listing).
+# For a word in one database to point to (to have an idn for) a word in another database,
+# the idn would be suffixed.
+# class Word(object); class WordInMySQL(Word); class WordQiki(WordInMySQL); class WordDjango(Word);
+# Duh, Lex already IS kinda the metaclass for Word.
