@@ -1287,7 +1287,6 @@ class WordQoolbarTests(WordTests):
         with self.assertRaises(qiki.LexMySQL.SuperSelectTypeError):
             self.lex.super_select(ExoticType)
 
-
     def test_lex_from_idn(self):
         word = self.lex.spawn()
         self.lex.populate_word_from_idn(word, self.zigzags.idn)
@@ -1299,7 +1298,25 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(self.zigzags.txt, word.txt)
         self.assertEqual(self.zigzags.whn, word.whn)
 
+    def test_lex_from_definition(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_definition(word, self.zigzags.txt)
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
 
+    def test_wrong_word_method_infinity(self):
+        word = self.lex('noun')
+        with self.assertRaises(qiki.Word.NoSuchAttribute):
+            word.no_such_method()
+
+    def test_wrong_lex_method_infinity(self):
+        with self.assertRaises(qiki.Word.NoSuchAttribute):
+            self.lex.no_such_method()
 
 
 

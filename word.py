@@ -93,10 +93,30 @@ class Word(object):
 
     TXT_TYPES = (six.string_types, six.binary_type)
 
+    class NoSuchAttribute(TypeError):
+        pass
+
     def __getattr__(self, noun_txt):
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
+        assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
+        assert self.lex.exists, "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
+        # Testing lex.exists prevents infinity.
+        # This would happen below where lex(noun_txt) would call Word.__call__()
+        # But in very early conditions lex.is_lex() is false before it's read its row from the database.
+        # (By the way why does is_lex() depend on exists? There was probably some reason.)
+        # So it asks instead if lex is a verb, which calls .is_a()
+        # which comes right back here for reasons I never did figure out (because there IS a Word.is_a()).
+        # This madness would happen e.g. when Lex.populate_from_idn() called a bogus function:
+        #     return self.populate_from_one_rowsssssssssssssssssss(word, one_row)
+        assert self.lex.is_lex(), "Lex isn't a lex, can't x.{noun}".format(noun=noun_txt)
+        assert hasattr(self.lex, '__call__'), "Lex isn't callable, can't x.{noun}".format(noun=noun_txt)
         return_value = self.lex(noun_txt)
         # FIXME:  catch NotExist: raise NoSuchAttribute (a gross internal error)
+        if not return_value.exists:
+            raise self.NoSuchAttribute("{word} has no attribute {name}".format(
+                word=repr(self),
+                name=repr(noun_txt)
+            ))
         return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
         return return_value
 
@@ -106,10 +126,6 @@ class Word(object):
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
             # FIXME:  if not exists: raise NotExist
-            assert existing_word.exists, "{word} has no method {name}".format(
-                word=repr(self),
-                name=repr(args[0]),
-            )
             if existing_word.idn == self.idn:
                 return self   # lex is a singleton.  Why is this important?
             else:
@@ -304,6 +320,7 @@ class Word(object):
                 self.txt = listed_instance.txt
                 self.exists = True
         else:
+            self._idn = idn
             if not self.lex.populate_word_from_idn(self, idn):
                 raise self.MissingFromLex
 
@@ -873,6 +890,21 @@ class LexMySQL(Lex):
 
     def populate_word_from_idn(self, word, idn):
         one_row = self.super_select("SELECT * FROM", self, "WHERE idn =", idn)
+        return self.populate_from_one_row(word, one_row)
+
+    def populate_word_from_definition(self, word, define_txt):
+        one_row = self.super_select(
+            "SELECT * FROM",
+            self,
+            "WHERE vrb =",
+            Word._IDN_DEFINE,
+            "AND txt =",
+            Text(define_txt)
+        )
+        return self.populate_from_one_row(word, one_row)
+
+    @staticmethod
+    def populate_from_one_row(word, one_row):
         assert len(one_row) in (0,1)
         if len(one_row) > 0:
             row = one_row[0]
