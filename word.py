@@ -880,32 +880,29 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of idns."""
-        query = 'SELECT idn FROM ' + self._table + ' WHERE TRUE '
-        parameters = []
+        query_args = ['SELECT idn FROM', self, 'WHERE TRUE', None]
         if sbj is not None:
-            query += ' AND sbj=? '
-            parameters.append(idn_from_word_or_number(sbj).raw)
+            query_args += ['AND sbj=', idn_from_word_or_number(sbj)]
         if vrb is not None:
-            vrb_raws = []
             try:
-                for v in vrb:
-                    vrb_raws.append(idn_from_word_or_number(v).raw)
+                verbs = [idn_from_word_or_number(v) for v in vrb]
             except TypeError:
-                vrb_raws.append(idn_from_word_or_number(vrb).raw)
-            if len(vrb_raws) < 1:
+                verbs = [idn_from_word_or_number(vrb)]
+            if len(verbs) < 1:
                 pass
-            elif len(vrb_raws) == 1:
-                query += ' AND vrb=? '
-                parameters.append(vrb_raws[0])
+            elif len(verbs) == 1:
+                query_args += ['AND vrb =', verbs[0]]
             else:
-                question_marks = ['?'] * len(vrb_raws)
-                query += ' AND vrb IN(' + ','.join(question_marks) + ') '
-                parameters += vrb_raws
+                query_args += ['AND vrb IN (', verbs[0]]
+                for v in verbs[1:]:
+                    query_args += [',', v]
+                query_args += [')', None]
         if obj is not None:
-            query += ' AND obj=? '
-            parameters.append(idn_from_word_or_number(obj).raw)
-        query += ' ' + sql
-        return self._select_idns(query, parameters)
+            query_args += ['AND obj=', idn_from_word_or_number(obj)]
+        query_args += [sql]
+        idns_2d = self.super_select(*query_args)
+        idns = [row['idn'] for row in idns_2d]
+        return idns
 
     def _select_words(self, sql, parameters):
         idns = self._select_idns(sql, parameters)
@@ -968,10 +965,10 @@ class LexMySQL(Lex):
     class SuperSelectStringString(TypeError):
         pass
 
-    def super_select(self, *args):
+    def super_select(self, *query_args):
         query = ""
         parameters = []
-        for arg_previous, arg_next in zip(args[:-1], args[1:]):
+        for arg_previous, arg_next in zip(query_args[:-1], query_args[1:]):
             if (
                     isinstance(arg_previous, six.string_types) and
                 not isinstance(arg_previous, Text) and
@@ -983,22 +980,24 @@ class LexMySQL(Lex):
                     "Pass string fields through qiki.Text().  " +
                     "Or make a class to encapsulate "
                 )
-        for index_zero_based, arg in enumerate(args):
-            if isinstance(arg, Text):
+        for index_zero_based, query_arg in enumerate(query_args):
+            if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(arg)
-            elif isinstance(arg, six.string_types):
-                query += arg
-            elif isinstance(arg, Number):
+                parameters.append(query_arg)
+            elif isinstance(query_arg, six.string_types):   # Must come after qiki.Text test.
+                query += query_arg
+            elif isinstance(query_arg, Number):
                 query += '?'
-                parameters.append(arg.raw)
-            elif isinstance(arg, Lex):
-                query += arg._table
+                parameters.append(query_arg.raw)
+            elif isinstance(query_arg, Lex):
+                query += query_arg._table
+            elif query_arg is None:
+                pass
             else:
                 raise self.SuperSelectTypeError(
                     "Argument {index_one_based} type {type} is not supported.".format(
                         index_one_based=index_zero_based+1,
-                        type=type(arg).__name__
+                        type=type(query_arg).__name__
                     )
                 )
             query += ' '

@@ -1251,9 +1251,26 @@ class WordQoolbarTests(WordTests):
             qiki.Text('define')
         ))
 
+    def test_super_select_with_none(self):
+        """To concatenate two strings of literal SQL code, intersperse a None."""
+        self.assertEqual([{'txt': 'define'},], self.lex.super_select(
+            'SELECT txt', None, 'FROM',
+            self.lex,
+            'WHERE', None, 'idn =',
+            qiki.Word._IDN_DEFINE
+        ))
+
     def test_super_select_string_string(self):
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            self.lex.super_select('SELECT * WHERE txt=', 'define')
+            self.lex.super_select('string', 'string', self.lex)
+        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+            self.lex.super_select(self.lex, 'string', 'string')
+        self.lex.super_select('SELECT * FROM', self.lex)
+
+        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+            self.lex.super_select('SELECT * FROM', self.lex._table, 'WHERE txt=', 'define')
+        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+            self.lex.super_select('SELECT * FROM', self.lex, 'WHERE txt=', 'define')
         self.lex.super_select('SELECT * FROM', self.lex, 'WHERE txt=', qiki.Text('define'))
 
     def test_super_select_type_error(self):
