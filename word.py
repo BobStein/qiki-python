@@ -61,6 +61,9 @@ class Word(object):
         elif isinstance(content, type(self)):
             # Word(some_other_word)
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+            # TODO:  Should this be Word instead of type(self)?
+            # As it stands with type(self) DerivedWord(Word) would TypeError, not copy.
+            # For example Lex(Word).  Is that desirable or not?
             self._from_word(content)
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
@@ -93,7 +96,7 @@ class Word(object):
 
     TXT_TYPES = (six.string_types, six.binary_type)
 
-    class NoSuchAttribute(TypeError):
+    class NoSuchAttribute(AttributeError):
         pass
 
     def __getattr__(self, noun_txt):
@@ -113,8 +116,8 @@ class Word(object):
         return_value = self.lex(noun_txt)
         # FIXME:  catch NotExist: raise NoSuchAttribute (a gross internal error)
         if not return_value.exists:
-            raise self.NoSuchAttribute("{word} has no attribute {name}".format(
-                word=repr(self),
+            raise self.NoSuchAttribute("Word has no attribute {name}".format(
+                # word=repr(self),   # Infinity:  repr() calls hasattr() tries __getattr__()...
                 name=repr(noun_txt)
             ))
         return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
@@ -210,6 +213,7 @@ class Word(object):
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
+            # And in this o(t) form you can't supply a num.
             assert self.lex.is_lex()
             txt = kwargs.get('txt', args[0] if len(args) > 0 else None)
             assert isinstance(txt, self.TXT_TYPES), "Defining a new noun, but txt is a " + type(txt).__name__
@@ -230,6 +234,7 @@ class Word(object):
             )
 
     def define(self, obj, txt, num=Number(1)):
+        # One of the only cases where txt comes before num.  Are there others?
         """Define a word.  Name it txt.  Its type or class is obj.
 
         Example:
@@ -252,10 +257,10 @@ class Word(object):
             return possibly_existing_word
         if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
             obj = self.spawn(obj)
-        new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, txt=txt, num=num)
+        new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, num=num, txt=txt)
         return new_word
 
-    def sentence(self, sbj, vrb, obj, txt, num):
+    def sentence(self, sbj, vrb, obj, num, txt):
         """
         Construct a new sentence from a 3-word subject-verb-object.
 
@@ -275,8 +280,8 @@ class Word(object):
         assert isinstance(sbj, Word),           "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, Word),           "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, Word),           "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
         assert isinstance(num, Number),         "num cannot be a {type}".format(type=type(num).__name__)
+        assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
         if not vrb.is_a_verb():
             raise self.NotAVerb("Sentence verb {} is not a verb.".format(vrb.qstring()))
             # NOTE:  Rare error, because sentence() almost always comes from s.v(o).
@@ -326,22 +331,24 @@ class Word(object):
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
-        # TODO:  Move to Lex
         assert isinstance(txt, self.TXT_TYPES)
-        self._load_row(
-            "SELECT * FROM `{table}` "
-                "WHERE   `vrb` = ? "
-                    "AND `txt` = ?"
-            .format(
-                table=self.lex._table,
-            ),
-            (
-                self._IDN_DEFINE.raw,
-                txt,
-            )
-        )
-        if not self.exists:
+        if not self.lex.populate_word_from_definition(self, txt):
             self.txt = txt
+        # # TODO:  Move to Lex
+        # self._load_row(
+        #     "SELECT * FROM `{table}` "
+        #         "WHERE   `vrb` = ? "
+        #             "AND `txt` = ?"
+        #     .format(
+        #         table=self.lex._table,
+        #     ),
+        #     (
+        #         self._IDN_DEFINE.raw,
+        #         txt,
+        #     )
+        # )
+        # if not self.exists:
+        #     self.txt = txt
 
     def _from_word(self, word):
         if word.is_lex():
@@ -419,7 +426,6 @@ class Word(object):
         tuple_row = cursor.fetchone()
         assert cursor.fetchone() is None
         if tuple_row is not None:
-            self.exists = True
             dict_row = dict(zip(cursor.column_names, tuple_row))
             self._idn = Number.from_mysql(dict_row['idn'])
             # self.sbj = self.lex.sbj_from_mysql(dict_row['sbj'])
@@ -429,6 +435,7 @@ class Word(object):
             self.num = Number.from_mysql(dict_row['num'])
             self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
             self.whn = Number.from_mysql(dict_row['whn'])
+            self.exists = True
         cursor.close()
 
     def populate_from_row(self, row):
@@ -447,6 +454,10 @@ class Word(object):
             return True
         if recursion <= 0:
             return False
+        if not self.exists:
+            return False
+        if not hasattr(self, 'vrb'):
+            return False
         if self.vrb != self._IDN_DEFINE:
             return False
         if self.obj == word.idn:
@@ -454,17 +465,20 @@ class Word(object):
         parent = self.spawn(self.obj)
         if parent.idn == self.idn:
             return False
-        return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)   # TODO:  limit recursion
+        return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)
 
     def is_a_noun(self, reflexive=True, **kwargs):
+        """Noun is a noun.  Really, everything is a noun."""
         assert hasattr(self, 'lex')
         return self.is_a(self.lex.noun, reflexive=reflexive, **kwargs)
 
     def is_a_verb(self, reflexive=False, **kwargs):
+        """Verb is not a verb.  But anything defined as a verb is a verb."""
         assert hasattr(self, 'lex')
         return self.is_a(self.lex.verb, reflexive=reflexive, **kwargs)
 
     def is_define(self):
+        """Is this word the one and only verb (whose txt is) 'define'."""
         return self.idn == self._IDN_DEFINE
 
     def is_defined(self):
@@ -645,6 +659,7 @@ class Listing(Word):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
 
     def lookup_callback(self, txt, num):
+        # Another case where txt comes before num, the exception.
         self.num = num
         self.txt = txt
         self.exists = True
@@ -725,7 +740,6 @@ class LexMySQL(Lex):
         self.last_inserted_whn = None
         try:
             super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
-            assert self.exists
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
@@ -1035,7 +1049,7 @@ class LexMySQL(Lex):
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(query_arg)
+                parameters.append(query_arg.the_string)
             elif isinstance(query_arg, six.string_types):   # Must come after qiki.Text test.
                 query += query_arg
             elif isinstance(query_arg, Number):
@@ -1112,9 +1126,15 @@ def idn_from_word_or_number(x):
 
 
 
-class Text(six.text_type):
+class Text(object):
     """The only use of qiki.Text() so far is for identifying txt field values to Lex.super_select()."""
-    pass
+    # This can't simply derive from six.text_type
+    # Because in Python 3 that's str
+    # And str(u'string'.encode('utf-8')) == "b'string'"
+    # That's right, a doubly-encoded string!  Just like repr()
+
+    def __init__(self, the_string):
+        self.the_string = the_string
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)

@@ -8,6 +8,8 @@ import unittest
 import six
 import sys
 import time
+import uuid
+import warnings
 
 import qiki
 from number import hex_from_string
@@ -36,25 +38,24 @@ except ImportError:
     sys.exit(1)
 
 
-LET_DATABASE_RECORDS_REMAIN = True   # Each run always starts the test database over from scratch.
-                                     # Set this to True to manually examine the database after running it.
+LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
+                                      # Set this to True to manually examine the database after running it.
+                                      # If True, you may want to make RANDOMIZE_DATABASE_TABLE False.
 TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane (beyond the base 64K)
 SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u escape syntax and UTF-8 hexadecimal.
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
+RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
+                                  # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
 class WordTests(unittest.TestCase):
 
     def setUp(self):
-        # try:
-            self.lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-            self.lex.uninstall_to_scratch()
-            self.lex.install_from_scratch()
-            # cursor = self.lex._connection.cursor()
-            # cursor.execute("SELECT txt FROM `{table}` ORDER BY idn ASC".format(table=self.lex._table))
-            # print("Word database:", ", ".join([row[0] for row in cursor]))
-            # cursor.close()
-        # except:
-        #     self.fail()
+        credentials = secure.credentials.for_unit_testing_database.copy()
+        if RANDOMIZE_DATABASE_TABLE:
+            credentials['table'] = 'word_' + uuid.uuid4().hex
+        self.lex = qiki.LexMySQL(**credentials)
+        self.lex.uninstall_to_scratch()
+        self.lex.install_from_scratch()
 
     def tearDown(self):
         if not LET_DATABASE_RECORDS_REMAIN:
@@ -68,7 +69,7 @@ class WordTests(unittest.TestCase):
 
     def show_txt_in_utf8(self, idn):
         word = self.lex(idn)
-        utf8 = word.txt.encode('utf8')
+        utf8 = word.txt.encode('utf-8')
         hexadecimal = hex_from_string(utf8)
         print("\"{txt}\" in utf8 is {hex}".format(
             txt=word.txt.encode('unicode_escape'),   # Python 3 doubles up the backslashes ... shrug.
@@ -169,15 +170,35 @@ class WordFirstTests(WordTests):
         n = qiki.Number(1)
         self.assertEqual(1, int(n))
 
-    def test_01_lex(self):
-        self.assertEqual(self.lex._IDN_LEX,         self.lex.idn)
-        self.assertEqual(self.lex._IDN_LEX,         self.lex.sbj)
+    def test_01a_lex(self):
+        self.assertEqual(self.lex._IDN_LEX,        self.lex.idn)
+        self.assertEqual(self.lex._IDN_LEX,        self.lex.sbj)
         self.assertEqual(self.lex('define').idn,   self.lex.vrb)
         self.assertEqual(self.lex('agent').idn,    self.lex.obj)
         self.assertEqual(qiki.Number(1),           self.lex.num)
         self.assertEqual('lex',                    self.lex.txt)
         self.assertSensibleWhen(                   self.lex.whn)
         self.assertTrue(self.lex.is_lex())
+
+    def test_01b_lex_getter(self):
+        define = self.lex('define')
+        self.assertTrue(define.exists)
+        self.assertEqual(define.idn, qiki.Word._IDN_DEFINE)
+        self.assertEqual(define.sbj, qiki.Word._IDN_LEX)
+        self.assertEqual(define.vrb, qiki.Word._IDN_DEFINE)
+        self.assertEqual(define.obj, qiki.Word._IDN_VERB)
+        self.assertEqual(define.num, qiki.Number(1))
+        self.assertEqual(define.txt, 'define')
+
+    def test_01c_lex_bum_getter(self):
+        define = self.lex('word that does not exist')
+        self.assertFalse(define.exists)
+        self.assertTrue(define.idn.is_nan())
+        self.assertFalse(hasattr(define, 'sbj'))
+        self.assertFalse(hasattr(define, 'vrb'))
+        self.assertFalse(hasattr(define, 'obj'))
+        self.assertFalse(hasattr(define, 'num'))
+        self.assertEqual(define.txt, 'word that does not exist')
 
     def test_02_noun(self):
         noun = self.lex('noun')
@@ -408,34 +429,55 @@ class WordUnicode(WordTests):
 
     def setUp(self):
         super(WordUnicode, self).setUp()
-        self.lex.noun('comment')
+        self.anna =    self.lex.noun('anna')
+        self.comment = self.lex.verb('comment')
+        self.zarf =    self.lex.noun('zarf')
 
     def test_unicode_a_utf8_ascii(self):
-        self.assertEqual(u"ascii", self.lex(self.lex.comment(b"ascii").idn).txt)
+        assert u"ascii" == u"ascii"
+        if six.PY2:
+            assert u"ascii" == b"ascii"
+            assert u"ascii" == u"ascii".encode('utf-8')
+        if six.PY3:
+            assert u"ascii" != b"ascii"
+            assert u"ascii" != u"ascii".encode('utf-8')
+        self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, b"ascii").idn).txt)
 
     def test_unicode_b_unicode_ascii(self):
-        self.assertEqual(u"ascii", self.lex(self.lex.comment(u"ascii").idn).txt)
+        self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, u"ascii").idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
+    # TODO:  D.R.Y. the pairs of tests that follow
+
+    # Unicode characters in comments
+
     def test_unicode_c_utf8_spanish(self):
-        assert u"mañana" == u"ma\xF1ana"
-        comment = self.lex.comment(u"mañana".encode('utf8'))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            assert u"mañana" == u"ma\xF1ana"
+            assert u"mañana" != u"ma\xF1ana".encode('utf-8')
+            assert b"ma\xc3\xb1ana" == u"ma\xF1ana".encode('utf-8')
+        comment = self.anna.comment(self.zarf, 1, u"mañana".encode('utf-8'))
         self.assertEqual(u"ma\xF1ana", self.lex(comment.idn).txt)
 
     def test_unicode_d_unicode_spanish(self):
-        comment = self.lex.comment(u"mañana")
+        comment = self.anna.comment(self.zarf, 1, u"mañana")
         self.assertEqual(u"ma\xF1ana", self.lex(comment.idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
     def test_unicode_e_utf8_peace(self):
-        assert u"☮ on earth" == u"\u262E on earth"
-        comment = self.lex.comment(u"☮ on earth".encode('utf8'))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            assert u"☮ on earth" == u"\u262E on earth"
+            assert u"☮ on earth" != u"\u262E on earth".encode('utf-8')
+            assert b"\xe2\x98\xae on earth" == u"\u262E on earth".encode('utf-8')
+        comment = self.anna.comment(self.zarf, 1, u"☮ on earth".encode('utf-8'))
         self.assertEqual(u"\u262E on earth", self.lex(comment.idn).txt)
 
     def test_unicode_f_unicode_peace(self):
-        comment = self.lex.comment(u"☮ on earth")
+        comment = self.anna.comment(self.zarf, 1, u"☮ on earth")
         self.assertEqual(u"\u262E on earth", self.lex(comment.idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
@@ -443,15 +485,115 @@ class WordUnicode(WordTests):
     if TEST_ASTRAL_PLANE:
 
         def test_unicode_g_utf8_pile_of_poo(self):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                assert u"stinky \U0001F4A9" == u"stinky \U0001F4A9"
+                assert u"stinky \U0001F4A9" != u"stinky \U0001F4A9".encode('utf-8')
+                assert b"stinky \xf0\x9f\x92\xa9" == u"stinky \U0001F4A9".encode('utf-8')
             # Source code is base plane only, so cannot:  assert u"stinky ?" == u"stinky \U0001F4A9"
-            comment = self.lex.comment(u"stinky \U0001F4A9".encode('utf8'))
+            # PyCharm editor limitation?
+            comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9".encode('utf-8'))
             self.assertEqual(u"stinky \U0001F4A9", self.lex(comment.idn).txt)
 
         def test_unicode_h_unicode_pile_of_poo(self):
-            comment = self.lex.comment(u"stinky \U0001F4A9")
+            comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9")
             self.assertEqual(u"stinky \U0001F4A9", self.lex(comment.idn).txt)
             if SHOW_UTF8_EXAMPLES:
                 self.show_txt_in_utf8(self.lex.max_idn())
+
+    # Unicode characters in verbs
+
+    def test_unicode_i_verb_utf8_ascii(self):
+        sentence1 = self.lex.define(self.comment, u"remark".encode('utf-8'))
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"remark", sentence2.txt)
+        self.assertTrue(self.lex.remark.is_a_verb())
+
+    def test_unicode_j_verb_unicode_ascii(self):
+        sentence1 = self.lex.define(self.comment, u"remark")
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"remark", sentence2.txt)
+        self.assertTrue(self.lex.remark.is_a_verb())
+
+    def test_unicode_k_verb_utf8_spanish(self):
+        sentence1 = self.lex.define(self.comment, u"comentó".encode('utf-8'))
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"comentó", sentence2.txt)
+        if six.PY3:
+            # Only Python 3 supports international characters in Python symbols.
+            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
+        if six.PY2:
+            with self.assertRaises(SyntaxError):
+                eval(u'self.lex.comentó.is_a_verb()')
+        self.assertTrue(self.lex(u'comentó').exists)
+        self.assertTrue(self.lex(u'comentó').is_a_verb())
+        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
+        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).is_a_verb())
+
+    def test_unicode_l_verb_unicode_spanish(self):
+        sentence1 = self.lex.define(self.comment, u"comentó")
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"comentó", sentence2.txt)
+        if six.PY3:
+            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
+        if six.PY2:
+            with self.assertRaises(SyntaxError):
+                eval(u'self.lex.comentó.is_a_verb()')
+        self.assertTrue(self.lex(u'comentó').exists)
+        self.assertTrue(self.lex(u'comentó').is_a_verb())
+        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
+        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).is_a_verb())
+
+    # noinspection SpellCheckingInspection
+    def test_unicode_m_verb_utf8_encourage(self):
+        sentence1 = self.lex.define(self.comment, u"enc☺urage".encode('utf-8'))
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"enc☺urage", sentence2.txt)
+        with self.assertRaises(SyntaxError):
+            # Even Python has restraint.
+            eval(u'self.lex.enc☺urage.is_a_verb()')
+        self.assertTrue(self.lex(u'enc☺urage').exists)
+        self.assertTrue(self.lex(u'enc☺urage').is_a_verb())
+        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).exists)
+        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).is_a_verb())
+
+    # noinspection SpellCheckingInspection
+    def test_unicode_n_verb_unicode_encourage(self):
+        sentence1 = self.lex.define(self.comment, u"enc☺urage")
+        sentence2 = self.lex(sentence1.idn)
+        self.assertEqual(u"enc☺urage", sentence2.txt)
+        with self.assertRaises(SyntaxError):
+            eval(u'self.lex.enc☺urage.is_a_verb()')
+        self.assertTrue(self.lex(u'enc☺urage').exists)
+        self.assertTrue(self.lex(u'enc☺urage').is_a_verb())
+        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).exists)
+        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).is_a_verb())
+
+    if TEST_ASTRAL_PLANE:
+
+        # noinspection SpellCheckingInspection
+        def test_unicode_o_verb_utf8_alien_face(self):
+            sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate".encode('utf-8'))
+            sentence2 = self.lex(sentence1.idn)
+            self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
+            with self.assertRaises(SyntaxError):
+                eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
+            self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
+            self.assertTrue(self.lex(u'\U0001F47Dlienate').is_a_verb())
+            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).exists)
+            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).is_a_verb())
+
+        # noinspection SpellCheckingInspection
+        def test_unicode_o_verb_unicode_alien_face(self):
+            sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
+            sentence2 = self.lex(sentence1.idn)
+            self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
+            with self.assertRaises(SyntaxError):
+                eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
+            self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
+            self.assertTrue(self.lex(u'\U0001F47Dlienate').is_a_verb())
+            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).exists)
+            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).is_a_verb())
 
 
 class WordMoreTests(WordTests):
@@ -1030,19 +1172,19 @@ class WordFindTests(WordTests):
         self.assertEqual({'idn': self.apple.idn}, apple_words[0])
 
     def test_select_words_txt(self):
-        apple_words = self.lex._select_words('SELECT idn FROM word WHERE txt=?', ['apple'])
+        apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE txt=?', ['apple'])
         self.assertEqual(1, len(apple_words))
         self.assertEqual(self.apple.idn, apple_words[0].idn)
 
     def test_select_words_obj(self):
-        apple_words = self.lex._select_words('SELECT idn FROM word WHERE obj=?', [self.apple.idn.raw])
+        apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
         self.assertEqual(3, len(apple_words))
         self.assertEqual(self.macintosh.idn, apple_words[0].idn)
         self.assertEqual(self.braburn.idn, apple_words[1].idn)
         self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
 
     def test_select_fields(self):
-        apple_fields = self.lex._select_fields('SELECT txt,idn FROM word WHERE obj=?', [self.apple.idn.raw])
+        apple_fields = self.lex._select_fields('SELECT txt,idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
         self.assertEqual(3, len(apple_fields))
         self.assertEqual(2, len(apple_fields[0]))
         self.assertEqual(2, len(apple_fields[1]))
