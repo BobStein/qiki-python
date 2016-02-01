@@ -110,7 +110,7 @@ class Word(object):
         # So it asks instead if lex is a verb, which calls .is_a()
         # which comes right back here for reasons I never did figure out (because there IS a Word.is_a()).
         # This madness would happen e.g. when Lex.populate_from_idn() called a bogus function:
-        #     return self.populate_from_one_rowsssssssssssssssssss(word, one_row)
+        #     return self.populate_from_one_row_misnamed_or_something(word, one_row)
         assert self.lex.is_lex(), "Lex isn't a lex, can't x.{noun}".format(noun=noun_txt)
         assert hasattr(self.lex, '__call__'), "Lex isn't callable, can't x.{noun}".format(noun=noun_txt)
         return_value = self.lex(noun_txt)
@@ -367,22 +367,23 @@ class Word(object):
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
-        self._load_row(
-            "SELECT * FROM `{table}` "
-                "WHERE   `sbj` = ? "
-                    "AND `vrb` = ? "
-                    "AND `obj` = ? "
-                "ORDER BY `idn` DESC "
-                "LIMIT 1"
-            .format(
-                table=self.lex._table,
-            ),
-            (
-                self.sbj.raw,
-                self.vrb.raw,
-                self.obj.raw,
-            )
-        )
+        self.lex.populate_word_from_sbj_vrb_obj(self, self.sbj, self.vrb, self.obj)
+        # self._load_row(
+        #     "SELECT * FROM `{table}` "
+        #         "WHERE   `sbj` = ? "
+        #             "AND `vrb` = ? "
+        #             "AND `obj` = ? "
+        #         "ORDER BY `idn` DESC "
+        #         "LIMIT 1"
+        #     .format(
+        #         table=self.lex._table,
+        #     ),
+        #     (
+        #         self.sbj.raw,
+        #         self.vrb.raw,
+        #         self.obj.raw,
+        #     )
+        # )
 
     def _from_sbj_vrb_obj_num_txt(self):
         """Construct a word from its subject-verb-object and its num and txt."""
