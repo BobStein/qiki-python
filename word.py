@@ -602,7 +602,7 @@ class Word(object):
 
     @idn.setter
     def idn(self, value):
-        raise RuntimeError("Cannot set a Word's idn")
+        raise AttributeError("Cannot set a Word's idn.")
 
     def save(self, override_idn=None):
         if override_idn is not None:
@@ -725,7 +725,9 @@ class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary,
                       #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                       # Eventually, this will encapsulate other word repositories
                       # Make this an abstract base class
-    pass
+
+    class TableName(str):
+        pass
 
 
 class LexMySQL(Lex):
@@ -903,13 +905,13 @@ class LexMySQL(Lex):
     # TODO:  Start and number parameters, for LIMIT clause.
 
     def populate_word_from_idn(self, word, idn):
-        one_row = self.super_select("SELECT * FROM", self, "WHERE idn =", idn)
+        one_row = self.super_select("SELECT * FROM", self.table, "WHERE idn =", idn)
         return self.populate_from_one_row(word, one_row)
 
     def populate_word_from_definition(self, word, define_txt):
         one_row = self.super_select(
             "SELECT * FROM",
-            self,
+            self.table,
             "WHERE vrb =",
             Word._IDN_DEFINE,
             "AND txt =",
@@ -917,9 +919,23 @@ class LexMySQL(Lex):
         )
         return self.populate_from_one_row(word, one_row)
 
+    def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
+        one_row = self.super_select(
+            "SELECT * FROM",
+            self.table,
+            "WHERE sbj =",
+            sbj,
+            "AND vrb =",
+            vrb,
+            "AND obj =",
+            obj,
+            "ORDER BY `idn` DESC LIMIT 1"
+        )
+        return self.populate_from_one_row(word, one_row)
+
     @staticmethod
     def populate_from_one_row(word, one_row):
-        assert len(one_row) in (0,1)
+        assert len(one_row) in (0,1), "Populating from unexpectedly {} rows.".format(len(one_row))
         if len(one_row) > 0:
             row = one_row[0]
             word.populate_from_row(row)
@@ -938,7 +954,7 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of idns."""
-        query_args = ['SELECT idn FROM', self, 'WHERE TRUE', None]
+        query_args = ['SELECT idn FROM', self.table, 'WHERE TRUE', None]
         if sbj is not None:
             query_args += ['AND sbj=', idn_from_word_or_number(sbj)]
         if vrb is not None:
@@ -993,7 +1009,7 @@ class LexMySQL(Lex):
         return idns
 
     # noinspection SpellCheckingInspection
-    def _select_fields(self, sql, parameters):
+    def _select_fields(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
         """
         Read a 2D array of raw field contents based on a SELECT.
 
@@ -1030,9 +1046,9 @@ class LexMySQL(Lex):
         for arg_previous, arg_next in zip(query_args[:-1], query_args[1:]):
             if (
                     isinstance(arg_previous, six.string_types) and
-                not isinstance(arg_previous, Text) and
+                not isinstance(arg_previous, (Text, Lex.TableName)) and
                     isinstance(arg_next, six.string_types) and
-                not isinstance(arg_next, Text)
+                not isinstance(arg_next, (Text, Lex.TableName))
             ):
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments shouldn't be strings.  " +
@@ -1050,14 +1066,16 @@ class LexMySQL(Lex):
             if isinstance(query_arg, Text):
                 query += '?'
                 parameters.append(query_arg.the_string)
-            elif isinstance(query_arg, six.string_types):   # Must come after qiki.Text test.
+            elif isinstance(query_arg, Lex.TableName):
+                query += query_arg
+            elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.TableName tests.
                 query += query_arg
             elif isinstance(query_arg, Number):
                 query += '?'
                 parameters.append(query_arg.raw)
-            elif isinstance(query_arg, Lex):
-                # noinspection PyProtectedMember
-                query += query_arg._table
+            elif isinstance(query_arg, Word):
+                query += '?'
+                parameters.append(query_arg.idn.raw)
             elif query_arg is None:
                 pass
             else:
@@ -1113,6 +1131,12 @@ class LexMySQL(Lex):
         assert return_value.is_whole()
         return return_value
 
+    @property
+    def table(self):
+        return self.TableName(self._table)
+
+
+
 
 def idn_from_word_or_number(x):
     if isinstance(x, Word):
@@ -1134,6 +1158,9 @@ class Text(object):
     # That's right, a doubly-encoded string!  Just like repr()
 
     def __init__(self, the_string):
+        """Accept either Unicode or UTF-8-encoded string in either Python 2 or 3.
+
+        Actually it's the MySQL Connector that encapsulates both these flexibilities."""
         self.the_string = the_string
 
 

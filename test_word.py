@@ -433,6 +433,13 @@ class WordUnicode(WordTests):
         self.comment = self.lex.verb('comment')
         self.zarf =    self.lex.noun('zarf')
 
+
+class WordUnicodeTxt(WordUnicode):
+    """Unicode characters in non-definition word descriptions, e.g. comments.
+
+    In each pair of tests, the string may go in as either """
+    # TODO:  D.R.Y. in these pairs of tests.
+
     def test_unicode_a_utf8_ascii(self):
         assert u"ascii" == u"ascii"
         if six.PY2:
@@ -447,10 +454,6 @@ class WordUnicode(WordTests):
         self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, u"ascii").idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
-
-    # TODO:  D.R.Y. the pairs of tests that follow
-
-    # Unicode characters in comments
 
     def test_unicode_c_utf8_spanish(self):
         with warnings.catch_warnings():
@@ -501,7 +504,9 @@ class WordUnicode(WordTests):
             if SHOW_UTF8_EXAMPLES:
                 self.show_txt_in_utf8(self.lex.max_idn())
 
-    # Unicode characters in verbs
+
+class WordUnicodeVerb(WordUnicode):
+    """Unicode characters in verb names."""
 
     def test_unicode_i_verb_utf8_ascii(self):
         sentence1 = self.lex.define(self.comment, u"remark".encode('utf-8'))
@@ -798,7 +803,7 @@ class WordMoreTests(WordTests):
     def test_idn_setting_not_allowed(self):
         lex = self.lex('lex')
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(AttributeError):
             lex.idn = 999
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
 
@@ -1164,34 +1169,34 @@ class WordFindTests(WordTests):
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
 
-    def test_was_select_idns_now_super_select(self):
-        # apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
-        apple_words = self.lex.super_select('SELECT idn FROM', self.lex, 'WHERE txt=', qiki.Text('apple'))
-        self.assertEqual(1, len(apple_words))
-        # self.assertEqual(self.apple.idn, apple_words[0])
-        self.assertEqual({'idn': self.apple.idn}, apple_words[0])
-
-    def test_select_words_txt(self):
-        apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE txt=?', ['apple'])
-        self.assertEqual(1, len(apple_words))
-        self.assertEqual(self.apple.idn, apple_words[0].idn)
-
-    def test_select_words_obj(self):
-        apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
-        self.assertEqual(3, len(apple_words))
-        self.assertEqual(self.macintosh.idn, apple_words[0].idn)
-        self.assertEqual(self.braburn.idn, apple_words[1].idn)
-        self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
-
-    def test_select_fields(self):
-        apple_fields = self.lex._select_fields('SELECT txt,idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
-        self.assertEqual(3, len(apple_fields))
-        self.assertEqual(2, len(apple_fields[0]))
-        self.assertEqual(2, len(apple_fields[1]))
-        self.assertEqual(2, len(apple_fields[2]))
-        self.assertEqual((b'macintosh',   self.macintosh.idn.raw), apple_fields[0])
-        self.assertEqual((b'braburn',       self.braburn.idn.raw), apple_fields[1])
-        self.assertEqual((b'honeycrisp', self.honeycrisp.idn.raw), apple_fields[2])
+    # def test_was_select_idns_now_super_select(self):
+    #     # apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
+    #     apple_words = self.lex.super_select('SELECT idn FROM', self.lex.table, 'WHERE txt=', qiki.Text('apple'))
+    #     self.assertEqual(1, len(apple_words))
+    #     # self.assertEqual(self.apple.idn, apple_words[0])
+    #     self.assertEqual({'idn': self.apple.idn}, apple_words[0])
+    #
+    # def test_select_words_txt(self):
+    #     apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE txt=?', ['apple'])
+    #     self.assertEqual(1, len(apple_words))
+    #     self.assertEqual(self.apple.idn, apple_words[0].idn)
+    #
+    # def test_select_words_obj(self):
+    #     apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
+    #     self.assertEqual(3, len(apple_words))
+    #     self.assertEqual(self.macintosh.idn, apple_words[0].idn)
+    #     self.assertEqual(self.braburn.idn, apple_words[1].idn)
+    #     self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
+    #
+    # def test_select_fields(self):
+    #     apple_fields = self.lex._select_fields('SELECT txt,idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
+    #     self.assertEqual(3, len(apple_fields))
+    #     self.assertEqual(2, len(apple_fields[0]))
+    #     self.assertEqual(2, len(apple_fields[1]))
+    #     self.assertEqual(2, len(apple_fields[2]))
+    #     self.assertEqual((b'macintosh',   self.macintosh.idn.raw), apple_fields[0])
+    #     self.assertEqual((b'braburn',       self.braburn.idn.raw), apple_fields[1])
+    #     self.assertEqual((b'honeycrisp', self.honeycrisp.idn.raw), apple_fields[2])
 
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)
@@ -1386,16 +1391,27 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[1].obj, self.zigzags.idn)
         self.assertEqual(qool_uses[1].num, qiki.Number(1))
 
-    def test_super_select(self):
+    def test_super_select_idn(self):
         self.assertEqual([{'txt': 'define'},], self.lex.super_select(
             'SELECT txt FROM',
-            self.lex,
+            self.lex.table,
             'WHERE idn =',
             qiki.Word._IDN_DEFINE
         ))
+
+    def test_super_select_word(self):
+        define_word = self.lex('define')
+        self.assertEqual([{'txt': 'define'},], self.lex.super_select(
+            'SELECT txt FROM',
+            self.lex.table,
+            'WHERE idn =',
+            define_word
+        ))
+
+    def test_super_select_txt(self):
         self.assertEqual([{'idn': qiki.Word._IDN_DEFINE},], self.lex.super_select(
             'SELECT idn FROM',
-            self.lex,
+            self.lex.table,
             'WHERE txt =',
             qiki.Text('define')
         ))
@@ -1404,23 +1420,26 @@ class WordQoolbarTests(WordTests):
         """To concatenate two strings of literal SQL code, intersperse a None."""
         self.assertEqual([{'txt': 'define'},], self.lex.super_select(
             'SELECT txt', None, 'FROM',
-            self.lex,
+            self.lex.table,
             'WHERE', None, 'idn =',
             qiki.Word._IDN_DEFINE
         ))
 
     def test_super_select_string_string(self):
+        """Concatenating two literal strings is an error.
+
+        This avoids confusion between literal strings, table names, and txt fields."""
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            self.lex.super_select('string', 'string', self.lex)
+            self.lex.super_select('string', 'string', self.lex.table)
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            self.lex.super_select(self.lex, 'string', 'string')
-        self.lex.super_select('SELECT * FROM', self.lex)
+            self.lex.super_select(self.lex.table, 'string', 'string')
+        self.lex.super_select('SELECT * FROM', self.lex.table)
 
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            self.lex.super_select('SELECT * FROM', self.lex._table, 'WHERE txt=', 'define')
+            self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define')
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            self.lex.super_select('SELECT * FROM', self.lex, 'WHERE txt=', 'define')
-        self.lex.super_select('SELECT * FROM', self.lex, 'WHERE txt=', qiki.Text('define'))
+            self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define')
+        self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text('define'))
 
     def test_super_select_type_error(self):
         class ExoticType(object):
@@ -1451,6 +1470,42 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(self.zigzags.txt, word.txt)
         self.assertEqual(self.zigzags.whn, word.whn)
 
+    def test_lex_from_sbj_vrb_obj_idns(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_sbj_vrb_obj(
+            word,
+            self.zigzags.sbj,
+            self.zigzags.vrb,
+            self.zigzags.obj
+        )
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
+
+    def test_lex_from_sbj_vrb_obj_words(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_sbj_vrb_obj(
+            word,
+            self.lex(self.zigzags.sbj),
+            self.lex(self.zigzags.vrb),
+            self.lex(self.zigzags.obj)
+        )
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
+
+    def test_lex_table_not_writable(self):
+        with self.assertRaises(AttributeError):
+            self.lex.table = 'something'
+
     def test_wrong_word_method_infinity(self):
         word = self.lex('noun')
         with self.assertRaises(qiki.Word.NoSuchAttribute):
@@ -1478,11 +1533,6 @@ class WordQoolbarTests(WordTests):
     #     define = qiki.Word('define')
     #     define_too = qiki.Word(define)
     #     self.assertEqual('define', define_too.txt)
-    #
-    # def test_idn_cannot_set_idn(self):
-    #     define = qiki.Word('define')
-    #     with self.assertRaises(RuntimeError):
-    #         define.idn = -1
     #
     # def test_quintuple_self_evident(self):
     #     define = qiki.Word('define')
