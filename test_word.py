@@ -216,16 +216,21 @@ class WordFirstTests(WordTests):
     def test_02b_repr(self):
         self.assertEqual("Word('noun')", repr(self.lex('noun')))
 
-    def test_03a_max_idn(self):
+    def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
 
-    def test_03b_noun_spawn(self):
+    def test_03b_max_idn(self):
+        self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
+        self.lex.verb('splurge')
+        self.assertEqual(qiki.Word._IDN_MAX_FIXED + 1, self.lex.max_idn())
+
+    def test_03c_noun_spawn(self):
         noun = self.lex('noun')
         thing = noun('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)
 
-    def test_03c_noun_spawn_crazy_syntax(self):
+    def test_03d_noun_spawn_crazy_syntax(self):
         thing = self.lex('noun')('thing')
         self.assertTrue(thing.exists)
         self.assertEqual('thing', thing.txt)

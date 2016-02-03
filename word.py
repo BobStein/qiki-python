@@ -1118,22 +1118,18 @@ class LexMySQL(Lex):
         return raws
 
     def max_idn(self):
-        # TODO:  Store max_idn in a singleton table.
-        cursor = self._connection.cursor()
-        cursor.execute("SELECT MAX(idn) FROM `{table}`".format(table=self._table))
-        max_idn_sql_row = cursor.fetchone()
-        if max_idn_sql_row is None:
+        # TODO:  Store max_idn in a singleton table?
+        one_row_one_col = self.super_select('SELECT MAX(idn) AS max_idn FROM', self.table)
+        if len(one_row_one_col) < 1:
             return Number(0)
-        max_idn_sql = max_idn_sql_row[0]
-        if max_idn_sql is None:
-            return Number(0)
-        return_value = Number.from_mysql(max_idn_sql)
+        return_value = one_row_one_col[0]['max_idn']
         assert not return_value.is_nan()
         assert return_value.is_whole()
         return return_value
 
     @property
     def table(self):
+        """For super_select()"""
         return self.TableName(self._table)
 
 
