@@ -691,18 +691,6 @@ class WordMoreTests(WordTests):
         anna.like(bart, 13)
         self.assertEqual(13, anna.like(bart).num)
 
-    # def OBSOLETE_test_repr(self):
-    #     self.assertEqual("Word('noun')", repr(self.lex('noun')))
-    #     human = self.lex.agent('human')
-    #     self.assertEqual("Word('human')", repr(human))
-    #     like = self.lex.verb('like')
-    #     self.assertEqual("Word('like')", repr(like))
-    #     liking = self.lex.like(human, 10)
-    #     self.assertEqual("Word(Number({idn}))".format(idn=liking.idn.qstring()), repr(liking))
-    #     # w = self.lex.spawn(sbj=Number(15), vrb=Number(31), obj=Number(63), num=Number(127), txt='something')
-    #     # Word(sbj=0q82_0F, vrb=0q82_1F, obj=0q82_3F, txt='something', num=0q82_7F)
-    #     # print(repr(w))
-
     def test_verb_txt(self):
         """Test s.v(o, n, txt).  Read with s.v(o).txt"""
         human = self.lex.agent('human')
@@ -1173,35 +1161,6 @@ class WordFindTests(WordTests):
         self.honeycrisp = self.lex.apple('honeycrisp')
         self.crave = self.lex.verb('crave')
         self.fred = self.lex.agent('fred')
-
-    # def test_was_select_idns_now_super_select(self):
-    #     # apple_words = self.lex._select_idns('SELECT idn FROM word WHERE txt=?', ['apple'])
-    #     apple_words = self.lex.super_select('SELECT idn FROM', self.lex.table, 'WHERE txt=', qiki.Text('apple'))
-    #     self.assertEqual(1, len(apple_words))
-    #     # self.assertEqual(self.apple.idn, apple_words[0])
-    #     self.assertEqual({'idn': self.apple.idn}, apple_words[0])
-    #
-    # def test_select_words_txt(self):
-    #     apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE txt=?', ['apple'])
-    #     self.assertEqual(1, len(apple_words))
-    #     self.assertEqual(self.apple.idn, apple_words[0].idn)
-    #
-    # def test_select_words_obj(self):
-    #     apple_words = self.lex._select_words('SELECT idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
-    #     self.assertEqual(3, len(apple_words))
-    #     self.assertEqual(self.macintosh.idn, apple_words[0].idn)
-    #     self.assertEqual(self.braburn.idn, apple_words[1].idn)
-    #     self.assertEqual(self.honeycrisp.idn, apple_words[2].idn)
-    #
-    # def test_select_fields(self):
-    #     apple_fields = self.lex._select_fields('SELECT txt,idn FROM '+self.lex._table+' WHERE obj=?', [self.apple.idn.raw])
-    #     self.assertEqual(3, len(apple_fields))
-    #     self.assertEqual(2, len(apple_fields[0]))
-    #     self.assertEqual(2, len(apple_fields[1]))
-    #     self.assertEqual(2, len(apple_fields[2]))
-    #     self.assertEqual((b'macintosh',   self.macintosh.idn.raw), apple_fields[0])
-    #     self.assertEqual((b'braburn',       self.braburn.idn.raw), apple_fields[1])
-    #     self.assertEqual((b'honeycrisp', self.honeycrisp.idn.raw), apple_fields[2])
 
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)

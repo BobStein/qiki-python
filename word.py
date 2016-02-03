@@ -64,6 +64,7 @@ class Word(object):
             # TODO:  Should this be Word instead of type(self)?
             # As it stands with type(self) DerivedWord(Word) would TypeError, not copy.
             # For example Lex(Word).  Is that desirable or not?
+            # WTF, should Lex by Word's meta-class??
             self._from_word(content)
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
@@ -334,20 +335,6 @@ class Word(object):
         assert isinstance(txt, self.TXT_TYPES)
         if not self.lex.populate_word_from_definition(self, txt):
             self.txt = txt
-        # self._load_row(
-        #     "SELECT * FROM `{table}` "
-        #         "WHERE   `vrb` = ? "
-        #             "AND `txt` = ?"
-        #     .format(
-        #         table=self.lex._table,
-        #     ),
-        #     (
-        #         self._IDN_DEFINE.raw,
-        #         txt,
-        #     )
-        # )
-        # if not self.exists:
-        #     self.txt = txt
 
     def _from_word(self, word):
         if word.is_lex():
@@ -355,10 +342,6 @@ class Word(object):
         assert word.exists
         self.lex = word.lex
         self._from_idn(word.idn)
-        # if word.exists:
-        #     self._from_idn(word.idn)
-        # else:
-        #     self._from_definition(word.txt)
 
     def _from_sbj_vrb_obj(self):
         """Construct a word from its subject-verb-object."""
@@ -366,22 +349,6 @@ class Word(object):
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         self.lex.populate_word_from_sbj_vrb_obj(self, self.sbj, self.vrb, self.obj)
-        # self._load_row(
-        #     "SELECT * FROM `{table}` "
-        #         "WHERE   `sbj` = ? "
-        #             "AND `vrb` = ? "
-        #             "AND `obj` = ? "
-        #         "ORDER BY `idn` DESC "
-        #         "LIMIT 1"
-        #     .format(
-        #         table=self.lex._table,
-        #     ),
-        #     (
-        #         self.sbj.raw,
-        #         self.vrb.raw,
-        #         self.obj.raw,
-        #     )
-        # )
 
     def _from_sbj_vrb_obj_num_txt(self):
         """Construct a word from its subject-verb-object and its num and txt."""
@@ -398,49 +365,6 @@ class Word(object):
             self.num,
             self.txt
         )
-        # self._load_row(
-        #     "SELECT * FROM `{table}` "
-        #         "WHERE   `sbj` = ? "
-        #             "AND `vrb` = ? "
-        #             "AND `obj` = ? "
-        #             "AND `num` = ? "
-        #             "AND `txt` = ? "
-        #         "ORDER BY `idn` DESC "
-        #         "LIMIT 1"
-        #     .format(
-        #         table=self.lex._table,
-        #     ),
-        #     (
-        #         self.sbj.raw,
-        #         self.vrb.raw,
-        #         self.obj.raw,
-        #         self.num.raw,
-        #         self.txt,
-        #     )
-        # )
-
-    # def _load_row(self, sql, parameters):
-    #     """Flesh out a word object from a single row of the word table.
-    #
-    #     Same parameters as cursor.execute,
-    #     namely a MySQL string and a tuple of ?-value parameters.
-    #     """
-    #     cursor = self.lex._connection.cursor(prepared=True)
-    #     cursor.execute(sql, parameters)
-    #     tuple_row = cursor.fetchone()
-    #     assert cursor.fetchone() is None
-    #     if tuple_row is not None:
-    #         dict_row = dict(zip(cursor.column_names, tuple_row))
-    #         self._idn = Number.from_mysql(dict_row['idn'])
-    #         # self.sbj = self.lex.sbj_from_mysql(dict_row['sbj'])
-    #         self.sbj = Number.from_mysql(dict_row['sbj'])
-    #         self.vrb = Number.from_mysql(dict_row['vrb'])
-    #         self.obj = Number.from_mysql(dict_row['obj'])
-    #         self.num = Number.from_mysql(dict_row['num'])
-    #         self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
-    #         self.whn = Number.from_mysql(dict_row['whn'])
-    #         self.exists = True
-    #     cursor.close()
 
     def populate_from_row(self, row):
         self._idn = row['idn']
@@ -554,19 +478,6 @@ class Word(object):
             ))
         else:
             return "Word(in a strange state)"
-
-        # if hasattr(self, 'txt') and self.is_defined():
-        #     return "Word('{0}')".format(self.txt)
-        # elif self.exists:
-        #     return "Word(Number({idn_qstring}))".format(idn_qstring=self.idn.qstring())
-        # else:
-        #     return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
-        #         sbj=self.sbj.qstring(),
-        #         vrb=self.vrb.qstring(),
-        #         obj=self.obj.qstring(),
-        #         txt=repr(self.txt),
-        #         num=self.num.qstring(),
-        #     ))
 
     def __str__(self):
         if hasattr(self, 'txt'):
@@ -1000,61 +911,6 @@ class LexMySQL(Lex):
         rows_of_idns = self.super_select(*query_args)
         idns = [row['idn'] for row in rows_of_idns]
         return idns
-
-    def _select_words(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
-        idns = self._select_idns(sql, parameters)
-        return self.words_from_idns(idns)
-
-    # noinspection SpellCheckingInspection
-    def _select_idns(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
-        """
-        Read an array of idns based on a query like:  SELECT idn FROM {table} ...
-
-        Same parameters as cursor.execute,
-        namely a MySQL string and a tuple of ?-value parameters.
-        """
-        cursor = self.lex._connection.cursor(prepared=True)
-        # TODO:  Give up prepared=True so we can buffered=True so we can have one for-loop below?
-        # Another reason to use prepared=False:  http://stackoverflow.com/a/24842296/673991
-        # Or use cursor(cursor_class=MySQLCursorPrepared) - see last line of:
-        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
-        cursor.execute(sql, parameters)
-        idns = []
-        for row in cursor:
-            assert len(row) == 1, "Expecting 1 column only, got " + repr(row)
-            idn = Number.from_mysql(row[0])
-            # word = self(idn)   # Doing this here raises InternalError: Unread result found.
-            # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
-            # SEE:  http://stackoverflow.com/a/17268389/673991
-            # And a cursor can't be both prepared and buffered.
-            idns.append(idn)
-        cursor.close()
-        return idns
-
-    # noinspection SpellCheckingInspection
-    def _select_fields(self, sql, parameters):   # XXX:  OBSOLETE, use super_select()
-        """
-        Read a 2D array of raw field contents based on a SELECT.
-
-        Same parameters as cursor.execute,
-        namely a MySQL string and a tuple of ?-value parameters.
-        """
-        cursor = self.lex._connection.cursor(prepared=True)
-        # TODO:  Give up prepared=True so we can buffered=True so we can do more in the for-loop below?
-        # Another reason to use prepared=False:  http://stackoverflow.com/a/24842296/673991
-        # Or use cursor(cursor_class=MySQLCursorPrepared) - see last line of:
-        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
-        cursor.execute(sql, parameters)
-        rows_of_fields = []
-        for row in cursor:
-            rows_of_fields.append(row)
-            # word = self(idn)   # By the way, doing this here (inside a cursor loop) raises
-            #     InternalError: Unread result found.
-            # NOTE:  Apparently, multiple cursors do NOT support multiple query-results.
-            # SEE:  http://stackoverflow.com/a/17268389/673991
-            # And a cursor can't be both prepared and buffered.
-        cursor.close()
-        return rows_of_fields
 
     class SuperSelectTypeError(TypeError):
         pass
