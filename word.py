@@ -673,8 +673,8 @@ class LexMySQL(Lex):
         assert self.exists
         cursor = self._cursor()
         cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
-        cursor.close()
         # THANKS:  http://stackoverflow.com/a/27390024/673991
+        cursor.close()
         assert self.is_lex()
         assert self._connection.is_connected()
 
@@ -918,8 +918,9 @@ class LexMySQL(Lex):
     class SuperSelectStringString(TypeError):
         pass
 
-    def super_select(self, *query_args):
+    def super_select(self, *query_args, **kwargs):
         # TODO:  Recursive lists in query_args?
+        debug = kwargs.pop('debug', False)
         query = ""
         parameters = []
         for arg_previous, arg_next in zip(query_args[:-1], query_args[1:]):
@@ -966,17 +967,27 @@ class LexMySQL(Lex):
                 )
             query += ' '
         cursor = self.lex._connection.cursor(prepared=True)
+        if debug:
+            print("Query", query)
         cursor.execute(query, parameters)
         rows_of_fields = []
         for row in cursor:
             field_dictionary = dict()
+            if debug:
+                print(end='\t')
             for field, name in zip(row, cursor.column_names):
-                if name == 'txt':
+                if field is None:
+                    value = None
+                elif name == 'txt':
                     value = six.text_type(field.decode('utf-8'))
                 else:
                     value = Number.from_mysql(field)
                 field_dictionary[name] = value
+                if debug:
+                    print(name, repr(value), end='; ')
             rows_of_fields.append(field_dictionary)
+            if debug:
+                print()
         return rows_of_fields
 
     def words_from_idns(self, idns):

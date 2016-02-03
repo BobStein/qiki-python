@@ -165,6 +165,14 @@ class Number(numbers.Number):
     def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
     def __ge__(self, other):  self._both_real(other); return self._op_ready(self) >= self._op_ready(other)
     # TODO:  Turn the blather below into documentation
+    # The conundrum is to comply with Postel's Law
+    #     "Be conservative in what you emit, and liberal in what you accept."
+    # That is, certain raw byte sequences should be interpreted with redundancy on input,
+    # but they should be generated with uniqueness.  E.g. 4-3 should always output 0q82_01 never 0q82
+    # They must behave immune to redundancies, e.g. 0q82 == 0q82_01.
+    # They may be stored with compactness, e.g. '\x82' for 1.0 in a database.
+    #
+    # The options...
     # (By the way, I went with Option one.)
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
@@ -240,11 +248,16 @@ class Number(numbers.Number):
     __radd__ = __add__
 
     def _normalize_all(self):
+        """Eliminate all redundancies in the internal __raw string.
+
+        Normalization routines operate in-place, modifying self.  There are no return values."""
         self._normalize_plateau()
         self._normalize_imaginary()
 
     def _normalize_imaginary(self):
-        """Eliminate imaginary suffix if it's zero."""
+        """Eliminate imaginary suffix if it's zero.
+
+        So e.g. 1+0i == 1 truly."""
         try:
             if self.get_suffix_number(self.Suffix.TYPE_IMAGINARY) == self.ZERO:
                 # We don't check self.imag == self.ZERO because that would try to delete a missing suffix.

@@ -1319,10 +1319,10 @@ class WordQoolbarTests(WordTests):
         self.youtube = self.lex.noun('youtube')
         self.zigzags = self.lex.noun('zigzags')
 
-        self.anna.like(self.youtube, 1)
-        self.bart.like(self.youtube, 10)
-        self.anna.like(self.zigzags, 2)
-        self.bart.delete(self.zigzags, 1)
+        self.anna_like_youtube = self.anna.like(self.youtube, 1)
+        self.bart_like_youtube = self.bart.like(self.youtube, 10)
+        self.anna_like_zigzags = self.anna.like(self.zigzags, 2)
+        self.bart_delete_zigzags = self.bart.delete(self.zigzags, 1)
 
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj for w in qool_declarations]
@@ -1425,6 +1425,10 @@ class WordQoolbarTests(WordTests):
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
             self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define')
         self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text('define'))
+
+    def test_super_select_null(self):
+        self.assertEqual([{'x': None}], self.lex.super_select('SELECT NULL as x'))
+        self.assertEqual([{'x': None}], self.lex.super_select('SELECT', None, 'NULL as x'))
 
     def test_super_select_type_error(self):
         class ExoticType(object):
@@ -1531,12 +1535,44 @@ class WordQoolbarTests(WordTests):
     def test_wrong_word_method_infinity(self):
         word = self.lex('noun')
         with self.assertRaises(qiki.Word.NoSuchAttribute):
+            # noinspection PyStatementEffect
+            word.no_such_attribute
+        with self.assertRaises(qiki.Word.NoSuchAttribute):
             word.no_such_method()
 
     def test_wrong_lex_method_infinity(self):
         with self.assertRaises(qiki.Word.NoSuchAttribute):
+            # noinspection PyStatementEffect
+            self.lex.no_such_attribute
+        with self.assertRaises(qiki.Word.NoSuchAttribute):
             self.lex.no_such_method()
 
+    def test_qool_join(self):
+        self.display_all_word_descriptions()
+        likings = self.lex.super_select(
+            'SELECT '
+                'w.idn AS idn, '
+                'qool.idn AS qool_idn, '
+                'qool.num AS qool_num '
+            'FROM',
+            self.lex.table,
+            'AS w LEFT JOIN',
+            self.lex.table,
+            'AS qool ON qool.obj = w.idn AND qool.vrb =',
+            self.like,
+            'WHERE qool.idn IS NOT NULL '
+            'ORDER BY w.idn, qool.idn ASC',
+            debug=False
+            # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
+            # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
+            # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
+            # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
+        )
+        self.assertEqual([
+            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn, 'qool_num': self.anna_like_youtube.num},
+            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
+            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
+        ], likings)
 
 
     ################## obsolete or maybe someday #################################
