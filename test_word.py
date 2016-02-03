@@ -1418,12 +1418,33 @@ class WordQoolbarTests(WordTests):
 
     def test_super_select_with_none(self):
         """To concatenate two strings of literal SQL code, intersperse a None."""
-        self.assertEqual([{'txt': 'define'},], self.lex.super_select(
+        self.assertEqual([{'txt': 'define'}], self.lex.super_select(
             'SELECT txt', None, 'FROM',
             self.lex.table,
             'WHERE', None, 'idn =',
             qiki.Word._IDN_DEFINE
         ))
+
+    def test_super_select_string_concatenate_alternatives(self):
+        """Showcase of all the valid ways one might concatenate strings with super_select().
+
+        That is, strings that make up SQL.  Not the content of fields, e.g. txt."""
+        def good_super_select(*args):
+            self.assertEqual([{'txt':'define'}], self.lex.super_select(*args))
+        def bad_super_select(*args):
+            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                self.lex.super_select(*args)
+        txt = 'txt'
+
+        good_super_select('SELECT          txt          FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        good_super_select('SELECT '       'txt'       ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        good_super_select('SELECT '   +   'txt'   +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        good_super_select('SELECT', None, 'txt', None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        good_super_select('SELECT '   +    txt    +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        good_super_select('SELECT', None,  txt , None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+
+        bad_super_select( 'SELECT',       'txt',       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+        bad_super_select( 'SELECT',        txt ,       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
 
     def test_super_select_string_string(self):
         """Concatenating two literal strings is an error.
@@ -1504,6 +1525,7 @@ class WordQoolbarTests(WordTests):
 
     def test_lex_table_not_writable(self):
         with self.assertRaises(AttributeError):
+            # noinspection PyPropertyAccess
             self.lex.table = 'something'
 
     def test_wrong_word_method_infinity(self):
