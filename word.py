@@ -946,7 +946,7 @@ class LexMySQL(Lex):
                 query += '?'
                 parameters.append(query_arg.the_string)
             elif isinstance(query_arg, Lex.TableName):
-                query += query_arg
+                query += '`' + query_arg + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.TableName tests.
                 query += query_arg
             elif isinstance(query_arg, Number):
