@@ -960,8 +960,9 @@ class LexMySQL(Lex):
                 pass
             else:
                 raise self.SuperSelectTypeError(
-                    "Argument {index_one_based} type {type} is not supported.".format(
+                    "super_select() argument {index_one_based} of {n} type {type} is not supported.".format(
                         index_one_based=index_zero_based+1,
+                        n=len(query_args),
                         type=type(query_arg).__name__
                     )
                 )

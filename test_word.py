@@ -1548,7 +1548,6 @@ class WordQoolbarTests(WordTests):
             self.lex.no_such_method()
 
     def test_qool_join(self):
-        self.display_all_word_descriptions()
         likings = self.lex.super_select(
             'SELECT '
                 'w.idn AS idn, '
@@ -1573,6 +1572,22 @@ class WordQoolbarTests(WordTests):
             {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
             {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
         ], likings)
+
+    def test_super_select_list(self):
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM',
+            self.lex.table,
+            'WHERE idn IN (',
+            [
+                self.anna.idn,
+                self.bart.idn
+            ],
+            ')'
+        )
+        self.assertEqual([
+            {'txt': 'anna'},
+            {'txt': 'bart'},
+        ], anna_and_bart)
 
 
     ################## obsolete or maybe someday #################################
