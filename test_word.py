@@ -1528,6 +1528,42 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(self.zigzags.txt, word.txt)
         self.assertEqual(self.zigzags.whn, word.whn)
 
+    def test_lex_from_sbj_vrb_obj_num_txt_idns(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_sbj_vrb_obj_num_txt(
+            word,
+            self.zigzags.sbj,
+            self.zigzags.vrb,
+            self.zigzags.obj,
+            self.zigzags.num,
+            self.zigzags.txt
+        )
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
+
+    def test_lex_from_sbj_vrb_obj_num_txt_words(self):
+        word = self.lex.spawn()
+        self.lex.populate_word_from_sbj_vrb_obj_num_txt(
+            word,
+            self.lex(self.zigzags.sbj),
+            self.lex(self.zigzags.vrb),
+            self.lex(self.zigzags.obj),
+            self.zigzags.num,
+            self.zigzags.txt
+        )
+        self.assertEqual(self.zigzags.idn, word.idn)
+        self.assertEqual(self.zigzags.sbj, word.sbj)
+        self.assertEqual(self.zigzags.vrb, word.vrb)
+        self.assertEqual(self.zigzags.obj, word.obj)
+        self.assertEqual(self.zigzags.num, word.num)
+        self.assertEqual(self.zigzags.txt, word.txt)
+        self.assertEqual(self.zigzags.whn, word.whn)
+
     def test_lex_table_not_writable(self):
         with self.assertRaises(AttributeError):
             # noinspection PyPropertyAccess

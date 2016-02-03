@@ -334,7 +334,6 @@ class Word(object):
         assert isinstance(txt, self.TXT_TYPES)
         if not self.lex.populate_word_from_definition(self, txt):
             self.txt = txt
-        # # TODO:  Move to Lex
         # self._load_row(
         #     "SELECT * FROM `{table}` "
         #         "WHERE   `vrb` = ? "
@@ -363,7 +362,6 @@ class Word(object):
 
     def _from_sbj_vrb_obj(self):
         """Construct a word from its subject-verb-object."""
-        # TODO:  Move to Lex
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
@@ -387,57 +385,62 @@ class Word(object):
 
     def _from_sbj_vrb_obj_num_txt(self):
         """Construct a word from its subject-verb-object and its num and txt."""
-        # TODO:  Move to Lex
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
-        self._load_row(
-            "SELECT * FROM `{table}` "
-                "WHERE   `sbj` = ? "
-                    "AND `vrb` = ? "
-                    "AND `obj` = ? "
-                    "AND `num` = ? "
-                    "AND `txt` = ? "
-                "ORDER BY `idn` DESC "
-                "LIMIT 1"
-            .format(
-                table=self.lex._table,
-            ),
-            (
-                self.sbj.raw,
-                self.vrb.raw,
-                self.obj.raw,
-                self.num.raw,
-                self.txt,
-            )
+        self.lex.populate_word_from_sbj_vrb_obj_num_txt(
+            self,
+            self.sbj,
+            self.vrb,
+            self.obj,
+            self.num,
+            self.txt
         )
+        # self._load_row(
+        #     "SELECT * FROM `{table}` "
+        #         "WHERE   `sbj` = ? "
+        #             "AND `vrb` = ? "
+        #             "AND `obj` = ? "
+        #             "AND `num` = ? "
+        #             "AND `txt` = ? "
+        #         "ORDER BY `idn` DESC "
+        #         "LIMIT 1"
+        #     .format(
+        #         table=self.lex._table,
+        #     ),
+        #     (
+        #         self.sbj.raw,
+        #         self.vrb.raw,
+        #         self.obj.raw,
+        #         self.num.raw,
+        #         self.txt,
+        #     )
+        # )
 
-    def _load_row(self, sql, parameters):
-        """Flesh out a word object from a single row of the word table.
-
-        Same parameters as cursor.execute,
-        namely a MySQL string and a tuple of ?-value parameters.
-        """
-        # TODO:  Move to Lex.  Along with every function that calls it.
-        # TODO:  Belay that, actually all calls to _load_row() should be recast to use Lex.find()
-        cursor = self.lex._connection.cursor(prepared=True)
-        cursor.execute(sql, parameters)
-        tuple_row = cursor.fetchone()
-        assert cursor.fetchone() is None
-        if tuple_row is not None:
-            dict_row = dict(zip(cursor.column_names, tuple_row))
-            self._idn = Number.from_mysql(dict_row['idn'])
-            # self.sbj = self.lex.sbj_from_mysql(dict_row['sbj'])
-            self.sbj = Number.from_mysql(dict_row['sbj'])
-            self.vrb = Number.from_mysql(dict_row['vrb'])
-            self.obj = Number.from_mysql(dict_row['obj'])
-            self.num = Number.from_mysql(dict_row['num'])
-            self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
-            self.whn = Number.from_mysql(dict_row['whn'])
-            self.exists = True
-        cursor.close()
+    # def _load_row(self, sql, parameters):
+    #     """Flesh out a word object from a single row of the word table.
+    #
+    #     Same parameters as cursor.execute,
+    #     namely a MySQL string and a tuple of ?-value parameters.
+    #     """
+    #     cursor = self.lex._connection.cursor(prepared=True)
+    #     cursor.execute(sql, parameters)
+    #     tuple_row = cursor.fetchone()
+    #     assert cursor.fetchone() is None
+    #     if tuple_row is not None:
+    #         dict_row = dict(zip(cursor.column_names, tuple_row))
+    #         self._idn = Number.from_mysql(dict_row['idn'])
+    #         # self.sbj = self.lex.sbj_from_mysql(dict_row['sbj'])
+    #         self.sbj = Number.from_mysql(dict_row['sbj'])
+    #         self.vrb = Number.from_mysql(dict_row['vrb'])
+    #         self.obj = Number.from_mysql(dict_row['obj'])
+    #         self.num = Number.from_mysql(dict_row['num'])
+    #         self.txt = six.text_type(dict_row['txt'].decode('utf-8'))
+    #         self.whn = Number.from_mysql(dict_row['whn'])
+    #         self.exists = True
+    #     cursor.close()
 
     def populate_from_row(self, row):
         self._idn = row['idn']
@@ -930,6 +933,25 @@ class LexMySQL(Lex):
             vrb,
             "AND obj =",
             obj,
+            "ORDER BY `idn` DESC LIMIT 1"
+        )
+        return self.populate_from_one_row(word, one_row)
+
+
+    def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
+        one_row = self.super_select(
+            "SELECT * FROM",
+            self.table,
+            "WHERE sbj =",
+            sbj,
+            "AND vrb =",
+            vrb,
+            "AND obj =",
+            obj,
+            "AND num =",
+            num,
+            "AND txt =",
+            Text(txt),
             "ORDER BY `idn` DESC LIMIT 1"
         )
         return self.populate_from_one_row(word, one_row)
