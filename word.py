@@ -956,6 +956,9 @@ class LexMySQL(Lex):
             elif isinstance(query_arg, Word):
                 query += '?'
                 parameters.append(query_arg.idn.raw)
+            elif isinstance(query_arg, (list, tuple)):
+                query += ','.join(['?']*len(query_arg))
+                parameters += [idn_from_word_or_number(x).raw for x in query_arg]
             elif query_arg is None:
                 pass
             else:
@@ -980,6 +983,7 @@ class LexMySQL(Lex):
                 if field is None:
                     value = None
                 elif name == 'txt':
+                    # TODO:  If name ends in 'txt'?
                     value = six.text_type(field.decode('utf-8'))
                 else:
                     value = Number.from_mysql(field)

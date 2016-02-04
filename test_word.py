@@ -1309,15 +1309,15 @@ class WordQoolbarTests(WordTests):
 
     def setUp(self):
         super(WordQoolbarTests, self).setUp()
-        self.qool = self.lex.verb('qool')
-        self.like = self.lex.verb('like')
-        self.delete = self.lex.verb('delete')
+        self.qool = self.lex.verb(u'qool')
+        self.like = self.lex.verb(u'like')
+        self.delete = self.lex.verb(u'delete')
         self.lex.qool(self.like, qiki.Number(1))
         self.lex.qool(self.delete, qiki.Number(1))
-        self.anna = self.lex.agent('anna')
-        self.bart = self.lex.agent('bart')
-        self.youtube = self.lex.noun('youtube')
-        self.zigzags = self.lex.noun('zigzags')
+        self.anna = self.lex.agent(u'anna')
+        self.bart = self.lex.agent(u'bart')
+        self.youtube = self.lex.noun(u'youtube')
+        self.zigzags = self.lex.noun(u'zigzags')
 
         self.anna_like_youtube = self.anna.like(self.youtube, 1)
         self.bart_like_youtube = self.bart.like(self.youtube, 10)
@@ -1356,7 +1356,7 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[1].num, qiki.Number(1))
 
     def test_super_select_idn(self):
-        self.assertEqual([{'txt': 'define'},], self.lex.super_select(
+        self.assertEqual([{'txt': u'define'},], self.lex.super_select(
             'SELECT txt FROM',
             self.lex.table,
             'WHERE idn =',
@@ -1364,8 +1364,8 @@ class WordQoolbarTests(WordTests):
         ))
 
     def test_super_select_word(self):
-        define_word = self.lex('define')
-        self.assertEqual([{'txt': 'define'},], self.lex.super_select(
+        define_word = self.lex(u'define')
+        self.assertEqual([{'txt': u'define'},], self.lex.super_select(
             'SELECT txt FROM',
             self.lex.table,
             'WHERE idn =',
@@ -1382,7 +1382,7 @@ class WordQoolbarTests(WordTests):
 
     def test_super_select_with_none(self):
         """To concatenate two strings of literal SQL code, intersperse a None."""
-        self.assertEqual([{'txt': 'define'}], self.lex.super_select(
+        self.assertEqual([{'txt': u'define'}], self.lex.super_select(
             'SELECT txt', None, 'FROM',
             self.lex.table,
             'WHERE', None, 'idn =',
@@ -1394,7 +1394,7 @@ class WordQoolbarTests(WordTests):
 
         That is, strings that make up SQL.  Not the content of fields, e.g. txt."""
         def good_super_select(*args):
-            self.assertEqual([{'txt':'define'}], self.lex.super_select(*args))
+            self.assertEqual([{'txt':u'define'}], self.lex.super_select(*args))
         def bad_super_select(*args):
             with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
                 self.lex.super_select(*args)
@@ -1424,7 +1424,7 @@ class WordQoolbarTests(WordTests):
             self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define')
         with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
             self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define')
-        self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text('define'))
+        self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text(u'define'))
 
     def test_super_select_null(self):
         self.assertEqual([{'x': None}], self.lex.super_select('SELECT NULL as x'))
@@ -1533,7 +1533,7 @@ class WordQoolbarTests(WordTests):
             self.lex.table = 'something'
 
     def test_wrong_word_method_infinity(self):
-        word = self.lex('noun')
+        word = self.lex(u'noun')
         with self.assertRaises(qiki.Word.NoSuchAttribute):
             # noinspection PyStatementEffect
             word.no_such_attribute
@@ -1553,13 +1553,10 @@ class WordQoolbarTests(WordTests):
                 'w.idn AS idn, '
                 'qool.idn AS qool_idn, '
                 'qool.num AS qool_num '
-            'FROM',
-            self.lex.table,
-            'AS w LEFT JOIN',
-            self.lex.table,
-            'AS qool ON qool.obj = w.idn AND qool.vrb =',
-            self.like,
-            'WHERE qool.idn IS NOT NULL '
+            'FROM', self.lex.table, 'AS w '
+            'JOIN', self.lex.table, 'AS qool '
+                'ON qool.obj = w.idn '
+                    'AND qool.vrb =', self.like,
             'ORDER BY w.idn, qool.idn ASC',
             debug=False
             # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
@@ -1573,20 +1570,69 @@ class WordQoolbarTests(WordTests):
             {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
         ], likings)
 
-    def test_super_select_list(self):
+    def test_super_select_idn_list(self):
         anna_and_bart = self.lex.super_select(
-            'SELECT txt FROM',
-            self.lex.table,
-            'WHERE idn IN (',
-            [
+            'SELECT txt FROM', self.lex.table,
+            'WHERE idn IN (', [
                 self.anna.idn,
                 self.bart.idn
-            ],
-            ')'
+            ], ')'
         )
         self.assertEqual([
-            {'txt': 'anna'},
-            {'txt': 'bart'},
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_word_list(self):
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM', self.lex.table,
+            'WHERE idn IN (', [
+                self.anna,
+                self.bart
+            ], ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_idn_tuple(self):
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM',self.lex.table,
+            'WHERE idn IN (', (
+                self.anna.idn,
+                self.bart.idn
+            ), ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_word_tuple(self):
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM', self.lex.table,
+            'WHERE idn IN (', (
+                self.anna,
+                self.bart
+            ), ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_mixed_tuple(self):
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM', self.lex.table,
+            'WHERE idn IN (', (
+                self.anna,
+                self.bart.idn
+            ), ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
         ], anna_and_bart)
 
 
