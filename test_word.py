@@ -1547,29 +1547,6 @@ class WordQoolbarTests(WordTests):
         with self.assertRaises(qiki.Word.NoSuchAttribute):
             self.lex.no_such_method()
 
-    def test_qool_join(self):
-        likings = self.lex.super_select(
-            'SELECT '
-                'w.idn AS idn, '
-                'qool.idn AS qool_idn, '
-                'qool.num AS qool_num '
-            'FROM', self.lex.table, 'AS w '
-            'JOIN', self.lex.table, 'AS qool '
-                'ON qool.obj = w.idn '
-                    'AND qool.vrb =', self.like,
-            'ORDER BY w.idn, qool.idn ASC',
-            debug=False
-            # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
-            # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
-            # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
-            # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
-        )
-        self.assertEqual([
-            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn, 'qool_num': self.anna_like_youtube.num},
-            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
-            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
-        ], likings)
-
     def test_super_select_idn_list(self):
         anna_and_bart = self.lex.super_select(
             'SELECT txt FROM', self.lex.table,
@@ -1634,6 +1611,49 @@ class WordQoolbarTests(WordTests):
             {'txt': u'anna'},
             {'txt': u'bart'},
         ], anna_and_bart)
+
+    def test_super_select_join(self):
+        likings = self.lex.super_select(
+            'SELECT '
+                'w.idn AS idn, '
+                'qool.idn AS qool_idn, '
+                'qool.num AS qool_num '
+            'FROM', self.lex.table, 'AS w '
+            'JOIN', self.lex.table, 'AS qool '
+                'ON qool.obj = w.idn '
+                    'AND qool.vrb =', self.like,
+            'ORDER BY w.idn, qool.idn ASC',
+            debug=False
+            # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
+            # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
+            # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
+            # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
+        )
+        self.assertEqual([
+            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn, 'qool_num': self.anna_like_youtube.num},
+            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
+            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
+        ], likings)
+
+    def test_super_select_qool_join(self):
+        likings = self.lex.super_select(
+            'SELECT '
+                'w.idn AS idn, '
+                'qool.idn AS qool_idn, '
+                'qool.num AS qool_num '
+            'FROM', self.lex.table, 'AS w '
+            'JOIN', self.lex.table, 'AS qool '
+                'ON qool.obj = w.idn '
+                    'AND qool.vrb IN (', self.qool_idns, ') '
+            'ORDER BY w.idn, qool.idn ASC',
+            debug=False
+        )
+        self.assertEqual([
+            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn,   'qool_num': self.anna_like_youtube.num},
+            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn,   'qool_num': self.bart_like_youtube.num},
+            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn,   'qool_num': self.anna_like_zigzags.num},
+            {'idn': self.zigzags.idn, 'qool_idn': self.bart_delete_zigzags.idn, 'qool_num': self.bart_delete_zigzags.num},
+        ], likings)
 
 
     ################## obsolete or maybe someday #################################
