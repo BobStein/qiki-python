@@ -723,31 +723,39 @@ class LexMySQL(Lex):
 
         At least that's how they'd be defined if forward references were not a problem.
         """
-        self._seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')
-        self._seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')
-        self._seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')
-        self._seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')
-        self._seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')
+        def seminal_word(_idn, _obj, _txt):
+            """Subject is always 'lex'.  Verb is always 'define'."""
+            try:
+                word = self.spawn(_idn)
+            except Word.MissingFromLex:
+                self._install_word(_idn, _obj, _txt)
+                word = self.spawn(_idn)
+            assert word.exists
+                                                                    # forward, reflexive references
+        seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
+        seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
+        seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
+        seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
+        seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 0,1    0,-4,-1
+                                                                    #-----
+                                                                    # 5,3
+        return
+        # noinspection PyUnreachableCode
+        # TODO:  If lex were moved to the first idn:
+                                                                    # forward, reflexive references
+        seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 2,1    0,+1,+4
+        seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 1,1   -1, 0,+2
+        seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
+        seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
+        seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
+                                                                    #-----
+                                                                    # 3,3
 
 
         if not self.exists:
             self._from_idn(self._IDN_LEX)
         assert self.exists
         assert self.is_lex()
-
-    def _seminal_word(self, _idn, _obj, _txt):
-        """Insert important, fundamental word into the table, if it's not already there.
-
-        Subject is always 'lex'.  Verb is always 'define'."""
-        try:
-            word = self.spawn(_idn)
-        except Word.MissingFromLex:
-            self._install_word(_idn, _obj, _txt)
-            word = self.spawn(_idn)
-        # if not word.exists:   # TODO:  is this really necessary any longer?
-        #     self._install_word(_idn, _obj, _txt)
-        #     word = self.spawn(_idn)
-        assert word.exists
 
     def _install_word(self, _idn, _obj, _txt):
         word = self.spawn(
