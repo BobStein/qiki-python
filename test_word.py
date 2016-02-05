@@ -4,10 +4,12 @@ Testing qiki word.py
 """
 
 from __future__ import print_function
-import unittest
+import operator
 import six
 import sys
 import time
+import unicodedata
+import unittest
 import uuid
 import warnings
 
@@ -63,9 +65,26 @@ class WordTests(unittest.TestCase):
         self.lex.disconnect()
 
     def display_all_word_descriptions(self):
+        histogram = {}
+        def count(i):
+            try:
+                histogram[i] += 1
+            except KeyError:
+                histogram[i] = 1
+
         words = self.lex.find_words()
         for word in words:
+            count(word.sbj)
+            count(word.vrb)
+            count(word.obj)
             print(int(word.idn), word.description())
+
+        histogram_high_to_low = sorted(histogram.items(), key=operator.itemgetter(1), reverse=True)
+        # THANKS:  Sorting a dictionary by value, http://stackoverflow.com/a/2258273/673991
+
+        print()
+        for idn, quantity in histogram_high_to_low:
+            print(quantity, unicodedata.lookup('dot operator'), repr(self.lex(idn)))
 
     def show_txt_in_utf8(self, idn):
         word = self.lex(idn)
@@ -124,8 +143,35 @@ class WordTests(unittest.TestCase):
         return self.assertNewWords(1, message)
 
 
+class WordDemoTests(WordTests):
+
+    # noinspection PyUnusedLocal
+    def test_syntaxes(self):
+        lex = self.lex
+        s = lex.define('agent', 's')
+        _ = lex.define('verb', 'v')
+        o = self.lex.define('noun', 'o')
+        t = u'some text'
+        n = qiki.Number(42)
+
+        # Setters
+        s.v(o, n)
+        s.v(o, n, t)
+        s.define(o, t)
+        s.define(o, t, n)
+
+        # Getters
+        w = s.v(o)
+
+        # Setter if it does not exist already, Getter if it does
+        w = s.v(o, n, use_already=True)
+        w = s.v(o, n, t, use_already=True)
+
+        self.display_all_word_descriptions()
+
+
 class InternalTestWordTests(WordTests):
-    """Test WordTests class itself."""
+    """Test the WordTests class itself."""
 
     def test_assertNoNewWords(self):
         with self.assertNoNewWords():
@@ -428,6 +474,30 @@ class WordFirstTests(WordTests):
             # and something else isn't happening?  This example is at best a highly
             # corrupted form of o(t), aka lex.define(o,t).
 
+    def test_13_text(self):
+        """Verify txt follows Postel's Law -- liberal in, conservative out.
+
+        Liberal in:  str, unicode, bytestring, Text
+        Conservative out:  str"""
+        def works_as_txt(txt):
+            word = self.lex('noun', txt)
+            self.assertIs(six.text_type, type(word.txt))
+
+            word = self.lex.define('noun', txt)
+            self.assertIs(six.text_type, type(word.txt))
+
+            self.lex.define('verb', 'verbalize')
+            word = self.lex.verbalize(self.lex, 1, txt)
+            self.assertIs(six.text_type, type(word.txt))
+
+        works_as_txt('apple')
+        works_as_txt(b'apple')
+        works_as_txt(u'apple')
+        works_as_txt(u'apple'.encode('utf8'))
+        works_as_txt(qiki.Text('apple'))
+        works_as_txt(qiki.Text(b'apple'))
+        works_as_txt(qiki.Text(u'apple'))
+        works_as_txt(qiki.Text(u'apple'.encode('utf8')))
 
 
 class WordUnicode(WordTests):
@@ -1635,7 +1705,7 @@ class WordQoolbarTests(WordTests):
             {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
         ], likings)
 
-    def test_super_select_qool_join(self):
+    def test_super_select_join_qool_list(self):
         likings = self.lex.super_select(
             'SELECT '
                 'w.idn AS idn, '

@@ -73,7 +73,9 @@ class Word(object):
             self.vrb = vrb
             self.obj = obj
             self.num = num
-            if isinstance(txt, (six.text_type, type(None))):
+            if isinstance(txt, Text):
+                self.txt = txt.the_string
+            elif isinstance(txt, (six.text_type, type(None))):
                 self.txt = txt
             else:
                 self.txt = six.text_type(txt.decode('utf-8'))
@@ -95,7 +97,7 @@ class Word(object):
 
     _IDN_MAX_FIXED = Number(5)
 
-    TXT_TYPES = (six.string_types, six.binary_type)
+
 
     class NoSuchAttribute(AttributeError):
         pass
@@ -883,9 +885,19 @@ class LexMySQL(Lex):
         idns = self.find_idns(sbj,vrb,obj, sql)
         return self. words_from_idns(idns)
         # TODO:  More efficient to do one SELECT-* than one SELECT-* plus a buncha SELECT-idns
+        # In fact, this whole chain is suspect:  find_words -> find_idns -> super_select
+        # Should there be just one routine to rule them all?
+        # Internally there can be a chain but shouldn't everyone call one?  Lex.find
+        # Much as I like super_select() it's so darn Lex-specific.
+        # So, groan, I'm inventing an abstraction.
+        # In this implementation it's above MySQL.
+        # This will happen incrementally.  The sql argument should go away.
+        # But what might it look like?
+        # find(jbo_vrb=qool_verbs) means for each word you find:
+        # join words whose obj (jbo backwards) links to me, and the vrb is qool.
 
     def find_idns(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
-        """Select words by subject, verb, and/or object.
+        """Select word identifiers by subject, verb, and/or object.
 
         Return list of idns."""
         query_args = ['SELECT idn FROM', self.table, 'WHERE TRUE', None]
@@ -906,6 +918,7 @@ class LexMySQL(Lex):
                     query_args += [',', v]
                 query_args += [')', None]
         if obj is not None:
+            # TODO:  obj could be a list.  Would help e.g. find qool verb icons.
             query_args += ['AND obj=', idn_from_word_or_number(obj)]
         query_args += [sql]
         rows_of_idns = self.super_select(*query_args)
@@ -919,7 +932,9 @@ class LexMySQL(Lex):
         pass
 
     def super_select(self, *query_args, **kwargs):
-        # TODO:  Recursive lists in query_args?
+        # TODO:  Recursive query_args?
+        # So super_select(*args) === super_select(args) === super_select([args]) etc.
+        # Say, then this could work, super_select('SELECT *', ['FROM table'])
         debug = kwargs.pop('debug', False)
         query = ""
         parameters = []
@@ -935,7 +950,7 @@ class LexMySQL(Lex):
                     "Pass string fields through qiki.Text().  " +
                     "Or make a class to encapsulate "
                 )
-                # TODO:  Complete report of all the query_args types
+                # TODO:  Report all the query_args types in this error message.
                 # TODO:  Or maybe this can all just go away...
                 # Main purpose was to detect mistakes like this:
                 #     super_select('SELECT * in word WHERE txt=', 'define')
@@ -1027,8 +1042,6 @@ class LexMySQL(Lex):
         return self.TableName(self._table)
 
 
-
-
 def idn_from_word_or_number(x):
     if isinstance(x, Word):
         return x.idn
@@ -1040,7 +1053,6 @@ def idn_from_word_or_number(x):
         ))
 
 
-
 class Text(object):
     """The only use of qiki.Text() so far is for identifying txt field values to Lex.super_select()."""
     # This can't simply derive from six.text_type
@@ -1049,10 +1061,25 @@ class Text(object):
     # That's right, a doubly-encoded string!  Just like repr()
 
     def __init__(self, the_string):
-        """Accept either Unicode or UTF-8-encoded string in either Python 2 or 3.
+        """Accept either Unicode or UTF-8-encoded bytes in either Python 2 or 3.
 
-        Actually it's the MySQL Connector that encapsulates both these flexibilities."""
-        self.the_string = the_string
+        Actually it's the MySQL Connector and the Word constructor
+        that encapsulate these flexibilities."""
+        # TODO:  Internal the_string should always be UTF-8 six.binary_type?
+        # Or Unicode text_type?
+        # Or native str??
+        if isinstance(the_string, Text):
+            self.the_string = the_string.the_string
+        else:
+            self.the_string = the_string
+
+    def decode(self, character_set):
+        # Wrong if it's Unicode, right if it's UTF-8?
+        return self.the_string.decode(character_set)
+
+    # TODO:  .unicode() and .utf8() methods?
+
+Word.TXT_TYPES = (six.string_types, six.binary_type, Text)   # Unicode or UTF-8
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
@@ -1104,3 +1131,13 @@ class Text(object):
 # the idn would be suffixed.
 # class Word(object); class WordInMySQL(Word); class WordQiki(WordInMySQL); class WordDjango(Word);
 # Duh, Lex already IS kinda the metaclass for Word.
+
+# TODO:  define
+# Rename:  is, meta, make, be
+# num
+        # could mean 1=meta, 0=identical.  No because identical should itself have shades of gray.
+        # could mean 1=reflexive, 0=not.  The way noun is a noun but verb is not a verb.
+        # could inform the is_a() hierarchy bubbling
+
+# TODO:  word.jbo refers to the set of words whose object is word.  Similarly word.jbs.
+# word.brv?  The set of definitions supporting this verb??
