@@ -525,31 +525,30 @@ class WordFirstTests(WordTests):
         example(        u'\U0001D351noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
         example(  b'\xF0\x9D\x8D\x91noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
 
-    if False:
-        def test_14a_word_text(self):
-            """Verify txt follows Postel's Law -- liberal in, conservative out.
+    def test_14a_word_text(self):
+        """Verify txt follows Postel's Law -- liberal in, conservative out.
 
-            Liberal in:  str, unicode, bytes, Text
-            Conservative out:  str"""
-            def works_as_txt(txt):
-                word = self.lex('noun', txt)
-                self.assertIs(six.text_type, type(word.txt))
+        Liberal in:  str, unicode, bytes, Text
+        Conservative out:  str"""
+        def works_as_txt(txt):
+            word = self.lex('noun', txt)
+            self.assertIs(str, type(word.txt))
 
-                word = self.lex.define('noun', txt)
-                self.assertIs(six.text_type, type(word.txt))
+            word = self.lex.define('noun', txt)
+            self.assertIs(str, type(word.txt))
 
-                self.lex.define('verb', 'verbalize')
-                word = self.lex.verbalize(self.lex, 1, txt)
-                self.assertIs(six.text_type, type(word.txt))
+            self.lex.define('verb', 'verbalize')
+            word = self.lex.verbalize(self.lex, 1, txt)
+            self.assertIs(str, type(word.txt))
 
-            works_as_txt('apple')
-            works_as_txt(b'apple')
-            works_as_txt(u'apple')
-            works_as_txt(u'apple'.encode('utf8'))
-            works_as_txt(qiki.Text('apple'))
-            works_as_txt(qiki.Text(b'apple'))
-            works_as_txt(qiki.Text(u'apple'))
-            works_as_txt(qiki.Text(u'apple'.encode('utf8')))
+        works_as_txt('apple')
+        works_as_txt(b'apple')
+        works_as_txt(u'apple')
+        works_as_txt(u'apple'.encode('utf8'))
+        works_as_txt(qiki.Text('apple'))
+        works_as_txt(qiki.Text(b'apple'))
+        works_as_txt(qiki.Text(u'apple'))
+        works_as_txt(qiki.Text(u'apple'.encode('utf8')))
 
 
 class WordUnicode(WordTests):
