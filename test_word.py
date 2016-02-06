@@ -528,8 +528,8 @@ class WordFirstTests(WordTests):
     def test_14a_word_text(self):
         """Verify txt follows Postel's Law -- liberal in, conservative out.
 
-        Liberal in:  str, unicode, bytes, Text
-        Conservative out:  str"""
+        Liberal in:  str, unicode, bytes, bytearray, Text and Python 2 or 3
+        Conservative out:  str, which is unicode in Python 3, UTF-8 in Python 2."""
         s = self.lex.noun('s')
         _ = self.lex.verb('v')
         o = self.lex.noun('o')

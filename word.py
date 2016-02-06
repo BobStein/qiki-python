@@ -966,7 +966,7 @@ class LexMySQL(Lex):
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(query_arg.the_string)
+                parameters.append(query_arg.utf8())
             elif isinstance(query_arg, Lex.TableName):
                 query += '`' + query_arg + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.TableName tests.
@@ -1078,22 +1078,22 @@ class Text(object):
         str(t)
 
     """
-
+    # TODO:  Painless Unicode, http://stackoverflow.com/a/3933973/673991
+    # Maybe subclassing six.text_type is the way to go.
+    # So it would be a unicode string that (unlike Python 3 str)
+    # assumed utf8 encoding if the input is six.binary_type
+    # SEE:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
     def __init__(self, the_string):
-        """Accept"""
-        # TODO:  Internal the_string should always be UTF-8 six.binary_type?
-        # Or Unicode text_type?
-        # Or native str??
         if isinstance(the_string, Text):
-            self.the_string = the_string.the_string
+            self._the_string_in_utf8 = the_string._the_string_in_utf8
         elif isinstance(the_string, six.text_type):
-            self.the_string = the_string.encode('utf-8')
+            self._the_string_in_utf8 = the_string.encode('utf-8')
         else:
-            self.the_string = the_string
+            self._the_string_in_utf8 = six.binary_type(the_string)
 
     def __str__(self):
         if six.PY2:
-            return str(self.utf8())
+            return self.utf8()
         if six.PY3:
             return self.unicode()
 
@@ -1101,10 +1101,10 @@ class Text(object):
         return self.unicode()
 
     def unicode(self):
-        return self.the_string.decode('utf-8')
+        return self._the_string_in_utf8.decode('utf-8')
 
     def utf8(self):
-        return self.the_string
+        return self._the_string_in_utf8
 
 
 Word.TXT_TYPES = (six.string_types, six.binary_type, Text)   # Unicode or UTF-8
