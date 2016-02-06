@@ -530,16 +530,21 @@ class WordFirstTests(WordTests):
 
         Liberal in:  str, unicode, bytes, Text
         Conservative out:  str"""
+        s = self.lex.noun('s')
+        _ = self.lex.verb('v')
+        o = self.lex.noun('o')
         def works_as_txt(txt):
-            word = self.lex('noun', txt)
+            word = o(txt)
             self.assertIs(str, type(word.txt))
+            self.assertTripleEqual('apple', word.txt)
 
-            word = self.lex.define('noun', txt)
+            word = s.define(o, txt)
             self.assertIs(str, type(word.txt))
+            self.assertTripleEqual('apple', word.txt)
 
-            self.lex.define('verb', 'verbalize')
-            word = self.lex.verbalize(self.lex, 1, txt)
+            word = s.v(o, 1, txt)
             self.assertIs(str, type(word.txt))
+            self.assertTripleEqual('apple', word.txt)
 
         works_as_txt('apple')
         works_as_txt(b'apple')
