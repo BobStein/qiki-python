@@ -89,6 +89,7 @@ class WordTests(unittest.TestCase):
     def show_txt_in_utf8(self, idn):
         word = self.lex(idn)
         utf8 = word.txt.encode('utf-8')
+        # FIXME:  This will double encode in Python 2
         hexadecimal = hex_from_string(utf8)
         print("\"{txt}\" in utf8 is {hex}".format(
             txt=word.txt.encode('unicode_escape'),   # Python 3 doubles up the backslashes ... shrug.
@@ -660,6 +661,7 @@ class WordUnicodeTxt(WordUnicode):
                 self.show_txt_in_utf8(self.lex.max_idn())
 
 
+# noinspection SpellCheckingInspection
 class WordUnicodeVerb(WordUnicode):
     """Unicode characters in verb names."""
 
@@ -704,7 +706,6 @@ class WordUnicodeVerb(WordUnicode):
         self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
         self.assertTrue(self.lex(u'comentó'.encode('utf-8')).is_a_verb())
 
-    # noinspection SpellCheckingInspection
     def test_unicode_m_verb_utf8_encourage(self):
         sentence1 = self.lex.define(self.comment, u"enc☺urage".encode('utf-8'))
         sentence2 = self.lex(sentence1.idn)
@@ -717,7 +718,6 @@ class WordUnicodeVerb(WordUnicode):
         self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).exists)
         self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).is_a_verb())
 
-    # noinspection SpellCheckingInspection
     def test_unicode_n_verb_unicode_encourage(self):
         sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex(sentence1.idn)
@@ -731,7 +731,6 @@ class WordUnicodeVerb(WordUnicode):
 
     if TEST_ASTRAL_PLANE:
 
-        # noinspection SpellCheckingInspection
         def test_unicode_o_verb_utf8_alien_face(self):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate".encode('utf-8'))
             sentence2 = self.lex(sentence1.idn)
@@ -743,7 +742,6 @@ class WordUnicodeVerb(WordUnicode):
             self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).exists)
             self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).is_a_verb())
 
-        # noinspection SpellCheckingInspection
         def test_unicode_o_verb_unicode_alien_face(self):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
             sentence2 = self.lex(sentence1.idn)
