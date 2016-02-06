@@ -142,6 +142,18 @@ class WordTests(unittest.TestCase):
     def assertNewWord(self, message=None):
         return self.assertNewWords(1, message)
 
+    def assertTripleEqual(self, first, second):
+        self.assertEqual(first, second)
+        self.assertIs(type(first), type(second))
+
+    def assertEqualPY2PY3(self, first_for_python_2, first_for_python_3, second):
+        assert type(first_for_python_2) is six.binary_type
+        assert type(first_for_python_3) is six.text_type
+        if six.PY2:
+            self.assertEqual(first_for_python_2, second)
+        if six.PY3:
+            self.assertEqual(first_for_python_3, second)
+
 
 class WordDemoTests(WordTests):
 
@@ -208,6 +220,8 @@ class InternalTestWordTests(WordTests):
         self.lex(qiki.Word._IDN_DEFINE)
         with self.assertRaises(qiki.Word.MissingFromLex):
             self.lex(qiki.Number(-42))
+
+    # TODO:  def test_assert_triple_equal(self): ...
 
 
 class WordFirstTests(WordTests):
@@ -474,30 +488,68 @@ class WordFirstTests(WordTests):
             # and something else isn't happening?  This example is at best a highly
             # corrupted form of o(t), aka lex.define(o,t).
 
-    def test_13_text(self):
-        """Verify txt follows Postel's Law -- liberal in, conservative out.
+    def test_13a_text(self):
+        txt = qiki.Text('simple letters')
+        self.assertEqual('simple letters', str(txt))
+        self.assertEqual(b'simple letters', txt.utf8())
+        self.assertIs(str, type(str(txt)))
+        self.assertIs(six.binary_type, type(txt.utf8()))
 
-        Liberal in:  str, unicode, bytestring, Text
-        Conservative out:  str"""
-        def works_as_txt(txt):
-            word = self.lex('noun', txt)
-            self.assertIs(six.text_type, type(word.txt))
+    # noinspection SpellCheckingInspection
+    def test_13b_text_postel(self):
+        def example(the_input, _unicode, _utf8):
+            txt = qiki.Text(the_input)
+            self.assertTripleEqual(_unicode, six.text_type(txt))
+            self.assertTripleEqual(_utf8, txt.utf8())
 
-            word = self.lex.define('noun', txt)
-            self.assertIs(six.text_type, type(word.txt))
+        example( 'ascii', u'ascii', b'ascii')
+        example(u'ascii', u'ascii', b'ascii')
+        example(b'ascii', u'ascii', b'ascii')
 
-            self.lex.define('verb', 'verbalize')
-            word = self.lex.verbalize(self.lex, 1, txt)
-            self.assertIs(six.text_type, type(word.txt))
+        example(unicodedata.lookup('latin small letter a with ring above') +
+                          u'ring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(          'åring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(         u'åring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(u'\U000000E5ring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(  b'\xC3\xA5ring', u'\U000000E5ring', b'\xC3\xA5ring')
 
-        works_as_txt('apple')
-        works_as_txt(b'apple')
-        works_as_txt(u'apple')
-        works_as_txt(u'apple'.encode('utf8'))
-        works_as_txt(qiki.Text('apple'))
-        works_as_txt(qiki.Text(b'apple'))
-        works_as_txt(qiki.Text(u'apple'))
-        works_as_txt(qiki.Text(u'apple'.encode('utf8')))
+        example(unicodedata.lookup('greek small letter mu') +
+                          u'icro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(          'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(         u'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(u'\U000003BCicro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(  b'\xCE\xBCicro', u'\U000003BCicro', b'\xCE\xBCicro')
+
+        example(unicodedata.lookup('tetragram for aggravation') +
+                                  u'noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
+        example(        u'\U0001D351noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
+        example(  b'\xF0\x9D\x8D\x91noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
+
+    if False:
+        def test_14a_word_text(self):
+            """Verify txt follows Postel's Law -- liberal in, conservative out.
+
+            Liberal in:  str, unicode, bytes, Text
+            Conservative out:  str"""
+            def works_as_txt(txt):
+                word = self.lex('noun', txt)
+                self.assertIs(six.text_type, type(word.txt))
+
+                word = self.lex.define('noun', txt)
+                self.assertIs(six.text_type, type(word.txt))
+
+                self.lex.define('verb', 'verbalize')
+                word = self.lex.verbalize(self.lex, 1, txt)
+                self.assertIs(six.text_type, type(word.txt))
+
+            works_as_txt('apple')
+            works_as_txt(b'apple')
+            works_as_txt(u'apple')
+            works_as_txt(u'apple'.encode('utf8'))
+            works_as_txt(qiki.Text('apple'))
+            works_as_txt(qiki.Text(b'apple'))
+            works_as_txt(qiki.Text(u'apple'))
+            works_as_txt(qiki.Text(u'apple'.encode('utf8')))
 
 
 class WordUnicode(WordTests):
@@ -523,7 +575,7 @@ class WordUnicodeTxt(WordUnicode):
         if six.PY3:
             assert u"ascii" != b"ascii"
             assert u"ascii" != u"ascii".encode('utf-8')
-        self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, b"ascii").idn).txt)
+        self.assertEqual("ascii", self.lex(self.anna.comment(self.zarf, 1, b"ascii").idn).txt)
 
     def test_unicode_b_unicode_ascii(self):
         self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, u"ascii").idn).txt)
@@ -537,11 +589,19 @@ class WordUnicodeTxt(WordUnicode):
             assert u"mañana" != u"ma\xF1ana".encode('utf-8')
             assert b"ma\xc3\xb1ana" == u"ma\xF1ana".encode('utf-8')
         comment = self.anna.comment(self.zarf, 1, u"mañana".encode('utf-8'))
-        self.assertEqual(u"ma\xF1ana", self.lex(comment.idn).txt)
+        self.assertEqualPY2PY3(
+            b"ma\xc3\xb1ana",
+            u"ma\u00F1ana",
+            self.lex(comment.idn).txt
+        )
 
     def test_unicode_d_unicode_spanish(self):
         comment = self.anna.comment(self.zarf, 1, u"mañana")
-        self.assertEqual(u"ma\xF1ana", self.lex(comment.idn).txt)
+        self.assertEqualPY2PY3(
+            b"ma\xc3\xb1ana",
+            u"ma\u00F1ana",
+            self.lex(comment.idn).txt
+        )
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
@@ -552,11 +612,19 @@ class WordUnicodeTxt(WordUnicode):
             assert u"☮ on earth" != u"\u262E on earth".encode('utf-8')
             assert b"\xe2\x98\xae on earth" == u"\u262E on earth".encode('utf-8')
         comment = self.anna.comment(self.zarf, 1, u"☮ on earth".encode('utf-8'))
-        self.assertEqual(u"\u262E on earth", self.lex(comment.idn).txt)
+        self.assertEqualPY2PY3(
+            b"\xe2\x98\xae on earth",
+            u"\u262E on earth",
+            self.lex(comment.idn).txt
+        )
 
     def test_unicode_f_unicode_peace(self):
         comment = self.anna.comment(self.zarf, 1, u"☮ on earth")
-        self.assertEqual(u"\u262E on earth", self.lex(comment.idn).txt)
+        self.assertEqualPY2PY3(
+            b"\xe2\x98\xae on earth",
+            u"\u262E on earth",
+            self.lex(comment.idn).txt
+        )
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
@@ -571,11 +639,19 @@ class WordUnicodeTxt(WordUnicode):
             # Source code is base plane only, so cannot:  assert u"stinky ?" == u"stinky \U0001F4A9"
             # PyCharm editor limitation?
             comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9".encode('utf-8'))
-            self.assertEqual(u"stinky \U0001F4A9", self.lex(comment.idn).txt)
+            self.assertEqualPY2PY3(
+                b"stinky \xf0\x9f\x92\xa9",
+                u"stinky \U0001F4A9",
+                self.lex(comment.idn).txt
+            )
 
         def test_unicode_h_unicode_pile_of_poo(self):
             comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9")
-            self.assertEqual(u"stinky \U0001F4A9", self.lex(comment.idn).txt)
+            self.assertEqualPY2PY3(
+                b"stinky \xf0\x9f\x92\xa9",
+                u"stinky \U0001F4A9",
+                self.lex(comment.idn).txt
+            )
             if SHOW_UTF8_EXAMPLES:
                 self.show_txt_in_utf8(self.lex.max_idn())
 
@@ -598,13 +674,13 @@ class WordUnicodeVerb(WordUnicode):
     def test_unicode_k_verb_utf8_spanish(self):
         sentence1 = self.lex.define(self.comment, u"comentó".encode('utf-8'))
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqual(u"comentó", sentence2.txt)
-        if six.PY3:
-            # Only Python 3 supports international characters in Python symbols.
-            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
+        self.assertEqualPY2PY3(b"coment\xC3\xB3", u"comentó", sentence2.txt)
         if six.PY2:
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.comentó.is_a_verb()')
+        if six.PY3:
+            # Only Python 3 supports international characters in Python symbols.
+            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
         self.assertTrue(self.lex(u'comentó').exists)
         self.assertTrue(self.lex(u'comentó').is_a_verb())
         self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
@@ -613,12 +689,12 @@ class WordUnicodeVerb(WordUnicode):
     def test_unicode_l_verb_unicode_spanish(self):
         sentence1 = self.lex.define(self.comment, u"comentó")
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqual(u"comentó", sentence2.txt)
-        if six.PY3:
-            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
+        self.assertEqualPY2PY3(b"coment\xC3\xB3", u"comentó", sentence2.txt)
         if six.PY2:
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.comentó.is_a_verb()')
+        if six.PY3:
+            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
         self.assertTrue(self.lex(u'comentó').exists)
         self.assertTrue(self.lex(u'comentó').is_a_verb())
         self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
@@ -628,7 +704,7 @@ class WordUnicodeVerb(WordUnicode):
     def test_unicode_m_verb_utf8_encourage(self):
         sentence1 = self.lex.define(self.comment, u"enc☺urage".encode('utf-8'))
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqual(u"enc☺urage", sentence2.txt)
+        self.assertEqualPY2PY3(b"enc\xE2\x98\xBAurage", u"enc☺urage", sentence2.txt)
         with self.assertRaises(SyntaxError):
             # Even Python has restraint.
             eval(u'self.lex.enc☺urage.is_a_verb()')
@@ -641,7 +717,7 @@ class WordUnicodeVerb(WordUnicode):
     def test_unicode_n_verb_unicode_encourage(self):
         sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqual(u"enc☺urage", sentence2.txt)
+        self.assertEqualPY2PY3(b"enc\xE2\x98\xBAurage", u"enc☺urage", sentence2.txt)
         with self.assertRaises(SyntaxError):
             eval(u'self.lex.enc☺urage.is_a_verb()')
         self.assertTrue(self.lex(u'enc☺urage').exists)
@@ -655,7 +731,7 @@ class WordUnicodeVerb(WordUnicode):
         def test_unicode_o_verb_utf8_alien_face(self):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate".encode('utf-8'))
             sentence2 = self.lex(sentence1.idn)
-            self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
+            self.assertEqualPY2PY3(b"\xF0\x9F\x91\xBDlienate", u"\U0001F47Dlienate", sentence2.txt)
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
             self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
@@ -667,7 +743,7 @@ class WordUnicodeVerb(WordUnicode):
         def test_unicode_o_verb_unicode_alien_face(self):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
             sentence2 = self.lex(sentence1.idn)
-            self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
+            self.assertEqualPY2PY3(b"\xF0\x9F\x91\xBDlienate", u"\U0001F47Dlienate", sentence2.txt)
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
             self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)

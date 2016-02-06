@@ -73,12 +73,10 @@ class Word(object):
             self.vrb = vrb
             self.obj = obj
             self.num = num
-            if isinstance(txt, Text):
-                self.txt = txt.the_string
-            elif isinstance(txt, (six.text_type, type(None))):
-                self.txt = txt
+            if txt is None:
+                self.txt = None
             else:
-                self.txt = six.text_type(txt.decode('utf-8'))
+                self.txt = str(Text(txt))
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -1006,8 +1004,8 @@ class LexMySQL(Lex):
                 if field is None:
                     value = None
                 elif name == 'txt':
-                    # TODO:  If name ends in 'txt'?
-                    value = six.text_type(field.decode('utf-8'))
+                    # TODO:  If name ends in 'txt' also?
+                    value = str(Text(field))
                 else:
                     value = Number.from_mysql(field)
                 field_dictionary[name] = value
@@ -1062,30 +1060,52 @@ def idn_from_word_or_number(x):
 
 
 class Text(object):
-    """The only use of qiki.Text() so far is for identifying txt field values to Lex.super_select()."""
-    # This can't simply derive from six.text_type
-    # Because in Python 3 that's str
-    # And str(u'string'.encode('utf-8')) == "b'string'"
-    # That's right, a doubly-encoded string!  Just like repr()
+    """The first use of qiki.Text() was for identifying txt field values to Lex.super_select().
+
+    Then it served to encapsulate the unicode/utf8 and Python 2/3 differences.
+    Note this file has one encode() and one decode() and they're both in this class.
+    And the only mention of UTF-8 other than this class is in MySQL configuration.
+
+    Constructor accepts either Unicode or UTF-8-encoded bytes in either Python 2 or 3.
+        t = Text(x)
+    To get unicode out:
+        t.unicode()
+        six.text_type(t)
+        unicode(t)   # Python 2 only
+    To get the utf8 out:
+        t.utf8()
+    To get unicode in Python 3 and UTF-8 in Python 2 (as a str, not a bytearray):
+        str(t)
+
+    """
 
     def __init__(self, the_string):
-        """Accept either Unicode or UTF-8-encoded bytes in either Python 2 or 3.
-
-        Actually it's the MySQL Connector and the Word constructor
-        that encapsulate these flexibilities."""
+        """Accept"""
         # TODO:  Internal the_string should always be UTF-8 six.binary_type?
         # Or Unicode text_type?
         # Or native str??
         if isinstance(the_string, Text):
             self.the_string = the_string.the_string
+        elif isinstance(the_string, six.text_type):
+            self.the_string = the_string.encode('utf-8')
         else:
             self.the_string = the_string
 
-    def decode(self, character_set):
-        # Wrong if it's Unicode, right if it's UTF-8?
-        return self.the_string.decode(character_set)
+    def __str__(self):
+        if six.PY2:
+            return str(self.utf8())
+        if six.PY3:
+            return self.unicode()
 
-    # TODO:  .unicode() and .utf8() methods?
+    def __unicode__(self):
+        return self.unicode()
+
+    def unicode(self):
+        return self.the_string.decode('utf-8')
+
+    def utf8(self):
+        return self.the_string
+
 
 Word.TXT_TYPES = (six.string_types, six.binary_type, Text)   # Unicode or UTF-8
 
@@ -1149,3 +1169,10 @@ Word.TXT_TYPES = (six.string_types, six.binary_type, Text)   # Unicode or UTF-8
 
 # TODO:  word.jbo refers to the set of words whose object is word.  Similarly word.jbs.
 # word.brv?  The set of definitions supporting this verb??
+
+# TODO:  Word iterators and iteratables.
+# These will be needed for large sets, or sets that take a long time to determine, E.g.
+    # The verbs in a qoolbar
+    # A user's current qoolbar for a particular context.
+    # The verbs likely of interest to a new user.
+# SEE:  http://stackoverflow.com/a/24377/673991
