@@ -828,11 +828,11 @@ class LexMySQL(Lex):
     # TODO:  Start and number parameters, for LIMIT clause.
 
     def populate_word_from_idn(self, word, idn):
-        one_row = self.super_select("SELECT * FROM", self.table, "WHERE idn =", idn)
-        return self.populate_from_one_row(word, one_row)
+        rows = self.super_select("SELECT * FROM", self.table, "WHERE idn =", idn)
+        return self._populate_from_one_row(word, rows)
 
     def populate_word_from_definition(self, word, define_txt):
-        one_row = self.super_select(
+        rows = self.super_select(
             "SELECT * FROM",
             self.table,
             "WHERE vrb =",
@@ -840,10 +840,10 @@ class LexMySQL(Lex):
             "AND txt =",
             Text(define_txt)
         )
-        return self.populate_from_one_row(word, one_row)
+        return self._populate_from_one_row(word, rows)
 
     def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
-        one_row = self.super_select(
+        rows = self.super_select(
             "SELECT * FROM",
             self.table,
             "WHERE sbj =",
@@ -854,11 +854,11 @@ class LexMySQL(Lex):
             obj,
             "ORDER BY `idn` DESC LIMIT 1"
         )
-        return self.populate_from_one_row(word, one_row)
+        return self._populate_from_one_row(word, rows)
 
 
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
-        one_row = self.super_select(
+        rows = self.super_select(
             "SELECT * FROM",
             self.table,
             "WHERE sbj =",
@@ -873,13 +873,13 @@ class LexMySQL(Lex):
             Text(txt),
             "ORDER BY `idn` DESC LIMIT 1"
         )
-        return self.populate_from_one_row(word, one_row)
+        return self._populate_from_one_row(word, rows)
 
     @staticmethod
-    def populate_from_one_row(word, one_row):
-        assert len(one_row) in (0,1), "Populating from unexpectedly {} rows.".format(len(one_row))
-        if len(one_row) > 0:
-            row = one_row[0]
+    def _populate_from_one_row(word, rows):
+        assert len(rows) in (0,1), "Populating from unexpectedly {} rows.".format(len(rows))
+        if len(rows) > 0:
+            row = rows[0]
             word.populate_from_row(row)
             return True
         return False
@@ -888,8 +888,17 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
-        idns = self.find_idns(sbj,vrb,obj, sql)
-        return self. words_from_idns(idns)
+        query_args = ['SELECT * FROM', self.table, 'WHERE TRUE', None]
+        query_args += self._find_where(sbj, vrb, obj)
+        query_args += [sql]
+        rows = self.super_select(*query_args)
+        words = []
+        for row in rows:
+            word = self(None)
+            word.populate_from_row(row)
+            words.append(word)
+        return words
+
         # TODO:  More efficient to do one SELECT-* than one SELECT-* plus a buncha SELECT-idns
         # In fact, this whole chain is suspect:  find_words -> find_idns -> super_select
         # Should there be just one routine to rule them all?
@@ -907,6 +916,15 @@ class LexMySQL(Lex):
 
         Return list of idns."""
         query_args = ['SELECT idn FROM', self.table, 'WHERE TRUE', None]
+        query_args += self._find_where(sbj, vrb, obj)
+        query_args += [sql]
+        rows_of_idns = self.super_select(*query_args)
+        idns = [row['idn'] for row in rows_of_idns]
+        return idns
+
+    @staticmethod
+    def _find_where(sbj, vrb, obj):
+        query_args = []
         if sbj is not None:
             query_args += ['AND sbj=', idn_from_word_or_number(sbj)]
         if vrb is not None:
@@ -924,12 +942,9 @@ class LexMySQL(Lex):
                     query_args += [',', v]
                 query_args += [')', None]
         if obj is not None:
-            # TODO:  obj could be a list.  Would help e.g. find qool verb icons.
+            # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
             query_args += ['AND obj=', idn_from_word_or_number(obj)]
-        query_args += [sql]
-        rows_of_idns = self.super_select(*query_args)
-        idns = [row['idn'] for row in rows_of_idns]
-        return idns
+        return query_args
 
     class SuperSelectTypeError(TypeError):
         pass

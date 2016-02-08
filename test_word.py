@@ -685,8 +685,8 @@ class WordUnicodeVerb(WordUnicode):
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.comentó.is_a_verb()')
         if six.PY3:
-            # Only Python 3 supports international characters in Python symbols.
             self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
+            # Only Python 3 supports international characters in Python symbols.
         self.assertTrue(self.lex(u'comentó').exists)
         self.assertTrue(self.lex(u'comentó').is_a_verb())
         self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
