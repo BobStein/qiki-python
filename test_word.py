@@ -180,8 +180,6 @@ class WordDemoTests(WordTests):
         w = s.v(o, n, use_already=True)
         w = s.v(o, n, t, use_already=True)
 
-        self.display_all_word_descriptions()
-
 
 class InternalTestWordTests(WordTests):
     """Test the WordTests class itself."""
@@ -1802,6 +1800,40 @@ class WordQoolbarTests(WordTests):
             {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn,   'qool_num': self.anna_like_zigzags.num},
             {'idn': self.zigzags.idn, 'qool_idn': self.bart_delete_zigzags.idn, 'qool_num': self.bart_delete_zigzags.num},
         ], likings)
+
+    def test_find_words(self):
+        self.display_all_word_descriptions()
+        nouns = self.lex.find_words(obj=self.lex.noun)
+        self.assertEqual(5, len(nouns))
+        self.assertEqual(u'noun', nouns[0].txt)
+        self.assertEqual(u'verb', nouns[1].txt)
+        self.assertEqual(u'agent', nouns[2].txt)
+        self.assertEqual(u'youtube', nouns[3].txt)
+        self.assertEqual(u'zigzags', nouns[4].txt)
+
+    def test_find_words_jbo(self):
+        self.display_all_word_descriptions()
+        nouns = self.lex.find_words(obj=self.lex.noun, jbo_vrb=self.qool_idns)
+        self.assertEqual(5, len(nouns))
+        self.assertEqual(u'noun', nouns[0].txt)
+        self.assertEqual(u'verb', nouns[1].txt)
+        self.assertEqual(u'agent', nouns[2].txt)
+        self.assertEqual(u'youtube', nouns[3].txt)
+        self.assertEqual(u'zigzags', nouns[4].txt)
+
+        self.assertEqual(0, len(nouns[0].jbo))
+        self.assertEqual(0, len(nouns[1].jbo))
+        self.assertEqual(0, len(nouns[2].jbo))
+        self.assertEqual(2, len(nouns[3].jbo))
+        self.assertEqual(       nouns[3].jbo[0].idn, self.anna_like_youtube.idn)
+        self.assertEqual(       nouns[3].jbo[0].num, qiki.Number(1))
+        self.assertEqual(       nouns[3].jbo[1].idn, self.bart_like_youtube.idn)
+        self.assertEqual(       nouns[3].jbo[1].num, qiki.Number(10))
+        self.assertEqual(2, len(nouns[4].jbo))
+        self.assertEqual(       nouns[4].jbo[0].idn, self.anna_like_zigzags.idn)
+        self.assertEqual(       nouns[4].jbo[0].num, qiki.Number(2))
+        self.assertEqual(       nouns[4].jbo[1].idn, self.bart_delete_zigzags.idn)
+        self.assertEqual(       nouns[4].jbo[1].num, qiki.Number(1))
 
 
     ################## obsolete or maybe someday #################################

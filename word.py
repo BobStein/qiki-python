@@ -366,14 +366,14 @@ class Word(object):
             self.txt
         )
 
-    def populate_from_row(self, row):
-        self._idn = row['idn']
-        self.sbj = row['sbj']
-        self.vrb = row['vrb']
-        self.obj = row['obj']
-        self.num = row['num']
-        self.txt = row['txt']
-        self.whn = row['whn']
+    def populate_from_row(self, row, prefix=''):
+        self._idn = row[prefix + 'idn']
+        self.sbj = row[prefix + 'sbj']
+        self.vrb = row[prefix + 'vrb']
+        self.obj = row[prefix + 'obj']
+        self.num = row[prefix + 'num']
+        self.txt = row[prefix + 'txt']
+        self.whn = row[prefix + 'whn']
         self.exists = True
 
     def is_a(self, word, reflexive=True, recursion=10):
@@ -833,25 +833,18 @@ class LexMySQL(Lex):
 
     def populate_word_from_definition(self, word, define_txt):
         rows = self.super_select(
-            "SELECT * FROM",
-            self.table,
-            "WHERE vrb =",
-            Word._IDN_DEFINE,
-            "AND txt =",
-            Text(define_txt)
+            'SELECT * FROM', self.table, 'AS w '
+            'WHERE vrb =', Word._IDN_DEFINE,
+            'AND txt =', Text(define_txt)
         )
         return self._populate_from_one_row(word, rows)
 
     def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
         rows = self.super_select(
-            "SELECT * FROM",
-            self.table,
-            "WHERE sbj =",
-            sbj,
-            "AND vrb =",
-            vrb,
-            "AND obj =",
-            obj,
+            'SELECT * FROM', self.table, 'AS w '
+            "WHERE sbj =", sbj,
+            "AND vrb =", vrb,
+            "AND obj =", obj,
             "ORDER BY `idn` DESC LIMIT 1"
         )
         return self._populate_from_one_row(word, rows)
@@ -859,18 +852,12 @@ class LexMySQL(Lex):
 
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
         rows = self.super_select(
-            "SELECT * FROM",
-            self.table,
-            "WHERE sbj =",
-            sbj,
-            "AND vrb =",
-            vrb,
-            "AND obj =",
-            obj,
-            "AND num =",
-            num,
-            "AND txt =",
-            Text(txt),
+            'SELECT * FROM', self.table, 'AS w '
+            "WHERE sbj =", sbj,
+            "AND vrb =", vrb,
+            "AND obj =", obj,
+            "AND num =", num,
+            "AND txt =", Text(txt),
             "ORDER BY `idn` DESC LIMIT 1"
         )
         return self._populate_from_one_row(word, rows)
@@ -884,38 +871,68 @@ class LexMySQL(Lex):
             return True
         return False
 
-    def find_words(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
+    def find_words(self, sbj=None, vrb=None, obj=None, sql='ORDER BY w.idn ASC', jbo_vrb=None):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
-        query_args = ['SELECT * FROM', self.table, 'WHERE TRUE', None]
+        # TODO:  Do away with sql parameter.  Features instead.  E.g. ascending=True
+        # TODO:  Lex.find()
+        query_args = [
+            'SELECT '
+            'w.idn AS idn, '
+            'w.sbj AS sbj, '
+            'w.vrb AS vrb, '
+            'w.obj AS obj, '
+            'w.num AS num, '
+            'w.txt AS txt, '
+            'w.whn AS whn',
+            None
+        ]
+        if jbo_vrb is not None:
+            assert isinstance(jbo_vrb, (list, tuple))
+            query_args += [
+                ', jbo.idn AS jbo_idn'
+                ', jbo.sbj AS jbo_sbj'
+                ', jbo.vrb AS jbo_vrb'
+                ', jbo.obj AS jbo_obj'
+                ', jbo.num AS jbo_num'
+                ', jbo.txt AS jbo_txt'
+                ', jbo.whn AS jbo_whn',
+                None
+            ]
+        query_args += 'FROM', self.table, 'AS w', None,
+        if jbo_vrb is not None:
+            query_args += [
+                'LEFT JOIN', self.table, 'AS jbo '
+                    'ON jbo.obj = w.idn '
+                        'AND jbo.vrb in (', jbo_vrb, ')',
+                None
+            ]
+        query_args += ['WHERE TRUE', None]
         query_args += self._find_where(sbj, vrb, obj)
         query_args += [sql]
         rows = self.super_select(*query_args)
         words = []
+        word = None
         for row in rows:
-            word = self(None)
-            word.populate_from_row(row)
-            words.append(word)
+            if word is None or word.idn != row['idn']:
+                word = self()
+                word.populate_from_row(row)
+                word.jbo = []
+                words.append(word)
+            jbo_idn = row.get('jbo_idn', None)
+            if jbo_idn is not None:
+                new_jbo = self()
+                new_jbo.populate_from_row(row, prefix='jbo_')
+                word.jbo.append(new_jbo)
         return words
 
-        # TODO:  More efficient to do one SELECT-* than one SELECT-* plus a buncha SELECT-idns
-        # In fact, this whole chain is suspect:  find_words -> find_idns -> super_select
-        # Should there be just one routine to rule them all?
-        # Internally there can be a chain but shouldn't everyone call one?  Lex.find
-        # Much as I like super_select() it's so darn Lex-specific.
-        # So, groan, I'm inventing an abstraction.
-        # In this implementation it's above MySQL.
-        # This will happen incrementally.  The sql argument should go away.
-        # But what might it look like?
-        # find(jbo_vrb=qool_verbs) means for each word you find:
-        # join words whose obj (jbo backwards) links to me, and the vrb is qool.
 
     def find_idns(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
         """Select word identifiers by subject, verb, and/or object.
 
         Return list of idns."""
-        query_args = ['SELECT idn FROM', self.table, 'WHERE TRUE', None]
+        query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
         query_args += self._find_where(sbj, vrb, obj)
         query_args += [sql]
         rows_of_idns = self.super_select(*query_args)
@@ -926,7 +943,7 @@ class LexMySQL(Lex):
     def _find_where(sbj, vrb, obj):
         query_args = []
         if sbj is not None:
-            query_args += ['AND sbj=', idn_from_word_or_number(sbj)]
+            query_args += ['AND w.sbj=', idn_from_word_or_number(sbj)]
         if vrb is not None:
             try:
                 verbs = [idn_from_word_or_number(v) for v in vrb]
@@ -935,15 +952,15 @@ class LexMySQL(Lex):
             if len(verbs) < 1:
                 pass
             elif len(verbs) == 1:
-                query_args += ['AND vrb =', verbs[0]]
+                query_args += ['AND w.vrb =', verbs[0]]
             else:
-                query_args += ['AND vrb IN (', verbs[0]]
+                query_args += ['AND w.vrb IN (', verbs[0]]
                 for v in verbs[1:]:
                     query_args += [',', v]
                 query_args += [')', None]
         if obj is not None:
             # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
-            query_args += ['AND obj=', idn_from_word_or_number(obj)]
+            query_args += ['AND w.obj=', idn_from_word_or_number(obj)]
         return query_args
 
     class SuperSelectTypeError(TypeError):
@@ -953,13 +970,14 @@ class LexMySQL(Lex):
         pass
 
     def super_select(self, *query_args, **kwargs):
+        """Build a prepared statement query from a list of sql strings and data parameters."""
         # TODO:  Recursive query_args?
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
         debug = kwargs.pop('debug', False)
         query = ""
         parameters = []
-        for arg_previous, arg_next in zip(query_args[:-1], query_args[1:]):
+        for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
             if (
                     isinstance(arg_previous, six.string_types) and
                 not isinstance(arg_previous, (Text, Lex.TableName)) and
@@ -969,7 +987,14 @@ class LexMySQL(Lex):
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments shouldn't be strings.  " +
                     "Pass string fields through qiki.Text().  " +
-                    "Or make a class to encapsulate "
+                    "Or make a class to encapsulate.\n"
+                    "Argument {n1}: '{arg1}\n"
+                    "Argument {n2}: '{arg2}".format(
+                        n1=index+1,
+                        n2=index+2,
+                        arg1=arg_previous,
+                        arg2=arg_next
+                    )
                 )
                 # TODO:  Report all the query_args types in this error message.
                 # TODO:  Or maybe this can all just go away...
@@ -995,6 +1020,7 @@ class LexMySQL(Lex):
             elif isinstance(query_arg, (list, tuple)):
                 query += ','.join(['?']*len(query_arg))
                 parameters += [idn_from_word_or_number(x).raw for x in query_arg]
+                # TODO: make these embedded iterables recursive
             elif query_arg is None:
                 pass
             else:
