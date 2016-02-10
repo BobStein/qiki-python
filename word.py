@@ -543,7 +543,7 @@ class Word(object):
         pass
 
     # noinspection PyClassHasNoInit
-    class NonVerbUndefinedAsFunctionException(Exception):
+    class NonVerbUndefinedAsFunctionException(TypeError):
         pass
 
 
