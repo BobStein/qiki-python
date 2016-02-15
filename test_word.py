@@ -1834,6 +1834,30 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(       nouns[4].jbo[1].idn, self.bart_delete_zigzags.idn)
         self.assertEqual(       nouns[4].jbo[1].num, qiki.Number(1))
 
+    def find_b_l_y(self):   # Find all the words where bart likes youtube.
+        return self.lex.find_words(sbj=self.bart, vrb=self.like, obj=self.youtube)
+
+    def test_num_replace_num(self):
+        b_l_y_before = self.find_b_l_y()
+        self.bart.like(self.youtube, 20)
+        b_l_y_after = self.find_b_l_y()
+        self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
+        self.assertEqual(qiki.Number(20), b_l_y_after[-1].num)
+
+    def test_num_replace_named_num(self):
+        b_l_y_before = self.find_b_l_y()
+        self.bart.like(self.youtube, num=20)
+        b_l_y_after = self.find_b_l_y()
+        self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
+        self.assertEqual(qiki.Number(20), b_l_y_after[-1].num)
+
+    def test_num_delta(self):
+        b_l_y_before = self.find_b_l_y()
+        self.bart.like(self.youtube, num_delta=20)
+        b_l_y_after = self.find_b_l_y()
+        self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
+        self.assertEqual(qiki.Number(30), b_l_y_after[-1].num)
+
 
     ################## obsolete or maybe someday #################################
 

@@ -196,13 +196,6 @@ class Word(object):
                     existing_word._from_sbj_vrb_obj_num_txt()
                     if not existing_word.exists:
                         existing_word.save()
-                        # existing_word = self.sentence(
-                        #     sbj=sbj,
-                        #     vrb=self,
-                        #     obj=obj,
-                        #     num=num,
-                        #     txt=txt,
-                        # )
                 else:
                     existing_word = self.sentence(
                         sbj=sbj,
@@ -704,6 +697,9 @@ class LexMySQL(Lex):
             txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
             engine=self._engine,
         )
+        # NOTE:  If PyCharm SQL inspection errors resurface:
+        # disable Settings | Editor | Language Injections | python: "SQL select/delete/insert/update/create"
+        # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
         query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
         cursor.execute(query)
         # TODO:  other keys?  sbj-vrb?   obj-vrb?
