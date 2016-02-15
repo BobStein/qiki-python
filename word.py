@@ -49,6 +49,8 @@ class Word(object):
         self._idn = None
         self._word_before_the_dot = None
         self.whn = None
+        self.do_not_call_in_templates = True   # for Django templates
+        # THANKS:  to somebody for this flag, maybe http://stackoverflow.com/a/21711308/673991
         if isinstance(content, self.TXT_TYPES):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -193,13 +195,14 @@ class Word(object):
                     )
                     existing_word._from_sbj_vrb_obj_num_txt()
                     if not existing_word.exists:
-                        existing_word = self.sentence(
-                            sbj=sbj,
-                            vrb=self,
-                            obj=obj,
-                            num=num,
-                            txt=txt,
-                        )
+                        existing_word.save()
+                        # existing_word = self.sentence(
+                        #     sbj=sbj,
+                        #     vrb=self,
+                        #     obj=obj,
+                        #     num=num,
+                        #     txt=txt,
+                        # )
                 else:
                     existing_word = self.sentence(
                         sbj=sbj,
@@ -248,6 +251,8 @@ class Word(object):
         assert isinstance(obj, (Word, self.TXT_TYPES))
         assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
         assert isinstance(num, Number)
+        if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
+            obj = self.spawn(obj)
         possibly_existing_word = self.spawn(txt)
         # How to handle "duplications"
         # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
@@ -256,8 +261,6 @@ class Word(object):
         if possibly_existing_word.exists:
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
-        if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
-            obj = self.spawn(obj)
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, num=num, txt=txt)
         return new_word
 
@@ -824,9 +827,6 @@ class LexMySQL(Lex):
     def _cursor(self):
         return self._connection.cursor(prepared=True)
 
-    _default_find_sql = 'ORDER BY idn ASC'
-    # TODO:  Start and number parameters, for LIMIT clause.
-
     def populate_word_from_idn(self, word, idn):
         rows = self.super_select("SELECT * FROM", self.table, "WHERE idn =", idn)
         return self._populate_from_one_row(word, rows)
@@ -871,7 +871,7 @@ class LexMySQL(Lex):
             return True
         return False
 
-    def find_words(self, sbj=None, vrb=None, obj=None, sql='ORDER BY w.idn ASC', jbo_vrb=None):
+    def find_words(self, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
@@ -910,7 +910,10 @@ class LexMySQL(Lex):
             ]
         query_args += ['WHERE TRUE', None]
         query_args += self._find_where(sbj, vrb, obj)
-        query_args += [sql]
+        order_clause = 'ORDER BY w.idn ' + idn_order
+        if jbo_vrb is not None:
+            order_clause += ', jbo.idn ASC'
+        query_args += [order_clause]
         rows = self.super_select(*query_args)
         words = []
         word = None
@@ -928,13 +931,13 @@ class LexMySQL(Lex):
         return words
 
 
-    def find_idns(self, sbj=None, vrb=None, obj=None, sql=_default_find_sql):
+    def find_idns(self, sbj=None, vrb=None, obj=None, idn_order='ASC'):
         """Select word identifiers by subject, verb, and/or object.
 
         Return list of idns."""
         query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
         query_args += self._find_where(sbj, vrb, obj)
-        query_args += [sql]
+        query_args += ['ORDER BY idn ' + idn_order]
         rows_of_idns = self.super_select(*query_args)
         idns = [row['idn'] for row in rows_of_idns]
         return idns

@@ -1389,15 +1389,15 @@ class WordFindTests(WordTests):
             self.assertIsInstance(word, qiki.Word)
 
     def test_find_idns_with_sql(self):
-        idns = self.lex.find_idns(sql='ORDER BY idn ASC')
+        idns = self.lex.find_idns(idn_order='ASC')
         self.assertLess(idns[0], idns[-1])
-        idns = self.lex.find_idns(sql='ORDER BY idn DESC')
+        idns = self.lex.find_idns(idn_order='DESC')
         self.assertGreater(idns[0], idns[-1])
 
     def test_find_words_sql(self):
-        words = self.lex.find_words(sql='ORDER BY idn ASC')
+        words = self.lex.find_words(idn_order='ASC')
         self.assertLess(words[0].idn, words[-1].idn)
-        words = self.lex.find_words(sql='ORDER BY idn DESC')
+        words = self.lex.find_words(idn_order='DESC')
         self.assertGreater(words[0].idn, words[-1].idn)
 
 class WordUtilities(WordTests):
@@ -1802,7 +1802,6 @@ class WordQoolbarTests(WordTests):
         ], likings)
 
     def test_find_words(self):
-        self.display_all_word_descriptions()
         nouns = self.lex.find_words(obj=self.lex.noun)
         self.assertEqual(5, len(nouns))
         self.assertEqual(u'noun', nouns[0].txt)
