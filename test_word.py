@@ -169,6 +169,7 @@ class WordDemoTests(WordTests):
 
         # Setters
         s.v(o, n)
+        s.v(o, num=n)
         s.v(o, n, t)
         s.define(o, t)
         s.define(o, t, n)
@@ -250,14 +251,14 @@ class WordFirstTests(WordTests):
         self.assertEqual(define.txt, 'define')
 
     def test_01c_lex_bum_getter(self):
-        define = self.lex('word that does not exist')
-        self.assertFalse(define.exists)
-        self.assertTrue(define.idn.is_nan())
-        self.assertFalse(hasattr(define, 'sbj'))
-        self.assertFalse(hasattr(define, 'vrb'))
-        self.assertFalse(hasattr(define, 'obj'))
-        self.assertFalse(hasattr(define, 'num'))
-        self.assertEqual(define.txt, 'word that does not exist')
+        nonword = self.lex('word that does not exist')
+        self.assertFalse(nonword.exists)
+        self.assertTrue(nonword.idn.is_nan())
+        self.assertFalse(hasattr(nonword, 'sbj'))
+        self.assertFalse(hasattr(nonword, 'vrb'))
+        self.assertFalse(hasattr(nonword, 'obj'))
+        self.assertFalse(hasattr(nonword, 'num'))
+        self.assertEqual(nonword.txt, 'word that does not exist')
 
     def test_02_noun(self):
         noun = self.lex('noun')
@@ -847,7 +848,11 @@ class WordMoreTests(WordTests):
         self.assertEqual("just as friends", anna.like(bart).txt)
 
     def test_verb_overlay(self):
-        """Test multiple s.v(o, num) calls with different num's.  Read with s.v(o).num"""
+        """Test multiple s.v(o, num) calls with different num's.
+        Reading with s.v(o).num should only get the latest value.
+
+        The feature that makes this work is something like 'ORDER BY idn DESC LIMIT 1'
+        in Lex.populate_word_from_sbj_vrb_obj() via the 'getter' syntax s.v(o)"""
         human = self.lex.agent('human')
         anna = human('anna')
         bart = human('bart')
@@ -1028,6 +1033,33 @@ class WordMoreTests(WordTests):
         self.assertEqual(agent_by_txt, agent_by_idn)
         self.assertEqual('agent', agent_by_idn.txt)
         self.assertEqual(qiki.Word._IDN_AGENT, agent_by_txt.idn)
+
+    def test_num_explicit(self):
+        anna = self.lex.agent('anna')
+        self.lex.verb('hate')
+        oobleck = self.lex.noun('oobleck')
+        with self.assertNewWord():
+            anna.hate(oobleck, 10)
+        self.assertEqual(10, anna.hate(oobleck).num)
+        with self.assertNewWord():
+            anna.hate(oobleck, num=11)
+        self.assertEqual(11, anna.hate(oobleck).num)
+
+    def test_define_bogus_kwarg(self):
+        with self.assertRaises(TypeError):
+            # noinspection PyArgumentList
+            self.lex.define(not_a_keyword_argument=33)
+        # TODO:  How to do the following?  Better way than (ick) an intermediate function?
+        # with self.assertRaises(qiki.Word.SentenceKeyError):
+        #     # noinspection PyArgumentList
+        #     self.lex.define(not_a_keyword_argument=33)
+
+    def test_sentence_bogus_kwarg(self):
+        self.lex.verb('blurt')
+        with self.assertRaises(TypeError):
+            self.lex.blurt(self.lex, no_such_keyword_argument=666)
+        with self.assertRaises(qiki.Word.SentenceKeyError):
+            self.lex.blurt(self.lex, no_such_keyword_argument=666)
 
 
 class WordListingTests(WordTests):

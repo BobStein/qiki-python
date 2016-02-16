@@ -102,6 +102,9 @@ class Word(object):
     class NoSuchAttribute(AttributeError):
         pass
 
+    class SentenceKeyError(TypeError):
+        pass
+
     def __getattr__(self, noun_txt):
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
@@ -182,10 +185,12 @@ class Word(object):
             if len(args) == 1:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
-                assert existing_word.exists, "The form s.v(o) is a getter.  A setter looks like: s.v(o,1,'')"
+                assert existing_word.exists, \
+                    "The form s.v(o) is a getter.  That word must exist already.  " \
+                    "A setter needs a num or txt, e.g.: s.v(o,1,'')"
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
-                if kwargs.get('use_already', False):
+                if kwargs.pop('use_already', False):
                     existing_word = self.spawn(
                         sbj=sbj.idn,
                         vrb=self.idn,
@@ -206,6 +211,8 @@ class Word(object):
                     )
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
+            if len(kwargs) != 0:
+                raise self.SentenceKeyError("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
             return existing_word
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
@@ -340,14 +347,14 @@ class Word(object):
         self._from_idn(word.idn)
 
     def _from_sbj_vrb_obj(self):
-        """Construct a word from its subject-verb-object."""
+        """Construct a word by looking up its subject-verb-object."""
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         self.lex.populate_word_from_sbj_vrb_obj(self, self.sbj, self.vrb, self.obj)
 
     def _from_sbj_vrb_obj_num_txt(self):
-        """Construct a word from its subject-verb-object and its num and txt."""
+        """Construct a word by looking up its subject-verb-object and its num and txt."""
         assert isinstance(self.sbj, Number)
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
