@@ -102,7 +102,10 @@ class Word(object):
     class NoSuchAttribute(AttributeError):
         pass
 
-    class SentenceKeyError(TypeError):
+    class NoSuchKwarg(TypeError):
+        pass
+
+    class MissingObj(TypeError):
         pass
 
     def __getattr__(self, noun_txt):
@@ -163,7 +166,8 @@ class Word(object):
             # TODO:  s.v(o,txt=t,num=n)
             # TODO:  v(o,n,t) -- lex is the implicit subject
 
-            assert len(args) >= 1
+            if len(args) < 1:
+                raise self.MissingObj("Calling a verb method requires an object.")
             obj = args[0]
             try:
                 num = Number(args[1])
@@ -178,16 +182,17 @@ class Word(object):
             else:
                 sbj = self._word_before_the_dot
             # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
-            # TODO:  allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
+            # TODO:  Allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
             # But this looks a lot like v(o) where o could be identified by a string, so maybe support neither?
             # In other words, don't v(t), instead lex.define(v,n,t)
-            # And no v(object_name), instead s.v(lex(object_name),n,t)
+            # And no v(object_name_string), instead s.v(lex(object_name),n,t)
             if len(args) == 1:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists, \
                     "The form s.v(o) is a getter.  That word must exist already.  " \
                     "A setter needs a num or txt, e.g.: s.v(o,1,'')"
+                # TODO:  Turn this into an exception.
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
                 if kwargs.pop('use_already', False):
@@ -212,7 +217,7 @@ class Word(object):
             self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             if len(kwargs) != 0:
-                raise self.SentenceKeyError("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
+                raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
             return existing_word
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
@@ -308,6 +313,7 @@ class Word(object):
         pass
 
     class MissingFromLex(Exception):
+        """Looking up a word by a nonexistent idn."""
         pass
 
     class NotAWord(Exception):

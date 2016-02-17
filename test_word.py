@@ -473,7 +473,7 @@ class WordFirstTests(WordTests):
         self.assertSensibleWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
-    def test_12_vrb(self):
+    def test_12a_non_vrb(self):
         anna = self.lex.agent('anna')
         self.lex.verb('like')
         self.lex.noun('yurt')
@@ -497,6 +497,7 @@ class WordFirstTests(WordTests):
 
     # noinspection SpellCheckingInspection
     def test_13b_text_postel(self):
+        """Verify the Text class follows Postel's Law -- liberal in, conservative out."""
         def example(the_input, _unicode, _utf8):
             txt = qiki.Text(the_input)
             self.assertTripleEqual(_unicode, six.text_type(txt))
@@ -526,7 +527,7 @@ class WordFirstTests(WordTests):
         example(  b'\xF0\x9D\x8D\x91noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
 
     def test_14a_word_text(self):
-        """Verify txt follows Postel's Law -- liberal in, conservative out.
+        """Verify the txt field follows Postel's Law -- liberal in, conservative out.
 
         Liberal in:  str, unicode, bytes, bytearray, Text and Python 2 or 3
         Conservative out:  str, which is unicode in Python 3, UTF-8 in Python 2."""
@@ -928,6 +929,8 @@ class WordMoreTests(WordTests):
         self.lex.verb('like')
 
         liking = anna.like(bart, 5)
+        with self.assertRaises(TypeError):
+            liking(bart)
         with self.assertRaises(qiki.Word.NonVerbUndefinedAsFunctionException):
             liking(bart)
 
@@ -1045,21 +1048,29 @@ class WordMoreTests(WordTests):
             anna.hate(oobleck, num=11)
         self.assertEqual(11, anna.hate(oobleck).num)
 
-    def test_define_bogus_kwarg(self):
+    def test_bogus_define_kwarg(self):
         with self.assertRaises(TypeError):
             # noinspection PyArgumentList
             self.lex.define(not_a_keyword_argument=33)
-        # TODO:  How to do the following?  Better way than (ick) an intermediate function?
-        # with self.assertRaises(qiki.Word.SentenceKeyError):
+        # TODO:  How to do the following?  Better way than (ick) a wrapper function for define()?
+        # with self.assertRaises(qiki.Word.NoSuchKwarg):
         #     # noinspection PyArgumentList
         #     self.lex.define(not_a_keyword_argument=33)
 
-    def test_sentence_bogus_kwarg(self):
+    def test_bogus_sentence_kwarg(self):
         self.lex.verb('blurt')
+        self.lex.blurt(self.lex, 1, '')
         with self.assertRaises(TypeError):
             self.lex.blurt(self.lex, no_such_keyword_argument=666)
-        with self.assertRaises(qiki.Word.SentenceKeyError):
+        with self.assertRaises(qiki.Word.NoSuchKwarg):
             self.lex.blurt(self.lex, no_such_keyword_argument=666)
+
+    def test_missing_sentence_obj(self):
+        self.lex.verb('blurt')
+        with self.assertRaises(TypeError):
+            self.lex.blurt()
+        with self.assertRaises(qiki.Word.MissingObj):
+            self.lex.blurt()
 
 
 class WordListingTests(WordTests):
