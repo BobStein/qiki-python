@@ -191,13 +191,14 @@ class Word(object):
                     try:
                         num_arg = args[1]
                     except IndexError:
-                        num_arg = 1
+                        num = None
                         kind_of_call = KindOfCall.getter
                     else:
                         kind_of_call = KindOfCall.setter
+                        num = Number(num_arg)
                 else:
                     kind_of_call = KindOfCall.setter
-                num = Number(num_arg)
+                    num = Number(num_arg)
             else:
                 kind_of_call = KindOfCall.adder
                 num = None
@@ -219,6 +220,8 @@ class Word(object):
             # And no v(object_name_string), instead s.v(lex(object_name),n,t)
 
             if kind_of_call == KindOfCall.adder:
+                assert num_add is not None
+                assert num is None
                 maybe_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 maybe_word._from_sbj_vrb_obj()
                 if maybe_word.exists:
@@ -233,14 +236,20 @@ class Word(object):
                     txt=txt,
                 )
             elif kind_of_call == KindOfCall.getter:   # subject.verb(object) <-- getter only
+                assert num is None
+                assert num_add is None
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
-                assert existing_word.exists, \
-                    "The form s.v(o) is a getter.  That word must exist already.  " \
-                    "A setter needs a num or txt, e.g.: s.v(o,1,'')"
-                # TODO:  Turn this into an exception.
+                if not existing_word.exists:
+                    raise self.MissingFromLex(
+                        "The form s.v(o) is a getter.  "
+                        "That word must exist already.  "
+                        "A setter needs a num, e.g.:  s.v(o,1)"
+                    )
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
+                assert num is not None
+                assert num_add is None
                 if kwargs.pop('use_already', False):
                     existing_word = self.spawn(
                         sbj=sbj.idn,
@@ -359,7 +368,7 @@ class Word(object):
         pass
 
     class MissingFromLex(Exception):
-        """Looking up a word by a nonexistent idn."""
+        """Looking up a word by a nonexistent idn or other creteria."""
         pass
 
     class NotAWord(Exception):

@@ -1076,6 +1076,17 @@ class WordMoreTests(WordTests):
         with self.assertRaises(qiki.Word.MissingObj):
             self.lex.blurt()
 
+    def test_missing_word_getter(self):
+        alf = self.lex.agent('alf')
+        self.lex.verb('clap')
+        eve = self.lex.verb('eve')
+        with self.assertNewWord():
+            alf.clap(eve, 55)
+        word = alf.clap(eve)
+        self.assertEqual(55, word.num)
+        with self.assertRaises(qiki.Word.MissingFromLex):
+            eve.clap(alf)
+
 
 class WordListingTests(WordTests):
 
