@@ -171,6 +171,8 @@ class Word(object):
             # TODO:  v(o,n,t) -- lex is the implicit subject
             # TODO:  s.v(o,num_multiply=n)
 
+            # TODO:  Groan, what follows should be simpler...
+
             if len(args) < 1:
                 raise self.MissingObj("Calling a verb method requires an object.")
             obj = args[0]
@@ -368,7 +370,7 @@ class Word(object):
         pass
 
     class MissingFromLex(Exception):
-        """Looking up a word by a nonexistent idn or other creteria."""
+        """Looking up a word by a nonexistent idn or other criteria."""
         pass
 
     class NotAWord(Exception):
