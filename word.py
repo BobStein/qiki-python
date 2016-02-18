@@ -169,10 +169,16 @@ class Word(object):
             if len(args) < 1:
                 raise self.MissingObj("Calling a verb method requires an object.")
             obj = args[0]
+            is_getter = False
             try:
-                num = Number(args[1])
-            except IndexError:
-                num = Number(1)
+                num_arg = kwargs.pop('num')
+            except KeyError:
+                try:
+                    num_arg = args[1]
+                except IndexError:
+                    num_arg = 1
+                    is_getter = True
+            num = Number(num_arg)
             try:
                 txt = args[2]
             except IndexError:
@@ -186,7 +192,7 @@ class Word(object):
             # But this looks a lot like v(o) where o could be identified by a string, so maybe support neither?
             # In other words, don't v(t), instead lex.define(v,n,t)
             # And no v(object_name_string), instead s.v(lex(object_name),n,t)
-            if len(args) == 1:   # subject.verb(object) <-- getter only
+            if is_getter:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists, \
