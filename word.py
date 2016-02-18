@@ -150,6 +150,8 @@ class Word(object):
             # TODO:  s.v(o,t,n)
             # DONE:  s.v(o)
             # DONE:  s.v(o,n)
+            # DONE:  s.v(o,num=n)
+            # DONE:  s.v(o,num_add=n)
             # DONE:  s.v(o,n,t)
             # DONE:  o(t) -- shorthand for lex.define(o,1,t)
             # DONE:  x = s.v; x(o...) -- s.v(o...) with an intermediate variable
@@ -159,40 +161,78 @@ class Word(object):
             # TODO:  Disallow positional n,t?  Keyword-only num=n,txt=t would have flexible order.
             # SEE:  https://www.python.org/dev/peps/pep-3102/
             # SEE:  http://code.activestate.com/recipes/577940-emulate-keyword-only-arguments-in-python-2/
+
             # TODO:  Keyword arguments would look like:
-            # TODO:  s.v(o,num=n)
             # TODO:  s.v(o,txt=t)
             # TODO:  s.v(o,num=n,txt=t)
             # TODO:  s.v(o,txt=t,num=n)
+
+            # TODO:  More weirdos:
             # TODO:  v(o,n,t) -- lex is the implicit subject
+            # TODO:  s.v(o,num_multiply=n)
 
             if len(args) < 1:
                 raise self.MissingObj("Calling a verb method requires an object.")
             obj = args[0]
-            is_getter = False
+
+            # noinspection PyClassHasNoInit
+            class KindOfCall:
+                getter = 1
+                setter = 2
+                adder = 3
+
             try:
-                num_arg = kwargs.pop('num')
+                num_add = kwargs.pop('num_add')
             except KeyError:
+                num_add = None
                 try:
-                    num_arg = args[1]
-                except IndexError:
-                    num_arg = 1
-                    is_getter = True
-            num = Number(num_arg)
+                    num_arg = kwargs.pop('num')
+                except KeyError:
+                    try:
+                        num_arg = args[1]
+                    except IndexError:
+                        num_arg = 1
+                        kind_of_call = KindOfCall.getter
+                    else:
+                        kind_of_call = KindOfCall.setter
+                else:
+                    kind_of_call = KindOfCall.setter
+                num = Number(num_arg)
+            else:
+                kind_of_call = KindOfCall.adder
+                num = None
+
             try:
                 txt = args[2]
             except IndexError:
                 txt=''
+
             if self._word_before_the_dot is None:
                 sbj = self.lex   # Lex can be the implicit subject. Renounce?
             else:
                 sbj = self._word_before_the_dot
+
             # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  Allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
             # But this looks a lot like v(o) where o could be identified by a string, so maybe support neither?
             # In other words, don't v(t), instead lex.define(v,n,t)
             # And no v(object_name_string), instead s.v(lex(object_name),n,t)
-            if is_getter:   # subject.verb(object) <-- getter only
+
+            if kind_of_call == KindOfCall.adder:
+                maybe_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
+                maybe_word._from_sbj_vrb_obj()
+                if maybe_word.exists:
+                    num = maybe_word.num + num_add
+                else:
+                    num = num_add
+                existing_word = self.sentence(
+                    sbj=sbj,
+                    vrb=self,
+                    obj=obj,
+                    num=num,
+                    txt=txt,
+                )
+            elif kind_of_call == KindOfCall.getter:   # subject.verb(object) <-- getter only
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
                 assert existing_word.exists, \

@@ -169,17 +169,21 @@ class WordDemoTests(WordTests):
 
         # Setters
         s.v(o, n)
-        s.v(o, num=n)
         s.v(o, n, t)
+        s.v(o, num=n)
+
         s.define(o, t)
         s.define(o, t, n)
 
         # Getters
         w = s.v(o)
 
-        # Setter if it does not exist already, Getter if it does
+        # Setter if it does not exist already.  Getter only if it does.
         w = s.v(o, n, use_already=True)
         w = s.v(o, n, t, use_already=True)
+
+        # Delta if it exists already.  Setter if it does not.
+        s.v(o, num_add=n)
 
 
 class InternalTestWordTests(WordTests):
@@ -1894,12 +1898,13 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
         self.assertEqual(qiki.Number(20), b_l_y_after[-1].num)
 
-    def test_num_delta(self):
+    def test_num_add(self):
         b_l_y_before = self.find_b_l_y()
-        self.bart.like(self.youtube, num_delta=20)
+        self.bart.like(self.youtube, num_add=20)
         b_l_y_after = self.find_b_l_y()
         self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
-        self.assertEqual(qiki.Number(30), b_l_y_after[-1].num)
+        self.assertEqual(10, b_l_y_before[-1].num)
+        self.assertEqual(30, b_l_y_after[-1].num)
 
 
     ################## obsolete or maybe someday #################################
