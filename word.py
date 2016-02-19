@@ -360,7 +360,7 @@ class Word(object):
         Construct a Word() using the same lex as another word.
 
         The constructed word may exist in the database already.
-        Otherwise it will be prepared to .save().
+        In any case, it will be prepared to .save().
         """
         assert hasattr(self, 'lex')
         kwargs['lex'] = self.lex

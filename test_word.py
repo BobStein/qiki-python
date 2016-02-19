@@ -1088,6 +1088,40 @@ class WordMoreTests(WordTests):
             eve.clap(alf)
 
 
+class WordSentenceTests(WordTests):
+
+    def setUp(self):
+        super(WordSentenceTests, self).setUp()
+        self.sam = self.lex.agent('sam')
+        self.vet = self.lex.verb('vet')
+        self.orb = self.lex.noun('orb')
+
+    def assertGoodSentence(self, sentence, the_num=1, the_txt=''):
+        self.assertTrue(sentence.exists)
+        self.assertEqual(self.sam.idn, sentence.sbj)
+        self.assertEqual(self.vet.idn, sentence.vrb)
+        self.assertEqual(self.orb.idn, sentence.obj)
+        self.assertEqual(the_num, sentence.num)
+        self.assertEqual(the_txt, sentence.txt)
+
+    def test_sentences(self):
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=qiki.Number(42), txt='sentence'), 42, 'sentence')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt='sentence'), 42, 'sentence')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb))
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=99), 99)
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, txt='flop'), 1, 'flop')
+
+    def test_sentence_positional(self):
+        with self.assertRaises(type(None)):
+            self.lex.sentence(self.sam, self.vet, self.orb, 1, '')
+        with self.assertRaises(type(None)):
+            self.lex.sentence(self.sam, self.vet, self.orb, 1)
+        with self.assertRaises(type(None)):
+            self.lex.sentence(self.sam, self.vet, self.orb)
+        with self.assertRaises(type(None)):
+            self.lex.sentence()
+
+
 class WordListingTests(WordTests):
 
     class Student(qiki.Listing):
