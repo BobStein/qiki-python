@@ -3,6 +3,7 @@ A qiki Word is defined by a three-word subject-verb-object
 """
 
 from __future__ import print_function
+import numbers
 import re
 import time
 
@@ -71,9 +72,9 @@ class Word(object):
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
-            self.sbj = sbj
-            self.vrb = vrb
-            self.obj = obj
+            self.sbj = None if sbj is None else idn_from_word_or_number(sbj)
+            self.vrb = None if vrb is None else idn_from_word_or_number(vrb)
+            self.obj = None if obj is None else idn_from_word_or_number(obj)
             self.num = num
             if txt is None:
                 self.txt = None
@@ -343,15 +344,18 @@ class Word(object):
         # TODO:  Move use_already option to here, from __call__()?
         # Then define() could just call sentence() without checking spawn() first?
         # Only callers to sentence() are __call__() and define().
-        assert isinstance(sbj, Word),           "sbj cannot be a {type}".format(type=type(sbj).__name__)
-        assert isinstance(vrb, Word),           "vrb cannot be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, Word),           "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert isinstance(num, Number),         "num cannot be a {type}".format(type=type(num).__name__)
+        assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
+        assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
         assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
-        if not vrb.is_a_verb():
-            raise self.NotAVerb("Sentence verb {} is not a verb.".format(vrb.qstring()))
-            # NOTE:  Rare error, because sentence() almost always comes from s.v(o).
-        new_word = self.spawn(sbj=sbj.idn, vrb=vrb.idn, obj=obj.idn, num=num, txt=txt)
+        new_word = self.spawn(
+            sbj=sbj,
+            vrb=vrb,
+            obj=obj,
+            num=Number(num),
+            txt=txt
+        )
         new_word.save()
         return new_word
 

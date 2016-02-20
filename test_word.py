@@ -1103,15 +1103,38 @@ class WordSentenceTests(WordTests):
         self.assertEqual(self.orb.idn, sentence.obj)
         self.assertEqual(the_num, sentence.num)
         self.assertEqual(the_txt, sentence.txt)
+        return sentence
 
-    def test_sentences(self):
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=qiki.Number(42), txt='sentence'), 42, 'sentence')
+    def test_sentence(self):
+        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt='sentence'), 42, 'sentence')
+        self.assertEqual(self.sam.idn, w.sbj)
+        self.assertEqual(self.vet.idn, w.vrb)
+        self.assertEqual(self.orb.idn, w.obj)
+        self.assertEqual(42, w.num)
+        self.assertEqual('sentence', w.txt)
+
+    def test_sentence_by_idn(self):
+        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam.idn, vrb=self.vet.idn, obj=self.orb.idn, num=42, txt='sentence'), 42, 'sentence')
+        self.assertEqual(self.sam.idn, w.sbj)
+        self.assertEqual(self.vet.idn, w.vrb)
+        self.assertEqual(self.orb.idn, w.obj)
+
+    def test_sentence_args(self):
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt='sentence'), 42, 'sentence')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=qiki.Number(42), txt='sentence'), 42, 'sentence')
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb))
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=99), 99)
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, txt='flop'), 1, 'flop')
 
-    def test_sentence_positional(self):
+    def test_sentence_use_already(self):
+        w1=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        w2=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        self.assertLess(w1.idn, w2.idn)
+        w3=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y'), 8, 'y')
+        w4=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y', use_already=True), 8, 'y')
+        self.assertEqual(w3.idn, w4.idn)
+
+    def test_sentence_bad_positional(self):
         with self.assertRaises(type(None)):
             self.lex.sentence(self.sam, self.vet, self.orb, 1, '')
         with self.assertRaises(type(None)):
@@ -1120,6 +1143,10 @@ class WordSentenceTests(WordTests):
             self.lex.sentence(self.sam, self.vet, self.orb)
         with self.assertRaises(type(None)):
             self.lex.sentence()
+
+    def test_sentence_bad_args(self):
+        with self.assertRaises(type(None)):
+            self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, no_such_arg=0)
 
 
 class WordListingTests(WordTests):
@@ -1502,6 +1529,8 @@ class WordUtilities(WordTests):
             idn_from_word_or_number('')
         with self.assertRaises(TypeError):
             idn_from_word_or_number(0)
+        with self.assertRaises(TypeError):
+            idn_from_word_or_number(None)
 
     # noinspection PyStatementEffect
     def test_inequality_words_and_numbers(self):
