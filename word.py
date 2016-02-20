@@ -311,11 +311,11 @@ class Word(object):
         The obj may be identified by its txt, example:
             lex.define('agent', 'fred')
         """
-        assert isinstance(obj, (Word, self.TXT_TYPES))
-        assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
-        assert isinstance(num, Number)
         if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
             obj = self.spawn(obj)
+        assert isinstance(obj, Word)
+        assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
+        assert isinstance(num, Number)
         possibly_existing_word = self.spawn(txt)
         # How to handle "duplications"
         # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
@@ -353,6 +353,7 @@ class Word(object):
             raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
         num = kwargs.pop('num', Number(1))
         txt = kwargs.pop('txt', '')
+        use_already = kwargs.pop('use_already', False)
         if len(args) != 0:
             raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
         if len(kwargs) != 0:
@@ -372,7 +373,12 @@ class Word(object):
             num=Number(num),
             txt=txt
         )
-        new_word.save()
+        if use_already:
+            new_word._from_sbj_vrb_obj_num_txt()
+            if not new_word.exists:
+                new_word.save()
+        else:
+            new_word.save()
         return new_word
 
     def spawn(self, *args, **kwargs):
