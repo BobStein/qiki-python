@@ -327,7 +327,10 @@ class Word(object):
         new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, num=num, txt=txt)
         return new_word
 
-    def sentence(self, sbj, vrb, obj, num, txt):
+    class SentenceArgs(TypeError):
+        pass
+
+    def sentence(self, *args, **kwargs):
         """
         Construct a new sentence from a 3-word subject-verb-object.
 
@@ -341,6 +344,19 @@ class Word(object):
             sentence requires an explicit num, define defaults to 1
 
         """
+        original_kwargs = kwargs.copy()
+        try:
+            sbj = kwargs.pop('sbj')
+            vrb = kwargs.pop('vrb')
+            obj = kwargs.pop('obj')
+        except KeyError:
+            raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
+        num = kwargs.pop('num', Number(1))
+        txt = kwargs.pop('txt', '')
+        if len(args) != 0:
+            raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
+        if len(kwargs) != 0:
+            raise self.SentenceArgs("Word.sentence() doesn't understand these arguments: " + repr(kwargs))
         # TODO:  Move use_already option to here, from __call__()?
         # Then define() could just call sentence() without checking spawn() first?
         # Only callers to sentence() are __call__() and define().

@@ -1135,13 +1135,13 @@ class WordSentenceTests(WordTests):
         self.assertEqual(w3.idn, w4.idn)
 
     def test_sentence_bad_positional(self):
-        with self.assertRaises(type(None)):
+        with self.assertRaises(qiki.Word.SentenceArgs):
             self.lex.sentence(self.sam, self.vet, self.orb, 1, '')
-        with self.assertRaises(type(None)):
+        with self.assertRaises(qiki.Word.SentenceArgs):
             self.lex.sentence(self.sam, self.vet, self.orb, 1)
-        with self.assertRaises(type(None)):
+        with self.assertRaises(qiki.Word.SentenceArgs):
             self.lex.sentence(self.sam, self.vet, self.orb)
-        with self.assertRaises(type(None)):
+        with self.assertRaises(qiki.Word.SentenceArgs):
             self.lex.sentence()
 
     def test_sentence_bad_args(self):
