@@ -354,6 +354,7 @@ class Word(object):
         num = kwargs.pop('num', Number(1))
         txt = kwargs.pop('txt', '')
         use_already = kwargs.pop('use_already', False)
+        num_add = kwargs.pop('num_add', None)
         if len(args) != 0:
             raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
         if len(kwargs) != 0:
@@ -364,7 +365,6 @@ class Word(object):
         assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
         assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
         new_word = self.spawn(
             sbj=sbj,
@@ -373,11 +373,20 @@ class Word(object):
             num=Number(num),
             txt=txt
         )
-        if use_already:
+        if num_add is not None:
+            new_word._from_sbj_vrb_obj()
+            if new_word.exists:
+                new_word.num += Number(num_add)
+            else:
+                new_word.num = Number(num_add)
+            new_word.save()
+        elif use_already:
+            assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
             new_word._from_sbj_vrb_obj_num_txt()
             if not new_word.exists:
                 new_word.save()
         else:
+            assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
             new_word.save()
         return new_word
 
@@ -620,8 +629,7 @@ class Word(object):
         assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, six.string_types)
-        assert not self.exists
-        if self._idn is None:
+        if self.exists or self._idn is None:
             self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
             # Or store latest idn in another table
@@ -891,6 +899,18 @@ class LexMySQL(Lex):
         cursor = self._cursor()
         assert not word.idn.is_nan()
         whn = Number(time.time())
+        # TODO:  Enforce uniqueness?
+        # SEE:  https://docs.python.org/2/library/time.html#time.time
+        #     "Note that even though the time is always returned as a floating point number,
+        #     not all systems provide time with a better precision than 1 second.
+        #     While this function normally returns non-decreasing values,
+        #     it can return a lower value than a previous call
+        #     if the system clock has been set back between the two calls."
+        # Unfortunately, monotonic.monotonic() is seconds since boot, not since 1970.
+        # TODO:  Construct a hybrid?  Get an offset at startup then record offset + monotonic()?
+        # That would mean a time change requires restart.
+        # Groan, invent a qiki.Time() class?  Oh where does it end.
+        # Might as well make classes qiki.Wheel() and qiki.KitchenSink().
         cursor.execute(
             "INSERT INTO `{table}` "
                    "(idn, sbj, vrb, obj, num, txt, whn) "

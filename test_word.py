@@ -97,6 +97,7 @@ class WordTests(unittest.TestCase):
         ))
 
     def assertSensibleWhen(self, whn):
+        self.assertIsNotNone(whn)
         self.assertGreaterEqual(time.time(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
@@ -1130,31 +1131,33 @@ class WordSentenceTests(WordTests):
         w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
         w2 =self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
         self.assertLess(w1.idn, w2.idn)
+
         w3a = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y'), 8, 'y')
         w3b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y', use_already=True), 8, 'y')
         self.assertEqual(w3a.idn, w3b.idn)
+
         w4 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt='z'), 7, 'z')
         w5 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt='z', use_already=False), 7, 'z')
         self.assertLess(w4.idn, w5.idn)
 
     def test_sentence_whn(self):
         w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
-        self.assertIsNotNone(w1.whn)
+        self.assertSensibleWhen(w1.whn)
 
         w2 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
-        self.assertIsNotNone(w2.whn)
+        self.assertSensibleWhen(w2.whn)
         self.assertLess(w1.idn, w2.idn)
-        self.assertLess(w1.whn, w2.whn)
+        self.assertLessEqual(w1.whn, w2.whn)
 
         w2b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x', use_already=True), 9, 'x')
-        self.assertIsNotNone(w2b.whn)
+        self.assertSensibleWhen(w2b.whn)
         self.assertEqual(w2.idn, w2b.idn)
         self.assertEqual(w2.whn, w2b.whn)
 
         w3 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x', use_already=False), 9, 'x')
-        self.assertIsNotNone(w3.whn)
+        self.assertSensibleWhen(w3.whn)
         self.assertLess(w2.idn, w3.idn)
-        self.assertLess(w2.whn, w3.whn)
+        self.assertLessEqual(w2.whn, w3.whn)
 
     def test_sentence_bad_positional(self):
         with self.assertRaises(qiki.Word.SentenceArgs):
@@ -1169,6 +1172,12 @@ class WordSentenceTests(WordTests):
     def test_sentence_bad_args(self):
         with self.assertRaises(qiki.Word.SentenceArgs):
             self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, no_such_arg=0)
+
+    def test_sentence_num_add(self):
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt='x'), 11, 'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt='x'), 13, 'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=None, num_add=2, txt='x'), 15, 'x')
 
 
 class WordListingTests(WordTests):
