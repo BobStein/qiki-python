@@ -494,8 +494,20 @@ class WordFirstTests(WordTests):
         self.assertEqual(b'simple letters', txt.utf8())
         self.assertIs(six.binary_type, type(txt.utf8()))
 
+    def test_13b_text_class(self):
+        t0 = u"some text"
+        t1 = qiki.Text(t0)
+        t2 = qiki.Text(t1)
+        t3 = qiki.Text(t2)
+        self.assertTripleEqual(u"some text", t1.unicode())
+        self.assertTripleEqual(b"some text", t1.utf8())
+        self.assertTripleEqual(u"some text", t2.unicode())
+        self.assertTripleEqual(b"some text", t2.utf8())
+        self.assertTripleEqual(u"some text", t3.unicode())
+        self.assertTripleEqual(b"some text", t3.utf8())
+
     # noinspection SpellCheckingInspection
-    def test_13b_text_postel(self):
+    def test_13c_text_postel(self):
         """Verify the Text class follows Postel's Law -- liberal in, conservative out."""
         def example(the_input, _unicode, _utf8):
             txt = qiki.Text(the_input)

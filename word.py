@@ -55,7 +55,7 @@ class Word(object):
         self.whn = None
         self.do_not_call_in_templates = True   # for Django templates
         # THANKS:  to somebody for this flag, maybe http://stackoverflow.com/a/21711308/673991
-        if isinstance(content, self.TXT_TYPES):
+        if Text.is_valid(content):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
             self._from_definition(content)
@@ -294,7 +294,7 @@ class Word(object):
             # And in this o(t) form you can't supply a num.
             assert self.lex.is_lex()
             txt = kwargs.get('txt', args[0] if len(args) > 0 else None)
-            assert isinstance(txt, self.TXT_TYPES), "Defining a new noun, but txt is a " + type(txt).__name__
+            assert Text.is_valid(txt), "Defining a new noun, but txt is a " + type(txt).__name__
             try:
                 existing_or_new_word = self.lex.define(self, *args, **kwargs)
             except TypeError:
@@ -322,10 +322,10 @@ class Word(object):
         The obj may be identified by its txt, example:
             lex.define('agent', 'fred')
         """
-        if isinstance(obj, self.TXT_TYPES):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
+        if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
             obj = self.spawn(obj)
         assert isinstance(obj, Word)
-        assert isinstance(txt, self.TXT_TYPES), "define() txt cannot be a {}".format(type(txt).__name__)
+        assert Text.is_valid(txt), "define() txt cannot be a {}".format(type(txt).__name__)
         assert isinstance(num, Number)
         possibly_existing_word = self.spawn(txt)
         # How to handle "duplications"
@@ -376,7 +376,7 @@ class Word(object):
         assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert isinstance(txt, self.TXT_TYPES), "txt cannot be a {type}".format(type=type(txt).__name__)
+        assert Text.is_valid(txt),              "txt cannot be a {type}".format(type=type(txt).__name__)
         new_word = self.spawn(
             sbj=sbj,
             vrb=vrb,
@@ -444,7 +444,7 @@ class Word(object):
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
-        assert isinstance(txt, self.TXT_TYPES)
+        assert Text.is_valid(txt)
         if not self.lex.populate_word_from_definition(self, txt):
             self.txt = Text(txt)
 
@@ -1241,16 +1241,10 @@ class Text(six.text_type):
         t.utf8()
 
     """
-    # TODO:  Painless Unicode, http://stackoverflow.com/a/3933973/673991
-    # Maybe subclassing six.text_type is the way to go.
-    # So it would be a unicode string that (unlike Python 3 str)
-    # assumed utf8 encoding if the input is six.binary_type
-    # SEE:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
+    # THANKS:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
     def __new__(cls, the_string):
-        if isinstance(the_string, six.text_type):
+        if cls.is_valid(the_string):
             return six.text_type.__new__(cls, the_string)
-        # elif isinstance(the_string, (six.binary_type, bytearray)):
-        #     return six.text_type.__new__(cls, the_string.decode('utf-8'))
         else:
             raise TypeError("Text({value} type {type}) is not supported".format(
                 value=repr(the_string),
@@ -1263,8 +1257,9 @@ class Text(six.text_type):
     def utf8(self):
         return self.encode('utf-8')
 
-
-Word.TXT_TYPES = (six.text_type, Text)   # Unicode and only unicode
+    @staticmethod
+    def is_valid(x):
+        return isinstance(x, six.text_type)
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
