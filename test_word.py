@@ -145,10 +145,12 @@ class WordTests(unittest.TestCase):
         return self.assertNewWords(1, message)
 
     def assertTripleEqual(self, first, second):
+        """Same value and same type."""
         self.assertEqual(first, second)
         self.assertIs(type(first), type(second))
 
     def assertEqualPY2PY3(self, first_for_python_2, first_for_python_3, second):
+        """Equal one thing in Python 2, another in Python 3."""
         assert type(first_for_python_2) is six.binary_type
         assert type(first_for_python_3) is six.text_type
         if six.PY2:

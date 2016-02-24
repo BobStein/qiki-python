@@ -987,7 +987,7 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
-        # TODO:  Do away with sql parameter.  Features instead.  E.g. ascending=True
+        assert isinstance(jbo_vrb, (list, tuple, type(None)))
         # TODO:  Lex.find()
         query_args = [
             'SELECT '
@@ -1001,7 +1001,6 @@ class LexMySQL(Lex):
             None
         ]
         if jbo_vrb is not None:
-            assert isinstance(jbo_vrb, (list, tuple))
             query_args += [
                 ', jbo.idn AS jbo_idn'
                 ', jbo.sbj AS jbo_sbj'
@@ -1030,11 +1029,11 @@ class LexMySQL(Lex):
         words = []
         word = None
         for row in rows:
-            if word is None or word.idn != row['idn']:
+            if word is None or row['idn'] != word.idn:
                 word = self()
                 word.populate_from_row(row)
                 word.jbo = []
-                words.append(word)
+                words.append(word)   # To be continued, we may append to word.jbo later.
             jbo_idn = row.get('jbo_idn', None)
             if jbo_idn is not None:
                 new_jbo = self()
