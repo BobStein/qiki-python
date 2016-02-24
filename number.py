@@ -16,28 +16,8 @@ import binascii
 import math
 import numbers
 import struct
-import traceback
-import warnings
 
 import six
-
-
-
-def fatal(m):
-    raise RuntimeError(m)
-
-# warnings.showwarning = fatal
-
-
-
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-    traceback.print_stack()
-    # log = file if hasattr(file,'write') else sys.stderr
-    # log.write(warnings.formatwarning(message, category, filename, lineno, line))
-
-warnings.showwarning = warn_with_traceback
-
-
 
 
 # noinspection PyUnresolvedReferences
@@ -53,10 +33,6 @@ class Number(numbers.Number):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        # elif isinstance(content, type(self)):  # Number(SonOfNumber())
-        #     self.raw = content.raw
-        # elif isinstance(self, type(content)):  # SonOfNumber(Number())
-        #     self.raw = content.raw
         elif isinstance(content, Number):  # SomeDerivationOfNumber(AnotherDerivationOfNumber())
             self.raw = content.raw
         elif isinstance(content, six.string_types):
@@ -432,7 +408,11 @@ class Number(numbers.Number):
         Example:  assert Number(1) == Number('0q82_01')
         """
         assert(isinstance(s, six.string_types))
-        if s[:2] == '0q':
+        try:
+            is_zero_q = s.startswith('0q')
+        except UnicodeDecodeError:
+            is_zero_q = False
+        if is_zero_q:
             digits = s[2:].replace('_', '')
             if len(digits) % 2 != 0:
                 digits += '0'
@@ -440,11 +420,11 @@ class Number(numbers.Number):
                 byte_string = string_from_hex(digits)
             except TypeError:
                 raise ValueError(
-                    "A qiki Number string must use hexadecimal digits (or underscore), not '{}'".format(s)
+                    "A qiki Number string must use hexadecimal digits (or underscore), not {}".format(repr(s))
                 )
             self.raw = six.binary_type(byte_string)
         else:
-            raise ValueError("A qiki Number string must start with '0q' instead of '{}'".format(s))
+            raise ValueError("A qiki Number string must start with '0q' instead of {}".format(repr(s)))
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)

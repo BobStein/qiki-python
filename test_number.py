@@ -1284,9 +1284,9 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q8C_0100000000000000000001', str(Number(256*256*256*256*256*256*256*256*256*256+1)))
 
     def test_from_raw_docstring_example(self):
-        with self.assertRaises((ValueError, TypeError)):
-             Number(b'\x82\x01')
-        self.assertEqual(Number(1), Number.from_raw(b'\x82\x01'))
+        with self.assertRaises((ValueError, Number.ConstructorTypeError)):
+            Number(b'\x82\x01')   # Wrong, don't pass raw string to constructor.
+        self.assertEqual(Number(1), Number.from_raw(b'\x82\x01'))   # Right, use from_raw() instead.
 
     def test_from_raw(self):
         self.assertEqual(b'',             Number.from_raw(b'').raw)
