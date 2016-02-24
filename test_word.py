@@ -3,7 +3,10 @@
 Testing qiki word.py
 """
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
 import operator
 import six
 import sys
@@ -11,7 +14,6 @@ import time
 import unicodedata
 import unittest
 import uuid
-import warnings
 
 import qiki
 from number import hex_from_string
@@ -149,24 +151,15 @@ class WordTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIs(type(first), type(second))
 
-    def assertEqualPY2PY3(self, first_for_python_2, first_for_python_3, second):
-        """Equal one thing in Python 2, another in Python 3."""
-        assert type(first_for_python_2) is six.binary_type
-        assert type(first_for_python_3) is six.text_type
-        if six.PY2:
-            self.assertEqual(first_for_python_2, second)
-        if six.PY3:
-            self.assertEqual(first_for_python_3, second)
-
 
 class WordDemoTests(WordTests):
 
     # noinspection PyUnusedLocal
     def test_syntaxes(self):
         lex = self.lex
-        s = lex.define('agent', 's')
-        _ = lex.define('verb', 'v')
-        o = self.lex.define('noun', 'o')
+        s = lex.define(u'agent', u's')
+        _ = lex.define(u'verb', u'v')
+        o = self.lex.define(u'noun', u'o')
         t = u'some text'
         n = qiki.Number(42)
 
@@ -197,31 +190,31 @@ class InternalTestWordTests(WordTests):
             pass
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNoNewWords():
-                self._make_one_new_word('shrubbery')
+                self._make_one_new_word(u'shrubbery')
 
     def test_assertNewWords(self):
         with self.assertNewWords(1):
-            self._make_one_new_word('shrubbery')
+            self._make_one_new_word(u'shrubbery')
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNewWords(1):
                 pass
 
     def test_assertNewWord(self):
         with self.assertNewWord():   # Succeeds if just the right number of words are created.
-            self._make_one_new_word('shrubbery')
+            self._make_one_new_word(u'shrubbery')
         with self.assertNewWords(2):
-            self._make_one_new_word('swallow')
-            self._make_one_new_word('gopher')
+            self._make_one_new_word(u'swallow')
+            self._make_one_new_word(u'gopher')
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNewWord():   # Fails if too few.
                 pass
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
             with self.assertNewWord():   # Fails if too many.
-                self._make_one_new_word('knight')
-                self._make_one_new_word('rabbit')
+                self._make_one_new_word(u'knight')
+                self._make_one_new_word(u'rabbit')
 
     def _make_one_new_word(self, txt):
-        self.lex.define(self.lex('noun'), txt)
+        self.lex.define(self.lex(u'noun'), txt)
 
     def test_missing_from_lex(self):
         self.lex(qiki.Word._IDN_DEFINE)
@@ -240,73 +233,73 @@ class WordFirstTests(WordTests):
     def test_01a_lex(self):
         self.assertEqual(self.lex._IDN_LEX,        self.lex.idn)
         self.assertEqual(self.lex._IDN_LEX,        self.lex.sbj)
-        self.assertEqual(self.lex('define').idn,   self.lex.vrb)
-        self.assertEqual(self.lex('agent').idn,    self.lex.obj)
+        self.assertEqual(self.lex(u'define').idn,   self.lex.vrb)
+        self.assertEqual(self.lex(u'agent').idn,    self.lex.obj)
         self.assertEqual(qiki.Number(1),           self.lex.num)
-        self.assertEqual('lex',                    self.lex.txt)
+        self.assertEqual(u'lex',                    self.lex.txt)
         self.assertSensibleWhen(                   self.lex.whn)
         self.assertTrue(self.lex.is_lex())
 
     def test_01b_lex_getter(self):
-        define = self.lex('define')
+        define = self.lex(u'define')
         self.assertTrue(define.exists)
         self.assertEqual(define.idn, qiki.Word._IDN_DEFINE)
         self.assertEqual(define.sbj, qiki.Word._IDN_LEX)
         self.assertEqual(define.vrb, qiki.Word._IDN_DEFINE)
         self.assertEqual(define.obj, qiki.Word._IDN_VERB)
         self.assertEqual(define.num, qiki.Number(1))
-        self.assertEqual(define.txt, 'define')
+        self.assertEqual(define.txt, u'define')
 
     def test_01c_lex_bum_getter(self):
-        nonword = self.lex('word that does not exist')
+        nonword = self.lex(u'word that does not exist')
         self.assertFalse(nonword.exists)
         self.assertTrue(nonword.idn.is_nan())
         self.assertFalse(hasattr(nonword, 'sbj'))
         self.assertFalse(hasattr(nonword, 'vrb'))
         self.assertFalse(hasattr(nonword, 'obj'))
         self.assertFalse(hasattr(nonword, 'num'))
-        self.assertEqual(nonword.txt, 'word that does not exist')
+        self.assertEqual(nonword.txt, u'word that does not exist')
 
     def test_02_noun(self):
-        noun = self.lex('noun')
+        noun = self.lex(u'noun')
         self.assertTrue(noun.exists)
         self.assertTrue(noun.is_noun())
-        self.assertEqual('noun', noun.txt)
+        self.assertEqual(u'noun', noun.txt)
 
     def test_02a_str(self):
-        self.assertEqual('noun', str(self.lex('noun')))
+        self.assertEqual(u'noun', str(self.lex(u'noun')))
 
     def test_02b_unicode(self):
-        self.assertEqual(u'noun', six.text_type(self.lex('noun')))
-        self.assertIsInstance(six.text_type(self.lex('noun')), six.text_type)
+        self.assertEqual(u'noun', six.text_type(self.lex(u'noun')))
+        self.assertIsInstance(six.text_type(self.lex(u'noun')), six.text_type)
 
     def test_02b_repr(self):
-        self.assertEqual("Word('noun')", repr(self.lex('noun')))
+        self.assertEqual(u"Word(u'noun')", repr(self.lex(u'noun')))
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
 
     def test_03b_max_idn(self):
         self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
-        self.lex.verb('splurge')
+        self.lex.verb(u'splurge')
         self.assertEqual(qiki.Word._IDN_MAX_FIXED + 1, self.lex.max_idn())
 
     def test_03c_noun_spawn(self):
-        noun = self.lex('noun')
-        thing = noun('thing')
+        noun = self.lex(u'noun')
+        thing = noun(u'thing')
         self.assertTrue(thing.exists)
-        self.assertEqual('thing', thing.txt)
+        self.assertEqual(u'thing', thing.txt)
 
     def test_03d_noun_spawn_crazy_syntax(self):
-        thing = self.lex('noun')('thing')
+        thing = self.lex(u'noun')(u'thing')
         self.assertTrue(thing.exists)
-        self.assertEqual('thing', thing.txt)
+        self.assertEqual(u'thing', thing.txt)
 
     def test_04_is_a(self):
-        verb = self.lex('verb')
-        noun = self.lex('noun')
-        thing = noun('thing')
-        cosa = thing('cosa')
+        verb = self.lex(u'verb')
+        noun = self.lex(u'noun')
+        thing = noun(u'thing')
+        cosa = thing(u'cosa')
 
         self.assertTrue(verb.is_a(noun))
         self.assertTrue(noun.is_a(noun))
@@ -337,19 +330,19 @@ class WordFirstTests(WordTests):
         self.assertTrue(noun.is_a_noun(recursion=2))
         self.assertTrue(noun.is_a_noun(recursion=3))
 
-        child1 = noun('child1')
+        child1 = noun(u'child1')
         self.assertFalse(child1.is_a_noun(recursion=0))
         self.assertTrue(child1.is_a_noun(recursion=1))
         self.assertTrue(child1.is_a_noun(recursion=2))
         self.assertTrue(child1.is_a_noun(recursion=3))
 
-        child2 = child1('child2')
+        child2 = child1(u'child2')
         self.assertFalse(child2.is_a_noun(recursion=0))
         self.assertFalse(child2.is_a_noun(recursion=1))
         self.assertTrue(child2.is_a_noun(recursion=2))
         self.assertTrue(child2.is_a_noun(recursion=3))
 
-        child12 = child2('child3')('child4')('child5')('child6')('child7')('child8')('child9')('child10')('child11')('child12')
+        child12 = child2(u'child3')(u'child4')(u'child5')(u'child6')(u'child7')(u'child8')(u'child9')(u'child10')(u'child11')(u'child12')
         self.assertFalse(child12.is_a_noun(recursion=10))
         self.assertFalse(child12.is_a_noun(recursion=11))
         self.assertTrue(child12.is_a_noun(recursion=12))
@@ -357,50 +350,50 @@ class WordFirstTests(WordTests):
 
     def test_04_is_a_noun(self):
         self.assertTrue(self.lex.is_a_noun())
-        self.assertTrue(self.lex('lex').is_a_noun())
-        self.assertTrue(self.lex('agent').is_a_noun())
-        self.assertTrue(self.lex('noun').is_a_noun(reflexive=True))
-        self.assertTrue(self.lex('noun').is_a_noun(reflexive=False))   # noun is explicitly defined as a noun
-        self.assertTrue(self.lex('noun').is_a_noun())
-        self.assertTrue(self.lex('verb').is_a_noun())
-        self.assertTrue(self.lex('define').is_a_noun())
+        self.assertTrue(self.lex(u'lex').is_a_noun())
+        self.assertTrue(self.lex(u'agent').is_a_noun())
+        self.assertTrue(self.lex(u'noun').is_a_noun(reflexive=True))
+        self.assertTrue(self.lex(u'noun').is_a_noun(reflexive=False))   # noun is explicitly defined as a noun
+        self.assertTrue(self.lex(u'noun').is_a_noun())
+        self.assertTrue(self.lex(u'verb').is_a_noun())
+        self.assertTrue(self.lex(u'define').is_a_noun())
 
     def test_05_noun_grandchild(self):
-        agent = self.lex('agent')
-        human = agent('human')
-        self.assertEqual('human', human.txt)
+        agent = self.lex(u'agent')
+        human = agent(u'human')
+        self.assertEqual(u'human', human.txt)
 
     def test_06_noun_great_grandchild(self):
-        noun = self.lex('noun')
+        noun = self.lex(u'noun')
         self.assertTrue(noun.is_noun())
 
-        child = noun('child')
+        child = noun(u'child')
         self.assertFalse(child.is_noun())
         self.assertTrue( child.spawn(child.obj).is_noun())
 
-        grandchild = child('grandchild')
+        grandchild = child(u'grandchild')
         self.assertFalse(grandchild.is_noun())
         self.assertFalse(grandchild.spawn(grandchild.obj).is_noun())
         self.assertTrue( grandchild.spawn(grandchild.spawn(grandchild.obj).obj).is_noun())
 
-        greatgrandchild = grandchild('greatgrandchild')
+        greatgrandchild = grandchild(u'greatgrandchild')
         self.assertFalse(greatgrandchild.is_noun())
         self.assertFalse(greatgrandchild.spawn(greatgrandchild.obj).is_noun())
         self.assertFalse(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).is_noun())
         self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
-        self.assertEqual('greatgrandchild', greatgrandchild.txt)
+        self.assertEqual(u'greatgrandchild', greatgrandchild.txt)
 
     def test_07_noun_great_great_grandchild(self):
-        greatgrandchild = self.lex('noun')('child')('grandchild')('greatgrandchild')
-        greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
-        self.assertEqual('greatgreatgrandchild', greatgreatgrandchild.txt)
+        greatgrandchild = self.lex(u'noun')(u'child')(u'grandchild')(u'greatgrandchild')
+        greatgreatgrandchild = greatgrandchild(u'greatgreatgrandchild')
+        self.assertEqual(u'greatgreatgrandchild', greatgreatgrandchild.txt)
 
     def test_07_is_a_noun_great_great_grandchild(self):
-        noun = self.lex('noun')
-        child = noun('child')
-        grandchild = child('grandchild')
-        greatgrandchild = grandchild('greatgrandchild')
-        greatgreatgrandchild = greatgrandchild('greatgreatgrandchild')
+        noun = self.lex(u'noun')
+        child = noun(u'child')
+        grandchild = child(u'grandchild')
+        greatgrandchild = grandchild(u'greatgrandchild')
+        greatgreatgrandchild = greatgrandchild(u'greatgreatgrandchild')
         self.assertTrue(noun.is_a_noun())
         self.assertTrue(child.is_a_noun())
         self.assertTrue(grandchild.is_a_noun())
@@ -408,11 +401,11 @@ class WordFirstTests(WordTests):
         self.assertTrue(greatgreatgrandchild.is_a_noun())
 
     def test_08_noun_twice(self):
-        noun = self.lex('noun')
+        noun = self.lex(u'noun')
         with self.assertNewWord():
-            thing1 = noun('thing')
+            thing1 = noun(u'thing')
         with self.assertNoNewWords():
-            thing2 = noun('thing')
+            thing2 = noun(u'thing')
         self.assertEqual(thing1.idn, thing2.idn)
 
     def test_09a_equality(self):
@@ -428,13 +421,13 @@ class WordFirstTests(WordTests):
         self.assertIsNot(noun1, noun2)
 
     def test_09a_equality_by_call(self):
-        noun1 = self.lex('noun')
-        noun2 = self.lex('noun')
+        noun1 = self.lex(u'noun')
+        noun2 = self.lex(u'noun')
         self.assertEqual(noun1, noun2)
         self.assertIsNot(noun1, noun2)
 
     def test_09a_equality_by_copy_constructor(self):
-        noun1 = self.lex('noun')
+        noun1 = self.lex(u'noun')
         noun2 = qiki.Word(noun1)
         self.assertEqual(noun1, noun2)
         self.assertIsNot(noun1, noun2)
@@ -447,7 +440,7 @@ class WordFirstTests(WordTests):
 
     def test_09b_lex_singleton_by_call(self):
         lex1 = self.lex
-        lex2 = self.lex('lex')
+        lex2 = self.lex(u'lex')
         self.assertEqual(lex1, lex2)
         self.assertIs(lex1, lex2)   # Why does this work?
 
@@ -457,49 +450,48 @@ class WordFirstTests(WordTests):
 
     def test_10a_word_by_lex_idn(self):
         agent = self.lex(qiki.Word._IDN_AGENT)
-        self.assertEqual(agent.txt, 'agent')
+        self.assertEqual(agent.txt, u'agent')
 
     def test_10b_word_by_lex_txt(self):
-        agent = self.lex('agent')
+        agent = self.lex(u'agent')
         self.assertEqual(agent.idn, qiki.Word._IDN_AGENT)
 
     def test_11a_noun_inserted(self):
-        new_word = self.lex.noun('something')
+        new_word = self.lex.noun(u'something')
         self.assertEqual(self.lex.max_idn(),     new_word.idn)
         self.assertEqual(self.lex._IDN_LEX,       new_word.sbj)
-        self.assertEqual(self.lex('define').idn, new_word.vrb)
-        self.assertEqual(self.lex('noun').idn,   new_word.obj)
+        self.assertEqual(self.lex(u'define').idn, new_word.vrb)
+        self.assertEqual(self.lex(u'noun').idn,   new_word.obj)
         self.assertEqual(qiki.Number(1),         new_word.num)
-        self.assertEqual('something',            new_word.txt)
+        self.assertEqual(u'something',            new_word.txt)
         self.assertSensibleWhen(                 new_word.whn)
 
     def test_11b_whn(self):
-        define = self.lex('define')
-        new_word = self.lex.noun('something')
+        define = self.lex(u'define')
+        new_word = self.lex.noun(u'something')
         self.assertSensibleWhen(define.whn)
         self.assertSensibleWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
     def test_12a_non_vrb(self):
-        anna = self.lex.agent('anna')
-        self.lex.verb('like')
-        self.lex.noun('yurt')
-        zarf = self.lex.noun('zarf')
+        anna = self.lex.agent(u'anna')
+        self.lex.verb(u'like')
+        self.lex.noun(u'yurt')
+        zarf = self.lex.noun(u'zarf')
         anna.like(zarf, 1)
         self.assertTrue(anna.like.is_a_verb())
         self.assertFalse(anna.yurt.is_a_verb())
-        self.assertEqual('yurt', anna.yurt.txt)
+        self.assertEqual(u'yurt', anna.yurt.txt)
         with self.assertRaises(TypeError):
-            anna.yurt(zarf, txt='', num=1)
+            anna.yurt(zarf, txt=u'', num=1)
             # FIXME:  Can we even come up with a s.v(o) where v is not a verb,
             # and something else isn't happening?  This example is at best a highly
             # corrupted form of o(t), aka lex.define(o,t).
 
     def test_13a_text(self):
-        txt = qiki.Text('simple letters')
-        self.assertEqual('simple letters', str(txt))
+        txt = qiki.Text(u'simple letters')
+        self.assertEqual(u'simple letters', txt)
         self.assertEqual(b'simple letters', txt.utf8())
-        self.assertIs(str, type(str(txt)))
         self.assertIs(six.binary_type, type(txt.utf8()))
 
     # noinspection SpellCheckingInspection
@@ -507,163 +499,102 @@ class WordFirstTests(WordTests):
         """Verify the Text class follows Postel's Law -- liberal in, conservative out."""
         def example(the_input, _unicode, _utf8):
             txt = qiki.Text(the_input)
-            self.assertTripleEqual(_unicode, six.text_type(txt))
+            self.assertTripleEqual(_unicode, txt)
             self.assertTripleEqual(_utf8, txt.utf8())
 
-        example( 'ascii', u'ascii', b'ascii')
-        example(u'ascii', u'ascii', b'ascii')
-        example(b'ascii', u'ascii', b'ascii')
+        example(b'ascii'.decode('utf-8'), qiki.Text(u'ascii'), b'ascii')
+        example(u'ascii',                 qiki.Text(u'ascii'), b'ascii')
+        # example(b'ascii', qiki.Text(u'ascii'), b'ascii')
 
         example(unicodedata.lookup('latin small letter a with ring above') +
-                          u'ring', u'\U000000E5ring', b'\xC3\xA5ring')
-        example(          'åring', u'\U000000E5ring', b'\xC3\xA5ring')
-        example(         u'åring', u'\U000000E5ring', b'\xC3\xA5ring')
-        example(u'\U000000E5ring', u'\U000000E5ring', b'\xC3\xA5ring')
-        example(  b'\xC3\xA5ring', u'\U000000E5ring', b'\xC3\xA5ring')
+                          u'ring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
+        example(         u'åring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
+        example(u'\U000000E5ring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
+        example(  b'\xC3\xA5ring'.decode('utf-8'),
+                                   qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
 
         example(unicodedata.lookup('greek small letter mu') +
-                          u'icro', u'\U000003BCicro', b'\xCE\xBCicro')
-        example(          'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
-        example(         u'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
-        example(u'\U000003BCicro', u'\U000003BCicro', b'\xCE\xBCicro')
-        example(  b'\xCE\xBCicro', u'\U000003BCicro', b'\xCE\xBCicro')
+                          u'icro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
+        example(         u'μicro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
+        example(u'\U000003BCicro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
+        example(  b'\xCE\xBCicro'.decode('utf-8'),
+                                   qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
 
         example(unicodedata.lookup('tetragram for aggravation') +
-                                  u'noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
-        example(        u'\U0001D351noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
-        example(  b'\xF0\x9D\x8D\x91noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
+                                  u'noid', qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
+        example(        u'\U0001D351noid', qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
+        example(  b'\xF0\x9D\x8D\x91noid'.decode('utf-8'),
+                                           qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
 
     def test_14a_word_text(self):
         """Verify the txt field follows Postel's Law -- liberal in, conservative out.
 
         Liberal in:  str, unicode, bytes, bytearray, Text and Python 2 or 3
         Conservative out:  str, which is unicode in Python 3, UTF-8 in Python 2."""
-        s = self.lex.noun('s')
-        _ = self.lex.verb('v')
-        o = self.lex.noun('o')
+        s = self.lex.noun(u's')
+        _ = self.lex.verb(u'v')
+        o = self.lex.noun(u'o')
         def works_as_txt(txt):
             word = o(txt)
-            self.assertIs(str, type(word.txt))
-            self.assertTripleEqual('apple', word.txt)
+            self.assertIs(qiki.Text, type(word.txt))
+            self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
             word = s.define(o, txt)
-            self.assertIs(str, type(word.txt))
-            self.assertTripleEqual('apple', word.txt)
+            self.assertIs(qiki.Text, type(word.txt))
+            self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
             word = s.v(o, 1, txt)
-            self.assertIs(str, type(word.txt))
-            self.assertTripleEqual('apple', word.txt)
+            self.assertIs(qiki.Text, type(word.txt))
+            self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-        works_as_txt('apple')
-        works_as_txt(b'apple')
+        # works_as_txt('apple')
+        works_as_txt(b'apple'.decode('utf-8'))
+        works_as_txt(bytearray('apple', 'utf-8').decode('utf-8'))
         works_as_txt(u'apple')
-        works_as_txt(u'apple'.encode('utf8'))
-        works_as_txt(qiki.Text('apple'))
-        works_as_txt(qiki.Text(b'apple'))
+        # works_as_txt(u'apple'.encode('utf8'))
+        # works_as_txt(qiki.Text('apple'))
+        works_as_txt(qiki.Text(b'apple'.decode('utf-8')))
+        works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
-        works_as_txt(qiki.Text(u'apple'.encode('utf8')))
+        # works_as_txt(qiki.Text(u'apple'.encode('utf8')))
 
 
 class WordUnicode(WordTests):
 
     def setUp(self):
         super(WordUnicode, self).setUp()
-        self.anna =    self.lex.noun('anna')
-        self.comment = self.lex.verb('comment')
-        self.zarf =    self.lex.noun('zarf')
+        self.anna =    self.lex.noun(u'anna')
+        self.comment = self.lex.verb(u'comment')
+        self.zarf =    self.lex.noun(u'zarf')
 
 
 class WordUnicodeTxt(WordUnicode):
     """Unicode characters in non-definition word descriptions, e.g. comments.
 
     In each pair of tests, the string may go in as either """
-    # TODO:  D.R.Y. in these pairs of tests.
 
-    def test_unicode_a_utf8_ascii(self):
-        assert u"ascii" == u"ascii"
-        if six.PY2:
-            assert u"ascii" == b"ascii"
-            assert u"ascii" == u"ascii".encode('utf-8')
-        if six.PY3:
-            assert u"ascii" != b"ascii"
-            assert u"ascii" != u"ascii".encode('utf-8')
-        self.assertEqual("ascii", self.lex(self.anna.comment(self.zarf, 1, b"ascii").idn).txt)
-
-    def test_unicode_b_unicode_ascii(self):
+    def test_unicode_b_ascii(self):
         self.assertEqual(u"ascii", self.lex(self.anna.comment(self.zarf, 1, u"ascii").idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
-    def test_unicode_c_utf8_spanish(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            assert u"mañana" == u"ma\xF1ana"
-            assert u"mañana" != u"ma\xF1ana".encode('utf-8')
-            assert b"ma\xc3\xb1ana" == u"ma\xF1ana".encode('utf-8')
-        comment = self.anna.comment(self.zarf, 1, u"mañana".encode('utf-8'))
-        self.assertEqualPY2PY3(
-            b"ma\xc3\xb1ana",
-            u"ma\u00F1ana",
-            self.lex(comment.idn).txt
-        )
-
-    def test_unicode_d_unicode_spanish(self):
+    def test_unicode_d_spanish(self):
         comment = self.anna.comment(self.zarf, 1, u"mañana")
-        self.assertEqualPY2PY3(
-            b"ma\xc3\xb1ana",
-            u"ma\u00F1ana",
-            self.lex(comment.idn).txt
-        )
+        self.assertEqual(u"ma\u00F1ana", self.lex(comment.idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
-    def test_unicode_e_utf8_peace(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            assert u"☮ on earth" == u"\u262E on earth"
-            assert u"☮ on earth" != u"\u262E on earth".encode('utf-8')
-            assert b"\xe2\x98\xae on earth" == u"\u262E on earth".encode('utf-8')
-        comment = self.anna.comment(self.zarf, 1, u"☮ on earth".encode('utf-8'))
-        self.assertEqualPY2PY3(
-            b"\xe2\x98\xae on earth",
-            u"\u262E on earth",
-            self.lex(comment.idn).txt
-        )
-
-    def test_unicode_f_unicode_peace(self):
+    def test_unicode_f_peace(self):
         comment = self.anna.comment(self.zarf, 1, u"☮ on earth")
-        self.assertEqualPY2PY3(
-            b"\xe2\x98\xae on earth",
-            u"\u262E on earth",
-            self.lex(comment.idn).txt
-        )
+        self.assertEqual(u"\u262E on earth", self.lex(comment.idn).txt)
         if SHOW_UTF8_EXAMPLES:
             self.show_txt_in_utf8(self.lex.max_idn())
 
     if TEST_ASTRAL_PLANE:
 
-        def test_unicode_g_utf8_pile_of_poo(self):
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                assert u"stinky \U0001F4A9" == u"stinky \U0001F4A9"
-                assert u"stinky \U0001F4A9" != u"stinky \U0001F4A9".encode('utf-8')
-                assert b"stinky \xf0\x9f\x92\xa9" == u"stinky \U0001F4A9".encode('utf-8')
-            # Source code is base plane only, so cannot:  assert u"stinky ?" == u"stinky \U0001F4A9"
-            # PyCharm editor limitation?
-            comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9".encode('utf-8'))
-            self.assertEqualPY2PY3(
-                b"stinky \xf0\x9f\x92\xa9",
-                u"stinky \U0001F4A9",
-                self.lex(comment.idn).txt
-            )
-
         def test_unicode_h_unicode_pile_of_poo(self):
             comment = self.anna.comment(self.zarf, 1, u"stinky \U0001F4A9")
-            self.assertEqualPY2PY3(
-                b"stinky \xf0\x9f\x92\xa9",
-                u"stinky \U0001F4A9",
-                self.lex(comment.idn).txt
-            )
+            self.assertEqual(u"stinky \U0001F4A9", self.lex(comment.idn).txt)
             if SHOW_UTF8_EXAMPLES:
                 self.show_txt_in_utf8(self.lex.max_idn())
 
@@ -672,37 +603,16 @@ class WordUnicodeTxt(WordUnicode):
 class WordUnicodeVerb(WordUnicode):
     """Unicode characters in verb names."""
 
-    def test_unicode_i_verb_utf8_ascii(self):
-        sentence1 = self.lex.define(self.comment, u"remark".encode('utf-8'))
-        sentence2 = self.lex(sentence1.idn)
-        self.assertEqual(u"remark", sentence2.txt)
-        self.assertTrue(self.lex.remark.is_a_verb())
-
-    def test_unicode_j_verb_unicode_ascii(self):
+    def test_unicode_j_verb_ascii(self):
         sentence1 = self.lex.define(self.comment, u"remark")
         sentence2 = self.lex(sentence1.idn)
         self.assertEqual(u"remark", sentence2.txt)
         self.assertTrue(self.lex.remark.is_a_verb())
 
-    def test_unicode_k_verb_utf8_spanish(self):
-        sentence1 = self.lex.define(self.comment, u"comentó".encode('utf-8'))
-        sentence2 = self.lex(sentence1.idn)
-        self.assertEqualPY2PY3(b"coment\xC3\xB3", u"comentó", sentence2.txt)
-        if six.PY2:
-            with self.assertRaises(SyntaxError):
-                eval(u'self.lex.comentó.is_a_verb()')
-        if six.PY3:
-            self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
-            # Only Python 3 supports international characters in Python symbols.
-        self.assertTrue(self.lex(u'comentó').exists)
-        self.assertTrue(self.lex(u'comentó').is_a_verb())
-        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
-        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).is_a_verb())
-
-    def test_unicode_l_verb_unicode_spanish(self):
+    def test_unicode_l_verb_spanish(self):
         sentence1 = self.lex.define(self.comment, u"comentó")
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqualPY2PY3(b"coment\xC3\xB3", u"comentó", sentence2.txt)
+        self.assertEqual(u"comentó", sentence2.txt)
         if six.PY2:
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.comentó.is_a_verb()')
@@ -710,68 +620,39 @@ class WordUnicodeVerb(WordUnicode):
             self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
         self.assertTrue(self.lex(u'comentó').exists)
         self.assertTrue(self.lex(u'comentó').is_a_verb())
-        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).exists)
-        self.assertTrue(self.lex(u'comentó'.encode('utf-8')).is_a_verb())
 
-    def test_unicode_m_verb_utf8_encourage(self):
-        sentence1 = self.lex.define(self.comment, u"enc☺urage".encode('utf-8'))
-        sentence2 = self.lex(sentence1.idn)
-        self.assertEqualPY2PY3(b"enc\xE2\x98\xBAurage", u"enc☺urage", sentence2.txt)
-        with self.assertRaises(SyntaxError):
-            # Even Python has restraint.
-            eval(u'self.lex.enc☺urage.is_a_verb()')
-        self.assertTrue(self.lex(u'enc☺urage').exists)
-        self.assertTrue(self.lex(u'enc☺urage').is_a_verb())
-        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).exists)
-        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).is_a_verb())
-
-    def test_unicode_n_verb_unicode_encourage(self):
+    def test_unicode_n_verb_encourage(self):
         sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex(sentence1.idn)
-        self.assertEqualPY2PY3(b"enc\xE2\x98\xBAurage", u"enc☺urage", sentence2.txt)
+        self.assertEqual(u"enc☺urage", sentence2.txt)
         with self.assertRaises(SyntaxError):
             eval(u'self.lex.enc☺urage.is_a_verb()')
         self.assertTrue(self.lex(u'enc☺urage').exists)
         self.assertTrue(self.lex(u'enc☺urage').is_a_verb())
-        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).exists)
-        self.assertTrue(self.lex(u'enc☺urage'.encode('utf-8')).is_a_verb())
 
     if TEST_ASTRAL_PLANE:
 
-        def test_unicode_o_verb_utf8_alien_face(self):
-            sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate".encode('utf-8'))
-            sentence2 = self.lex(sentence1.idn)
-            self.assertEqualPY2PY3(b"\xF0\x9F\x91\xBDlienate", u"\U0001F47Dlienate", sentence2.txt)
-            with self.assertRaises(SyntaxError):
-                eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
-            self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
-            self.assertTrue(self.lex(u'\U0001F47Dlienate').is_a_verb())
-            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).exists)
-            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).is_a_verb())
-
-        def test_unicode_o_verb_unicode_alien_face(self):
+        def test_unicode_o_verb_alien_face(self):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
             sentence2 = self.lex(sentence1.idn)
-            self.assertEqualPY2PY3(b"\xF0\x9F\x91\xBDlienate", u"\U0001F47Dlienate", sentence2.txt)
+            self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
             self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
             self.assertTrue(self.lex(u'\U0001F47Dlienate').is_a_verb())
-            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).exists)
-            self.assertTrue(self.lex(u'\U0001F47Dlienate'.encode('utf-8')).is_a_verb())
 
 
 class WordMoreTests(WordTests):
 
     def test_describe(self):
-        thing = self.lex('noun')('thingamajig')
-        self.assertIn('thingamajig', thing.description())
+        thing = self.lex(u'noun')(u'thingamajig')
+        self.assertIn(u'thingamajig', thing.description())
 
     def test_short_and_long_ways(self):
-        noun = self.lex('noun')
-        thing1 = noun('thing')
-        thing2 = self.lex.noun('thing')
-        thing3 = self.lex.define(noun, 'thing')
+        noun = self.lex(u'noun')
+        thing1 = noun(u'thing')
+        thing2 = self.lex.noun(u'thing')
+        thing3 = self.lex.define(noun, u'thing')
         self.assertEqual(thing1.idn,           thing2.idn          )
         self.assertEqual(thing1.idn,           thing3.idn          )
         self.assertEqual(thing1.description(), thing2.description())
@@ -779,26 +660,26 @@ class WordMoreTests(WordTests):
         self.assertEqual(thing1,               thing2              )
         self.assertEqual(thing1,               thing3              )
 
-        subthing1 = thing1('subthing1')
-        subthing2 = thing2('subthing2')
-        subthing3 = thing3('subthing3')
+        subthing1 = thing1(u'subthing1')
+        subthing2 = thing2(u'subthing2')
+        subthing3 = thing3(u'subthing3')
         self.assertTrue(subthing1.exists)
         self.assertTrue(subthing2.exists)
         self.assertTrue(subthing3.exists)
-        self.assertEqual('subthing1', subthing1.txt)
-        self.assertEqual('subthing2', subthing2.txt)
-        self.assertEqual('subthing3', subthing3.txt)
+        self.assertEqual(u'subthing1', subthing1.txt)
+        self.assertEqual(u'subthing2', subthing2.txt)
+        self.assertEqual(u'subthing3', subthing3.txt)
 
     def test_verb(self):
-        self.lex.verb('like')
-        like = self.lex('like')
+        self.lex.verb(u'like')
+        like = self.lex(u'like')
         self.assertEqual(self.lex.idn, like.sbj)
 
     def test_is_a_verb(self):
-        verb = self.lex('verb')
-        noun = self.lex('noun')
-        like = verb('like')
-        yurt = self.lex.noun('yurt')
+        verb = self.lex(u'verb')
+        noun = self.lex(u'noun')
+        like = verb(u'like')
+        yurt = self.lex.noun(u'yurt')
         self.assertTrue(like.is_a_verb())
         self.assertTrue(verb.is_a_verb(reflexive=True))
         self.assertFalse(verb.is_a_verb(reflexive=False))
@@ -806,23 +687,23 @@ class WordMoreTests(WordTests):
         self.assertFalse(noun.is_a_verb())
         self.assertFalse(yurt.is_a_verb())
 
-        self.assertFalse(self.lex('noun').is_a_verb())
-        self.assertFalse(self.lex('verb').is_a_verb())
-        self.assertTrue(self.lex('define').is_a_verb())
-        self.assertFalse(self.lex('agent').is_a_verb())
-        self.assertFalse(self.lex('lex').is_a_verb())
+        self.assertFalse(self.lex(u'noun').is_a_verb())
+        self.assertFalse(self.lex(u'verb').is_a_verb())
+        self.assertTrue(self.lex(u'define').is_a_verb())
+        self.assertFalse(self.lex(u'agent').is_a_verb())
+        self.assertFalse(self.lex(u'lex').is_a_verb())
 
     def test_verb_use(self):
         """Test that sbj.vrb(obj, num) creates a word.  And sbj.vrb(obj).num reads it back."""
-        agent = self.lex('agent')
-        human = agent('human')
-        self.lex.verb('like')
-        anna = human('anna')
-        bart = human('bart')
-        chad = human('chad')
-        dirk = human('dirk')
-        anna.like(anna, 1, "Narcissism.")
-        anna.like(bart, 8, "Okay.")
+        agent = self.lex(u'agent')
+        human = agent(u'human')
+        self.lex.verb(u'like')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        chad = human(u'chad')
+        dirk = human(u'dirk')
+        anna.like(anna, 1, u"Narcissism.")
+        anna.like(bart, 8, u"Okay.")
         anna.like(chad, 10)
         anna.like(dirk, 1)
         self.assertFalse(anna.like.is_lex())
@@ -831,29 +712,29 @@ class WordMoreTests(WordTests):
         self.assertEqual(8, anna.like(bart).num)
         self.assertEqual(10, anna.like(chad).num)
         self.assertEqual(1, anna.like(dirk).num)
-        self.assertEqual("Narcissism.", anna.like(anna).txt)
-        self.assertEqual("Okay.", anna.like(bart).txt)
-        self.assertEqual("", anna.like(chad).txt)
-        self.assertEqual("", anna.like(dirk).txt)
+        self.assertEqual(u"Narcissism.", anna.like(anna).txt)
+        self.assertEqual(u"Okay.", anna.like(bart).txt)
+        self.assertEqual(u"", anna.like(chad).txt)
+        self.assertEqual(u"", anna.like(dirk).txt)
 
     def test_verb_use_alt(self):
         """Test that lex.verb can be copied by assignment, and still work."""
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
         verb = self.lex.verb
-        verb('like')
+        verb(u'like')
         anna.like(bart, 13)
         self.assertEqual(13, anna.like(bart).num)
 
     def test_verb_txt(self):
         """Test s.v(o, n, txt).  Read with s.v(o).txt"""
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
-        self.lex.verb('like')
-        anna.like(bart, 5, "just as friends")
-        self.assertEqual("just as friends", anna.like(bart).txt)
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        self.lex.verb(u'like')
+        anna.like(bart, 5, u"just as friends")
+        self.assertEqual(u"just as friends", anna.like(bart).txt)
 
     def test_verb_overlay(self):
         """Test multiple s.v(o, num) calls with different num's.
@@ -861,10 +742,10 @@ class WordMoreTests(WordTests):
 
         The feature that makes this work is something like 'ORDER BY idn DESC LIMIT 1'
         in Lex.populate_word_from_sbj_vrb_obj() via the 'getter' syntax s.v(o)"""
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
-        self.lex.verb('like')
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        self.lex.verb(u'like')
 
         with self.assertNewWord():
             anna.like(bart, 8)
@@ -881,13 +762,13 @@ class WordMoreTests(WordTests):
         self.assertEqual(2, anna.like(bart).num)
 
     def test_verb_overlay_duplicate(self):
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
-        self.lex.verb('like')
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        self.lex.verb(u'like')
 
         with self.assertNewWord():
-            anna.like(bart, 5, "just as friends")
+            anna.like(bart, 5, u"just as friends")
 
         # with self.assertNoNewWords("Identical s.v(o,n,t) shouldn't generate a new word."):
         #     anna.like(bart, 5, "just as friends")
@@ -896,31 +777,31 @@ class WordMoreTests(WordTests):
         # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
 
         with self.assertNewWord():
-            anna.like(bart, 5, "maybe more than friends")
+            anna.like(bart, 5, u"maybe more than friends")
 
         with self.assertNewWord():
-            anna.like(bart, 6, "maybe more than friends")
+            anna.like(bart, 6, u"maybe more than friends")
 
         with self.assertNewWord():
-            anna.like(bart, 7, "maybe more than friends")
+            anna.like(bart, 7, u"maybe more than friends")
 
         # with self.assertNoNewWords():
         #     anna.like(bart, 7, "maybe more than friends")
 
         with self.assertNewWord():
-            anna.like(bart, 5, "just friends")
+            anna.like(bart, 5, u"just friends")
 
     def test_is_defined(self):
-        self.assertTrue(self.lex('noun').is_defined())
-        self.assertTrue(self.lex('verb').is_defined())
-        self.assertTrue(self.lex('define').is_defined())
-        self.assertTrue(self.lex('agent').is_defined())
+        self.assertTrue(self.lex(u'noun').is_defined())
+        self.assertTrue(self.lex(u'verb').is_defined())
+        self.assertTrue(self.lex(u'define').is_defined())
+        self.assertTrue(self.lex(u'agent').is_defined())
         self.assertTrue(self.lex.is_defined())
 
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
-        like = self.lex.verb('like')
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        like = self.lex.verb(u'like')
         liking = anna.like(bart, 5)
 
         self.assertTrue(human.is_defined())
@@ -930,10 +811,10 @@ class WordMoreTests(WordTests):
         self.assertFalse(liking.is_defined())
 
     def test_non_verb_undefined_as_function_disallowed(self):
-        human = self.lex.agent('human')
-        anna = human('anna')
-        bart = human('bart')
-        self.lex.verb('like')
+        human = self.lex.agent(u'human')
+        anna = human(u'anna')
+        bart = human(u'bart')
+        self.lex.verb(u'like')
 
         liking = anna.like(bart, 5)
         with self.assertRaises(TypeError):
@@ -944,9 +825,9 @@ class WordMoreTests(WordTests):
     def test_lex_is_lex(self):
         """Various ways a lex is a singleton, with it's lex."""
         sys1 = self.lex
-        sys2 = self.lex('lex')
-        sys3 = self.lex('lex')('lex')('lex')
-        sys4 = self.lex('lex').lex('lex').lex.lex.lex('lex')('lex')('lex')
+        sys2 = self.lex(u'lex')
+        sys3 = self.lex(u'lex')(u'lex')(u'lex')
+        sys4 = self.lex(u'lex').lex(u'lex').lex.lex.lex(u'lex')(u'lex')(u'lex')
         self.assertEqual(sys1.idn, sys2.idn)
         self.assertEqual(sys1.idn, sys3.idn)
         self.assertEqual(sys1.idn, sys4.idn)
@@ -955,7 +836,7 @@ class WordMoreTests(WordTests):
         self.assertIs(sys1, sys4)
 
     def test_idn_setting_not_allowed(self):
-        lex = self.lex('lex')
+        lex = self.lex(u'lex')
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
         with self.assertRaises(AttributeError):
             lex.idn = 999
@@ -963,7 +844,7 @@ class WordMoreTests(WordTests):
 
     def test_idn_suffix(self):
         """Make sure adding a suffix to the lex's idn does not modify lex.idn."""
-        lex = self.lex('lex')
+        lex = self.lex(u'lex')
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
         suffixed_lex_idn = lex.idn.add_suffix(3)
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
@@ -971,43 +852,43 @@ class WordMoreTests(WordTests):
 
     def test_verb_paren_object(self):
         """An orphan verb can spawn a sentence.
-        v = lex('name of a verb'); v(o) is equivalent to lex.v(o).
+        v = lex(u'name of a verb'); v(o) is equivalent to lex.v(o).
         Lex is the implicit subject."""
-        some_object = self.lex.noun('some object')
-        verb = self.lex('verb')
-        oobleck = verb('oobleck')
+        some_object = self.lex.noun(u'some object')
+        verb = self.lex(u'verb')
+        oobleck = verb(u'oobleck')
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWord():
-            blob = oobleck(some_object, qiki.Number(42), 'new sentence')
+            blob = oobleck(some_object, qiki.Number(42), u'new sentence')
         self.assertTrue(blob.exists)
         self.assertEqual(blob.sbj, self.lex.idn)
         self.assertEqual(blob.vrb, oobleck.idn)
         self.assertEqual(blob.obj, some_object.idn)
         self.assertEqual(blob.num, qiki.Number(42))
-        self.assertEqual(blob.txt, "new sentence")
+        self.assertEqual(blob.txt, u"new sentence")
 
     def test_verb_paren_object_text_number(self):
         """More orphan verb features.  v = lex(...); v(o,t,n) is also equivalent to lex.v(o,t,n)."""
-        some_object = self.lex.noun('some object')
-        verb = self.lex('verb')
-        oobleck = verb('oobleck')
+        some_object = self.lex.noun(u'some object')
+        verb = self.lex(u'verb')
+        oobleck = verb(u'oobleck')
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWord():
-            blob = oobleck(some_object, qiki.Number(11), "blob")
+            blob = oobleck(some_object, qiki.Number(11), u"blob")
         self.assertTrue(blob.exists)
         self.assertEqual(blob.obj, some_object.idn)
         self.assertEqual(blob.num, qiki.Number(11))
-        self.assertEqual(blob.txt, "blob")
+        self.assertEqual(blob.txt, u"blob")
 
     def test_define_object_type_string(self):
         """Specify the object of a definition by its txt."""
-        oobleck = self.lex.define('verb', 'oobleck')
+        oobleck = self.lex.define(u'verb', u'oobleck')
         self.assertTrue(oobleck.exists)
         self.assertEqual(oobleck.sbj, self.lex.idn)
-        self.assertEqual(oobleck.vrb, self.lex('define').idn)
-        self.assertEqual(oobleck.obj, self.lex('verb').idn)
+        self.assertEqual(oobleck.vrb, self.lex(u'define').idn)
+        self.assertEqual(oobleck.obj, self.lex(u'verb').idn)
         self.assertEqual(oobleck.num, qiki.Number(1))
-        self.assertEqual(oobleck.txt, "oobleck")
+        self.assertEqual(oobleck.txt, u"oobleck")
 
     def test_verb_paren_object_deferred_subject(self):
         """A patronized verb can spawn a sentence.
@@ -1015,11 +896,11 @@ class WordMoreTests(WordTests):
         x = s.v; x(o) is equivalent to s.v(o).
         So a verb word instance can remember its subject for later spawning a new word."""
 
-        some_object = self.lex.noun('some object')
-        self.lex.verb('oobleck')
-        lex_oobleck = self.lex('oobleck')   # word from an orphan verb
+        some_object = self.lex.noun(u'some object')
+        self.lex.verb(u'oobleck')
+        lex_oobleck = self.lex(u'oobleck')   # word from an orphan verb
 
-        xavier = self.lex.agent('xavier')
+        xavier = self.lex.agent(u'xavier')
         self.assertNotEqual(xavier, self.lex)
         xavier_oobleck = xavier.oobleck   # word from a patronized verb
 
@@ -1029,25 +910,25 @@ class WordMoreTests(WordTests):
         self.assertIsNotNone(xavier_oobleck._word_before_the_dot)
         self.assertNotEqual(lex_oobleck._word_before_the_dot, xavier_oobleck._word_before_the_dot)
 
-        xavier_blob = xavier_oobleck(some_object, qiki.Number(42), "xavier blob")
+        xavier_blob = xavier_oobleck(some_object, qiki.Number(42), u"xavier blob")
         self.assertTrue(xavier_blob.exists)
         self.assertEqual(xavier_blob.sbj, xavier.idn)
         self.assertEqual(xavier_blob.vrb, xavier_oobleck.idn)
         self.assertEqual(xavier_blob.obj, some_object.idn)
         self.assertEqual(xavier_blob.num, qiki.Number(42))
-        self.assertEqual(xavier_blob.txt, "xavier blob")
+        self.assertEqual(xavier_blob.txt, u"xavier blob")
 
     def test_lex_number(self):
-        agent_by_txt = self.lex('agent')
+        agent_by_txt = self.lex(u'agent')
         agent_by_idn = self.lex(qiki.Word._IDN_AGENT)
         self.assertEqual(agent_by_txt, agent_by_idn)
-        self.assertEqual('agent', agent_by_idn.txt)
+        self.assertEqual(u'agent', agent_by_idn.txt)
         self.assertEqual(qiki.Word._IDN_AGENT, agent_by_txt.idn)
 
     def test_num_explicit(self):
-        anna = self.lex.agent('anna')
-        self.lex.verb('hate')
-        oobleck = self.lex.noun('oobleck')
+        anna = self.lex.agent(u'anna')
+        self.lex.verb(u'hate')
+        oobleck = self.lex.noun(u'oobleck')
         with self.assertNewWord():
             anna.hate(oobleck, 10)
         self.assertEqual(10, anna.hate(oobleck).num)
@@ -1065,24 +946,24 @@ class WordMoreTests(WordTests):
         #     self.lex.define(not_a_keyword_argument=33)
 
     def test_bogus_sentence_kwarg(self):
-        self.lex.verb('blurt')
-        self.lex.blurt(self.lex, 1, '')
+        self.lex.verb(u'blurt')
+        self.lex.blurt(self.lex, 1, u'')
         with self.assertRaises(TypeError):
             self.lex.blurt(self.lex, no_such_keyword_argument=666)
         with self.assertRaises(qiki.Word.NoSuchKwarg):
             self.lex.blurt(self.lex, no_such_keyword_argument=666)
 
     def test_missing_sentence_obj(self):
-        self.lex.verb('blurt')
+        self.lex.verb(u'blurt')
         with self.assertRaises(TypeError):
             self.lex.blurt()
         with self.assertRaises(qiki.Word.MissingObj):
             self.lex.blurt()
 
     def test_missing_word_getter(self):
-        alf = self.lex.agent('alf')
-        self.lex.verb('clap')
-        eve = self.lex.verb('eve')
+        alf = self.lex.agent(u'alf')
+        self.lex.verb(u'clap')
+        eve = self.lex.verb(u'eve')
         with self.assertNewWord():
             alf.clap(eve, 55)
         word = alf.clap(eve)
@@ -1095,11 +976,11 @@ class WordSentenceTests(WordTests):
 
     def setUp(self):
         super(WordSentenceTests, self).setUp()
-        self.sam = self.lex.agent('sam')
-        self.vet = self.lex.verb('vet')
-        self.orb = self.lex.noun('orb')
+        self.sam = self.lex.agent(u'sam')
+        self.vet = self.lex.verb(u'vet')
+        self.orb = self.lex.noun(u'orb')
 
-    def assertGoodSentence(self, sentence, the_num=1, the_txt=''):
+    def assertGoodSentence(self, sentence, the_num=1, the_txt=u''):
         self.assertTrue(sentence.exists)
         self.assertEqual(self.sam.idn, sentence.sbj)
         self.assertEqual(self.vet.idn, sentence.vrb)
@@ -1109,54 +990,54 @@ class WordSentenceTests(WordTests):
         return sentence
 
     def test_sentence(self):
-        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt='sentence'), 42, 'sentence')
+        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt=u'sentence'), 42, u'sentence')
         self.assertEqual(self.sam.idn, w.sbj)
         self.assertEqual(self.vet.idn, w.vrb)
         self.assertEqual(self.orb.idn, w.obj)
         self.assertEqual(42, w.num)
-        self.assertEqual('sentence', w.txt)
+        self.assertEqual(u'sentence', w.txt)
 
     def test_sentence_by_idn(self):
-        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam.idn, vrb=self.vet.idn, obj=self.orb.idn, num=42, txt='sentence'), 42, 'sentence')
+        w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam.idn, vrb=self.vet.idn, obj=self.orb.idn, num=42, txt=u'sentence'), 42, u'sentence')
         self.assertEqual(self.sam.idn, w.sbj)
         self.assertEqual(self.vet.idn, w.vrb)
         self.assertEqual(self.orb.idn, w.obj)
 
     def test_sentence_args(self):
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt='sentence'), 42, 'sentence')
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=qiki.Number(42), txt='sentence'), 42, 'sentence')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt=u'sentence'), 42, u'sentence')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=qiki.Number(42), txt=u'sentence'), 42, u'sentence')
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb))
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=99), 99)
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, txt='flop'), 1, 'flop')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, txt=u'flop'), 1, u'flop')
 
     def test_sentence_use_already(self):
-        w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
-        w2 =self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
+        w2 =self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
         self.assertLess(w1.idn, w2.idn)
 
-        w3a = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y'), 8, 'y')
-        w3b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt='y', use_already=True), 8, 'y')
+        w3a = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt=u'y'), 8, u'y')
+        w3b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt=u'y', use_already=True), 8, u'y')
         self.assertEqual(w3a.idn, w3b.idn)
 
-        w4 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt='z'), 7, 'z')
-        w5 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt='z', use_already=False), 7, 'z')
+        w4 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt=u'z'), 7, u'z')
+        w5 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=7, txt=u'z', use_already=False), 7, u'z')
         self.assertLess(w4.idn, w5.idn)
 
     def test_sentence_whn(self):
-        w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
         self.assertSensibleWhen(w1.whn)
 
-        w2 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
+        w2 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
         self.assertSensibleWhen(w2.whn)
         self.assertLess(w1.idn, w2.idn)
         self.assertLessEqual(w1.whn, w2.whn)
 
-        w2b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x', use_already=True), 9, 'x')
+        w2b = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x', use_already=True), 9, u'x')
         self.assertSensibleWhen(w2b.whn)
         self.assertEqual(w2.idn, w2b.idn)
         self.assertEqual(w2.whn, w2b.whn)
 
-        w3 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x', use_already=False), 9, 'x')
+        w3 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x', use_already=False), 9, u'x')
         self.assertSensibleWhen(w3.whn)
         self.assertLess(w2.idn, w3.idn)
         self.assertLessEqual(w2.whn, w3.whn)
@@ -1176,20 +1057,20 @@ class WordSentenceTests(WordTests):
             self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, no_such_arg=0)
 
     def test_sentence_num_add(self):
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt='x'), 9, 'x')
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt='x'), 11, 'x')
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt='x'), 13, 'x')
-        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=None, num_add=2, txt='x'), 15, 'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt=u'x'), 11, u'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt=u'x'), 13, u'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=None, num_add=2, txt=u'x'), 15, u'x')
 
 
 class WordListingTests(WordTests):
 
     class Student(qiki.Listing):
         names_and_grades = [
-            ("Archie", 4.0),
-            ("Barbara", 3.0),
-            ("Chad", 3.0),
-            ("Deanne", 1.0),
+            (u"Archie", 4.0),
+            (u"Barbara", 3.0),
+            (u"Chad", 3.0),
+            (u"Deanne", 1.0),
         ]
 
         def lookup(self, index, callback):
@@ -1203,9 +1084,9 @@ class WordListingTests(WordTests):
 
     def setUp(self):
         super(WordListingTests, self).setUp()
-        self.listing = self.lex.noun('listing')
+        self.listing = self.lex.noun(u'listing')
         qiki.Listing.install(self.listing)
-        self.names = self.listing('names')
+        self.names = self.listing(u'names')
         self.Student.install(self.names)
 
 
@@ -1215,7 +1096,7 @@ class WordListingBasicTests(WordListingTests):
         number_two = qiki.Number(2)
         chad = self.Student(number_two)
         self.assertEqual(number_two, chad.index)
-        self.assertEqual(    "Chad", chad.txt)
+        self.assertEqual(   u"Chad", chad.txt)
         self.assertEqual(       3.0, chad.num)
         self.assertTrue(chad.exists)
 
@@ -1228,12 +1109,12 @@ class WordListingBasicTests(WordListingTests):
 
     def test_listing_using_spawn_and_save(self):
         archie = self.Student(qiki.Number(0))
-        bless = self.lex.verb('bless')
+        bless = self.lex.verb(u'bless')
         blessed_name = self.lex.spawn(
             sbj=self.lex.idn,
             vrb=bless.idn,
             obj=archie.idn,
-            txt="mah soul",
+            txt=u"mah soul",
             num=qiki.Number(666),
         )
         blessed_name.save()
@@ -1244,23 +1125,23 @@ class WordListingBasicTests(WordListingTests):
         self.assertEqual(blessed_name_too.vrb, bless.idn)
         self.assertEqual(blessed_name_too.obj, archie.idn)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
-        self.assertEqual(blessed_name_too.txt, "mah soul")
+        self.assertEqual(blessed_name_too.txt, u"mah soul")
 
-        laud = self.lex.verb('laud')
-        thing = self.lex.noun('thing')
+        laud = self.lex.verb(u'laud')
+        thing = self.lex.noun(u'thing')
         lauded_thing = self.lex.spawn(
             sbj=archie.idn,
             vrb=laud.idn,
             obj=thing.idn,
-            txt="most sincerely",
+            txt=u"most sincerely",
             num=qiki.Number(123456789),
         )
         lauded_thing.save()
 
     def test_listing_using_method_verb(self):
         archie = self.Student(qiki.Number(0))
-        bless = self.lex.verb('bless')
-        blessed_name = self.lex.bless(archie, qiki.Number(666), "mah soul")
+        bless = self.lex.verb(u'bless')
+        blessed_name = self.lex.bless(archie, qiki.Number(666), u"mah soul")
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
         self.assertTrue(blessed_name_too.exists)
@@ -1268,11 +1149,11 @@ class WordListingBasicTests(WordListingTests):
         self.assertEqual(blessed_name_too.vrb, bless.idn)
         self.assertEqual(blessed_name_too.obj, archie.idn)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
-        self.assertEqual(blessed_name_too.txt, "mah soul")
+        self.assertEqual(blessed_name_too.txt, u"mah soul")
 
-        self.lex.verb('laud')
-        thing = self.lex.noun('thing')
-        archie.laud(thing, qiki.Number(123456789), "most sincerely")
+        self.lex.verb(u'laud')
+        thing = self.lex.noun(u'thing')
+        archie.laud(thing, qiki.Number(123456789), u"most sincerely")
 
     def test_listing_not_found(self):
         with self.assertRaises(qiki.Listing.NotFound):
@@ -1280,16 +1161,16 @@ class WordListingBasicTests(WordListingTests):
 
     def test_listing_index_Number(self):
         deanne = self.Student(qiki.Number(3))
-        self.assertEqual("Deanne", deanne.txt)
+        self.assertEqual(u"Deanne", deanne.txt)
 
     def test_listing_index_int(self):
         deanne = self.Student(3)
-        self.assertEqual("Deanne", deanne.txt)
+        self.assertEqual(u"Deanne", deanne.txt)
 
     def test_listing_as_nouns(self):
         barbara = self.Student(1)
         deanne = self.Student(3)
-        self.lex.verb('like')
+        self.lex.verb(u'like')
         barbara.like(deanne, qiki.Number(1))
         deanne.like(barbara, qiki.Number(-1000000000))
 
@@ -1298,8 +1179,8 @@ class WordListingBasicTests(WordListingTests):
         chad1 = self.Student(2)
         idn_chad = chad1.idn
         chad2 = self.lex(idn_chad)
-        self.assertEqual("Chad", chad1.txt)
-        self.assertEqual("Chad", chad2.txt)
+        self.assertEqual(u"Chad", chad1.txt)
+        self.assertEqual(u"Chad", chad2.txt)
 
 
 class WordListingInternalsTests(WordListingTests):
@@ -1314,8 +1195,8 @@ class WordListingInternalsTests(WordListingTests):
 
     def setUp(self):
         super(WordListingInternalsTests, self).setUp()
-        self.SubStudent.install(self.lex.noun('sub_student'))
-        self.AnotherListing.install(self.lex.noun('another_listing'))
+        self.SubStudent.install(self.lex.noun(u'sub_student'))
+        self.AnotherListing.install(self.lex.noun(u'another_listing'))
 
     def test_one_class_dictionary(self):
         self.assertIs(qiki.Listing.class_dictionary, self.Student.class_dictionary)
@@ -1353,7 +1234,7 @@ class WordListingInternalsTests(WordListingTests):
 
     def test_listing_word_lookup(self):
         chad = self.Student(2)
-        self.assertEqual("Chad", chad.txt)
+        self.assertEqual(u"Chad", chad.txt)
         chad_clone = qiki.Listing.word_lookup(chad.idn)
         self.assertEqual(chad, chad_clone)
 
@@ -1385,7 +1266,7 @@ class WordListingInternalsTests(WordListingTests):
         self.assertTrue(issubclass(chad_class, qiki.Listing))
 
     def test_class_from_meta_idn_bogus(self):
-        some_word = self.lex.noun('some word')
+        some_word = self.lex.noun(u'some word')
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.class_from_meta_idn(some_word.idn)
 
@@ -1398,51 +1279,51 @@ class WordUseAlready(WordTests):
 
     def setUp(self):
         super(WordUseAlready, self).setUp()
-        self.narcissus = self.lex.agent('narcissus')
-        self.lex.verb('like')
+        self.narcissus = self.lex.agent(u'narcissus')
+        self.lex.verb(u'like')
 
     # When txt differs
 
     def test_use_already_differ_txt_default(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Puddle")
 
     def test_use_already_differ_txt_false(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle", use_already=False)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Puddle", use_already=False)
 
     def test_use_already_differ_txt_true(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Puddle", use_already=True)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Puddle", use_already=True)
 
     # When num differs
 
     def test_use_already_differ_num_default(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, u"Mirror")
 
     def test_use_already_differ_num_false(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror", use_already=False)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, u"Mirror", use_already=False)
 
     def test_use_already_differ_num_true(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, "Mirror", use_already=True)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 200, u"Mirror", use_already=True)
 
     # When num and txt are the same
 
     def test_use_already_same_default(self):
-        with self.assertNewWord():  word1 = self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  word2 = self.narcissus.like(self.narcissus, 100, "Mirror")
+        with self.assertNewWord():  word1 = self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  word2 = self.narcissus.like(self.narcissus, 100, u"Mirror")
         self.assertEqual(word1.idn+1, word2.idn)
 
     def test_use_already_same_false(self):
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, "Mirror", use_already=False)
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNewWord():  self.narcissus.like(self.narcissus, 100, u"Mirror", use_already=False)
 
     def test_use_already_same_true(self):
-        with self.assertNewWord():     self.narcissus.like(self.narcissus, 100, "Mirror")
-        with self.assertNoNewWords():  self.narcissus.like(self.narcissus, 100, "Mirror", use_already=True)
+        with self.assertNewWord():     self.narcissus.like(self.narcissus, 100, u"Mirror")
+        with self.assertNoNewWords():  self.narcissus.like(self.narcissus, 100, u"Mirror", use_already=True)
 
     # TODO:  Deal with the inconsistency that when defining a word, use_already defaults to True.
 
@@ -1451,14 +1332,14 @@ class WordFindTests(WordTests):
 
     def setUp(self):
         super(WordFindTests, self).setUp()
-        self.apple = self.lex.noun('apple')
-        self.berry = self.lex.noun('berry')
-        self.curry = self.lex.noun('curry')
-        self.macintosh = self.lex.apple('macintosh')
-        self.braburn = self.lex.apple('braburn')
-        self.honeycrisp = self.lex.apple('honeycrisp')
-        self.crave = self.lex.verb('crave')
-        self.fred = self.lex.agent('fred')
+        self.apple = self.lex.noun(u'apple')
+        self.berry = self.lex.noun(u'berry')
+        self.curry = self.lex.noun(u'curry')
+        self.macintosh = self.lex.apple(u'macintosh')
+        self.braburn = self.lex.apple(u'braburn')
+        self.honeycrisp = self.lex.apple(u'honeycrisp')
+        self.crave = self.lex.verb(u'crave')
+        self.fred = self.lex.agent(u'fred')
 
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)
@@ -1472,23 +1353,23 @@ class WordFindTests(WordTests):
         self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], self.lex.find_words(obj=self.apple))
 
     def test_find_sbj(self):
-        self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
+        self.fred.crave(self.curry, qiki.Number(1), u"Yummy.")
         fred_words = self.lex.find_words(sbj=self.fred.idn)
         self.assertEqual(1, len(fred_words))
-        self.assertEqual("Yummy.", fred_words[0].txt)
+        self.assertEqual(u"Yummy.", fred_words[0].txt)
 
     def test_find_sbj_word(self):
-        fred_word = self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
+        fred_word = self.fred.crave(self.curry, qiki.Number(1), u"Yummy.")
         self.assertEqual([fred_word], self.lex.find_words(sbj=self.fred))
 
     def test_find_vrb(self):
-        self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
+        self.fred.crave(self.curry, qiki.Number(1), u"Yummy.")
         crave_words = self.lex.find_words(vrb=self.crave.idn)
         self.assertEqual(1, len(crave_words))
-        self.assertEqual("Yummy.", crave_words[0].txt)
+        self.assertEqual(u"Yummy.", crave_words[0].txt)
 
     def test_find_vrb_word(self):
-        crave_word = self.fred.crave(self.curry, qiki.Number(1), "Yummy.")
+        crave_word = self.fred.crave(self.curry, qiki.Number(1), u"Yummy.")
         self.assertEqual([crave_word], self.lex.find_words(vrb=self.crave))
 
     def test_find_chronology(self):
@@ -1524,7 +1405,7 @@ class WordFindTests(WordTests):
     def test_find_by_vrb_list(self):
         c1 = self.fred.crave(self.apple, 1)
         c2 = self.fred.crave(self.braburn, 10)
-        retch = self.lex.verb('retch')
+        retch = self.lex.verb(u'retch')
         r3 = self.fred.retch(self.macintosh, -1)
         self.assertEqual([c1, c2    ], self.lex.find_words(vrb=[self.crave        ]))
         self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch    ]))
@@ -1577,9 +1458,9 @@ class WordUtilities(WordTests):
         with self.assertRaises(exceptions):   word != idn
 
     def test_words_from_idns(self):
-        noun = self.lex('noun')
-        agent = self.lex('agent')
-        define = self.lex('define')
+        noun = self.lex(u'noun')
+        agent = self.lex(u'agent')
+        define = self.lex(u'define')
         self.assertEqual([
             noun,
             agent,
@@ -1591,9 +1472,9 @@ class WordUtilities(WordTests):
         ]))
 
     def test_raw_values_from_idns(self):
-        noun = self.lex('noun')
-        agent = self.lex('agent')
-        define = self.lex('define')
+        noun = self.lex(u'noun')
+        agent = self.lex(u'agent')
+        define = self.lex(u'define')
         self.assertEqual([
             noun.idn.raw,
             agent.idn.raw,
@@ -1677,7 +1558,7 @@ class WordQoolbarTests(WordTests):
             'SELECT idn FROM',
             self.lex.table,
             'WHERE txt =',
-            qiki.Text('define')
+            qiki.Text(u'define')
         ))
 
     def test_super_select_with_none(self):

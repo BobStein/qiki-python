@@ -2,7 +2,10 @@
 A qiki Word is defined by a three-word subject-verb-object
 """
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
 import numbers
 import re
 import time
@@ -79,7 +82,7 @@ class Word(object):
             if txt is None:
                 self.txt = None
             else:
-                self.txt = str(Text(txt))
+                self.txt = Text(txt)
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -110,9 +113,12 @@ class Word(object):
         pass
 
     def __getattr__(self, noun_txt):
+        if isinstance(noun_txt, six.binary_type):
+            noun_txt = noun_txt.decode('utf-8')
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
         assert self.lex.exists, "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
+
         # Testing lex.exists prevents infinity.
         # This would happen below where lex(noun_txt) would call Word.__call__()
         # But in very early conditions lex.is_lex() is false before it's read its row from the database.
@@ -209,7 +215,7 @@ class Word(object):
             try:
                 txt = args[2]
             except IndexError:
-                txt=''
+                txt=u''
 
             if self._word_before_the_dot is None:
                 sbj = self.lex   # Lex can be the implicit subject. Renounce?
@@ -324,7 +330,7 @@ class Word(object):
         if possibly_existing_word.exists:
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
-        new_word = self.sentence(sbj=self, vrb=self.lex('define'), obj=obj, num=num, txt=txt)
+        new_word = self.sentence(sbj=self, vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
         return new_word
 
     class SentenceArgs(TypeError):
@@ -352,7 +358,7 @@ class Word(object):
         except KeyError:
             raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
         num = kwargs.pop('num', Number(1))
-        txt = kwargs.pop('txt', '')
+        txt = kwargs.pop('txt', u'')
         use_already = kwargs.pop('use_already', False)
         num_add = kwargs.pop('num_add', None)
         if len(args) != 0:
@@ -435,7 +441,7 @@ class Word(object):
         """Construct a Word from its txt, but only when it's a definition."""
         assert isinstance(txt, self.TXT_TYPES)
         if not self.lex.populate_word_from_definition(self, txt):
-            self.txt = txt
+            self.txt = Text(txt)
 
     def _from_word(self, word):
         if word.is_lex():
@@ -555,7 +561,7 @@ class Word(object):
     def __repr__(self):
         if self.exists:
             if self.is_defined() and self.txt:
-                return "Word('{}')".format(self.txt)
+                return "Word(u'{}')".format(self.txt)
             else:
                 return "Word({})".format(int(self.idn))
         elif (
@@ -1160,7 +1166,7 @@ class LexMySQL(Lex):
                     value = None
                 elif name == 'txt':
                     # TODO:  If name ends in 'txt' also?
-                    value = str(Text(field))
+                    value = Text(field.decode('utf-8'))
                 else:
                     value = Number.from_mysql(field)
                 field_dictionary[name] = value
@@ -1214,7 +1220,7 @@ def idn_from_word_or_number(x):
         ))
 
 
-class Text(object):
+class Text(six.text_type):
     """The first use of qiki.Text() was for identifying txt field values to Lex.super_select().
 
     Then it served to encapsulate the unicode/utf8 and Python 2/3 differences.
@@ -1238,31 +1244,31 @@ class Text(object):
     # So it would be a unicode string that (unlike Python 3 str)
     # assumed utf8 encoding if the input is six.binary_type
     # SEE:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
-    def __init__(self, the_string):
-        if isinstance(the_string, Text):
-            self._the_string_in_utf8 = the_string._the_string_in_utf8
-        elif isinstance(the_string, six.text_type):
-            self._the_string_in_utf8 = the_string.encode('utf-8')
+    def __new__(cls, the_string):
+        if isinstance(the_string, six.text_type):
+            return six.text_type.__new__(cls, the_string)
+        # elif isinstance(the_string, (six.binary_type, bytearray)):
+        #     return six.text_type.__new__(cls, the_string.decode('utf-8'))
         else:
-            self._the_string_in_utf8 = six.binary_type(the_string)
+           raise TypeError("Text({value} type {type}) is not supported".format(
+               value=repr(the_string),
+               type=type(the_string).__name__
+           ))
 
     def __str__(self):
-        if six.PY2:
-            return self.utf8()
-        if six.PY3:
-            return self.unicode()
+        return self.unicode()
 
     def __unicode__(self):
         return self.unicode()
 
     def unicode(self):
-        return self._the_string_in_utf8.decode('utf-8')
+        return self
 
     def utf8(self):
-        return self._the_string_in_utf8
+        return self.encode('utf-8')
 
 
-Word.TXT_TYPES = (six.string_types, six.binary_type, Text)   # Unicode or UTF-8
+Word.TXT_TYPES = (six.text_type, Text)   # Unicode and only unicode
 
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
