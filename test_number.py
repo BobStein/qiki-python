@@ -6,7 +6,7 @@ Testing qiki number.py
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-# from __future__ import unicode_literals
+from __future__ import unicode_literals
 import pickle
 import sys
 import textwrap
@@ -61,6 +61,7 @@ class NumberBasicTests(NumberTests):
                 Number(b'0q82')
 
     def test_unsupported_type(self):
+        # noinspection PyClassHasNoInit
         class SomeType:
             pass
         with self.assertRaises(TypeError):
@@ -1185,9 +1186,11 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q83_03E8', SonOfNumber(DaughterOfNumber('0q83_03E8')).qstring())
         self.assertEqual('0q7C_FEFF', DaughterOfNumber(SonOfNumber('0q7C_FEFF')).qstring())
 
+        # noinspection PyClassHasNoInit
         class GrandSonOfNumber(SonOfNumber):
             pass
 
+        # noinspection PyClassHasNoInit
         class GrandDaughterOfNumber(DaughterOfNumber):
             pass
 
@@ -1829,9 +1832,9 @@ class NumberPickleTests(NumberTests):
             self.assertEqual(
                 pickle.dumps(x314, 2),
                 (
-                    '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t' +
+                    b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t' +
                     x314.raw +
-                    'q\x02b.'
+                    b'q\x02b.'
                 )
             )
         else:

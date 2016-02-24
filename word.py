@@ -1255,14 +1255,8 @@ class Text(six.text_type):
                type=type(the_string).__name__
            ))
 
-    def __str__(self):
-        return self.unicode()
-
-    def __unicode__(self):
-        return self.unicode()
-
     def unicode(self):
-        return self
+        return six.text_type(self)
 
     def utf8(self):
         return self.encode('utf-8')

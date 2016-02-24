@@ -499,32 +499,31 @@ class WordFirstTests(WordTests):
         """Verify the Text class follows Postel's Law -- liberal in, conservative out."""
         def example(the_input, _unicode, _utf8):
             txt = qiki.Text(the_input)
-            self.assertTripleEqual(_unicode, txt)
+            self.assertTripleEqual(_unicode, txt.unicode())
             self.assertTripleEqual(_utf8, txt.utf8())
 
-        example(b'ascii'.decode('utf-8'), qiki.Text(u'ascii'), b'ascii')
-        example(u'ascii',                 qiki.Text(u'ascii'), b'ascii')
-        # example(b'ascii', qiki.Text(u'ascii'), b'ascii')
+        example(b'ascii'.decode('utf-8'), u'ascii', b'ascii')
+        example(u'ascii',                 u'ascii', b'ascii')
 
         example(unicodedata.lookup('latin small letter a with ring above') +
-                          u'ring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
-        example(         u'åring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
-        example(u'\U000000E5ring', qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
+                          u'ring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(         u'åring', u'\U000000E5ring', b'\xC3\xA5ring')
+        example(u'\U000000E5ring', u'\U000000E5ring', b'\xC3\xA5ring')
         example(  b'\xC3\xA5ring'.decode('utf-8'),
-                                   qiki.Text(u'\U000000E5ring'), b'\xC3\xA5ring')
+                                   u'\U000000E5ring', b'\xC3\xA5ring')
 
         example(unicodedata.lookup('greek small letter mu') +
-                          u'icro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
-        example(         u'μicro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
-        example(u'\U000003BCicro', qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
+                          u'icro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(         u'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
+        example(u'\U000003BCicro', u'\U000003BCicro', b'\xCE\xBCicro')
         example(  b'\xCE\xBCicro'.decode('utf-8'),
-                                   qiki.Text(u'\U000003BCicro'), b'\xCE\xBCicro')
+                                   u'\U000003BCicro', b'\xCE\xBCicro')
 
         example(unicodedata.lookup('tetragram for aggravation') +
-                                  u'noid', qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
-        example(        u'\U0001D351noid', qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
+                                  u'noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
+        example(        u'\U0001D351noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
         example(  b'\xF0\x9D\x8D\x91noid'.decode('utf-8'),
-                                           qiki.Text(u'\U0001D351noid'), b'\xF0\x9D\x8D\x91noid')
+                                           u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
 
     def test_14a_word_text(self):
         """Verify the txt field follows Postel's Law -- liberal in, conservative out.
@@ -547,16 +546,12 @@ class WordFirstTests(WordTests):
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-        # works_as_txt('apple')
         works_as_txt(b'apple'.decode('utf-8'))
         works_as_txt(bytearray('apple', 'utf-8').decode('utf-8'))
         works_as_txt(u'apple')
-        # works_as_txt(u'apple'.encode('utf8'))
-        # works_as_txt(qiki.Text('apple'))
         works_as_txt(qiki.Text(b'apple'.decode('utf-8')))
         works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
-        # works_as_txt(qiki.Text(u'apple'.encode('utf8')))
 
 
 class WordUnicode(WordTests):

@@ -11,13 +11,33 @@ Features:
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-# from __future__ import unicode_literals
+from __future__ import unicode_literals
 import binascii
 import math
 import numbers
 import struct
+import traceback
+import warnings
 
 import six
+
+
+
+def fatal(m):
+    raise RuntimeError(m)
+
+# warnings.showwarning = fatal
+
+
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    traceback.print_stack()
+    # log = file if hasattr(file,'write') else sys.stderr
+    # log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+warnings.showwarning = warn_with_traceback
+
+
 
 
 # noinspection PyUnresolvedReferences
