@@ -151,6 +151,9 @@ class WordTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIs(type(first), type(second))
 
+    def fails(self):
+        return self.assertRaises(AssertionError)
+
 
 class WordDemoTests(WordTests):
 
@@ -221,7 +224,23 @@ class InternalTestWordTests(WordTests):
         with self.assertRaises(qiki.Word.MissingFromLex):
             self.lex(qiki.Number(-42))
 
-    # TODO:  def test_assert_triple_equal(self): ...
+    def test_assert_triple_equal(self):
+        self.assertTripleEqual(4, 2+2)
+        with self.fails(): self.assertTripleEqual(5, 2+2)
+        with self.fails(): self.assertTripleEqual('4', 2+2)
+
+        self.assertTripleEqual(b'string', b'string')
+        self.assertTripleEqual(u'string', u'string')
+        with self.fails(): self.assertTripleEqual(b'string', u'string')
+        with self.fails(): self.assertTripleEqual(u'string', b'string')
+
+        with self.fails(): self.assertTripleEqual(six.binary_type(b'string)'), u'string')
+        with self.fails(): self.assertTripleEqual(          bytes(b'string)'), u'string')
+        with self.fails(): self.assertTripleEqual(      bytearray(b'string)'), u'string')
+
+        with self.fails(): self.assertTripleEqual(six.binary_type(b'string)'), b'string')
+        with self.fails(): self.assertTripleEqual(          bytes(b'string)'), b'string')
+        with self.fails(): self.assertTripleEqual(      bytearray(b'string)'), b'string')
 
 
 class WordFirstTests(WordTests):
@@ -231,13 +250,13 @@ class WordFirstTests(WordTests):
         self.assertEqual(1, int(n))
 
     def test_01a_lex(self):
-        self.assertEqual(self.lex._IDN_LEX,        self.lex.idn)
-        self.assertEqual(self.lex._IDN_LEX,        self.lex.sbj)
-        self.assertEqual(self.lex(u'define').idn,   self.lex.vrb)
-        self.assertEqual(self.lex(u'agent').idn,    self.lex.obj)
-        self.assertEqual(qiki.Number(1),           self.lex.num)
-        self.assertEqual(u'lex',                    self.lex.txt)
-        self.assertSensibleWhen(                   self.lex.whn)
+        self.assertEqual(self.lex._IDN_LEX,       self.lex.idn)
+        self.assertEqual(self.lex._IDN_LEX,       self.lex.sbj)
+        self.assertEqual(self.lex(u'define').idn, self.lex.vrb)
+        self.assertEqual(self.lex(u'agent').idn,  self.lex.obj)
+        self.assertEqual(qiki.Number(1),          self.lex.num)
+        self.assertEqual(u'lex',                  self.lex.txt)
+        self.assertSensibleWhen(                  self.lex.whn)
         self.assertTrue(self.lex.is_lex())
 
     def test_01b_lex_getter(self):
@@ -267,13 +286,15 @@ class WordFirstTests(WordTests):
         self.assertEqual(u'noun', noun.txt)
 
     def test_02a_str(self):
-        self.assertEqual(u'noun', str(self.lex(u'noun')))
+        if six.PY2:
+            self.assertTripleEqual(b'noun', str(self.lex(u'noun')))
+        if six.PY3:
+            self.assertTripleEqual(u'noun', str(self.lex(u'noun')))
 
     def test_02b_unicode(self):
-        self.assertEqual(u'noun', six.text_type(self.lex(u'noun')))
-        self.assertIsInstance(six.text_type(self.lex(u'noun')), six.text_type)
+        self.assertTripleEqual(u'noun', six.text_type(self.lex(u'noun')))
 
-    def test_02b_repr(self):
+    def test_02c_repr(self):
         self.assertEqual(u"Word(u'noun')", repr(self.lex(u'noun')))
 
     def test_03a_max_idn_fixed(self):
@@ -458,13 +479,13 @@ class WordFirstTests(WordTests):
 
     def test_11a_noun_inserted(self):
         new_word = self.lex.noun(u'something')
-        self.assertEqual(self.lex.max_idn(),     new_word.idn)
+        self.assertEqual(self.lex.max_idn(),      new_word.idn)
         self.assertEqual(self.lex._IDN_LEX,       new_word.sbj)
         self.assertEqual(self.lex(u'define').idn, new_word.vrb)
         self.assertEqual(self.lex(u'noun').idn,   new_word.obj)
-        self.assertEqual(qiki.Number(1),         new_word.num)
+        self.assertEqual(qiki.Number(1),          new_word.num)
         self.assertEqual(u'something',            new_word.txt)
-        self.assertSensibleWhen(                 new_word.whn)
+        self.assertSensibleWhen(                  new_word.whn)
 
     def test_11b_whn(self):
         define = self.lex(u'define')
@@ -506,8 +527,22 @@ class WordFirstTests(WordTests):
         self.assertTripleEqual(u"some text", t3.unicode())
         self.assertTripleEqual(b"some text", t3.utf8())
 
+    def test_13c_text_native(self):
+        if six.PY2:
+            self.assertTripleEqual(b'string', qiki.Text(u'string').native())
+        if six.PY3:
+            self.assertTripleEqual(u'string', qiki.Text(u'string').native())
+
+    def test_13c_text_not_unicode(self):
+        with self.assertRaises(TypeError):
+            qiki.Text(b'string')
+
+    def test_13d_text_decode(self):
+        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_desperate(u'string'))
+        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_desperate(b'string'))
+
     # noinspection SpellCheckingInspection
-    def test_13c_text_postel(self):
+    def test_13e_text_postel(self):
         """Verify the Text class follows Postel's Law -- liberal in, conservative out."""
         def example(the_input, _unicode, _utf8):
             txt = qiki.Text(the_input)
@@ -792,8 +827,11 @@ class WordMoreTests(WordTests):
         with self.assertNewWord():
             anna.like(bart, 7, u"maybe more than friends")
 
-        # with self.assertNoNewWords():
-        #     anna.like(bart, 7, "maybe more than friends")
+        with self.assertNewWord():
+            anna.like(bart, 7, u"maybe more than friends")
+
+        with self.assertNoNewWords():
+            anna.like(bart, 7, u"maybe more than friends", use_already=True)
 
         with self.assertNewWord():
             anna.like(bart, 5, u"just friends")
@@ -1853,7 +1891,6 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(u'zigzags', nouns[4].txt)
 
     def test_find_words_jbo(self):
-        self.display_all_word_descriptions()
         nouns = self.lex.find_words(obj=self.lex.noun, jbo_vrb=self.qool_idns)
         self.assertEqual(5, len(nouns))
         self.assertEqual(u'noun', nouns[0].txt)

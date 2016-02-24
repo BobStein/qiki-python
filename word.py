@@ -16,7 +16,6 @@ import six
 from qiki import Number
 
 
-@six.python_2_unicode_compatible
 class Word(object):
     """
     A qiki Word is a subject-verb-object triplet of other words (sbj, vrb, obj).
@@ -33,15 +32,13 @@ class Word(object):
     within the context of its Lex,
     as long as it has been saved (exists is true).
 
-    :type content: six.string_types | Word | instancemethod
+    :type content: Text.is_valid() | Word | instancemethod
 
     :type sbj: Number | Word
     :type vrb: Number | instancemethod
     :type obj: Number | Word
     :type num: Number
-    :type txt: six.string_types or six.binary_type, in other words:
-               unicode or str (utf8) in Python 2, e.g. u'noun' or 'noun'
-               str or bytes (utf8) in Python 3, e.g. 'noun' or b'noun'
+    :type txt: Unicode in either Python 2 or 3
     :type lex: Word
 
     Note:  instantiation.txt is always Unicode
@@ -117,9 +114,8 @@ class Word(object):
     class MissingObj(TypeError):
         pass
 
-    def __getattr__(self, noun_txt):
-        if isinstance(noun_txt, six.binary_type):
-            noun_txt = noun_txt.decode('utf-8')
+    def __getattr__(self, noun_attribute_name):
+        noun_txt = Text.decode_if_desperate(noun_attribute_name)
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
         assert self.lex.exists, "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
@@ -468,7 +464,7 @@ class Word(object):
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number)
         assert isinstance(self.num, Number)
-        assert isinstance(self.txt, six.string_types)
+        assert isinstance(self.txt, Text)
         self.lex.populate_word_from_sbj_vrb_obj_num_txt(
             self,
             self.sbj,
@@ -578,7 +574,7 @@ class Word(object):
             isinstance(self.sbj, Number) and
             isinstance(self.vrb, Number) and
             isinstance(self.obj, Number) and
-            isinstance(self.txt, six.string_types) and
+            isinstance(self.txt, Text) and
             isinstance(self.num, Number)
         ):
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
@@ -593,9 +589,18 @@ class Word(object):
 
     def __str__(self):
         if hasattr(self, 'txt'):
-            return self.txt
+            return self.txt.native()
         else:
             return repr(self)
+            # TODO:  Should this be encoded for PY2?
+
+    def __unicode__(self):
+        if hasattr(self, 'txt'):
+            return self.txt.unicode()
+        else:
+            return repr(self)
+
+
 
     class Incomparable(TypeError):
         pass
@@ -639,7 +644,7 @@ class Word(object):
         assert isinstance(self.vrb, Number)
         assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
-        assert isinstance(self.txt, six.string_types)
+        assert isinstance(self.txt, Text)
         if self.exists or self._idn is None:
             self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
@@ -1171,7 +1176,7 @@ class LexMySQL(Lex):
                     value = None
                 elif name == 'txt':
                     # TODO:  If name ends in 'txt' also?
-                    value = Text(field.decode('utf-8'))
+                    value = Text.decode_if_desperate(field)
                 else:
                     value = Number.from_mysql(field)
                 field_dictionary[name] = value
@@ -1229,7 +1234,7 @@ class Text(six.text_type):
     """The class for the Word txt field.
 
     The main use of qiki.Text() is for identifying txt field values to Lex.super_select().
-    Note the only mention of UTF-8 other than this class is in MySQL configuration.
+    Note the only mention of UTF-8 in this module other than this class is in MySQL configuration.
     And this .utf8() method may never actually be needed anywhere anyway,
     because the MySQL connector takes unicode values in prepared statements just fine.
 
@@ -1251,11 +1256,25 @@ class Text(six.text_type):
                 type=type(the_string).__name__
             ))
 
+    @classmethod
+    def decode_if_desperate(cls, x):
+        """For __getattr__() name argument."""
+        try:
+            return cls(x)
+        except TypeError:
+            return cls(x.decode('utf-8'))
+
     def unicode(self):
         return six.text_type(self)
 
     def utf8(self):
         return self.encode('utf-8')
+
+    def native(self):
+        if six.PY2:
+            return self.utf8()
+        else:
+            return self.unicode()
 
     @staticmethod
     def is_valid(x):
