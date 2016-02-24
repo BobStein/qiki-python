@@ -88,9 +88,14 @@ class Word(object):
             if typename == 'instance':
                 typename = content.__class__.__name__
             # raise TypeError('Word(%s) is not supported' % typename)
-            raise TypeError("{outer}({inner}) is not supported".format(
+            if typename == 'str':
+                etc = " -- use unicode instead"
+            else:
+                etc = ""
+            raise TypeError("{outer}({inner}) is not supported{etc}".format(
                 outer=type(self).__name__,
                 inner=typename,
+                etc=etc,
             ))
 
     _IDN_DEFINE = Number(1)
@@ -543,7 +548,7 @@ class Word(object):
         sbj = self.spawn(self.sbj)
         vrb = self.spawn(self.vrb)
         obj = self.spawn(self.obj)
-        return "{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
+        return u"{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
             sbj=str(sbj),
             vrb=str(vrb),
             obj=str(obj),
@@ -1126,7 +1131,7 @@ class LexMySQL(Lex):
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(query_arg.utf8())
+                parameters.append(query_arg.unicode())
             elif isinstance(query_arg, Lex.TableName):
                 query += '`' + query_arg + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.TableName tests.
@@ -1221,22 +1226,19 @@ def idn_from_word_or_number(x):
 
 
 class Text(six.text_type):
-    """The first use of qiki.Text() was for identifying txt field values to Lex.super_select().
+    """The class for the Word txt field.
 
-    Then it served to encapsulate the unicode/utf8 and Python 2/3 differences.
-    Note this file has one encode() and one decode() and they're both in this class.
-    And the only mention of UTF-8 other than this class is in MySQL configuration.
+    The main use of qiki.Text() is for identifying txt field values to Lex.super_select().
+    Note the only mention of UTF-8 other than this class is in MySQL configuration.
+    And this .utf8() method may never actually be needed anywhere anyway,
+    because the MySQL connector takes unicode values in prepared statements just fine.
 
-    Constructor accepts either Unicode or UTF-8-encoded bytes in either Python 2 or 3.
+    Constructor accepts only Unicode in either Python 2 or 3.
         t = Text(x)
     To get unicode out:
         t.unicode()
-        six.text_type(t)
-        unicode(t)   # Python 2 only
     To get the utf8 out:
         t.utf8()
-    To get unicode in Python 3 and UTF-8 in Python 2 (as a str, not a bytearray):
-        str(t)
 
     """
     # TODO:  Painless Unicode, http://stackoverflow.com/a/3933973/673991
