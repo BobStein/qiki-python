@@ -1252,10 +1252,10 @@ class Text(six.text_type):
         # elif isinstance(the_string, (six.binary_type, bytearray)):
         #     return six.text_type.__new__(cls, the_string.decode('utf-8'))
         else:
-           raise TypeError("Text({value} type {type}) is not supported".format(
-               value=repr(the_string),
-               type=type(the_string).__name__
-           ))
+            raise TypeError("Text({value} type {type}) is not supported".format(
+                value=repr(the_string),
+                type=type(the_string).__name__
+            ))
 
     def unicode(self):
         return six.text_type(self)
