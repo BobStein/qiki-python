@@ -1478,6 +1478,29 @@ class WordFindTests(WordTests):
         words = self.lex.find_words(idn_order='DESC')
         self.assertGreater(words[0].idn, words[-1].idn)
 
+    def test_find_idn(self):
+        lex_by_idn = self.lex.find_words(idn=qiki.Word._IDN_LEX)
+        self.assertEqual(1, len(lex_by_idn))
+        self.assertEqual(u"lex", lex_by_idn[0].txt)
+
+        lex_by_idn = self.lex.find_idns(idn=qiki.Word._IDN_LEX)
+        self.assertEqual(1, len(lex_by_idn))
+        self.assertEqual(self.lex.idn, lex_by_idn[0])
+
+    def test_find_idn_word(self):
+        lex_by_idn = self.lex.find_words(idn=self.lex)
+        self.assertEqual(1, len(lex_by_idn))
+        self.assertEqual(u"lex", lex_by_idn[0].txt)
+
+        lex_by_idn = self.lex.find_idns(idn=self.lex)
+        self.assertEqual(1, len(lex_by_idn))
+        self.assertEqual(self.lex.idn, lex_by_idn[0])
+
+    def test_find_idn_not(self):
+        lex_by_idn = self.lex.find_words(idn=qiki.Number(-42))
+        self.assertEqual(0, len(lex_by_idn))
+
+
 class WordUtilities(WordTests):
 
     def test_idn_from_word_or_number(self):

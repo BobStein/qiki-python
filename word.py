@@ -999,7 +999,7 @@ class LexMySQL(Lex):
             return True
         return False
 
-    def find_words(self, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
+    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
@@ -1036,7 +1036,7 @@ class LexMySQL(Lex):
                 None
             ]
         query_args += ['WHERE TRUE', None]
-        query_args += self._find_where(sbj, vrb, obj)
+        query_args += self._find_where(idn, sbj, vrb, obj)
         order_clause = 'ORDER BY w.idn ' + idn_order
         if jbo_vrb is not None:
             order_clause += ', jbo.idn ASC'
@@ -1058,20 +1058,22 @@ class LexMySQL(Lex):
         return words
 
 
-    def find_idns(self, sbj=None, vrb=None, obj=None, idn_order='ASC'):
+    def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
         """Select word identifiers by subject, verb, and/or object.
 
         Return list of idns."""
         query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
-        query_args += self._find_where(sbj, vrb, obj)
+        query_args += self._find_where(idn, sbj, vrb, obj)
         query_args += ['ORDER BY idn ' + idn_order]
         rows_of_idns = self.super_select(*query_args)
         idns = [row['idn'] for row in rows_of_idns]
         return idns
 
     @staticmethod
-    def _find_where(sbj, vrb, obj):
+    def _find_where(idn, sbj, vrb, obj):
         query_args = []
+        if idn is not None:
+            query_args += ['AND w.idn=', idn_from_word_or_number(idn)]
         if sbj is not None:
             query_args += ['AND w.sbj=', idn_from_word_or_number(sbj)]
         if vrb is not None:
