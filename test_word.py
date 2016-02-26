@@ -8,12 +8,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 import operator
-import six
 import sys
 import time
 import unicodedata
 import unittest
 import uuid
+
+import six
 
 import qiki
 from number import hex_from_string
@@ -1855,6 +1856,36 @@ class WordQoolbarTests(WordTests):
                 self.anna,
                 self.bart.idn
             ), ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_idn_set(self):
+        set_of_idns = {
+            self.anna.idn,
+            self.bart.idn
+        }
+        assert type(set_of_idns) is set
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM',self.lex.table,
+            'WHERE idn IN (', set_of_idns, ')'
+        )
+        self.assertEqual([
+            {'txt': u'anna'},
+            {'txt': u'bart'},
+        ], anna_and_bart)
+
+    def test_super_select_word_set(self):
+        set_of_words = {
+            self.anna,
+            self.bart
+        }
+        assert type(set_of_words) is set
+        anna_and_bart = self.lex.super_select(
+            'SELECT txt FROM',self.lex.table,
+            'WHERE idn IN (', set_of_words, ')'
         )
         self.assertEqual([
             {'txt': u'anna'},

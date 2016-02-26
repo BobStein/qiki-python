@@ -1003,7 +1003,7 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
-        assert isinstance(jbo_vrb, (list, tuple, type(None)))
+        assert isinstance(jbo_vrb, (list, tuple, set, type(None)))
         # TODO:  Lex.find()
         query_args = [
             'SELECT '
@@ -1149,7 +1149,7 @@ class LexMySQL(Lex):
             elif isinstance(query_arg, Word):
                 query += '?'
                 parameters.append(query_arg.idn.raw)
-            elif isinstance(query_arg, (list, tuple)):
+            elif isinstance(query_arg, (list, tuple, set)):
                 query += ','.join(['?']*len(query_arg))
                 parameters += [idn_from_word_or_number(x).raw for x in query_arg]
                 # TODO: make these embedded iterables recursive
