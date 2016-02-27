@@ -600,7 +600,10 @@ class Word(object):
         else:
             return repr(self)
 
-
+    def __hash__(self):
+        if not self.exists:
+            raise TypeError("A Word must exist to be hashable.")
+        return hash(self.idn)
 
     class Incomparable(TypeError):
         pass
@@ -1149,7 +1152,8 @@ class LexMySQL(Lex):
             elif isinstance(query_arg, Word):
                 query += '?'
                 parameters.append(query_arg.idn.raw)
-            elif isinstance(query_arg, (list, tuple, set)):
+            # elif isinstance(query_arg, (list, tuple, set)):
+            elif hasattr(query_arg, '__iter__'):
                 query += ','.join(['?']*len(query_arg))
                 parameters += [idn_from_word_or_number(x).raw for x in query_arg]
                 # TODO: make these embedded iterables recursive
