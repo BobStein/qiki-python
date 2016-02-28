@@ -222,8 +222,8 @@ class InternalTestWordTests(WordTests):
 
     def test_missing_from_lex(self):
         self.lex(qiki.Word._IDN_DEFINE)
-        with self.assertRaises(qiki.Word.MissingFromLex):
-            self.lex(qiki.Number(-42))
+        bogus_word = self.lex(qiki.Number(-42))
+        self.assertFalse(bogus_word.exists())
 
     def test_assert_triple_equal(self):
         self.assertTripleEqual(4, 2+2)
@@ -262,7 +262,7 @@ class WordFirstTests(WordTests):
 
     def test_01b_lex_getter(self):
         define = self.lex(u'define')
-        self.assertTrue(define.exists)
+        self.assertTrue(define.exists())
         self.assertEqual(define.idn, qiki.Word._IDN_DEFINE)
         self.assertEqual(define.sbj, qiki.Word._IDN_LEX)
         self.assertEqual(define.vrb, qiki.Word._IDN_DEFINE)
@@ -272,7 +272,7 @@ class WordFirstTests(WordTests):
 
     def test_01c_lex_bum_getter(self):
         nonword = self.lex(u'word that does not exist')
-        self.assertFalse(nonword.exists)
+        self.assertFalse(nonword.exists())
         self.assertTrue(nonword.idn.is_nan())
         self.assertIsNone(nonword.sbj)
         self.assertIsNone(nonword.vrb)
@@ -283,7 +283,7 @@ class WordFirstTests(WordTests):
 
     def test_02_noun(self):
         noun = self.lex(u'noun')
-        self.assertTrue(noun.exists)
+        self.assertTrue(noun.exists())
         self.assertTrue(noun.is_noun())
         self.assertEqual(u'noun', noun.txt)
 
@@ -310,12 +310,12 @@ class WordFirstTests(WordTests):
     def test_03c_noun_spawn(self):
         noun = self.lex(u'noun')
         thing = noun(u'thing')
-        self.assertTrue(thing.exists)
+        self.assertTrue(thing.exists())
         self.assertEqual(u'thing', thing.txt)
 
     def test_03d_noun_spawn_crazy_syntax(self):
         thing = self.lex(u'noun')(u'thing')
-        self.assertTrue(thing.exists)
+        self.assertTrue(thing.exists())
         self.assertEqual(u'thing', thing.txt)
 
     def test_04_is_a(self):
@@ -662,7 +662,7 @@ class WordUnicodeVerb(WordUnicode):
                 eval(u'self.lex.comentó.is_a_verb()')
         if six.PY3:
             self.assertTrue(eval(u'self.lex.comentó.is_a_verb()'))
-        self.assertTrue(self.lex(u'comentó').exists)
+        self.assertTrue(self.lex(u'comentó').exists())
         self.assertTrue(self.lex(u'comentó').is_a_verb())
 
     def test_unicode_n_verb_encourage(self):
@@ -671,7 +671,7 @@ class WordUnicodeVerb(WordUnicode):
         self.assertEqual(u"enc☺urage", sentence2.txt)
         with self.assertRaises(SyntaxError):
             eval(u'self.lex.enc☺urage.is_a_verb()')
-        self.assertTrue(self.lex(u'enc☺urage').exists)
+        self.assertTrue(self.lex(u'enc☺urage').exists())
         self.assertTrue(self.lex(u'enc☺urage').is_a_verb())
 
     if TEST_ASTRAL_PLANE:
@@ -682,7 +682,7 @@ class WordUnicodeVerb(WordUnicode):
             self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
-            self.assertTrue(self.lex(u'\U0001F47Dlienate').exists)
+            self.assertTrue(self.lex(u'\U0001F47Dlienate').exists())
             self.assertTrue(self.lex(u'\U0001F47Dlienate').is_a_verb())
 
 
@@ -707,9 +707,9 @@ class WordMoreTests(WordTests):
         subthing1 = thing1(u'subthing1')
         subthing2 = thing2(u'subthing2')
         subthing3 = thing3(u'subthing3')
-        self.assertTrue(subthing1.exists)
-        self.assertTrue(subthing2.exists)
-        self.assertTrue(subthing3.exists)
+        self.assertTrue(subthing1.exists())
+        self.assertTrue(subthing2.exists())
+        self.assertTrue(subthing3.exists())
         self.assertEqual(u'subthing1', subthing1.txt)
         self.assertEqual(u'subthing2', subthing2.txt)
         self.assertEqual(u'subthing3', subthing3.txt)
@@ -907,7 +907,7 @@ class WordMoreTests(WordTests):
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWord():
             blob = oobleck(some_object, qiki.Number(42), u'new sentence')
-        self.assertTrue(blob.exists)
+        self.assertTrue(blob.exists())
         self.assertEqual(blob.sbj, self.lex.idn)
         self.assertEqual(blob.vrb, oobleck.idn)
         self.assertEqual(blob.obj, some_object.idn)
@@ -922,7 +922,7 @@ class WordMoreTests(WordTests):
         self.assertTrue(oobleck.is_a_verb())
         with self.assertNewWord():
             blob = oobleck(some_object, qiki.Number(11), u"blob")
-        self.assertTrue(blob.exists)
+        self.assertTrue(blob.exists())
         self.assertEqual(blob.obj, some_object.idn)
         self.assertEqual(blob.num, qiki.Number(11))
         self.assertEqual(blob.txt, u"blob")
@@ -930,7 +930,7 @@ class WordMoreTests(WordTests):
     def test_define_object_type_string(self):
         """Specify the object of a definition by its txt."""
         oobleck = self.lex.define(u'verb', u'oobleck')
-        self.assertTrue(oobleck.exists)
+        self.assertTrue(oobleck.exists())
         self.assertEqual(oobleck.sbj, self.lex.idn)
         self.assertEqual(oobleck.vrb, self.lex(u'define').idn)
         self.assertEqual(oobleck.obj, self.lex(u'verb').idn)
@@ -958,7 +958,7 @@ class WordMoreTests(WordTests):
         self.assertNotEqual(lex_oobleck._word_before_the_dot, xavier_oobleck._word_before_the_dot)
 
         xavier_blob = xavier_oobleck(some_object, qiki.Number(42), u"xavier blob")
-        self.assertTrue(xavier_blob.exists)
+        self.assertTrue(xavier_blob.exists())
         self.assertEqual(xavier_blob.sbj, xavier.idn)
         self.assertEqual(xavier_blob.vrb, xavier_oobleck.idn)
         self.assertEqual(xavier_blob.obj, some_object.idn)
@@ -1028,7 +1028,7 @@ class WordSentenceTests(WordTests):
         self.orb = self.lex.noun(u'orb')
 
     def assertGoodSentence(self, sentence, the_num=1, the_txt=u''):
-        self.assertTrue(sentence.exists)
+        self.assertTrue(sentence.exists())
         self.assertEqual(self.sam.idn, sentence.sbj)
         self.assertEqual(self.vet.idn, sentence.vrb)
         self.assertEqual(self.orb.idn, sentence.obj)
@@ -1145,7 +1145,7 @@ class WordListingBasicTests(WordListingTests):
         self.assertEqual(number_two, chad.index)
         self.assertEqual(   u"Chad", chad.txt)
         self.assertEqual(       3.0, chad.num)
-        self.assertTrue(chad.exists)
+        self.assertTrue(chad.exists())
 
         idn_suffix = chad.idn.parse_suffixes()
         self.assertEqual(2, len(idn_suffix))
@@ -1167,7 +1167,7 @@ class WordListingBasicTests(WordListingTests):
         blessed_name.save()
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
-        self.assertTrue(blessed_name_too.exists)
+        self.assertTrue(blessed_name_too.exists())
         self.assertEqual(blessed_name_too.sbj, qiki.Word._IDN_LEX)
         self.assertEqual(blessed_name_too.vrb, bless.idn)
         self.assertEqual(blessed_name_too.obj, archie.idn)
@@ -1191,7 +1191,7 @@ class WordListingBasicTests(WordListingTests):
         blessed_name = self.lex.bless(archie, qiki.Number(666), u"mah soul")
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
-        self.assertTrue(blessed_name_too.exists)
+        self.assertTrue(blessed_name_too.exists())
         self.assertEqual(blessed_name_too.sbj, qiki.Word._IDN_LEX)
         self.assertEqual(blessed_name_too.vrb, bless.idn)
         self.assertEqual(blessed_name_too.obj, archie.idn)
@@ -1318,8 +1318,9 @@ class WordListingInternalsTests(WordListingTests):
             qiki.Listing.class_from_meta_idn(some_word.idn)
 
     def test_non_listing_suffix(self):
+        bogus_word = self.lex(qiki.Number(1+2j))
         with self.assertRaises(qiki.Word.NotAWord):
-            self.lex(qiki.Number(1+2j))
+            bogus_word.exists()
 
 
 class WordUseAlready(WordTests):

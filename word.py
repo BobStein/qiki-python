@@ -60,8 +60,9 @@ class Word(object):
         elif isinstance(content, Number):
             # Word(idn)
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
-            self._from_idn(content)
-            assert self.exists
+            # self._from_idn(content)
+            # assert self.exists()
+            self._inchoate(content)
         elif isinstance(content, type(self)):
             # Word(some_other_word)
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -97,16 +98,29 @@ class Word(object):
             ))
 
     def _inchoate(self, idn):
+        """
+        All that is known about an inchoate word is its idn.
+        Maybe that's all we ever need to know about it.
+        If almost anything else is asked of it, the word is made choate() in order to answer.
+        Such as:
+            word.sbj
+            word.vrb
+            word.vrb
+            word.num
+            word.txt
+            word.whn
+            word.exists()
+        """
         self._idn = idn
         self._is_inchoate = True
 
     def _choate(self):
         if self._is_inchoate:
-            self._from_idn(self._idn)
             del self._is_inchoate
+            self._from_idn(self._idn)
 
-    @property
     def exists(self):
+        self._choate()
         return self._exists
 
     def _now_it_exists(self):
@@ -135,6 +149,7 @@ class Word(object):
             return None
             # XXX:  More pythonic to raise AttributeError
         if attribute_name in ('sbj', 'vrb', 'obj', 'num', 'txt', 'whn'):
+            self._choate()
             if self._fields is None:
                 return None
                 # XXX:  More pythonic to raise AttributeError
@@ -149,9 +164,9 @@ class Word(object):
         noun_txt = Text.decode_if_desperate(attribute_name)
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
-        assert self.lex.exists, "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
+        assert self.lex.exists(), "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
 
-        # Testing lex.exists prevents infinity.
+        # Testing lex.exists() prevents infinity.
         # This would happen below where lex(noun_txt) would call Word.__call__()
         # But in very early conditions lex.is_lex() is false before it's read its row from the database.
         # (By the way why does is_lex() depend on exists? There was probably some reason.)
@@ -163,7 +178,7 @@ class Word(object):
         assert hasattr(self.lex, '__call__'), "Lex isn't callable, can't x.{noun}".format(noun=noun_txt)
         return_value = self.lex(noun_txt)
         # FIXME:  catch NotExist: raise NoSuchAttribute (a gross internal error)
-        if not return_value.exists:
+        if not return_value.exists():
             raise self.NoSuchAttribute("Word has no attribute {name}".format(
                 # word=repr(self),   # Infinity:  repr() calls hasattr() tries __getattr__()...
                 name=repr(noun_txt)
@@ -267,7 +282,7 @@ class Word(object):
                 assert num is None
                 maybe_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 maybe_word._from_sbj_vrb_obj()
-                if maybe_word.exists:
+                if maybe_word.exists():
                     num = maybe_word.num + num_add
                 else:
                     num = num_add
@@ -283,11 +298,11 @@ class Word(object):
                 assert num_add is None
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
                 existing_word._from_sbj_vrb_obj()
-                if not existing_word.exists:
+                if not existing_word.exists():
                     raise self.MissingFromLex(
                         "The form s.v(o) is a getter.  "
-                        "That word must exist already.  "
-                        "A setter needs a num, e.g.:  s.v(o,1)"
+                        "So that word must exist already.  "
+                        "A setter would need at least a num, e.g.:  s.v(o,1)"
                     )
             else:   # subject.verb(object, number)        \ <-- these are getter or setter
                     # subject.verb(object, number, text)  /
@@ -302,7 +317,7 @@ class Word(object):
                         txt=txt,
                     )
                     existing_word._from_sbj_vrb_obj_num_txt()
-                    if not existing_word.exists:
+                    if not existing_word.exists():
                         existing_word.save()
                 else:
                     existing_word = self.sentence(
@@ -360,7 +375,7 @@ class Word(object):
         # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
         # TODO:  use_already option?
         # But why would anyone want to duplicate a definition with the same txt and num?
-        if possibly_existing_word.exists:
+        if possibly_existing_word.exists():
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
         new_word = self.sentence(sbj=self, vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
@@ -414,7 +429,7 @@ class Word(object):
         )
         if num_add is not None:
             new_word._from_sbj_vrb_obj()
-            if new_word.exists:
+            if new_word.exists():
                 new_word._fields['num'] += Number(num_add)
             else:
                 new_word._fields['num'] = Number(num_add)
@@ -422,7 +437,7 @@ class Word(object):
         elif use_already:
             assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
             new_word._from_sbj_vrb_obj_num_txt()
-            if not new_word.exists:
+            if not new_word.exists():
                 new_word.save()
         else:
             assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
@@ -463,7 +478,7 @@ class Word(object):
             except Listing.NotAListing:
                 raise self.NotAWord("Not a Word identifier: " + idn.qstring())
             else:
-                assert listed_instance.exists
+                assert listed_instance.exists()
                 self._fields = dict(txt=listed_instance.txt)
                 self._now_it_exists()
                 # TODO:  This was a fudge. Word(suffixed idn) should return a Listing instance
@@ -472,8 +487,9 @@ class Word(object):
                 # SEE:  http://stackoverflow.com/a/3209240/673991
         else:
             self._idn = idn
-            if not self.lex.populate_word_from_idn(self, idn):
-                raise self.MissingFromLex
+            self.lex.populate_word_from_idn(self, idn)
+            # if not self.lex.populate_word_from_idn(self, idn):
+            #     raise self.MissingFromLex
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -484,7 +500,7 @@ class Word(object):
     def _from_word(self, word):
         if word.is_lex():
             raise ValueError   # lex is a singleton.  TODO:  Explain why this should be.
-        assert word.exists
+        assert word.exists()
         self.lex = word.lex
         self._from_idn(word.idn)
 
@@ -529,7 +545,7 @@ class Word(object):
             return True
         if recursion <= 0:
             return False
-        if not self.exists:
+        if not self.exists():
             return False
         if not hasattr(self, 'vrb'):
             return False
@@ -577,7 +593,7 @@ class Word(object):
         return self.idn == self._IDN_AGENT
 
     def is_lex(self):
-        return isinstance(self, Lex) and self.exists and self.idn == self._IDN_LEX
+        return isinstance(self, Lex) and self.exists() and self.idn == self._IDN_LEX
 
     def description(self):
         sbj = self.spawn(self.sbj)
@@ -599,7 +615,7 @@ class Word(object):
             return str(float(num))
 
     def __repr__(self):
-        if self.exists:
+        if self.exists():
             if self.is_defined() and self.txt:
                 return "Word(u'{}')".format(self.txt)
             else:
@@ -640,7 +656,7 @@ class Word(object):
             return repr(self)
 
     def __hash__(self):
-        if not self.exists:
+        if not self.exists():
             raise TypeError("A Word must exist to be hashable.")
         return hash(self.idn)
 
@@ -660,12 +676,12 @@ class Word(object):
             # Yet a simple Word() == None does seem to come here.
             # See test_word.py test_verb_paren_object_deferred_subject()
         try:
-            other_exists = other.exists
+            other_exists = other.exists()
             other_idn = other.idn
         except AttributeError:
             raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
         else:
-            return self.exists and other_exists and self.idn == other_idn
+            return self.exists() and other_exists and self.idn == other_idn
 
     @property
     def idn(self):
@@ -688,7 +704,7 @@ class Word(object):
         assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
-        if self.exists or self._idn is None:
+        if self.exists() or self._idn is None:
             self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
             # Or store latest idn in another table
@@ -815,8 +831,10 @@ class LexMySQL(Lex):
         self._connection = mysql.connector.connect(**kwargs)
         self.lex = self
         self.last_inserted_whn = None
+
+        super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
         try:
-            super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
+            self._choate()
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
@@ -827,10 +845,10 @@ class LexMySQL(Lex):
                 super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
                 assert False, exception_message
-        except Word.MissingFromLex:
+        if not self.exists():
             self._install_seminal_words()
 
-        assert self.exists
+        assert self.exists()
         cursor = self._cursor()
         cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         # THANKS:  http://stackoverflow.com/a/27390024/673991
@@ -886,12 +904,11 @@ class LexMySQL(Lex):
         """
         def seminal_word(_idn, _obj, _txt):
             """Subject is always 'lex'.  Verb is always 'define'."""
-            try:
-                word = self.spawn(_idn)
-            except Word.MissingFromLex:
+            word = self.spawn(_idn)
+            if not word.exists():
                 self._install_word(_idn, _obj, _txt)
                 word = self.spawn(_idn)
-            assert word.exists
+            assert word.exists()
                                                                     # forward, reflexive references
         seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
         seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
@@ -913,9 +930,9 @@ class LexMySQL(Lex):
                                                                     # 3,3
 
 
-        if not self.exists:
+        if not self.exists():
             self._from_idn(self._IDN_LEX)
-        assert self.exists
+        assert self.exists()
         assert self.is_lex()
 
     def _install_word(self, _idn, _obj, _txt):
