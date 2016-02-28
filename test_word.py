@@ -251,24 +251,24 @@ class WordFirstTests(WordTests):
         self.assertEqual(1, int(n))
 
     def test_01a_lex(self):
-        self.assertEqual(self.lex._IDN_LEX,       self.lex.idn)
-        self.assertEqual(self.lex._IDN_LEX,       self.lex.sbj)
-        self.assertEqual(self.lex(u'define').idn, self.lex.vrb)
-        self.assertEqual(self.lex(u'agent').idn,  self.lex.obj)
-        self.assertEqual(qiki.Number(1),          self.lex.num)
-        self.assertEqual(u'lex',                  self.lex.txt)
-        self.assertSensibleWhen(                  self.lex.whn)
+        self.assertEqual(self.lex._IDN_LEX,   self.lex.idn)
+        self.assertEqual(self.lex,            self.lex.sbj)
+        self.assertEqual(self.lex(u'define'), self.lex.sbj)
+        self.assertEqual(self.lex(u'agent'),  self.lex.sbj)
+        self.assertEqual(qiki.Number(1),      self.lex.num)
+        self.assertEqual(u'lex',              self.lex.txt)
+        self.assertSensibleWhen(              self.lex.whn)
         self.assertTrue(self.lex.is_lex())
 
     def test_01b_lex_getter(self):
         define = self.lex(u'define')
         self.assertTrue(define.exists())
-        self.assertEqual(define.idn, qiki.Word._IDN_DEFINE)
-        self.assertEqual(define.sbj, qiki.Word._IDN_LEX)
-        self.assertEqual(define.vrb, qiki.Word._IDN_DEFINE)
-        self.assertEqual(define.obj, qiki.Word._IDN_VERB)
-        self.assertEqual(define.num, qiki.Number(1))
-        self.assertEqual(define.txt, u'define')
+        self.assertEqual(define.idn,     qiki.Word._IDN_DEFINE)
+        self.assertEqual(define.sbj.idn, qiki.Word._IDN_LEX)
+        self.assertEqual(define.sbj.idn, qiki.Word._IDN_DEFINE)
+        self.assertEqual(define.sbj.idn, qiki.Word._IDN_VERB)
+        self.assertEqual(define.num,     qiki.Number(1))
+        self.assertEqual(define.txt,     u'define')
 
     def test_01c_lex_bum_getter(self):
         nonword = self.lex(u'word that does not exist')
@@ -392,18 +392,18 @@ class WordFirstTests(WordTests):
 
         child = noun(u'child')
         self.assertFalse(child.is_noun())
-        self.assertTrue( child.spawn(child.obj).is_noun())
+        self.assertTrue(child.obj.is_noun())
 
         grandchild = child(u'grandchild')
         self.assertFalse(grandchild.is_noun())
-        self.assertFalse(grandchild.spawn(grandchild.obj).is_noun())
-        self.assertTrue( grandchild.spawn(grandchild.spawn(grandchild.obj).obj).is_noun())
+        self.assertFalse(grandchild.obj.is_noun())
+        self.assertTrue(grandchild.obj.obj.is_noun())
 
         greatgrandchild = grandchild(u'greatgrandchild')
         self.assertFalse(greatgrandchild.is_noun())
-        self.assertFalse(greatgrandchild.spawn(greatgrandchild.obj).is_noun())
-        self.assertFalse(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).is_noun())
-        self.assertTrue( greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.spawn(greatgrandchild.obj).obj).obj).is_noun())
+        self.assertFalse(greatgrandchild.obj.is_noun())
+        self.assertFalse(greatgrandchild.obj.obj.is_noun())
+        self.assertTrue(greatgrandchild.obj.obj.obj.is_noun())
         self.assertEqual(u'greatgrandchild', greatgrandchild.txt)
 
     def test_07_noun_great_great_grandchild(self):
@@ -481,13 +481,13 @@ class WordFirstTests(WordTests):
 
     def test_11a_noun_inserted(self):
         new_word = self.lex.noun(u'something')
-        self.assertEqual(self.lex.max_idn(),      new_word.idn)
-        self.assertEqual(self.lex._IDN_LEX,       new_word.sbj)
-        self.assertEqual(self.lex(u'define').idn, new_word.vrb)
-        self.assertEqual(self.lex(u'noun').idn,   new_word.obj)
-        self.assertEqual(qiki.Number(1),          new_word.num)
-        self.assertEqual(u'something',            new_word.txt)
-        self.assertSensibleWhen(                  new_word.whn)
+        self.assertEqual(self.lex.max_idn(),  new_word.idn)
+        self.assertEqual(self.lex,            new_word.sbj)
+        self.assertEqual(self.lex(u'define'), new_word.vrb)
+        self.assertEqual(self.lex(u'noun'),   new_word.obj)
+        self.assertEqual(qiki.Number(1),      new_word.num)
+        self.assertEqual(u'something',        new_word.txt)
+        self.assertSensibleWhen(              new_word.whn)
 
     def test_11b_whn(self):
         define = self.lex(u'define')
@@ -717,7 +717,7 @@ class WordMoreTests(WordTests):
     def test_verb(self):
         self.lex.verb(u'like')
         like = self.lex(u'like')
-        self.assertEqual(self.lex.idn, like.sbj)
+        self.assertEqual(self.lex, like.sbj)
 
     def test_is_a_verb(self):
         verb = self.lex(u'verb')
@@ -908,9 +908,9 @@ class WordMoreTests(WordTests):
         with self.assertNewWord():
             blob = oobleck(some_object, qiki.Number(42), u'new sentence')
         self.assertTrue(blob.exists())
-        self.assertEqual(blob.sbj, self.lex.idn)
-        self.assertEqual(blob.vrb, oobleck.idn)
-        self.assertEqual(blob.obj, some_object.idn)
+        self.assertEqual(blob.sbj, self.lex)
+        self.assertEqual(blob.vrb, oobleck)
+        self.assertEqual(blob.obj, some_object)
         self.assertEqual(blob.num, qiki.Number(42))
         self.assertEqual(blob.txt, u"new sentence")
 
@@ -923,7 +923,7 @@ class WordMoreTests(WordTests):
         with self.assertNewWord():
             blob = oobleck(some_object, qiki.Number(11), u"blob")
         self.assertTrue(blob.exists())
-        self.assertEqual(blob.obj, some_object.idn)
+        self.assertEqual(blob.obj, some_object)
         self.assertEqual(blob.num, qiki.Number(11))
         self.assertEqual(blob.txt, u"blob")
 
@@ -931,9 +931,9 @@ class WordMoreTests(WordTests):
         """Specify the object of a definition by its txt."""
         oobleck = self.lex.define(u'verb', u'oobleck')
         self.assertTrue(oobleck.exists())
-        self.assertEqual(oobleck.sbj, self.lex.idn)
-        self.assertEqual(oobleck.vrb, self.lex(u'define').idn)
-        self.assertEqual(oobleck.obj, self.lex(u'verb').idn)
+        self.assertEqual(oobleck.sbj, self.lex)
+        self.assertEqual(oobleck.vrb, self.lex(u'define'))
+        self.assertEqual(oobleck.obj, self.lex(u'verb'))
         self.assertEqual(oobleck.num, qiki.Number(1))
         self.assertEqual(oobleck.txt, u"oobleck")
 
@@ -959,9 +959,9 @@ class WordMoreTests(WordTests):
 
         xavier_blob = xavier_oobleck(some_object, qiki.Number(42), u"xavier blob")
         self.assertTrue(xavier_blob.exists())
-        self.assertEqual(xavier_blob.sbj, xavier.idn)
-        self.assertEqual(xavier_blob.vrb, xavier_oobleck.idn)
-        self.assertEqual(xavier_blob.obj, some_object.idn)
+        self.assertEqual(xavier_blob.sbj, xavier)
+        self.assertEqual(xavier_blob.vrb, xavier_oobleck)
+        self.assertEqual(xavier_blob.obj, some_object)
         self.assertEqual(xavier_blob.num, qiki.Number(42))
         self.assertEqual(xavier_blob.txt, u"xavier blob")
 
@@ -1029,26 +1029,26 @@ class WordSentenceTests(WordTests):
 
     def assertGoodSentence(self, sentence, the_num=1, the_txt=u''):
         self.assertTrue(sentence.exists())
-        self.assertEqual(self.sam.idn, sentence.sbj)
-        self.assertEqual(self.vet.idn, sentence.vrb)
-        self.assertEqual(self.orb.idn, sentence.obj)
+        self.assertEqual(self.sam, sentence.sbj)
+        self.assertEqual(self.vet, sentence.vrb)
+        self.assertEqual(self.orb, sentence.obj)
         self.assertEqual(the_num, sentence.num)
         self.assertEqual(the_txt, sentence.txt)
         return sentence
 
     def test_sentence(self):
         w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt=u'sentence'), 42, u'sentence')
-        self.assertEqual(self.sam.idn, w.sbj)
-        self.assertEqual(self.vet.idn, w.vrb)
-        self.assertEqual(self.orb.idn, w.obj)
+        self.assertEqual(self.sam, w.sbj)
+        self.assertEqual(self.vet, w.vrb)
+        self.assertEqual(self.orb, w.obj)
         self.assertEqual(42, w.num)
         self.assertEqual(u'sentence', w.txt)
 
     def test_sentence_by_idn(self):
         w=self.assertGoodSentence(self.lex.sentence(sbj=self.sam.idn, vrb=self.vet.idn, obj=self.orb.idn, num=42, txt=u'sentence'), 42, u'sentence')
-        self.assertEqual(self.sam.idn, w.sbj)
-        self.assertEqual(self.vet.idn, w.vrb)
-        self.assertEqual(self.orb.idn, w.obj)
+        self.assertEqual(self.sam, w.sbj)
+        self.assertEqual(self.vet, w.vrb)
+        self.assertEqual(self.orb, w.obj)
 
     def test_sentence_args(self):
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=42, txt=u'sentence'), 42, u'sentence')
@@ -1168,9 +1168,9 @@ class WordListingBasicTests(WordListingTests):
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
         self.assertTrue(blessed_name_too.exists())
-        self.assertEqual(blessed_name_too.sbj, qiki.Word._IDN_LEX)
-        self.assertEqual(blessed_name_too.vrb, bless.idn)
-        self.assertEqual(blessed_name_too.obj, archie.idn)
+        self.assertEqual(blessed_name_too.sbj.idn, qiki.Word._IDN_LEX)
+        self.assertEqual(blessed_name_too.vrb, bless)
+        self.assertEqual(blessed_name_too.obj, archie)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
         self.assertEqual(blessed_name_too.txt, u"mah soul")
 
@@ -1192,9 +1192,9 @@ class WordListingBasicTests(WordListingTests):
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
         self.assertTrue(blessed_name_too.exists())
-        self.assertEqual(blessed_name_too.sbj, qiki.Word._IDN_LEX)
-        self.assertEqual(blessed_name_too.vrb, bless.idn)
-        self.assertEqual(blessed_name_too.obj, archie.idn)
+        self.assertEqual(blessed_name_too.sbj.idn, qiki.Word._IDN_LEX)
+        self.assertEqual(blessed_name_too.vrb, bless)
+        self.assertEqual(blessed_name_too.obj, archie)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
         self.assertEqual(blessed_name_too.txt, u"mah soul")
 
@@ -1577,7 +1577,7 @@ class WordQoolbarTests(WordTests):
         self.bart_delete_zigzags = self.bart.delete(self.zigzags, 1)
 
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
-        self.qool_idns = [w.obj for w in qool_declarations]
+        self.qool_idns = [w.obj.idn for w in qool_declarations]
 
     def test_get_all_qool_verbs(self):
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
@@ -1588,23 +1588,23 @@ class WordQoolbarTests(WordTests):
         """Find by a list of verbs."""
         qool_uses = self.lex.find_words(vrb=self.qool_idns)
         self.assertEqual(4, len(qool_uses))
-        self.assertEqual(qool_uses[0].sbj, self.anna.idn)
-        self.assertEqual(qool_uses[1].sbj, self.bart.idn)
-        self.assertEqual(qool_uses[2].sbj, self.anna.idn)
-        self.assertEqual(qool_uses[3].sbj, self.bart.idn)
+        self.assertEqual(qool_uses[0].sbj, self.anna)
+        self.assertEqual(qool_uses[1].sbj, self.bart)
+        self.assertEqual(qool_uses[2].sbj, self.anna)
+        self.assertEqual(qool_uses[3].sbj, self.bart)
 
         qool_uses = self.lex.find_words(vrb=self.qool_idns, obj=self.youtube)
         self.assertEqual(2, len(qool_uses))
-        self.assertEqual(qool_uses[0].sbj, self.anna.idn)
+        self.assertEqual(qool_uses[0].sbj, self.anna)
         self.assertEqual(qool_uses[0].num, qiki.Number(1))
-        self.assertEqual(qool_uses[1].sbj, self.bart.idn)
+        self.assertEqual(qool_uses[1].sbj, self.bart)
         self.assertEqual(qool_uses[1].num, qiki.Number(10))
 
         qool_uses = self.lex.find_words(vrb=self.qool_idns, sbj=self.bart)
         self.assertEqual(2, len(qool_uses))
-        self.assertEqual(qool_uses[0].obj, self.youtube.idn)
+        self.assertEqual(qool_uses[0].obj, self.youtube)
         self.assertEqual(qool_uses[0].num, qiki.Number(10))
-        self.assertEqual(qool_uses[1].obj, self.zigzags.idn)
+        self.assertEqual(qool_uses[1].obj, self.zigzags)
         self.assertEqual(qool_uses[1].num, qiki.Number(1))
 
     def test_super_select_idn(self):
