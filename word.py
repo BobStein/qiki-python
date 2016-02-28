@@ -75,9 +75,9 @@ class Word(object):
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
             self._fields = dict(
-                sbj=None if sbj is None else idn_from_word_or_number(sbj),
-                vrb=None if vrb is None else idn_from_word_or_number(vrb),
-                obj=None if obj is None else idn_from_word_or_number(obj),
+                sbj=None if sbj is None else self.lex.word_from_word_or_number(sbj),
+                vrb=None if vrb is None else self.lex.word_from_word_or_number(vrb),
+                obj=None if obj is None else self.lex.word_from_word_or_number(obj),
                 num=num,
                 txt=None if txt is None else Text(txt),
                 whn=None,
@@ -113,6 +113,7 @@ class Word(object):
         """
         self._idn = idn
         self._is_inchoate = True
+        assert self.lex is not None
 
     def _choate(self):
         if self._is_inchoate:
@@ -125,6 +126,9 @@ class Word(object):
 
     def _now_it_exists(self):
         self._exists = True
+
+    def _now_it_doesnt_exist(self):
+        self._exists = False
 
     _IDN_DEFINE = Number(1)
     _IDN_NOUN   = Number(2)
@@ -452,6 +456,11 @@ class Word(object):
         In any case, it will be prepared to .save().
         """
         assert hasattr(self, 'lex')
+        # if len(kwargs) == 0:
+        #     if len(args) == 1 and isinstance(args[0], Number) and args[0] == self._IDN_LEX:
+        #         if self.lex._exists:
+        #             return self.lex
+        #             # Enforce singleton:  spawn(lex.idn) is lex
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
 
@@ -498,24 +507,26 @@ class Word(object):
             self._fields = dict(txt=Text(txt))
 
     def _from_word(self, word):
-        if word.is_lex():
-            raise ValueError   # lex is a singleton.  TODO:  Explain why this should be.
+        # if word.is_lex():
+        #     raise ValueError("Lex is a singleton, so it cannot be copied.")
+        #     # TODO:  Explain why this should be.
+        #     # TODO:  Resolve inconsistency:  spawn(lex.idn) will clone lex
         assert word.exists()
         self.lex = word.lex
         self._from_idn(word.idn)
 
     def _from_sbj_vrb_obj(self):
         """Construct a word by looking up its subject-verb-object."""
-        assert isinstance(self.sbj, Number)
-        assert isinstance(self.vrb, Number)
-        assert isinstance(self.obj, Number)
+        assert isinstance(self.sbj, Word)
+        assert isinstance(self.vrb, Word)
+        assert isinstance(self.obj, Word)
         self.lex.populate_word_from_sbj_vrb_obj(self, self.sbj, self.vrb, self.obj)
 
     def _from_sbj_vrb_obj_num_txt(self):
         """Construct a word by looking up its subject-verb-object and its num and txt."""
-        assert isinstance(self.sbj, Number)
-        assert isinstance(self.vrb, Number)
-        assert isinstance(self.obj, Number)
+        assert isinstance(self.sbj, Word)
+        assert isinstance(self.vrb, Word)
+        assert isinstance(self.obj, Word)
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
         self.lex.populate_word_from_sbj_vrb_obj_num_txt(
@@ -529,15 +540,15 @@ class Word(object):
 
     def populate_from_row(self, row, prefix=''):
         self._idn = row[prefix + 'idn']
+        self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
-            sbj=row[prefix + 'sbj'],
-            vrb=row[prefix + 'vrb'],
-            obj=row[prefix + 'obj'],
+            sbj=self.spawn(row[prefix + 'sbj']),
+            vrb=self.spawn(row[prefix + 'vrb']),
+            obj=self.spawn(row[prefix + 'obj']),
             num=row[prefix + 'num'],
             txt=row[prefix + 'txt'],
             whn=row[prefix + 'whn'],
         )
-        self._now_it_exists()
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
@@ -549,9 +560,9 @@ class Word(object):
             return False
         if not hasattr(self, 'vrb'):
             return False
-        if self.vrb != self._IDN_DEFINE:
+        if self.vrb.idn != self._IDN_DEFINE:
             return False
-        if self.obj == word.idn:
+        if self.obj == word:
             return True
         parent = self.spawn(self.obj)
         if parent.idn == self.idn:
@@ -576,7 +587,7 @@ class Word(object):
         """Test whether a word is the product of a definition.
 
         That is, whether the sentence that creates it uses the verb 'define'."""
-        return self.vrb == self._IDN_DEFINE
+        return self.vrb.idn == self._IDN_DEFINE
 
     def is_noun(self):
         return self.idn == self._IDN_NOUN
@@ -596,13 +607,14 @@ class Word(object):
         return isinstance(self, Lex) and self.exists() and self.idn == self._IDN_LEX
 
     def description(self):
-        sbj = self.spawn(self.sbj)
-        vrb = self.spawn(self.vrb)
-        obj = self.spawn(self.obj)
+        sbj = self.spawn(self.sbj.idn)
+        vrb = self.spawn(self.vrb.idn)
+        obj = self.spawn(self.obj.idn)
         return u"{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
-            sbj=str(sbj),
-            vrb=str(vrb),
-            obj=str(obj),
+            sbj=str(sbj.idn),
+            vrb=str(vrb.idn),
+            obj=str(obj.idn),
+            # TODO:  Would str(x) cause infinite recursion?  Not if str() doesn't call description()
             num=self.presentable(self.num),
             maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
         )
@@ -621,26 +633,21 @@ class Word(object):
             else:
                 return "Word({})".format(int(self.idn))
         elif (
-            hasattr(self, 'sbj') and
-            hasattr(self, 'vrb') and
-            hasattr(self, 'obj') and
-            hasattr(self, 'txt') and
-            hasattr(self, 'num') and
-            isinstance(self.sbj, Number) and
-            isinstance(self.vrb, Number) and
-            isinstance(self.obj, Number) and
+            isinstance(self.sbj, Word) and
+            isinstance(self.vrb, Word) and
+            isinstance(self.obj, Word) and
             isinstance(self.txt, Text) and
             isinstance(self.num, Number)
         ):
             return("Word(sbj={sbj}, vrb={vrb}, obj={obj}, txt={txt}, num={num})".format(
-                sbj=self.sbj.qstring(),
-                vrb=self.vrb.qstring(),
-                obj=self.obj.qstring(),
+                sbj=self.sbj.idn.qstring(),
+                vrb=self.vrb.idn.qstring(),
+                obj=self.obj.idn.qstring(),
                 txt=repr(self.txt),
                 num=self.num.qstring(),
             ))
         else:
-            return "Word(in a strange state)"
+            return "Word(in a strange state, idn {})".format(int(self.idn))
 
     def __str__(self):
         if hasattr(self, 'txt'):
@@ -699,9 +706,9 @@ class Word(object):
         if override_idn is not None:
             self._idn = override_idn
         assert isinstance(self.idn, (Number, type(None)))
-        assert isinstance(self.sbj, Number)
-        assert isinstance(self.vrb, Number)
-        assert isinstance(self.obj, Number), "{obj} is not a Number".format(obj=repr(self.obj))
+        assert isinstance(self.sbj, Word)
+        assert isinstance(self.vrb, Word)
+        assert isinstance(self.obj, Word), "{obj} is not a Word".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
         if self.exists() or self._idn is None:
@@ -903,11 +910,13 @@ class LexMySQL(Lex):
         At least that's how they'd be defined if forward references were not a problem.
         """
         def seminal_word(_idn, _obj, _txt):
+            x1 = repr(self._exists)
             """Subject is always 'lex'.  Verb is always 'define'."""
             word = self.spawn(_idn)
             if not word.exists():
                 self._install_word(_idn, _obj, _txt)
                 word = self.spawn(_idn)
+            assert self.max_idn() >= _idn, repr(self) + "\n" + repr(self.__dict__) + "\n" + x1
             assert word.exists()
                                                                     # forward, reflexive references
         seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
@@ -937,11 +946,11 @@ class LexMySQL(Lex):
 
     def _install_word(self, _idn, _obj, _txt):
         word = self.spawn(
-            sbj = self._IDN_LEX,
-            vrb = self._IDN_DEFINE,
-            obj = _obj,
-            num = Number(1),
-            txt = _txt,
+            sbj=self._IDN_LEX,
+            vrb=self._IDN_DEFINE,
+            obj=_obj,
+            num=Number(1),
+            txt=_txt,
         )
         try:
             word.save(override_idn=_idn)
@@ -966,6 +975,7 @@ class LexMySQL(Lex):
             pass
         cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self._table))
         cursor.close()
+        # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
 
     def disconnect(self):
@@ -1289,6 +1299,15 @@ class LexMySQL(Lex):
         """For super_select()"""
         return self.TableName(self._table)
 
+    def word_from_word_or_number(self, x):
+        if isinstance(x, Word):
+            return x
+        elif isinstance(x, Number):
+            return Word(x, lex=self)
+        else:
+            raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
+                type(x).__name__,
+            ))
 
 def idn_from_word_or_number(x):
     if isinstance(x, Word):

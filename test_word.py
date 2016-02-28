@@ -253,8 +253,8 @@ class WordFirstTests(WordTests):
     def test_01a_lex(self):
         self.assertEqual(self.lex._IDN_LEX,   self.lex.idn)
         self.assertEqual(self.lex,            self.lex.sbj)
-        self.assertEqual(self.lex(u'define'), self.lex.sbj)
-        self.assertEqual(self.lex(u'agent'),  self.lex.sbj)
+        self.assertEqual(self.lex(u'define'), self.lex.vrb)
+        self.assertEqual(self.lex(u'agent'),  self.lex.obj)
         self.assertEqual(qiki.Number(1),      self.lex.num)
         self.assertEqual(u'lex',              self.lex.txt)
         self.assertSensibleWhen(              self.lex.whn)
@@ -265,8 +265,8 @@ class WordFirstTests(WordTests):
         self.assertTrue(define.exists())
         self.assertEqual(define.idn,     qiki.Word._IDN_DEFINE)
         self.assertEqual(define.sbj.idn, qiki.Word._IDN_LEX)
-        self.assertEqual(define.sbj.idn, qiki.Word._IDN_DEFINE)
-        self.assertEqual(define.sbj.idn, qiki.Word._IDN_VERB)
+        self.assertEqual(define.vrb.idn, qiki.Word._IDN_DEFINE)
+        self.assertEqual(define.obj.idn, qiki.Word._IDN_VERB)
         self.assertEqual(define.num,     qiki.Number(1))
         self.assertEqual(define.txt,     u'define')
 
@@ -467,9 +467,19 @@ class WordFirstTests(WordTests):
         self.assertEqual(lex1, lex2)
         self.assertIs(lex1, lex2)   # Why does this work?
 
-    def test_09b_lex_singleton_cant_do_by_copy_constructor(self):
-        with self.assertRaises(ValueError):
-            qiki.Word(self.lex)
+    # def test_09b_lex_singleton_cant_do_by_copy_constructor(self):
+    #     with self.assertRaises(ValueError):
+    #         qiki.Word(self.lex)
+
+    def test_09b_idn_constructor_does_not_enforce_lex_singleton(self):
+        lex_by_idn = self.lex.spawn(self.lex.idn)
+        self.assertEqual(lex_by_idn, self.lex)
+        self.assertIsNot(lex_by_idn, self.lex)
+
+    def test_09c_word_copy_constructor_does_not_enforce_lex_singleton(self):
+        lex_by_word = self.lex.spawn(self.lex)
+        self.assertEqual(lex_by_word, self.lex)
+        self.assertIsNot(lex_by_word, self.lex)
 
     def test_10a_word_by_lex_idn(self):
         agent = self.lex(qiki.Word._IDN_AGENT)
