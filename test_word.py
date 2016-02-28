@@ -59,8 +59,10 @@ class WordTests(unittest.TestCase):
         if RANDOMIZE_DATABASE_TABLE:
             credentials['table'] = 'word_' + uuid.uuid4().hex
         self.lex = qiki.LexMySQL(**credentials)
-        self.lex.uninstall_to_scratch()
-        self.lex.install_from_scratch()
+        if LET_DATABASE_RECORDS_REMAIN:
+            self.lex.uninstall_to_scratch()
+            self.lex.install_from_scratch()
+            # Delete and insert all records for a fresh start.
 
     def tearDown(self):
         if not LET_DATABASE_RECORDS_REMAIN:
@@ -611,6 +613,21 @@ class WordFirstTests(WordTests):
         works_as_txt(qiki.Text(b'apple'.decode('utf-8')))
         works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
+
+    def test_15_word_chain(self):
+        define = self.lex(u'define')
+        verb = self.lex(u'verb')
+        noun = self.lex(u'noun')
+        self.assertEqual(self.lex, self.lex.sbj)
+        self.assertEqual(self.lex, self.lex.sbj.sbj)
+        self.assertEqual(self.lex, self.lex.sbj.sbj.sbj)
+        self.assertEqual(self.lex, self.lex.sbj.sbj.sbj.sbj)
+        self.assertEqual(self.lex, self.lex.sbj.sbj.sbj.sbj.sbj)
+        self.assertEqual(define,   self.lex.sbj.sbj.sbj.sbj.sbj.vrb)
+        self.assertEqual(self.lex, self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj)
+        self.assertEqual(define,   self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj.vrb)
+        self.assertEqual(verb,     self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj.vrb.obj)
+        self.assertEqual(noun,     self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj.vrb.obj.obj)
 
 
 class WordUnicode(WordTests):

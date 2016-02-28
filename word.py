@@ -1437,3 +1437,7 @@ class Text(six.text_type):
     # A user's current qoolbar for a particular context.
     # The verbs likely of interest to a new user.
 # SEE:  http://stackoverflow.com/a/24377/673991
+
+# TODO:  The way lex comes into existence is still spooky.
+# For example, why does it work if uninstall leaves lex._exists True?
+# It seems to rely on non-singleton lexes for the database record to be written.
