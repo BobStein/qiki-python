@@ -16,6 +16,7 @@ import six
 from qiki import Number
 
 
+# noinspection PyAttributeOutsideInit
 class Word(object):
     """
     A qiki Word is a subject-verb-object triplet of other words (sbj, vrb, obj).
@@ -46,12 +47,12 @@ class Word(object):
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
         self.lex = lex
-        self.exists = False
-        self._idn = None
-        self._word_before_the_dot = None
-        self.whn = None
-        self.do_not_call_in_templates = True   # for Django templates
-        # THANKS:  to somebody for this flag, maybe http://stackoverflow.com/a/21711308/673991
+        # self._exists = None
+        # self._idn = None
+        # self._word_before_the_dot = None
+        # self.whn = None
+        # NOTE:  In the interest of lightweight Word instances, the above fall back to __getattr__()
+
         if Text.is_valid(content):
             # e.g. Word('agent')
             # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
@@ -72,14 +73,14 @@ class Word(object):
         elif content is None:
             # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
-            self.sbj = None if sbj is None else idn_from_word_or_number(sbj)
-            self.vrb = None if vrb is None else idn_from_word_or_number(vrb)
-            self.obj = None if obj is None else idn_from_word_or_number(obj)
-            self.num = num
-            if txt is None:
-                self.txt = None
-            else:
-                self.txt = Text(txt)
+            self._fields = dict(
+                sbj=None if sbj is None else idn_from_word_or_number(sbj),
+                vrb=None if vrb is None else idn_from_word_or_number(vrb),
+                obj=None if obj is None else idn_from_word_or_number(obj),
+                num=num,
+                txt=None if txt is None else Text(txt),
+                whn=None,
+            )
         else:
             typename = type(content).__name__
             if typename == 'instance':
@@ -95,6 +96,22 @@ class Word(object):
                 etc=etc,
             ))
 
+    def _inchoate(self, idn):
+        self._idn = idn
+        self._is_inchoate = True
+
+    def _choate(self):
+        if self._is_inchoate:
+            self._from_idn(self._idn)
+            del self._is_inchoate
+
+    @property
+    def exists(self):
+        return self._exists
+
+    def _now_it_exists(self):
+        self._exists = True
+
     _IDN_DEFINE = Number(1)
     _IDN_NOUN   = Number(2)
     _IDN_VERB   = Number(3)
@@ -102,8 +119,6 @@ class Word(object):
     _IDN_LEX    = Number(5)
 
     _IDN_MAX_FIXED = Number(5)
-
-
 
     class NoSuchAttribute(AttributeError):
         pass
@@ -114,8 +129,24 @@ class Word(object):
     class MissingObj(TypeError):
         pass
 
-    def __getattr__(self, noun_attribute_name):
-        noun_txt = Text.decode_if_desperate(noun_attribute_name)
+    def __getattr__(self, attribute_name):
+        if attribute_name.startswith('_'):
+            # e.g. ('_not_exists', '_is_inchoate', '_idn', '_word_before_the_dot')
+            return None
+            # XXX:  More pythonic to raise AttributeError
+        if attribute_name in ('sbj', 'vrb', 'obj', 'num', 'txt', 'whn'):
+            if self._fields is None:
+                return None
+                # XXX:  More pythonic to raise AttributeError
+            try:
+                return self._fields[attribute_name]
+            except KeyError:
+                return None
+                # XXX:  More pythonic to raise AttributeError
+        if attribute_name == 'do_not_call_in_templates':
+            # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
+            return True
+        noun_txt = Text.decode_if_desperate(attribute_name)
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
         assert self.lex.exists, "Lex doesn't exist yet, can't x.{noun}".format(noun=noun_txt)
@@ -222,6 +253,8 @@ class Word(object):
                 sbj = self.lex   # Lex can be the implicit subject. Renounce?
             else:
                 sbj = self._word_before_the_dot
+                del self._word_before_the_dot
+                # TODO:  This enforced SOME single use, but is it enough?
 
             # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  Allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
@@ -279,7 +312,6 @@ class Word(object):
                         num=num,
                         txt=txt,
                     )
-            self._word_before_the_dot = None   # TODO:  This enforced SOME single use, but is it enough?
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             if len(kwargs) != 0:
                 raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
@@ -383,9 +415,9 @@ class Word(object):
         if num_add is not None:
             new_word._from_sbj_vrb_obj()
             if new_word.exists:
-                new_word.num += Number(num_add)
+                new_word._fields['num'] += Number(num_add)
             else:
-                new_word.num = Number(num_add)
+                new_word._fields['num'] = Number(num_add)
             new_word.save()
         elif use_already:
             assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
@@ -431,8 +463,13 @@ class Word(object):
             except Listing.NotAListing:
                 raise self.NotAWord("Not a Word identifier: " + idn.qstring())
             else:
-                self.txt = listed_instance.txt
-                self.exists = True
+                assert listed_instance.exists
+                self._fields = dict(txt=listed_instance.txt)
+                self._now_it_exists()
+                # TODO:  This was a fudge. Word(suffixed idn) should return a Listing instance
+                # i.e. something like self = listed_instance
+                # or self.__class__ = Listing subclass
+                # SEE:  http://stackoverflow.com/a/3209240/673991
         else:
             self._idn = idn
             if not self.lex.populate_word_from_idn(self, idn):
@@ -442,7 +479,7 @@ class Word(object):
         """Construct a Word from its txt, but only when it's a definition."""
         assert Text.is_valid(txt)
         if not self.lex.populate_word_from_definition(self, txt):
-            self.txt = Text(txt)
+            self._fields = dict(txt=Text(txt))
 
     def _from_word(self, word):
         if word.is_lex():
@@ -476,13 +513,15 @@ class Word(object):
 
     def populate_from_row(self, row, prefix=''):
         self._idn = row[prefix + 'idn']
-        self.sbj = row[prefix + 'sbj']
-        self.vrb = row[prefix + 'vrb']
-        self.obj = row[prefix + 'obj']
-        self.num = row[prefix + 'num']
-        self.txt = row[prefix + 'txt']
-        self.whn = row[prefix + 'whn']
-        self.exists = True
+        self._fields = dict(
+            sbj=row[prefix + 'sbj'],
+            vrb=row[prefix + 'vrb'],
+            obj=row[prefix + 'obj'],
+            num=row[prefix + 'num'],
+            txt=row[prefix + 'txt'],
+            whn=row[prefix + 'whn'],
+        )
+        self._now_it_exists()
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
@@ -638,6 +677,7 @@ class Word(object):
     @idn.setter
     def idn(self, value):
         raise AttributeError("Cannot set a Word's idn.")
+    # TODO:  Omit this?
 
     def save(self, override_idn=None):
         if override_idn is not None:
@@ -666,6 +706,7 @@ class Word(object):
         pass
 
 
+# noinspection PyAttributeOutsideInit
 class Listing(Word):
     meta_word = None   # This is the Word associated with Listing,
                        # or the Word associated with each derived class,
@@ -683,8 +724,8 @@ class Listing(Word):
         assert self.meta_word is not None
         self.index = Number(index)
         self._idn = Number(self.meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
-        self.num = None
-        self.txt = None
+        # self.num = None
+        # self.txt = None
         self.lookup(self.index, self.lookup_callback)
         self.lex = self.meta_word.lex
 
@@ -696,7 +737,7 @@ class Listing(Word):
         # Another case where txt comes before num, the exception.
         self.num = num
         self.txt = txt
-        self.exists = True
+        self._now_it_exists()
 
     @classmethod
     def install(cls, meta_word):
@@ -930,30 +971,36 @@ class LexMySQL(Lex):
         # That would mean a time change requires restart.
         # Groan, invent a qiki.Time() class?  Oh where does it end.
         # Might as well make classes qiki.Wheel() and qiki.KitchenSink().
-        cursor.execute(
-            "INSERT INTO `{table}` "
-                   "(idn, sbj, vrb, obj, num, txt, whn) "
-            "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
-            .format(
-                table=self._table,
-            ),
-            (
-                word.idn.raw,
-                word.sbj.raw,
-                word.vrb.raw,
-                word.obj.raw,
-                word.num.raw,
-                word.txt,
-                whn.raw,
-            )
-        )
+
+        # cursor.execute(
+        #     "INSERT INTO `{table}` "
+        #            "(idn, sbj, vrb, obj, num, txt, whn) "
+        #     "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
+        #     .format(
+        #         table=self._table,
+        #     ),
+        #     (
+        #         word.idn.raw,
+        #         word.sbj.raw,
+        #         word.vrb.raw,
+        #         word.obj.raw,
+        #         word.num.raw,
+        #         word.txt,
+        #         whn.raw,
+        #     )
+        # )
+        self.super_select(
+            'INSERT INTO', self.table,
+                   '(         idn,      sbj,      vrb,      obj,      num,      txt, whn) '
+            'VALUES (', (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn), ')')
         # TODO:  named substitutions with NON-prepared statements??
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
         self._connection.commit()
         cursor.close()
         word.whn = whn
-        word.exists = True
+        # noinspection PyProtectedMember
+        word._now_it_exists()
 
     def _cursor(self):
         return self._connection.cursor(prepared=True)
@@ -1153,9 +1200,10 @@ class LexMySQL(Lex):
                 query += '?'
                 parameters.append(query_arg.idn.raw)
             # elif isinstance(query_arg, (list, tuple, set)):
+            # TODO:  Dictionary for INSERT or UPDATE syntax SET c=z, c=z, c=z, ...
             elif hasattr(query_arg, '__iter__'):
                 query += ','.join(['?']*len(query_arg))
-                parameters += [idn_from_word_or_number(x).raw for x in query_arg]
+                parameters += [x.unicode() if isinstance(x, Text) else idn_from_word_or_number(x).raw for x in query_arg]
                 # TODO: make these embedded iterables recursive
             elif query_arg is None:
                 pass

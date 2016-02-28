@@ -274,10 +274,11 @@ class WordFirstTests(WordTests):
         nonword = self.lex(u'word that does not exist')
         self.assertFalse(nonword.exists)
         self.assertTrue(nonword.idn.is_nan())
-        self.assertFalse(hasattr(nonword, 'sbj'))
-        self.assertFalse(hasattr(nonword, 'vrb'))
-        self.assertFalse(hasattr(nonword, 'obj'))
-        self.assertFalse(hasattr(nonword, 'num'))
+        self.assertIsNone(nonword.sbj)
+        self.assertIsNone(nonword.vrb)
+        self.assertIsNone(nonword.obj)
+        self.assertIsNone(nonword.num)
+        self.assertIsNone(nonword.whn)
         self.assertEqual(nonword.txt, u'word that does not exist')
 
     def test_02_noun(self):

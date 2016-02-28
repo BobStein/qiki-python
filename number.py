@@ -25,8 +25,8 @@ import six
 @six.python_2_unicode_compatible
 class Number(numbers.Number):
 
-    __slots__ = ('__raw', )   # less memory
-    # __slots__ = ('__raw', '_zone')   # faster
+    # __slots__ = ('__raw', )   # less memory
+    __slots__ = ('__raw', '_zone')   # faster
 
     def __init__(self, content=None, qigits=None, normalize=False):
         if isinstance(content, six.integer_types):
