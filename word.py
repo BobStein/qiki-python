@@ -47,32 +47,19 @@ class Word(object):
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
         self.lex = lex
-        # self._exists = None
-        # self._idn = None
-        # self._word_before_the_dot = None
-        # self.whn = None
-        # NOTE:  In the interest of lightweight Word instances, the above fall back to __getattr__()
-
-        if Text.is_valid(content):
-            # e.g. Word('agent')
-            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+        if Text.is_valid(content):   # e.g. Word('agent')
             self._from_definition(content)
-        elif isinstance(content, Number):
-            # Word(idn)
-            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
-            # self._from_idn(content)
-            # assert self.exists()
+        elif isinstance(content, Number):   # Word(idn)
             self._inchoate(content)
-        elif isinstance(content, type(self)):
-            # Word(some_other_word)
-            # assert isinstance(self._connection, mysql.connector.MySQLConnection), "Not connected."
+        elif isinstance(content, type(self)):   # Word(some_other_word)
             # TODO:  Should this be Word instead of type(self)?
-            # As it stands with type(self) DerivedWord(Word) would TypeError, not copy.
+            # As it stands with type(self), DerivedWord(Word) would TypeError, not copy.
             # For example Lex(Word).  Is that desirable or not?
-            # WTF, should Lex by Word's meta-class??
+            # Perhaps yes, we may not know how to handle DerivedWord.
+            # Perhaps no, we could try to handle it; it's easy to override.
+            # WTF, should Lex be Word's meta-class??
             self._from_word(content)
-        elif content is None:
-            # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
+        elif content is None:   # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
             self._fields = dict(
                 sbj=None if sbj is None else self.lex.word_from_word_or_number(sbj),
@@ -86,7 +73,6 @@ class Word(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            # raise TypeError('Word(%s) is not supported' % typename)
             if typename == 'str':
                 etc = " -- use unicode instead"
             else:
