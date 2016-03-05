@@ -483,6 +483,31 @@ class WordFirstTests(WordTests):
         self.assertEqual(lex_by_word, self.lex)
         self.assertIsNot(lex_by_word, self.lex)
 
+    def test_09d_word_constructor_bogus_type(self):
+        class BogusType:
+            def __init__(self):
+                pass
+        bogus_instance = BogusType()
+        with self.assertRaisesRegexp(TypeError, '^((?!unicode).)*$'):
+            # THANKS:  For negative regex, http://stackoverflow.com/a/406408/673991
+            qiki.Word(bogus_instance)
+        class BogusNewType(object):
+            def __init__(self):
+                pass
+        bogus_new_instance = BogusNewType()
+        with self.assertRaisesRegexp(TypeError, '^((?!unicode).)*$'):
+            qiki.Word(bogus_new_instance)
+
+    def test_09e_word_constructor_by_name_must_be_unicode(self):
+        with self.assertRaisesRegexp(TypeError, "unicode"):
+            qiki.Word(b'this is not unicode')
+        with self.assertRaisesRegexp(TypeError, "unicode"):
+            qiki.Word(bytearray(b'this is not unicode'))
+        with self.assertRaisesRegexp(TypeError, "unicode"):
+            qiki.Word(bytes(b'this is not unicode'))
+        w = qiki.Word(u'this is unicode', lex=self.lex)
+        self.assertFalse(w.exists())
+
     def test_10a_word_by_lex_idn(self):
         agent = self.lex(qiki.Word._IDN_AGENT)
         self.assertEqual(agent.txt, u'agent')
@@ -629,6 +654,10 @@ class WordFirstTests(WordTests):
         self.assertEqual(verb,     self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj.vrb.obj)
         self.assertEqual(noun,     self.lex.sbj.sbj.sbj.sbj.sbj.vrb.sbj.vrb.obj.obj)
 
+    def test_16_django_template_not_callable(self):
+        w = self.lex.spawn()
+        self.assertTrue(w.do_not_call_in_templates)
+        self.assertIs(type(w.do_not_call_in_templates), bool)
 
 class WordUnicode(WordTests):
 

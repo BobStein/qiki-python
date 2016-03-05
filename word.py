@@ -73,7 +73,7 @@ class Word(object):
             typename = type(content).__name__
             if typename == 'instance':
                 typename = content.__class__.__name__
-            if typename == 'str':
+            if typename in ('str', 'bytes', 'bytearray'):
                 etc = " -- use unicode instead"
             else:
                 etc = ""
@@ -229,6 +229,7 @@ class Word(object):
 
             try:
                 num_add = kwargs.pop('num_add')
+                # TODO:  Reply on num_add option (and many other features!) in sentence() instead.
             except KeyError:
                 num_add = None
                 try:
@@ -489,6 +490,7 @@ class Word(object):
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
         assert Text.is_valid(txt)
+        assert isinstance(self.lex, Lex)
         if not self.lex.populate_word_from_definition(self, txt):
             self._fields = dict(txt=Text(txt))
 
