@@ -499,8 +499,8 @@ class NumberBasicTests(NumberTests):
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
             s_new = str(Number(i))
-            self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
             self.assertEqual(s_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       s_new, s))
+            self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
 
         i__s(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
@@ -510,6 +510,9 @@ class NumberBasicTests(NumberTests):
         i__s(   2**998+1, '0qFE_4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(   2**998,   '0qFE_40')
         i__s(   2**998-1, '0qFE_3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__s(  10**300+1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD1000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__s(  10**300,   '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD10')   # Here googol cubed has 37 stripped 00-qigits, or 296 bits.
+        i__s(  10**300-1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s( 256**124,   '0qFE_01')
         i__s( 256**123,   '0qFD_01')
         i__s(   2**504,   '0qC1_01')
@@ -1407,7 +1410,9 @@ class NumberComparisonTests(NumberTests):
         self.assertFalse(      (0.0) >= Number(1.0))
 
     def test_unittest_equality(self):
-        """See also test_02_big_int_unittest_equality()."""
+        """Do qiki.Number and assertEqual() handle googol with finesse?
+
+        See also test_02_big_int_unittest_equality()."""
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertEqual   (googol       , googol)
@@ -1416,13 +1421,45 @@ class NumberComparisonTests(NumberTests):
         self.assertEqual   (googol_plus_1, googol_plus_1)
 
     def test_op_equality(self):
-        """See also test_02_big_int_op_equality()."""
+        """Do qiki.Number and its own equality operator handle googol with finesse?
+
+        See also test_02_big_int_op_equality()."""
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertTrue (googol        == googol)
         self.assertFalse(googol        == googol_plus_1)
         self.assertFalse(googol_plus_1 == googol)
         self.assertTrue (googol_plus_1 == googol_plus_1)
+
+    def test_googol_math(self):
+        """Googol math okay?"""
+        googol = Number(100**10)
+        googol_plus_one = googol + 1
+        self.assertNotEqual(googol, googol_plus_one)
+        self.assertTrue(googol != googol_plus_one)
+
+    def test_googol_raw_string(self):
+        """Googol is big huh!  How big is it?  How long is the qstring?"""
+        googol = Number(10**100)
+        googol_plus_one = googol + 1
+        googol_minus_one = googol - 1
+        self.assertEqual(31, len(googol.raw))             # So 1e100 needs 31 qigits
+        self.assertEqual(43, len(googol_plus_one.raw))    # But 1e100+1 needs 43 qigits.
+        self.assertEqual(43, len(googol_minus_one.raw))   # Because 1e100 has 12 stripped 00 qigits.
+
+    def test_googol_cubed_raw_string(self):
+        """Googol cubed is really big huh!!  How long is the qstring?"""
+        g_cubed = Number(10**300)
+        g_cubed_plus_one = g_cubed + 1
+        g_cubed_minus_one = g_cubed - 1
+        self.assertEqual(89, len(g_cubed.raw))              # So 1e300 needs 89 qigits
+        self.assertEqual(126, len(g_cubed_plus_one.raw))    # But 1e300+1 needs 126 qigits.
+        self.assertEqual(126, len(g_cubed_minus_one.raw))   # Because 1e300 has 37 stripped 00 qigits.
+
+    def test_biggie_raw_string(self):
+        """How long is the raw string for "biggie" the biggest reasonable integer?"""
+        biggie_minus_one = Number(2**1000 - 1)
+        self.assertEqual(126, len(biggie_minus_one.raw))   # So biggie needs 126 qigits
 
     def test_incomparable(self):
         # noinspection PyClassHasNoInit
@@ -2572,7 +2609,9 @@ class PythonTests(NumberTests):
         self.assertFalse(b'\x82' == b'\x82\x00')
 
     def test_02_big_int_unittest_equality(self):
-        """See also test_unittest_equality()."""
+        """Do Python integers and assertEqual handle googol with finesse?
+
+        See also test_unittest_equality()."""
         googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
         self.assertEqual   (googol       , googol)
@@ -2581,7 +2620,9 @@ class PythonTests(NumberTests):
         self.assertEqual   (googol_plus_1, googol_plus_1)
 
     def test_02_big_int_op_equality(self):
-        """See also test_op_equality()."""
+        """Do Python integers and the == operator handle googol with finesse?
+
+        See also test_op_equality()."""
         googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
         self.assertTrue (googol        == googol)

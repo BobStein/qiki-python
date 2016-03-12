@@ -341,7 +341,10 @@ class Number(numbers.Number):
         elif self.zone in self.ZONE_WHOLE_NO:
             return False
         else:
-            raise   # TODO: raise WholeIndeterminate()?
+            raise self.WholeIndeterminate("Cannot process " + repr(self))
+
+    class WholeIndeterminate(OverflowError):
+        pass
 
     def is_nan(self):
         return self == self.NAN
@@ -1022,17 +1025,17 @@ class Number(numbers.Number):
                 try:
                     length_of_payload_plus_type = six.indexbytes(n.raw, -2)
                 except IndexError:
-                    raise ValueError
+                    raise ValueError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type >= len(n.raw)-2:
                     # Suffix may neither be larger than raw, nor consume all of it.
-                    raise ValueError
+                    raise ValueError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type == 0x00:
                     return_array.append(Number.Suffix())
                 else:
                     try:
                         type_ = six.indexbytes(n.raw, -3)
                     except IndexError:
-                        raise ValueError
+                        raise ValueError("Invalid suffix, or unstripped 00s.")
                     payload = n.raw[-length_of_payload_plus_type-2:-3]
                     return_array.append(Number.Suffix(type_, payload))
                 n = Number.from_raw(n.raw[0:-length_of_payload_plus_type-2])
