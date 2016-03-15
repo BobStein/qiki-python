@@ -1867,13 +1867,6 @@ class NumberComplex(NumberTests):
         self.assertEqual(5.0, float(n.imag))
 
 
-# TODO:  Pave the way for Number to be a subclass of abstract base class numbers.Complex.
-# Test for all the operations named in the following TypeError:
-# Can't instantiate abstract class Number with abstract methods
-# TODO:  __abs__, __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
-# DONE:  imag, real, conjugate, __complex__
-
-
 # noinspection SpellCheckingInspection
 class NumberPickleTests(NumberTests):
     """ This isn't so much testing as revealing what pickle does to a qiki.Number.

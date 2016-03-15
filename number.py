@@ -564,7 +564,7 @@ class Number(numbers.Number):
     def __int__(self):
         int_by_dictionary = self.__int__by_zone_dictionary()
         assert int_by_dictionary == self.__int__by_zone_ifs(), (
-            "Mismatched int encoding for %s:  tree method=%s, scan method=%s" % (
+            "Mismatched int encoding for %s:  dict-method=%s, if-method=%s" % (
                 repr(self), int_by_dictionary, self.__int__by_zone_ifs()
             )
         )
@@ -597,18 +597,12 @@ class Number(numbers.Number):
     }
 
     def __int__by_zone_ifs(self):
-        if self.Zone.LUDICROUS_LARGE <= self.raw:
-            return self._int_cant_be_positive_infinity()
-        elif self.Zone.POSITIVE <= self.raw:
-            return self._to_int_positive()
-        elif self.Zone.FRACTIONAL_NEG <= self.raw:
-            return 0
-        elif self.Zone.NEGATIVE <= self.raw:
-            return self._to_int_negative()
-        elif self.Zone.NAN < self.raw:
-            return self._int_cant_be_negative_infinity()
-        else:
-            return self._int_cant_be_nan()
+        if   self.Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
+        elif self.Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
+        elif self.Zone.FRACTIONAL_NEG       <= self.raw:  return 0
+        elif self.Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
+        elif self.Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
+        else:                                             return self._int_cant_be_nan()
 
     @staticmethod
     def _int_cant_be_positive_infinity():
@@ -635,9 +629,9 @@ class Number(numbers.Number):
         the_int = shift_leftward(qan_negative, qexp*8)
         if qexp < 0:
             extraneous_mask = exp256(-qexp) - 1
-            extraneous = qan_negative & extraneous_mask   # XXX:  a more graceful way to floor to 0 instead of to -inf
+            extraneous = qan_negative & extraneous_mask
             if extraneous != 0:
-                the_int += 1
+                the_int += 1   # XXX:  a more graceful way to floor to 0 instead of to -inf
         return the_int
 
     def __float__(self):
@@ -646,7 +640,7 @@ class Number(numbers.Number):
         x = self.real
         float_by_dictionary = x.__float__by_zone_dictionary()
         assert floats_really_same(float_by_dictionary, x.__float__by_zone_ifs()), (
-            "Mismatched float encoding for %s:  tree method=%s, scan method=%s" % (
+            "Mismatched float encoding for %s:  dict-method=%s, if-method=%s" % (
                 repr(x), float_by_dictionary, x.__float__by_zone_ifs()
             )
         )
@@ -761,6 +755,10 @@ class Number(numbers.Number):
     }   # TODO: ludicrous numbers
 
     def hex(self):
+        """Like q-string but denser.
+
+        assert '822A' == Number('0q82_42').hex()
+        """
         return hex_from_string(self.raw)
 
     def x_apostrophe_hex(self):
@@ -1440,10 +1438,12 @@ Number.Suffix.internal_setup(Number)
 
 # TODO:  Ludicrous Numbers
 # TODO:  Transfinite Numbers
-# TODO:  Floating Point should be an add-on.  Standard is int?  Or nothing but raw, qex, qan, zones, and add-on int!?
-# TODO:  Suffixes, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01 (0x71 = 'q' for the rational quotient)...
-# TODO:  ...would be 8 bytes, same as float64, ...
-# TODO:  ...versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
+# TODO:  Floating Point could be an add-on?  Standard is int?
+#     Or nothing but raw, qex, qan, zones, and add-on int!?
+# TODO:  Rational Suffix, e.g. 0q81FF_02___8264_71_0500 for precisely 0.01
+#     (0x71 = 'q' for the rational quotient)
+#     would be 8 bytes, same as float64
+#     versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 
 # TODO:  decimal.Decimal
 # TODO:  complex
@@ -1475,19 +1475,25 @@ Number.Suffix.internal_setup(Number)
 #   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
 #   But things work as expected in f__s() unit test.  Why do they fail at the playground?
 
-# TODO:  Terminology for an unsuffixed Number?  For a suffixed Number?  For the unsuffixed part of a suffixed number?
-# Number class is unsuffixed, and derived class is suffixed?
+# TODO:  Term for an unsuffixed Number?
+# TODO:  Term for a suffixed Number?
+# TODO:  Term for the unsuffixed part of a suffixed number?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
+# Number class could be unsuffixed, and derived class could be suffixed?
 
-# TODO:  (big deal) subclass numbers.Integral?
+# DONE:  (littlest deal) subclass numbers.Number.
+
+# TODO:  (little deal) subclass numbers.Complex.
+# First make unit tests for each the operations named in the following TypeError:
+#     "Can't instantiate abstract class Number with abstract methods ..."
+# TODO:  __abs__, __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
+# DONE:  imag, real, conjugate, __complex__
+
+# TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
 # __floordiv__, __invert__, __lshift__, __mod__, __mul__, __or__, __pos__, __pow__, __rand__, __rdiv__,
 # __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
 # __rxor__, __truediv__, __trunc__, __xor__
-
-# TODO:  (little deal) subclass numbers.Complex?
-# TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
-#  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__, conjugate, imag, real
 
 # TODO:  Better object internals:  store separate qex, qan, suffixes (and synthesize raw on demand)
 
