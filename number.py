@@ -21,8 +21,8 @@ import six
 
 
 # noinspection PyUnresolvedReferences
-# (Otherwise there are many warnings about the raw @property violating __slots__.)
-@six.python_2_unicode_compatible
+# (Otherwise there are warnings about the raw @property violating __slots__.)
+# DONE:  Got rid of this unsightly decorator:  @six.python_2_unicode_compatible
 class Number(numbers.Number):
 
     # __slots__ = ('__raw', )   # less memory
@@ -60,11 +60,12 @@ class Number(numbers.Number):
     # ----
     # qiki Numbers fall into zones.
     # The internal Number.Zone class serves as an enumeration.
-    # Its members of Number.Zone have values that are *between* zones.
+    # The members of Number.Zone have values that are at the bottom of or *between* zones.
     # Raw, internal binary strings are represented by these values.
     # Each value is less than or equal to all raw values in the zone they represent,
     # and greater than all valid values in the zones below.
     # (So actually, some zone values are valid raw values, others are among the inter-zone values.)
+    # (More on this below.)
     # The valid raw string for 1 is b'x82\x01' but Number.Zone.POSITIVE is b'x82'.
     # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
     # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
@@ -84,6 +85,19 @@ class Number(numbers.Number):
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
         NAN                 = b''   # NAN means Not-a-number, Ass-is-out-of-range, or Nullificationalized.
+
+    # Between versus Minimum
+    # ----------------------
+    # A minor, hair-splitting point.
+    # Most values of Zone are the minimum of their zone.
+    # Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
+    # That's never a legal raw because it ends in 00 (and not as part of a suffix).
+    # The real minimum of that zone would be an impossible hypothetical
+    # b'\x7E\x00\x00\x00...infinite number of \x00s ... followed by something other than \x00'
+    # Representing a surreal -0.99999999999...infinitely many 9s, but not equal to -1.
+    # So instead we use the illegal, inter-zone b'\x7E\x00' is *between* legal raw values.
+    # And all legal raw values in Zone FRACTIONAL_NEG are above it.
+    # All legal raw values in Zone NEGATIVE are below it.
 
     # Raw internal format
     # -------------------
@@ -411,11 +425,7 @@ class Number(numbers.Number):
         Example:  assert Number(1) == Number('0q82_01')
         """
         assert(isinstance(s, six.string_types))
-        try:
-            is_zero_q = s.startswith('0q')
-        except UnicodeDecodeError:
-            is_zero_q = False
-        if is_zero_q:
+        if s.startswith('0q'):
             digits = s[2:].replace('_', '')
             if len(digits) % 2 != 0:
                 digits += '0'
@@ -1484,7 +1494,6 @@ Number.Suffix.internal_setup(Number)
 # TODO:  Number.to_JSON()
 # THANKS:  http://stackoverflow.com/q/3768895/673991
 
-
 # TODO:  mpmath support, http://mpmath.org/
 # >>> mpmath.frexp(mpmath.power(mpmath.mpf(2), 65536))
 # (mpf('0.5'), 65537)
@@ -1511,7 +1520,7 @@ Number.Suffix.internal_setup(Number)
 # +2.5 is 03820280
 
 # The lengthed export might be used for exporting a word,
-# taking the form of 6 numbers and a (somehow lengthed) unicode string.
+# taking the form of 6 numbers and a (somehow lengthed) utf-8 string.
 # Special case 80 might represent 0.
 # And 81 is shorthand for 8201?
 # The sequence might then be 80 81 8202 8203 8204 ...

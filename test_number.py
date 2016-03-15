@@ -83,6 +83,18 @@ class NumberBasicTests(NumberTests):
     def test_str(self):
         n = Number('0q83_03E8')
         self.assertEqual("0q83_03E8", str(n))
+        self.assertEqual('str', type(str(n)).__name__)
+
+    def test_unicode(self):
+        n = Number('0q83_03E8')
+        if six.PY2:
+            self.assertEqual(u"0q83_03E8", unicode(n))
+            self.assertEqual('unicode', type(unicode(n)).__name__)
+        elif six.PY3:
+            with self.assertRaises(NameError):
+                unicode(n)
+        else:
+            self.fail()
 
     def test_unicode_output(self):
         n = Number('0q83_03E8')
