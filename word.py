@@ -1431,31 +1431,3 @@ class Text(six.text_type):
 # It seems to rely on non-singleton lexes (that is,
 # more than one word instance that is also a LexMySQL instance)
 # for the database record to be written at the birth of a lex.
-
-# TODO:  Lengthed-export.
-# The raw attribute is an unlengthed export.  It may be used as the content for a VARBINARY
-# field of a MySQL table, where MySQL manages the length of the data.
-# For applications where a stream of bytes must encode its own length, a different
-# approach must be used.  That's because
-# there is no way to know the length of a string of raw bytes from their content.
-# One approach might be that if the first byte is 80-FF, what follows is a
-# positive integer with no zero stripping. In effect, the first byte is
-# the length (including itself) plus 80 hex.  Values could be:
-# 8201 8202 8203 ... 82FF 830100 830101 830102 ...
-# In these cases the lengthed-export has the same bytes as the unlengthed export
-# except for multiples of 256, e.g. 830100 versus 8301 (for 0q83_01 == 256).
-
-# Any number other than nonnegative integers would be lengthed-exported as:  N + raw
-# Where N (0 to 127) was the length of the raw part.  So -1 is 027DFF, -2 is 027DFE, etc.
-# -2.5 is 037DFD80
-# +2.5 is 03820280
-
-# The lengthed export might be used for exporting a word,
-# taking the form of 6 numbers and a unicode string.
-
-# Special case 80 might represent 0.  Or maybe 81?  Or 81 is shorthand for 8201??
-# The sequence might then be 80 81 8202 8203 8204 ...
-# Or 81 could be zero, that fits the pattern (1 byte long, the length byte itself).
-# Or 80 or 81 could be special for other purposes.
-
-#

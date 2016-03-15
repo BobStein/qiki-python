@@ -55,10 +55,17 @@ class NumberBasicTests(NumberTests):
         n = Number(u'0q82')
         self.assertEqual(b'\x82', n.raw)
 
-    if six.PY3:
-        def test_raw_from_byte_string(self):
+    def test_raw_from_byte_string(self):
+        self.assertEqual(Number(1), Number(u'0q82'))
+        if six.PY2:
+            self.assertEqual(Number(u'0q82'), Number(b'0q82'))
+            self.assertEqual(       u'0q82',         b'0q82')
+        elif six.PY3:
+            self.assertNotEqual(    u'0q82',         b'0q82')
             with self.assertRaises(TypeError):
                 Number(b'0q82')
+        else:
+            self.fail()
 
     def test_unsupported_type(self):
         # noinspection PyClassHasNoInit
@@ -492,9 +499,9 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number('0q7D'), Number('0q7C_FF'))        # -256**1
         self.assertEqual(Number('0q7C'), Number('0q7B_FF'))        # -256**2
 
-    def test_ints_and_strings(self):
+    def test_integers_and_q_strings(self):
 
-        def i__s(i,s):   # why a buncha calls to i__s() is superior to a 2D tuple:  so the stack trace identifies the line with the failing data
+        def i__s(i, s):   # why a buncha calls to i__s() is superior to a 2D tuple:  so the stack trace identifies the line with the failing data
             assert isinstance(i, six.integer_types)
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
@@ -502,7 +509,43 @@ class NumberBasicTests(NumberTests):
             self.assertEqual(s_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       s_new, s))
             self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
 
+            out_of_sequence=[]
+            if not context.the_first:
+                integers_oos =        i      >        context.i_last
+                strings_oos  = Number(s).raw > Number(context.s_last).raw
+                if integers_oos:
+                    out_of_sequence.append(
+                        "Integers out of sequence: {i_below:d} should be less than {i_above:d}".format(
+                            i_below=i,
+                            i_above=context.i_last
+                        )
+                    )
+                if strings_oos:
+                    out_of_sequence.append(
+                        "Q-strings out of sequence: {s_below} should be less than {s_above}".format(
+                            s_below=s,
+                            s_above=context.s_last
+                        )
+                    )
+                if out_of_sequence:
+                    self.fail("\n".join(out_of_sequence))
+
+            context.i_last = i
+            context.s_last = s
+            context.the_first = False
+
+        # noinspection PyClassHasNoInit,PyPep8Naming
+        class context:   # variables that are local to test_ints_and_strings(), but global to i__s()
+            the_first = True
+
+        # i__s(  2**65536,         '0qFF00FFFF00010000_01')   # TODO:  Ludicrous Numbers.
+        # i__s(  2**65535,         '0qFF00FFFF_01')
+        # i__s(256**128,           '0qFF000080_01')
+        # i__s(  2**1024,          '0qFF000080_01')
+        # i__s(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional
         i__s(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__s(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
+                          '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
         i__s(   2**999+1, '0qFE_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
         i__s(   2**999,   '0qFE_80')
@@ -514,7 +557,11 @@ class NumberBasicTests(NumberTests):
         i__s(  10**300,   '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD10')   # Here googol cubed has 37 stripped 00-qigits, or 296 bits.
         i__s(  10**300-1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s( 256**124,   '0qFE_01')
+        i__s(   2**992,   '0qFE_01')
+        i__s(41855804968213567224547853478906320725054875457247406540771499545716837934567817284890561672488119458109166910841919797858872862722356017328064756151166307827869405370407152286801072676024887272960758524035337792904616958075776435777990406039363527010043736240963055342423554029893064011082834640896,
+                          '0qFE_01')
         i__s( 256**123,   '0qFD_01')
+        i__s(   2**984,   '0qFD_01')
         i__s(   2**504,   '0qC1_01')
         i__s(   2**503,   '0qC0_80')
         i__s(   2**500,   '0qC0_10')
@@ -738,7 +785,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=9)))
         # Ending in 34 is not a bug.
         # The 7th qigit above gets rounded to 34, not in Number, but when float was originally decoded from 0.2.
-        # That's because the IEEE 53-bit (double precision) float significand can only fit 7 of those bits there.
+        # That's because the IEEE-754 53-bit (double precision) float significand can only fit 7 of those bits there.
         # The 1st qigit uses 6 bits.  Middle 5 qigits use all 8 bits.  So 6+(5*8)+7 = 53.
         # So Number faithfully stored all 53 bits from the float.
 
@@ -768,7 +815,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=8)))
         self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=9)))
 
-    def test_floats_and_strings(self):
+    def test_floats_and_q_strings(self):
 
         def f__s(x_in, s_out, s_in_opt=None):
             assert isinstance(x_in,      float),                                 "f__s(%s,_) should be a float"  % type(x_in).__name__
@@ -844,12 +891,16 @@ class NumberBasicTests(NumberTests):
         f__s(float('+inf'),               '0qFF_81')
         zone_boundary()
         f__s(float('+inf'),               '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
+        f__s(float('+inf'),               '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
+        # m__s(mpmath.power(2,1024),        '0qFF000080_01')   # A smidgen too big for floating point
+        # f__s(1.7976931348623157e+308,     '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
+        # f__s(math.pow(2,1000),            '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large integer, +2 ** +1000.
         zone_boundary()
-        # f__s(math.pow(2,65536),           '0qFF_01')   # TODO:  Should normalize to 2**65536 == 0qFFFF000000010000_01 > 0qFF00FFFF == 2**65535.
-        # f__s(math.pow(2,1000),            '0qFF0003E8_01')   # TODO:  Ludicrous number +2 ** +1000.
-        f__s(math.pow(2,999),             '0qFE_80')
+        f__s(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
+        f__s(5.3575430359313366e+300,     '0qFE_80')
+        f__s(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2
         f__s(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
-        f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol
+        f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol, or as close to it as float can get
         f__s(       1e25,                 '0q8C_0845951614014880')
         f__s(       1e10,                 '0q86_02540BE4')
         f__s(4294967296.0,                '0q86_01')
@@ -1011,7 +1062,7 @@ class NumberBasicTests(NumberTests):
         f__s(math.pow(  2, -1000),        '0q8183_01')
         f__s(math.pow(256, -125),         '0q8183_01')
         zone_boundary()
-        f__s(         0.0,                '0q80',  '0q80FF0000_FA0A1F01_01')   # 2**-99999999, a ludicrously small positive number
+        f__s(         0.0,                '0q80',  '0q80FF0000_FF4143E0_01')   # +2**-99999999, a ludicrously small positive number
         zone_boundary()
         f__s(         0.0,                '0q80',  '0q807F')   # +infinitesimal
         zone_boundary()
@@ -1019,7 +1070,7 @@ class NumberBasicTests(NumberTests):
         zone_boundary()
         f__s(         -0.0,               '0q80',  '0q7F81')   # -infinitesimal
         zone_boundary()
-        f__s(         -0.0,               '0q80',  '0q7F00FFFF_5F5E00FF_01')   # -2**-99999999, a ludicrously small negative number
+        f__s(         -0.0,               '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
         f__s(-math.pow(256, -125),        '0q7E7C_FF')
         f__s(-math.pow(  2, -1000),       '0q7E7C_FF')
@@ -1118,6 +1169,12 @@ class NumberBasicTests(NumberTests):
         f__s(      -255.98828125,         '0q7D_0003')
         f__s(      -255.9921875,          '0q7D_0002')
         f__s(      -255.99609375,         '0q7D_0001')
+        f__s(      -255.999984741210938,  '0q7D_000001')
+        f__s(      -255.999999940395355,  '0q7D_00000001')
+        f__s(      -255.999999999767169,  '0q7D_0000000001')
+        f__s(      -255.999999999999091,  '0q7D_000000000001')
+        f__s(      -255.999999999999943,  '0q7D_00000000000010')
+        f__s(      -255.999999999999972,  '0q7D_00000000000008')
         f__s(      -256.0,                '0q7C_FF', '0q7D')   # alias for -256
         f__s(      -256.0,                '0q7C_FF')
         f__s(      -256.00390625,         '0q7C_FEFFFF')
@@ -1143,7 +1200,9 @@ class NumberBasicTests(NumberTests):
         f__s(-math.pow(2,997),            '0q01_E0')
         f__s(-math.pow(2,998),            '0q01_C0')
         f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-math.pow(2,1000),           '0q00_FF', '0q01')   # TODO:  this is actually ludicrous number 0q00FFFC18_01
+        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Smallest reasonable number that floating point can represent
+        zone_boundary()
+        # f__s(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Closest to zero, negative, Ludicrously Large integer.
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
         zone_boundary()
@@ -1441,8 +1500,8 @@ class NumberComparisonTests(NumberTests):
     def test_googol_raw_string(self):
         """Googol is big huh!  How big is it?  How long is the qstring?"""
         googol = Number(10**100)
-        googol_plus_one = googol + 1
-        googol_minus_one = googol - 1
+        googol_plus_one = googol + Number(1)
+        googol_minus_one = googol - Number(1)
         self.assertEqual(31, len(googol.raw))             # So 1e100 needs 31 qigits
         self.assertEqual(43, len(googol_plus_one.raw))    # But 1e100+1 needs 43 qigits.
         self.assertEqual(43, len(googol_minus_one.raw))   # Because 1e100 has 12 stripped 00 qigits.
@@ -1450,8 +1509,8 @@ class NumberComparisonTests(NumberTests):
     def test_googol_cubed_raw_string(self):
         """Googol cubed is really big huh!!  How long is the qstring?"""
         g_cubed = Number(10**300)
-        g_cubed_plus_one = g_cubed + 1
-        g_cubed_minus_one = g_cubed - 1
+        g_cubed_plus_one = g_cubed + Number(1)
+        g_cubed_minus_one = g_cubed - Number(1)
         self.assertEqual(89, len(g_cubed.raw))              # So 1e300 needs 89 qigits
         self.assertEqual(126, len(g_cubed_plus_one.raw))    # But 1e300+1 needs 126 qigits.
         self.assertEqual(126, len(g_cubed_minus_one.raw))   # Because 1e300 has 37 stripped 00 qigits.
@@ -1798,14 +1857,17 @@ class NumberComplex(NumberTests):
 
 # TODO:  Pave the way for Number to be a subclass of abstract base class numbers.Complex.
 # Test for all the operations named in the following TypeError:
-# Can't instantiate abstract class Number with abstract methods __abs__, __complex__, __div__,
-# __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__,
-# DONE:  imag, real, conjugate
+# Can't instantiate abstract class Number with abstract methods
+# TODO:  __abs__, __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
+# DONE:  imag, real, conjugate, __complex__
 
 
 # noinspection SpellCheckingInspection
 class NumberPickleTests(NumberTests):
-    """ This isn't so much testing as revealing what pickle does to a qiki.Number."""
+    """ This isn't so much testing as revealing what pickle does to a qiki.Number.
+
+    Hint, there's a whole buncha baggage in addition to what __getstate__ and
+    __setstate__ generate and consume."""
 
     def test_pickle_protocol_0_class(self):
         if six.PY2:
@@ -1818,18 +1880,21 @@ class NumberPickleTests(NumberTests):
                     ."""
                 ),   # when run via qiki-python or number_playground
             )
-        else:
+        elif six.PY3:
             self.assertEqual(
                 pickle.dumps(Number),
                 b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
             )
+        else:
+            self.fail()
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
+        self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
         if six.PY2:
             self.assertEqual(
                 pickle.dumps(x314),
-                textwrap.dedent("""\
+                textwrap.dedent(b"""\
                     ccopy_reg
                     _reconstructor
                     p0
@@ -1841,16 +1906,20 @@ class NumberPickleTests(NumberTests):
                     p2
                     Ntp3
                     Rp4
-                    S{x314_raw}
+                    S{x314_raw_repr}
                     p5
                     b."""
-                ).format(x314_raw=repr(x314.raw)),   # via qiki-python or number_playground
+                ).format(x314_raw_repr=repr(x314.raw)),   # via qiki-python or number_playground
             )
-        else:
+        elif six.PY3:
             self.assertEqual(
                 pickle.dumps(x314),
-                b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'
+                b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' +
+                x314.raw +
+                b'q\x02b.'
             )
+        else:
+            self.fail()
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
@@ -1860,7 +1929,6 @@ class NumberPickleTests(NumberTests):
 
     def test_pickle_protocol_2_instance(self):
         x314 = Number(3.14)
-
         self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
         self.assertEqual(x314.raw, b'\x82\x03#\xd7\n=p\xa3\xe0')
         x314_raw_utf8 = b'\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0'
@@ -1874,7 +1942,7 @@ class NumberPickleTests(NumberTests):
                     b'q\x02b.'
                 )
             )
-        else:
+        elif six.PY3:
             self.assertEqual(
                 pickle.dumps(x314, 2),
                 (
@@ -1883,6 +1951,8 @@ class NumberPickleTests(NumberTests):
                     b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
                 )
             )
+        else:
+            self.fail()
 
         # print(repr(pickle.dumps(x314, 2)))
         # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
@@ -2645,8 +2715,10 @@ class PythonTests(NumberTests):
 def py23(if2, if3):
     if six.PY2:
         return if2
-    else:
+    elif six.PY3:
         return if3
+    else:
+        assert False
 
 if __name__ == '__main__':
     import unittest

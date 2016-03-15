@@ -1,7 +1,7 @@
 """
 Qiki Numbers
 
-Both integers and floating point seamlessly represented
+Both integers and floating point are seamlessly represented, plus much more.
 Features:
  - arbitrary precision
  - arbitrary range
@@ -698,7 +698,7 @@ class Number(numbers.Number):
 
         Returns a tuple:  (integer value of significand, number of qigits)
         The number of qigits is the amount stored in the qantissa,
-        and is unrelated to the location of the decimal point.
+        and is unrelated to the location of the radix point.
         """
         raw_qantissa = self.qan_raw()
         number_qantissa = unpack_big_integer(raw_qantissa)
@@ -1483,3 +1483,60 @@ Number.Suffix.internal_setup(Number)
 
 # TODO:  Number.to_JSON()
 # THANKS:  http://stackoverflow.com/q/3768895/673991
+
+
+# TODO:  mpmath support, http://mpmath.org/
+# >>> mpmath.frexp(mpmath.power(mpmath.mpf(2), 65536))
+# (mpf('0.5'), 65537)
+
+# TODO:  Lengthed-export.
+# The raw attribute is an unlengthed export.
+# That's because there is no way to know the length of a string of raw bytes from their content.
+# That is, it carries no intrinsic indication of its length, that must be encoded extrinsically somehow.
+# (Lintrinsic versus lextrinsic?  Ugh, no.)
+# So the unlengthed raw attribute may be used as the content for a VARBINARY
+# field of a MySQL table, where MySQL manages the length of the data.
+# For applications where a stream of bytes must encode its own length, a different
+# approach must be used.
+# One approach might be that if the first byte is 80-FF, what follows is a
+# positive integer with no zero stripping. In effect, the first byte is
+# the length (including itself) plus 80 hex.  Values could be:
+# 8201 8202 8203 ... 82FF 830100 830101 830102 ...
+# In these cases the lengthed-export has the same bytes as the unlengthed export
+# except for multiples of 256, e.g. 830100 versus 8301 (for 0q83_01 == 256).
+
+# Any number other than nonnegative integers would be lengthed-exported as:  N + raw
+# Where N (0 to 127) was the length of the raw part.  So -1 is 027DFF, -2 is 027DFE, etc.
+# -2.5 is 037DFD80
+# +2.5 is 03820280
+
+# The lengthed export might be used for exporting a word,
+# taking the form of 6 numbers and a (somehow lengthed) unicode string.
+# Special case 80 might represent 0.
+# And 81 is shorthand for 8201?
+# The sequence might then be 80 81 8202 8203 8204 ...
+# Or 81 could be zero, that fits the pattern (1 byte long, the length byte itself).
+# Or 80 or 81 could be special for other purposes.
+# So Number.NAN would be length-exported as 00.
+
+# Negative one might be handy as a brief value.
+# Though 017D could encode it, as could 027DFF But maybe plain 7F would be great.
+# Then 00-7E would encode "other" (nonnegative, not-minus-one numbers)
+# 00-7D could be lengthed prefixes that are straightforward, and
+# 7E could be a special extender value,
+# similar to the FF00FFFF... extended (2^n byte) lex in ludicrous numbers.
+# There would be 2^n 7E bytes followed by 2^n (the same n) bytes encoding (MSB first) the real length.
+# So e.g. a 256 byte raw value would be lengthed as 7E7E0100...(and then 256 bytes same as raw)
+# A 65536-byte raw would have a lengthed-prefix of 7E7E7E7E00010000
+# So in a way, length bytes 00-7D would be shorthand for 7E00 to 7E7D.
+# And 8202 to FD...(124 more bytes) representing integers 2 to 2**992-1
+# would be shorthand for 028202 to 7DFD...(124 more byte),
+# itself shorthand for 7E028202 to 7E7DFD...(124 more bytes)
+
+# Notice there's no shorthand at all for the sliver of integers at the top of the reasonable numbers:
+# 0qFE_01 == 2**992 to 0qFE_FF...(124 more FFs) == 2**1000-1
+# The lengthed exports of those would be:
+# 7E02FE01 to 7E7E007EFEFF...(124 more FFs)
+
+# This lengthed export is not monotonic.
+# (Unsure a lengthed anything could be monotonic.)
