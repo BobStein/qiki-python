@@ -129,10 +129,12 @@ class Number(numbers.Number):
     # Two underscores conventionally precede each suffix.
     # See the Number.Suffix class for underscore conventions within a suffix.
 
-    RAW_INF     = b'\xFF\x81'
-    RAW_ZERO    = b'\x80'
-    RAW_INF_NEG = b'\x00\x7F'
-    RAW_NAN     = b''
+    RAW_INFINITY          = b'\xFF\x81'
+    RAW_INFINITESIMAL     = b'\x80\x7F'
+    RAW_ZERO              = b'\x80'
+    RAW_INFINITESIMAL_NEG = b'\x7F\x81'
+    RAW_INFINITY_NEG      = b'\x00\x7F'
+    RAW_NAN               = b''
 
     @property
     def raw(self):
@@ -311,7 +313,6 @@ class Number(numbers.Number):
         return type(self)(self, normalize=True)
 
     def is_negative(self):
-        # TODO:  Unit test.
         return_value = ((six.indexbytes(self.raw, 0) & 0x80) == 0)
         assert return_value == (self.zone in self.ZONE_NEGATIVE)
         assert return_value == (self.raw < self.RAW_ZERO)
@@ -322,7 +323,6 @@ class Number(numbers.Number):
         return return_value
 
     def is_positive(self):
-        # TODO:  Unit test.
         return_value = (not self.is_negative() and not self.is_zero())
         assert return_value == (self.zone in self.ZONE_POSITIVE)
         assert return_value == (self.raw > self.RAW_ZERO)
@@ -333,7 +333,6 @@ class Number(numbers.Number):
         return return_value
 
     def is_zero(self):
-        # TODO:  Unit test.
         return_value = (self.raw == self.RAW_ZERO)
         assert return_value == (self.zone in self.ZONE_ZERO)
         # assert return_value == (self == self.ZERO)   # Infinite recursion
@@ -488,13 +487,13 @@ class Number(numbers.Number):
             qigits = self.QIGITS_PRECISION_DEFAULT
 
         if math.isnan(x):        self.raw =           self.RAW_NAN
-        elif x >= float('+inf'): self.raw =           self.RAW_INF
+        elif x >= float('+inf'): self.raw =           self.RAW_INFINITY
         elif x >=  1.0:          self.raw =           self._raw_from_float(x, lambda e: 0x81+e, qigits)
         elif x >   0.0:          self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e, qigits)
         elif x ==  0.0:          self.raw =           self.RAW_ZERO
         elif x >  -1.0:          self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e, qigits)
         elif x > float('-inf'):  self.raw =           self._raw_from_float(x, lambda e: 0x7E-e, qigits)
-        else:                    self.raw =           self.RAW_INF_NEG
+        else:                    self.raw =           self.RAW_INFINITY_NEG
 
     @staticmethod
     def _raw_from_float(x, qex_encoder, qigits):
@@ -793,20 +792,20 @@ class Number(numbers.Number):
     def _zone_from_scratch(self):
         zone_by_tree = self._find_zone_by_if_else_tree()
         assert zone_by_tree == self._find_zone_by_for_loop_scan(), \
-            "Mismatched zone determination for %s:  tree=%s, scan=%s" % (
+            "Mismatched zone determination for %s:  if-tree=%s, loop-scan=%s" % (
                 repr(self),
                 self.name_of_zone[zone_by_tree],
                 self.name_of_zone[self._find_zone_by_for_loop_scan()]
             )
         return zone_by_tree
 
-    def _find_zone_by_for_loop_scan(self):   # likely slower than tree, but helps enforce self.Zone values
-        for z in self._sorted_zones:
+    def _find_zone_by_for_loop_scan(self):   # likely slower than if-tree, but helps enforce self.Zone value rules
+        for z in self._sorted_zone_codes:
             if z <= self.raw:
                 return z
         raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
 
-    def _find_zone_by_if_else_tree(self):   # likely faster than a scan, for most values
+    def _find_zone_by_if_else_tree(self):   # likely faster than a loop-scan, for most values
         if self.raw > self.RAW_ZERO:
             if self.raw >= self.Zone.POSITIVE:
                 if self.raw >= self.Zone.LUDICROUS_LARGE:
@@ -1054,32 +1053,36 @@ class Number(numbers.Number):
 
     # TODO:  def unsuffixed()
 
+
     # Setup
     # -----
     name_of_zone = None
-    _sorted_zones = None
+    _sorted_zone_codes = None
 
     @classmethod
     def internal_setup(cls):
         """Initialize some class properties after the class is defined."""
 
-        cls.name_of_zone = {   # Translate zone code to zone name, e.g. name_of_zone[b'\x80'] == 'ZERO'
-            getattr(cls.Zone, attr):attr for attr in dir(cls.Zone) if not callable(attr) and not attr.startswith("__")
+        cls.name_of_zone = {   # Translate zone code to zone name.
+            getattr(cls.Zone, attr):attr for attr in dir(cls.Zone)
+                               if not callable(attr) and not attr.startswith("__")
         }
         assert cls.name_of_zone[cls.Zone.ZERO] == 'ZERO'
 
-        cls._sorted_zones = sorted(cls.name_of_zone.keys(), reverse=True)
+        cls._sorted_zone_codes = sorted(cls.name_of_zone.keys(), reverse=True)
         # Zone codes, in descending order, the same as defined order.
 
         # Constants
         # ---------
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
-        cls.POSITIVE_INFINITY = cls.from_raw(cls.RAW_INF)
-        cls.NEGATIVE_INFINITY = cls.from_raw(cls.RAW_INF_NEG)
+        cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)        # Aleph-naught
+        cls.POSITIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL)   # Epsilon
+        cls.NEGATIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL_NEG)
+        cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
-        # Sets of Zones   TODO:  draw a Venn Diagram or table or something
-        # -------------   TODO:  spawn is_xxx() routines??
+        # Sets of Zones   TODO:  Draw a Venn Diagram or table or something.
+        # -------------   TODO:  Automatically spawn is_xxx() routines named the same as all these zone sets??
         cls.ZONE_REASONABLE = {
             cls.Zone.POSITIVE,
             cls.Zone.FRACTIONAL,
@@ -1167,6 +1170,12 @@ class Number(numbers.Number):
             cls.Zone.TRANSFINITE_NEG,
         }
 
+        # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
+        #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
+        # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
+        # Confusing?  Because then epsilon is both reasonable and unreasonable?
+        # If not confusing, we could also define REASONABLY_INFINITE as ludicrously large plus transfinite.
+
         cls.ZONE_WHOLE_NO = {
             cls.Zone.FRACTIONAL,
             cls.Zone.LUDICROUS_SMALL,
@@ -1223,7 +1232,7 @@ class Number(numbers.Number):
             cls.ZONE_NAN,
         )
 
-        cls.ZONE_ALL = {zone for zone in cls._sorted_zones}
+        cls.ZONE_ALL = {zone for zone in cls._sorted_zone_codes}
 
 
 # Sets
@@ -1505,9 +1514,9 @@ Number.Suffix.internal_setup(Number)
 # (mpf('0.5'), 65537)
 
 # TODO:  Lengthed-export.
-# The raw attribute is an unlengthed export.
+# The raw attribute is an unlengthed representation of the number.
 # That's because there is no way to know the length of a string of raw bytes from their content.
-# That is, it carries no intrinsic indication of its length, that must be encoded extrinsically somehow.
+# It carries no reliable indication of its length. That must be encoded extrinsically somehow.
 # (Lintrinsic versus lextrinsic?  Ugh, no.)
 # So the unlengthed raw attribute may be used as the content for a VARBINARY
 # field of a MySQL table, where MySQL manages the length of the data.
@@ -1516,9 +1525,12 @@ Number.Suffix.internal_setup(Number)
 # One approach might be that if the first byte is 80-FF, what follows is a
 # positive integer with no zero stripping. In effect, the first byte is
 # the length (including itself) plus 80 hex.  Values could be:
-# 8201 8202 8203 ... 82FF 830100 830101 830102 ...
+# 8201 8202 8203 ... 82FF 830100 830101 830102 ... FE01(124 00s) ... FEFF(124 FFs)
+#    1    2    3      255    256    257    258     2**992            2**1000-1
 # In these cases the lengthed-export has the same bytes as the unlengthed export
 # except for multiples of 256, e.g. 830100 versus 8301 (for 0q83_01 == 256).
+# (Because of the no-trailing-00 rule for raw.  That does not apply to lengthed export.)
+# (So conversion when importing must strip those 00s.)
 
 # Any number other than nonnegative integers would be lengthed-exported as:  N + raw
 # Where N (0 to 127) was the length of the raw part.  So -1 is 027DFF, -2 is 027DFE, etc.
@@ -1528,7 +1540,7 @@ Number.Suffix.internal_setup(Number)
 # The lengthed export might be used for exporting a word,
 # taking the form of 6 numbers and a (somehow lengthed) utf-8 string.
 # Special case 80 might represent 0.
-# And 81 is shorthand for 8201?
+# And 81 might be shorthand for 1, aka 8201?
 # The sequence might then be 80 81 8202 8203 8204 ...
 # Or 81 could be zero, that fits the pattern (1 byte long, the length byte itself).
 # Or 80 or 81 could be special for other purposes.
@@ -1544,14 +1556,18 @@ Number.Suffix.internal_setup(Number)
 # So e.g. a 256 byte raw value would be lengthed as 7E7E0100...(and then 256 bytes same as raw)
 # A 65536-byte raw would have a lengthed-prefix of 7E7E7E7E00010000
 # So in a way, length bytes 00-7D would be shorthand for 7E00 to 7E7D.
-# And 8202 to FD...(124 more bytes) representing integers 2 to 2**992-1
-# would be shorthand for 028202 to 7DFD...(124 more byte),
-# itself shorthand for 7E028202 to 7E7DFD...(124 more bytes)
+# And                      8202 to FD...(124 FFs) representing integers 2 to 2**992-1
+# would be shorthand for 028202 to 7DFD...(124 FFs),
+# itself shorthand for 7E028202 to 7E7DFD...(124 FFs)
+# theoretically as 7E7E00028202 to 7E7E007DFD...(124 FFs), etc.
 
-# Notice there's no shorthand at all for the sliver of integers at the top of the reasonable numbers:
-# 0qFE_01 == 2**992 to 0qFE_FF...(124 more FFs) == 2**1000-1
-# The lengthed exports of those would be:
-# 7E02FE01 to 7E7E007EFEFF...(124 more FFs)
+# This here indented part is bogus, I think, leaving it around until sure:
+#     Notice there's no shorthand for the sliver of integers at the top of the reasonable numbers:
+#     0qFE_01 == 2**992 to 0qFE_FF...(124 more FFs) == 2**1000-1
+#     The lengthed exports of those would be:
+#     7E02FE01 to 7E7E007EFEFF...(124 more FFs)
+# Wrong, FE01(plus 124 00s) makes sense for 2**992
 
 # This lengthed export is not monotonic.
-# (Unsure a lengthed anything could be monotonic.)
+
+# This scheme leaves an initial FF free for future something-or-other.

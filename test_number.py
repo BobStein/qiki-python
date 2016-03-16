@@ -43,6 +43,21 @@ class NumberTests(unittest.TestCase):
                 '\n\t'.join((Number.name_of_zone[z] for z in (s2-s1))),
             ))
 
+    def assertPositive(self, n):
+        self.assertTrue(n.is_positive())
+        self.assertFalse(n.is_zero())
+        self.assertFalse(n.is_negative())
+
+    def assertZero(self, n):
+        self.assertFalse(n.is_positive())
+        self.assertTrue(n.is_zero())
+        self.assertFalse(n.is_negative())
+
+    def assertNegative(self, n):
+        self.assertFalse(n.is_positive())
+        self.assertFalse(n.is_zero())
+        self.assertTrue(n.is_negative())
+
 
 # noinspection SpellCheckingInspection
 class NumberBasicTests(NumberTests):
@@ -201,7 +216,7 @@ class NumberBasicTests(NumberTests):
     def test_nan_equality(self):
         # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
         # SEE:  http://stackoverflow.com/questions/1565164/what-is-the-rationale-for-all-comparisons-returning-false-for-ieee754-nan-values
-        # TODO:  Make a Number.isnan() and any other comparisons with NAN raise Number.Incomparable.
+        # TODO:  Any comparisons with NAN raise Number.Incomparable("...use is_nan() instead...").
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
         self.assertEqual(nan, Number(None))
@@ -216,13 +231,23 @@ class NumberBasicTests(NumberTests):
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
-    # noinspection PyUnresolvedReferences
+    # # noinspection PyUnresolvedReferences
     def test_infinite_constants(self):
         self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
         self.assertEqual('0q00_7F', Number.NEGATIVE_INFINITY.qstring())
 
         self.assertEqual(float('+inf'), Number.POSITIVE_INFINITY)
         self.assertEqual(float('-inf'), Number.NEGATIVE_INFINITY)
+
+    def test_infinitesimal_float(self):
+        self.assertNotEqual(0, Number.POSITIVE_INFINITESIMAL)
+        self.assertNotEqual(0, Number.NEGATIVE_INFINITESIMAL)
+
+        self.assertEqual(0, float(Number.POSITIVE_INFINITESIMAL))
+        self.assertEqual(0, float(Number.NEGATIVE_INFINITESIMAL))
+
+        self.assertFloatSame(+0.0, float(Number.POSITIVE_INFINITESIMAL))
+        self.assertFloatSame(-0.0, float(Number.NEGATIVE_INFINITESIMAL))
 
     def test_qantissa_positive(self):
         self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
@@ -1080,9 +1105,9 @@ class NumberBasicTests(NumberTests):
         zone_boundary()
         f__s(         0.0,                '0q80')
         zone_boundary()
-        f__s(         -0.0,               '0q80',  '0q7F81')   # -infinitesimal
+        f__s(        -0.0,                '0q80',  '0q7F81')   # -infinitesimal
         zone_boundary()
-        f__s(         -0.0,               '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
+        f__s(        -0.0,                '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
         f__s(-math.pow(256, -125),        '0q7E7C_FF')
         f__s(-math.pow(  2, -1000),       '0q7E7C_FF')
@@ -1212,7 +1237,7 @@ class NumberBasicTests(NumberTests):
         f__s(-math.pow(2,997),            '0q01_E0')
         f__s(-math.pow(2,998),            '0q01_C0')
         f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Smallest reasonable number that floating point can represent
+        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Lowest (furthest from zero) reasonable number that floating point can represent
         zone_boundary()
         # f__s(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Closest to zero, negative, Ludicrously Large integer.
         zone_boundary()
@@ -1578,6 +1603,17 @@ class NumberIsTests(NumberTests):
         self.assertFalse(Number(float('inf')).is_nan())
         self.assertTrue(Number(float('nan')).is_nan())
         self.assertTrue(Number.NAN.is_nan())
+
+    def test_is_pos_zer_neg(self):
+        self.assertPositive(Number(float('+inf')))
+        self.assertPositive(Number(math.pow(10,100)))
+        self.assertPositive(Number(1))
+        self.assertPositive(Number(math.pow(10,-100)))
+        self.assertZero(Number(0))
+        self.assertNegative(Number(-math.pow(10,-100)))
+        self.assertNegative(Number(-1))
+        self.assertNegative(Number(-math.pow(10,100)))
+        self.assertNegative(Number(float('-inf')))
 
     # noinspection PyUnresolvedReferences,PyUnusedLocal
     def someday_assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
