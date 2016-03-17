@@ -646,6 +646,7 @@ class Word(object):
 
     def __unicode__(self):
         if hasattr(self, 'txt'):
+            assert isinstance(self.txt, Text)
             return self.txt.unicode()
         else:
             return repr(self)
@@ -747,7 +748,7 @@ class Listing(Word):
     def lookup_callback(self, txt, num):
         # Another case where txt comes before num, the exception.
         self.num = num
-        self.txt = txt
+        self.txt = Text(txt)
         self._now_it_exists()
 
     @classmethod
