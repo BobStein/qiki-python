@@ -1355,10 +1355,6 @@ class NumberBasicTests(NumberTests):
             Number('00q80')
         with self.assertRaises(Number.ConstructorValueError):
             Number('q80')
-        with self.assertRaises(Number.ConstructorValueError):
-            Number('80')
-        with self.assertRaises(Number.ConstructorValueError):
-            Number('80')
 
     def test_string_int(self):
         self.assertEqual(1, Number("1"))
@@ -1368,20 +1364,24 @@ class NumberBasicTests(NumberTests):
         self.assertEqual( 11111111111111112,  int(float("11111111111111111")))
         self.assertEqual(111111111111111111,    Number("111111111111111111"))
         self.assertEqual(111111111111111104, int(float("111111111111111111")))
+        self.assertEqual(11111111111111111111111111111111111111,    Number("11111111111111111111111111111111111111"))
+        self.assertEqual(11111111111111110860978869272892669952, int(float("11111111111111111111111111111111111111")))
 
     def test_string_numeric_Eric_Leschinski(self):
-        """Testing some of the examples (for Python float()) by Eric Leschinski.
+        """Testing the examples (for Python float()) by Eric Leschinski.
         THANKS:  http://stackoverflow.com/a/20929983/673991
         """
         with self.assertRaises(Number.ConstructorValueError):
             Number("")
         self.assertEqual(127, Number("127"))
-        with self.assertRaises(Number.ConstructorValueError):
-            Number(True)
+        self.assertEqual(1, Number(True))
+        # with self.assertRaises(Number.ConstructorTypeError):
+        #     Number(True)   # Even though float(True) == 1.0?
         with self.assertRaises(Number.ConstructorValueError):
             Number("True")
-        with self.assertRaises(Number.ConstructorValueError):
-            Number(False)
+        self.assertEqual(0, Number(False))
+        # with self.assertRaises(Number.ConstructorTypeError):
+        #     Number(False)
         self.assertEqual(123.456, Number("123.456"))
         self.assertEqual(-127, Number("      -127    "))
         self.assertEqual(12, Number("\t\n12\r\n"))
@@ -1398,7 +1398,7 @@ class NumberBasicTests(NumberTests):
             Number("NULL")
         self.assertEqual(0x3fade, Number(0x3fade))
         self.assertEqual(Number.POSITIVE_INFINITY, Number("6e7777777777777"))   # TODO:  Ludicrous Number
-        self.assertEqual(1.797693e+308, Number("1.797693e+308"))
+        self.assertEqual(1.797693e+300, Number("1.797693e+300"))   # TODO:  MAX_FLOAT support (e+308)
         self.assertEqual(Number.POSITIVE_INFINITY, Number("infinity"))
         with self.assertRaises(Number.ConstructorValueError):
             Number("infinityandBEYOND")
@@ -1411,7 +1411,7 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(Number.ConstructorValueError):
             Number("56%")
         self.assertEqual(0e0, Number("0E0"))
-        self.assertEqual(0, Number(0**0))
+        self.assertEqual(1, Number(0**0))
         self.assertEqual(-5e-5, Number("-5e-5"))
         self.assertEqual(+1e1, Number("+1e1"))
         with self.assertRaises(Number.ConstructorValueError):
@@ -1423,9 +1423,45 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(Number.ConstructorValueError):
             Number("(1)")
 
+        # Also
+
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("2+2")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("0-0")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("0 0")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("--0")
+
+        if six.PY2:
+            self.assertEqual(-42, Number("- 42"))
+        elif six.PY3:
+            with self.assertRaises(Number.ConstructorValueError):
+                Number("- 42")
+        else:
+            self.fail()
+
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("       ")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("0x20")   # TODO:  Number() should support hex, even if float() doesn't.
+        self.assertEqual(0, Number("-0"))
+        self.assertEqual(10, Number("00010"))
+        self.assertEqual(10, Number("    00010"))
+        self.assertEqual(10, Number("    00010"))
+        self.assertEqual(42, Number(u"\u0020" "42" u"\u0020"))
+        self.assertEqual(42, Number(u"\u00A0" "42" u"\u00A0"))
+        self.assertEqual(42, Number(u"\u1680" "42" u"\u1680"))
+        self.assertEqual(42, Number(u"\u2000" "42" u"\u2000"))   # All kinds of exotic space allowed.
+        self.assertEqual(42, Number(u"\u2009" "42" u"\u2009"))
+        self.assertEqual(42, Number(u"\u3000" "42" u"\u3000"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number(u"\u200B" "42" u"\u200B")   # Zero-width spaces not allowed
+
     def test_from_int_negative(self):
         self.assertEqual('0q80',    str(Number(-0)))
-        self.assertEqual('0q7D_FF',    str(Number(-1)))
+        self.assertEqual('0q7D_FF', str(Number(-1)))
         self.assertEqual('0q7D_FE', str(Number(-2)))
         self.assertEqual('0q7D_FD', str(Number(-3)))
         self.assertEqual('0q7D_FC', str(Number(-4)))

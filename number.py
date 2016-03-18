@@ -440,9 +440,20 @@ class Number(numbers.Number):
                 )
             self.raw = six.binary_type(byte_string)
         else:
-            raise self.ConstructorValueError(
-                "A qiki Number string must start with '0q' instead of {}".format(repr(s))
-            )
+            try:
+                int_value = int(s)
+            except ValueError:
+                try:
+                    float_value = float(s)
+                except ValueError:
+                    raise self.ConstructorValueError(
+                        "A qiki Number string must be a valid number, "
+                        "or start with '0q', but not {}".format(repr(s))
+                    )
+                else:
+                    self._from_float(float_value)
+            else:
+                self._from_int(int_value)
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
@@ -1293,7 +1304,11 @@ assert '0100' == hex_from_integer(256)
 def string_from_hex(s):
     """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
     assert(isinstance(s, six.string_types))
-    return binascii.unhexlify(s)
+    try:
+        return binascii.unhexlify(s)
+    except binascii.Error as e:   # This happens on Number('0q8X')
+        raise TypeError("aka binascii.Error: " + str(e))
+
 assert b'\xBE\xEF' == string_from_hex('BEEF')
 
 
