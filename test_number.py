@@ -279,12 +279,12 @@ class NumberBasicTests(NumberTests):
 
     def test_qantissa_unsupported(self):
         number_has_no_qantissa = Number(0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.QanValueError):
             number_has_no_qantissa.qantissa()
 
     def test_qexponent_unsupported(self):
         number_has_no_qexponent = Number(0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.QexValueError):
             number_has_no_qexponent.qexponent()
 
     def test_qexponent_positive(self):
@@ -1318,13 +1318,13 @@ class NumberBasicTests(NumberTests):
 
     def test_uneven_hex(self):
         if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(Number.ConstructorValueError):
                 Number('0q8')
-            with self.assertRaises(ValueError):
+            with self.assertRaises(Number.ConstructorValueError):
                 Number('0q8_')
-            with self.assertRaises(ValueError):
+            with self.assertRaises(Number.ConstructorValueError):
                 Number('0q_8')
-            with self.assertRaises(ValueError):
+            with self.assertRaises(Number.ConstructorValueError):
                 Number('0q82_028')
             Number('0q82_0280')
         else:
@@ -1341,24 +1341,87 @@ class NumberBasicTests(NumberTests):
         Number('0q80')
         Number('0q82_FF')
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('0q8X')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('0q82_FG')
 
     def test_bad_string_prefix(self):
         Number('0q')
         Number('0q80')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('00q80')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('q80')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('80')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number('80')
+
+    def test_string_int(self):
+        self.assertEqual(1, Number("1"))
+        self.assertEqual(0, Number("0"))
+        self.assertEqual(-1, Number("-1"))
+        self.assertEqual( 11111111111111111,     Number("11111111111111111"))
+        self.assertEqual( 11111111111111112,  int(float("11111111111111111")))
+        self.assertEqual(111111111111111111,    Number("111111111111111111"))
+        self.assertEqual(111111111111111104, int(float("111111111111111111")))
+
+    def test_string_numeric_Eric_Leschinski(self):
+        """Testing some of the examples (for Python float()) by Eric Leschinski.
+        THANKS:  http://stackoverflow.com/a/20929983/673991
+        """
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("")
+        self.assertEqual(127, Number("127"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number(True)
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("True")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number(False)
+        self.assertEqual(123.456, Number("123.456"))
+        self.assertEqual(-127, Number("      -127    "))
+        self.assertEqual(12, Number("\t\n12\r\n"))
+        self.assertEqual(Number.NAN, Number("NaN"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("NaNanananaBATMAN")
+        self.assertEqual(Number.NEGATIVE_INFINITY, Number("-iNF"))
+        self.assertEqual(123.0e4, Number("123.E4"))
+        self.assertEqual(0.1, Number(".1"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("1,234")
+        self.assertEqual(0, Number(u'\x30'))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("NULL")
+        self.assertEqual(0x3fade, Number(0x3fade))
+        self.assertEqual(Number.POSITIVE_INFINITY, Number("6e7777777777777"))   # TODO:  Ludicrous Number
+        self.assertEqual(1.797693e+308, Number("1.797693e+308"))
+        self.assertEqual(Number.POSITIVE_INFINITY, Number("infinity"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("infinityandBEYOND")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("12.34.56")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number(u'四')
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("#56")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("56%")
+        self.assertEqual(0e0, Number("0E0"))
+        self.assertEqual(0, Number(0**0))
+        self.assertEqual(-5e-5, Number("-5e-5"))
+        self.assertEqual(+1e1, Number("+1e1"))
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("+1e1^5")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("+1e1.3")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("-+1")
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("(1)")
 
     def test_from_int_negative(self):
         self.assertEqual('0q80',    str(Number(-0)))
@@ -1393,7 +1456,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(b'\x83\x03\xE8', Number.from_raw(b'\x83\x03\xE8').raw)
 
     def test_from_raw_unicode(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.ConstructorValueError):
             Number.from_raw(u'\x80')
 
     # def test_from_bytearray(self):
@@ -2176,19 +2239,19 @@ class NumberSuffixTests(NumberTests):
 
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q00').parse_suffixes()   # Where's the length byte?
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q0000').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q220100').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q334455_220400').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__9900').parse_suffixes()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__000400').parse_suffixes()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__000300').parse_suffixes()   # Looks like suffixed Number.NAN.
         Number('0q82_01__000200').parse_suffixes()   # Yucky, but indistinguishable from valid
         Number('0q82_01__000100').parse_suffixes()
@@ -2197,9 +2260,9 @@ class NumberSuffixTests(NumberTests):
     def test_suffix_payload_too_long(self):
         self.assertEqual('11'*249 + '_08FA00', Number.Suffix(8, b'\x11' * 249).qstring())
         self.assertEqual('11'*250 + '_08FB00', Number.Suffix(8, b'\x11' * 250).qstring())
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number.Suffix(8, b'\x11' * 251)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             Number.Suffix(8, b'\x11' * 252)
 
     def test_suffix_number(self):
@@ -2255,17 +2318,17 @@ class NumberSuffixTests(NumberTests):
 
     def test_nan_suffix_empty(self):
         nan = Number(float('nan'))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             nan.add_suffix()
 
     def test_nan_suffix_type(self):
         nan = Number(float('nan'))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             nan.add_suffix(0x11)
 
     def test_nan_suffix_payload(self):
         nan = Number(float('nan'))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Number.SuffixValueError):
             nan.add_suffix(0x11, b'abcd')
 
     def test_is_suffixed(self):

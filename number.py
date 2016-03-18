@@ -56,6 +56,9 @@ class Number(numbers.Number):
     class ConstructorTypeError(TypeError):
         pass
 
+    class ConstructorValueError(ValueError):
+        pass
+
     # Zone
     # ----
     # qiki Numbers fall into zones.
@@ -406,8 +409,9 @@ class Number(numbers.Number):
         Right:  assert Number(1) == Number.from_raw(bytearray(b'\x82\x01'))
         """
         if not isinstance(value, six.binary_type):
-            raise ValueError("'{}' is not a binary string.  "
-                             "Number.from_raw(needs e.g. b'\\x82\\x01')".format(repr(value)))
+            raise cls.ConstructorValueError(
+                "'{}' is not a binary string.  Number.from_raw(needs e.g. b'\\x82\\x01')".format(repr(value))
+            )
         return_value = cls()
         return_value.raw = value
         return return_value
@@ -431,12 +435,14 @@ class Number(numbers.Number):
             try:
                 byte_string = string_from_hex(digits)
             except TypeError:
-                raise ValueError(
+                raise self.ConstructorValueError(
                     "A qiki Number string must use hexadecimal digits (or underscore), not {}".format(repr(s))
                 )
             self.raw = six.binary_type(byte_string)
         else:
-            raise ValueError("A qiki Number string must start with '0q' instead of {}".format(repr(s)))
+            raise self.ConstructorValueError(
+                "A qiki Number string must start with '0q' instead of {}".format(repr(s))
+            )
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
@@ -720,8 +726,11 @@ class Number(numbers.Number):
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
-            raise ValueError("qantissa() not defined for %s" % repr(self))
+            raise self.QanValueError("qantissa() not defined for %s" % repr(self))
         return qan_offset
+
+    class QanValueError(ValueError):
+        pass
 
     __qan_offset_dict ={
         Zone.POSITIVE:       1,
@@ -734,12 +743,16 @@ class Number(numbers.Number):
         try:
             encoder = self.__qexponent_encode_dict[self.zone]
         except KeyError:
-            raise ValueError("qexponent() not defined for {}".format(repr(self)))
+            raise self.QexValueError("qexponent() not defined for {}".format(repr(self)))
         try:
             qex = encoder(self)
         except IndexError:
+            # TODO:  Unit test this branch.
             raise ValueError("qexponent() broken for {}".format(repr(self)))
         return qex
+
+    class QexValueError(ValueError):
+        pass
 
     # The following dictionary reveals this conversion in its lambdas:
     #
@@ -910,7 +923,7 @@ class Number(numbers.Number):
                         0x00
                     )))
                 else:
-                    raise ValueError("Payload is {} bytes too long.".format(
+                    raise self.Number.SuffixValueError("Payload is {} bytes too long.".format(
                         len(self.payload) - self.MAX_PAYLOAD_LENGTH)
                     )
 
@@ -943,10 +956,15 @@ class Number(numbers.Number):
 
         @classmethod
         def internal_setup(cls, number_class):
+            """Initialize some Suffix class properties after the class is defined."""
             cls.Number = number_class
+            # So Suffix can refer to Number:  qiki.Number.Suffix.Number === qiki.Number
 
         class NoSuchType(Exception):
             pass
+
+    class SuffixValueError(ValueError):
+        pass
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
@@ -974,7 +992,7 @@ class Number(numbers.Number):
         )
         if self.is_nan():
             # TODO:  Is this really so bad?  A suffixed NAN?  e.g. 0q__7F0100
-            raise ValueError
+            raise self.SuffixValueError
         if isinstance(suffix_or_type, self.Suffix):
             the_suffix = suffix_or_type
             self.raw += the_suffix.raw
@@ -1032,10 +1050,10 @@ class Number(numbers.Number):
                 try:
                     length_of_payload_plus_type = six.indexbytes(n.raw, -2)
                 except IndexError:
-                    raise ValueError("Invalid suffix, or unstripped 00s.")
+                    raise self.SuffixValueError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type >= len(n.raw)-2:
                     # Suffix may neither be larger than raw, nor consume all of it.
-                    raise ValueError("Invalid suffix, or unstripped 00s.")
+                    raise self.SuffixValueError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type == 0x00:
                     return_array.append(Number.Suffix())
                 else:
@@ -1061,7 +1079,7 @@ class Number(numbers.Number):
 
     @classmethod
     def internal_setup(cls):
-        """Initialize some class properties after the class is defined."""
+        """Initialize some Number class properties after the class is defined."""
 
         cls.name_of_zone = {   # Translate zone code to zone name.
             getattr(cls.Zone, attr):attr for attr in dir(cls.Zone)
