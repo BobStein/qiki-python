@@ -1302,11 +1302,13 @@ assert '0100' == hex_from_integer(256)
 
 
 def string_from_hex(s):
-    """Decode a hexadecimal string into an 8-bit binary (base-256) string."""
+    """Decode a hexadecimal string into an 8-bit binary (base-256) string.
+
+    Raises a TypeError on invalid hex digits."""
     assert(isinstance(s, six.string_types))
     try:
         return binascii.unhexlify(s)
-    except binascii.Error as e:   # This happens on Number('0q8X')
+    except binascii.Error as e:   # This happens on '8X' in Python 3.  It's already a TypeError in Python 2.
         raise TypeError("aka binascii.Error: " + str(e))
 
 assert b'\xBE\xEF' == string_from_hex('BEEF')
