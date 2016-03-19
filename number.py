@@ -429,31 +429,52 @@ class Number(numbers.Number):
         """
         assert(isinstance(s, six.string_types))
         if s.startswith('0q'):
-            digits = s[2:].replace('_', '')
-            if len(digits) % 2 != 0:
-                digits += '0'
-            try:
-                byte_string = string_from_hex(digits)
-            except TypeError:
-                raise self.ConstructorValueError(
-                    "A qiki Number string must use hexadecimal digits (or underscore), not {}".format(repr(s))
-                )
-            self.raw = six.binary_type(byte_string)
+            self._from_qstring(s)
         else:
             try:
                 int_value = int(s)
             except ValueError:
                 try:
-                    float_value = float(s)
+                    int_value = int(s, 0)
                 except ValueError:
-                    raise self.ConstructorValueError(
-                        "A qiki Number string must be a valid number, "
-                        "or start with '0q', but not {}".format(repr(s))
-                    )
+                    try:
+                        float_value = float(s)
+                    except ValueError:
+                        raise self.ConstructorValueError(
+                            "A qiki Number string must be a valid int, float, or q-string, "
+                            "but not {}".format(repr(s))
+                        )
+                    else:
+                        self._from_float(float_value)
                 else:
-                    self._from_float(float_value)
+                    self._from_int(int_value)
             else:
                 self._from_int(int_value)
+
+    @classmethod
+    def from_qstring(cls, s):
+        """Public routine to generate a new Number."""
+        if s.startswith('0q'):
+            return_value = cls()
+            return_value._from_qstring(s)
+            return return_value
+        else:
+            raise cls.ConstructorValueError(
+                "A q-string must begin with '0q'.  This doesn't: " + repr(s)
+            )
+
+    def _from_qstring(self, s):
+        """Private routine to modify self."""
+        digits = s[2:].replace('_', '')
+        if len(digits) % 2 != 0:
+            digits += '0'
+        try:
+            byte_string = string_from_hex(digits)
+        except TypeError:
+            raise self.ConstructorValueError(
+                "A q-string must use hexadecimal digits (or underscore), not {}".format(repr(s))
+            )
+        self.raw = six.binary_type(byte_string)
 
     def _from_int(self, i):
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)

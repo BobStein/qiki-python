@@ -55,7 +55,8 @@ class Word(object):
             # TODO:  Should this be Word instead of type(self)?
             # As it stands with type(self), DerivedWord(Word) would TypeError, not copy.
             # For example Lex(Word).  Is that desirable or not?
-            # Perhaps yes, we may not know how to handle DerivedWord.
+            # Perhaps yes, we may not know how to handle DerivedWord here.
+            # And if it wants to clone it should do so in its own __init__().
             # Perhaps no, we could try to handle it; it's easy to override.
             # WTF, should Lex be Word's meta-class??
             self._from_word(content)
@@ -85,9 +86,14 @@ class Word(object):
 
     def _inchoate(self, idn):
         """
+        Initialize an inchoate word.
+
+        Definition of "inchoate"
+        ------------------------
+        An inchoate word is frugal with resources.
         All that is known about an inchoate word is its idn.
         Maybe that's all we ever need to know about it.
-        If almost anything else is asked of it, the word is made choate() in order to answer.
+        But, if almost anything else is asked of it, then the word is made choate.
         Such as:
             word.sbj
             word.vrb
@@ -102,6 +108,11 @@ class Word(object):
         assert self.lex is not None
 
     def _choate(self):
+        """
+        Transform an inchoate word into a not-inchoate word.
+
+        Prepare to use one of its properties, sbj, vrb, obj, txt, num, whn.
+        """
         if self._is_inchoate:
             del self._is_inchoate
             self._from_idn(self._idn)
@@ -431,7 +442,11 @@ class Word(object):
             if not new_word.exists():
                 new_word.save()
         else:
-            assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
+            assert isinstance(num, numbers.Number), \
+                "Invalid for num to be a {num_type} while num_add is a {num_add_type}".format(
+                    num_type=type(num).__name__,
+                    num_add_type=type(num_add).__name__,
+                )
             new_word.save()
         return new_word
 
@@ -499,9 +514,14 @@ class Word(object):
         #     raise ValueError("Lex is a singleton, so it cannot be copied.")
         #     # TODO:  Explain why this should be.
         #     # TODO:  Resolve inconsistency:  spawn(lex.idn) will clone lex
-        assert word.exists()
+        assert isinstance(word, Word)   # Instead of type(self)
         self.lex = word.lex
-        self._from_idn(word.idn)
+        if word._is_inchoate:
+            self._idn         = word._idn
+            self._is_inchoate = word._is_inchoate
+        else:
+            assert word.exists()
+            self._from_idn(word.idn)
 
     def _from_sbj_vrb_obj(self):
         """Construct a word by looking up its subject-verb-object."""
@@ -635,7 +655,11 @@ class Word(object):
                 num=self.num.qstring(),
             ))
         else:
-            return "Word(in a strange state, idn {})".format(int(self.idn))
+            try:
+                repr_idn = repr(int(self.idn))
+            except ValueError:
+                repr_idn = repr(self.idn)
+            return "Word(in a strange state, idn {})".format(repr_idn)
 
     def __str__(self):
         if hasattr(self, 'txt'):
@@ -875,9 +899,17 @@ class LexMySQL(Lex):
             txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
             engine=self._engine,
         )
-        # NOTE:  If PyCharm SQL inspection errors resurface:
-        # disable Settings | Editor | Language Injections | python: "SQL select/delete/insert/update/create"
+
+        # If any of the SQL in this module generates an error in PyCharm like one of these:
+        #     <comma join expression> expected, unexpected end of file
+        #                 <reference> expected, unexpected end of file
+        #     '(', <reference>, GROUP, HAVING, UNION, WHERE or '{' expected, got '{'
+        # Then a work-around is to disable SQL inspection:
+        #     Settings | Editor | Language Injections | (uncheck) python: "SQL select/delete/insert/update/create"
+        # Sadly the SQL syntax highlighting is lost.
+        # SEE:  http://i.imgur.com/l61ARUX.png
         # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
+
         query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
         cursor.execute(query)
         # TODO:  other keys?  sbj-vrb?   obj-vrb?
@@ -1417,8 +1449,11 @@ class Text(six.text_type):
         # could mean 1=reflexive, 0=not.  The way noun is a noun but verb is not a verb.
         # could inform the is_a() hierarchy bubbling
 
-# TODO:  word.jbo refers to the set of words whose object is word.  Similarly word.jbs.
-# word.brv?  The set of definitions supporting this verb??
+# TODO:  word.jbo a "soft" property that refers to the set of words whose object is word.
+# Or w.jbo(vrb=qool_verbs) could filter that set down to the words whose verbs were in the iterator qool_verbs
+# Maybe it should always be a method.
+# Similarly word.jbs.
+# word.brv?  The set of definitions and qualifiers supporting this verb??
 
 # TODO:  Word iterators and iteratables.
 # These will be needed for large sets, or sets that take a long time to determine, E.g.

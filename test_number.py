@@ -155,6 +155,12 @@ class NumberBasicTests(NumberTests):
         self.assertFloatSame(+0.0, float(Number('0q81')))
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
+    def test_from_qstring(self):
+        n = Number.from_qstring('0q82')
+        self.assertEqual('0q82', n.qstring())
+        with self.assertRaises(Number.ConstructorValueError):
+            Number.from_qstring('qqqqq')
+
     def test_from_bytearray(self):
         self.assertEqual(Number('0q82_2A'), Number.from_bytearray(bytearray(b'\x82\x2A')))
 
@@ -1369,7 +1375,8 @@ class NumberBasicTests(NumberTests):
 
     def test_string_numeric_Eric_Leschinski(self):
         """Testing the examples (for Python float()) by Eric Leschinski.
-        THANKS:  http://stackoverflow.com/a/20929983/673991
+
+        SPECIAL THANKS:  http://stackoverflow.com/a/20929983/673991
         """
         with self.assertRaises(Number.ConstructorValueError):
             Number("")
@@ -1435,7 +1442,7 @@ class NumberBasicTests(NumberTests):
             Number("--0")
 
         if six.PY2:
-            self.assertEqual(-42, Number("- 42"))
+            self.assertEqual(-42, Number("- 42"))   # int() is guilty, float() is innocent.
         elif six.PY3:
             with self.assertRaises(Number.ConstructorValueError):
                 Number("- 42")
@@ -1444,20 +1451,20 @@ class NumberBasicTests(NumberTests):
 
         with self.assertRaises(Number.ConstructorValueError):
             Number("       ")
-        with self.assertRaises(Number.ConstructorValueError):
-            Number("0x20")   # TODO:  Number() should support hex, even if float() doesn't.
+        self.assertEqual(32, Number("0x20"))
         self.assertEqual(0, Number("-0"))
-        self.assertEqual(10, Number("00010"))
+        self.assertEqual(10, Number("00010"))   # Not octal
+        self.assertEqual(8, Number("0o10"))   # Octal
         self.assertEqual(10, Number("    00010"))
         self.assertEqual(10, Number("    00010"))
-        self.assertEqual(42, Number(u"\u0020" "42" u"\u0020"))
-        self.assertEqual(42, Number(u"\u00A0" "42" u"\u00A0"))
-        self.assertEqual(42, Number(u"\u1680" "42" u"\u1680"))
-        self.assertEqual(42, Number(u"\u2000" "42" u"\u2000"))   # All kinds of exotic space allowed.
-        self.assertEqual(42, Number(u"\u2009" "42" u"\u2009"))
-        self.assertEqual(42, Number(u"\u3000" "42" u"\u3000"))
+        self.assertEqual(42, Number(u"\u0020" + "42" + u"\u0020"))
+        self.assertEqual(42, Number(u"\u00A0" + "42" + u"\u00A0"))
+        self.assertEqual(42, Number(u"\u1680" + "42" + u"\u1680"))
+        self.assertEqual(42, Number(u"\u2000" + "42" + u"\u2000"))   # All kinds of exotic space allowed.
+        self.assertEqual(42, Number(u"\u2009" + "42" + u"\u2009"))
+        self.assertEqual(42, Number(u"\u3000" + "42" + u"\u3000"))
         with self.assertRaises(Number.ConstructorValueError):
-            Number(u"\u200B" "42" u"\u200B")   # Zero-width spaces not allowed
+            Number(u"\u200B" + "42" + u"\u200B")   # Zero-width spaces not allowed
 
     def test_from_int_negative(self):
         self.assertEqual('0q80',    str(Number(-0)))

@@ -154,6 +154,9 @@ class WordTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIs(type(first), type(second))
 
+    def assertExactlyFalse(self, falsie):
+        self.assertTripleEqual(False, falsie)
+
     def fails(self):
         return self.assertRaises(AssertionError)
 
@@ -222,9 +225,16 @@ class InternalTestWordTests(WordTests):
     def _make_one_new_word(self, txt):
         self.lex.define(self.lex(u'noun'), txt)
 
-    def test_missing_from_lex(self):
-        self.lex(qiki.Word._IDN_DEFINE)
+    def test_missing_from_lex_number(self):
         bogus_word = self.lex(qiki.Number(-42))
+        self.assertFalse(bogus_word.exists())
+
+    def test_missing_from_lex_name(self):
+        bogus_word = self.lex('bogus nonexistent name')
+        self.assertFalse(bogus_word.exists())
+        legit_word = self.lex(qiki.Lex._IDN_DEFINE)   # Lex(idn) is good
+        self.assertTrue(legit_word.exists())
+        bogus_word = self.lex(qiki.Lex._IDN_DEFINE.qstring())   # Lex(idn.qstring()) is bad
         self.assertFalse(bogus_word.exists())
 
     def test_assert_triple_equal(self):
@@ -244,6 +254,16 @@ class InternalTestWordTests(WordTests):
         with self.fails(): self.assertTripleEqual(six.binary_type(b'string)'), b'string')
         with self.fails(): self.assertTripleEqual(          bytes(b'string)'), b'string')
         with self.fails(): self.assertTripleEqual(      bytearray(b'string)'), b'string')
+
+    def test_assert_exactly_false(self):
+        self.assertExactlyFalse(False)
+        with self.fails(): self.assertExactlyFalse(True)
+        with self.fails(): self.assertExactlyFalse(None)
+        with self.fails(): self.assertExactlyFalse(0)
+        with self.fails(): self.assertExactlyFalse(())
+        with self.fails(): self.assertExactlyFalse([])
+        with self.fails(): self.assertExactlyFalse({})
+        with self.fails(): self.assertExactlyFalse('')
 
 
 class WordFirstTests(WordTests):
@@ -455,35 +475,35 @@ class WordFirstTests(WordTests):
         noun1 = self.lex(u'noun')
         noun2 = qiki.Word(noun1)
         self.assertEqual(noun1, noun2)
-        self.assertIsNot(noun1, noun2)
 
-    def test_09b_lex_singleton_by_attribute(self):
+    def test_09b_copy_constructor_not_clone_constructor(self):
+        noun1 = self.lex(u'noun')
+        noun2 = qiki.Word(noun1)
+        self.assertIsNot(noun1, noun2)   # Must not copy by reference.
+
+    def test_09c_lex_singleton_by_attribute(self):
         lex1 = self.lex
         lex2 = self.lex.lex
         self.assertEqual(lex1, lex2)
         self.assertIs(lex1, lex2)
 
-    def test_09b_lex_singleton_by_call(self):
+    def test_09d_lex_singleton_by_call(self):
         lex1 = self.lex
         lex2 = self.lex(u'lex')
         self.assertEqual(lex1, lex2)
         self.assertIs(lex1, lex2)   # Why does this work?
 
-    # def test_09b_lex_singleton_cant_do_by_copy_constructor(self):
-    #     with self.assertRaises(ValueError):
-    #         qiki.Word(self.lex)
-
-    def test_09b_idn_constructor_does_not_enforce_lex_singleton(self):
+    def test_09e_idn_constructor_does_not_enforce_lex_singleton(self):
         lex_by_idn = self.lex.spawn(self.lex.idn)
         self.assertEqual(lex_by_idn, self.lex)
         self.assertIsNot(lex_by_idn, self.lex)
 
-    def test_09c_word_copy_constructor_does_not_enforce_lex_singleton(self):
+    def test_09f_word_copy_constructor_does_not_enforce_lex_singleton(self):
         lex_by_word = self.lex.spawn(self.lex)
         self.assertEqual(lex_by_word, self.lex)
         self.assertIsNot(lex_by_word, self.lex)
 
-    def test_09d_word_constructor_bogus_type(self):
+    def test_09g_word_constructor_bogus_type(self):
         class BogusType:
             def __init__(self):
                 pass
@@ -498,7 +518,7 @@ class WordFirstTests(WordTests):
         with self.assertRaisesRegexp(TypeError, '^((?!unicode).)*$'):
             qiki.Word(bogus_new_instance)
 
-    def test_09e_word_constructor_by_name_must_be_unicode(self):
+    def test_09h_word_constructor_by_name_must_be_unicode(self):
         with self.assertRaisesRegexp(TypeError, "unicode"):
             qiki.Word(b'this is not unicode')
         with self.assertRaisesRegexp(TypeError, "unicode"):
@@ -507,6 +527,11 @@ class WordFirstTests(WordTests):
             qiki.Word(bytes(b'this is not unicode'))
         w = qiki.Word(u'this is unicode', lex=self.lex)
         self.assertFalse(w.exists())
+
+    # TODO:  Prevent cloning lex?
+    # def test_09x_lex_singleton_cant_do_by_copy_constructor(self):
+    #     with self.assertRaises(ValueError):
+    #         qiki.Word(self.lex)
 
     def test_10a_word_by_lex_idn(self):
         agent = self.lex(qiki.Word._IDN_AGENT)
@@ -658,6 +683,34 @@ class WordFirstTests(WordTests):
         w = self.lex.spawn()
         self.assertTrue(w.do_not_call_in_templates)
         self.assertIs(type(w.do_not_call_in_templates), bool)
+
+    def test_17a_inchoate(self):
+        """A word constructed by its idn is inchoate."""
+        w = self.lex(qiki.Lex._IDN_DEFINE)
+        self.assertTrue(w._is_inchoate)
+
+    def test_17b_choate(self):
+        """A word that tries to use one of its parts becomes choate."""
+        w = self.lex(qiki.Lex._IDN_DEFINE)
+        # noinspection PyStatementEffect
+        w.sbj
+        self.assertFalse(w._is_inchoate)
+
+    def test_17c_inchoate_copy_constructor(self):
+        """The Word(Word) copy constructor copies the inchoate-ness."""
+        w1 = self.lex(qiki.Lex._IDN_DEFINE)
+        w2 = self.lex(w1)
+        self.assertTrue(w1._is_inchoate)   # Tests the source didn't BECOME choate by copying.
+        self.assertTrue(w2._is_inchoate)   # Tests the destination is also inchoate.
+
+    def test_17d_choate_copy_constructor(self):
+        """The Word(Word) copy constructor copies the choate-ness."""
+        w1 = self.lex(qiki.Lex._IDN_DEFINE)
+        # noinspection PyStatementEffect
+        w1.sbj
+        w2 = self.lex(w1)
+        self.assertFalse(w2._is_inchoate)
+
 
 class WordUnicode(WordTests):
 
