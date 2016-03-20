@@ -185,6 +185,9 @@ class Word(object):
                 name=repr(noun_txt)
             ))
         return_value._word_before_the_dot = self   # In s.v(o) this is how v remembers the s.
+        # TODO:  Better way?  Descriptor, decorator, or metaclass?
+        # Or maybe before we do s.v(o) we have to s.verb('v') to declare that v is a verb?
+        # Might be safer somehow.
         return return_value
 
     def __call__(self, *args, **kwargs):
@@ -264,7 +267,7 @@ class Word(object):
             try:
                 txt = args[2]
             except IndexError:
-                txt=u''
+                txt = u''
 
             if self._word_before_the_dot is None:
                 sbj = self.lex   # Lex can be the implicit subject. Renounce?
@@ -272,6 +275,7 @@ class Word(object):
                 sbj = self._word_before_the_dot
                 del self._word_before_the_dot
                 # TODO:  This enforced SOME single use, but is it enough?
+                # TODO:  And would this be too much if for example s.v([o1,o2,o3]) needed the sbj multiple times?
 
             # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
             # TODO:  Allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
@@ -279,7 +283,7 @@ class Word(object):
             # In other words, don't v(t), instead lex.define(v,n,t)
             # And no v(object_name_string), instead s.v(lex(object_name),n,t)
 
-            if kind_of_call == KindOfCall.adder:
+            if kind_of_call == KindOfCall.adder:   # subject.verb(object, num_add=delta)
                 assert num_add is not None
                 assert num is None
                 maybe_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
@@ -295,7 +299,7 @@ class Word(object):
                     num=num,
                     txt=txt,
                 )
-            elif kind_of_call == KindOfCall.getter:   # subject.verb(object) <-- getter only
+            elif kind_of_call == KindOfCall.getter:   # subject.verb(object) <-- getter
                 assert num is None
                 assert num_add is None
                 existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
@@ -306,29 +310,39 @@ class Word(object):
                         "So that word must exist already.  "
                         "A setter would need at least a num, e.g.:  s.v(o,1)"
                     )
-            else:   # subject.verb(object, number)        \ <-- these are getter or setter
+            else:   # subject.verb(object, number)        \ <-- setter
                     # subject.verb(object, number, text)  /
                 assert num is not None
                 assert num_add is None
-                if kwargs.pop('use_already', False):
-                    existing_word = self.spawn(
-                        sbj=sbj.idn,
-                        vrb=self.idn,
-                        obj=obj.idn,
-                        num=num,
-                        txt=txt,
-                    )
-                    existing_word._from_sbj_vrb_obj_num_txt()
-                    if not existing_word.exists():
-                        existing_word.save()
-                else:
-                    existing_word = self.sentence(
-                        sbj=sbj,
-                        vrb=self,
-                        obj=obj,
-                        num=num,
-                        txt=txt,
-                    )
+                # # TODO:  Simplify the following by options already in .spawn() and .sentence()?
+                # # May also be due some simplification because the inchoate feature was implemented.
+                # if kwargs.pop('use_already', False):
+                #     existing_word = self.spawn(
+                #         sbj=sbj.idn,
+                #         vrb=self.idn,
+                #         obj=obj.idn,
+                #         num=num,
+                #         txt=txt,
+                #     )
+                #     existing_word._from_sbj_vrb_obj_num_txt()
+                #     if not existing_word.exists():
+                #         existing_word.save()
+                # else:
+                #     existing_word = self.sentence(
+                #         sbj=sbj,
+                #         vrb=self,
+                #         obj=obj,
+                #         num=num,
+                #         txt=txt,
+                #     )
+                return self.sentence(
+                    sbj=sbj,
+                    vrb=self,
+                    obj=obj,
+                    num=num,
+                    txt=txt,
+                    **kwargs
+                )
             # EXAMPLE:  Should the following work??  x = s.v; x(o)
             if len(kwargs) != 0:
                 raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
