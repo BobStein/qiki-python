@@ -5,7 +5,16 @@ Both integers and floating point are seamlessly represented, plus much more.
 Features:
  - arbitrary precision
  - arbitrary range
- - monotonicity (memcmp() order)
+ - monotonicity (memcmp() order)\
+
+Written in 2016 by Bob Stein me@bobste.in
+
+To the extent possible under law, the author has dedicated all
+copyright and related and neighboring rights to this software to the
+public domain worldwide. This software is distributed without any
+warranty.
+
+http://creativecommons.org/publicdomain/zero/1.0/
 """
 
 from __future__ import absolute_import
