@@ -5,7 +5,7 @@ Both integers and floating point are seamlessly represented, plus much more.
 Features:
  - arbitrary precision
  - arbitrary range
- - monotonicity (memcmp() order)\
+ - monotonicity (memcmp() order)
 """
 
 from __future__ import absolute_import

@@ -711,6 +711,12 @@ class WordFirstTests(WordTests):
         w2 = self.lex(w1)
         self.assertFalse(w2._is_inchoate)
 
+    def test_17e_inchoate_str(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertIn(u"agent", str(agent))
+        self.assertFalse(agent._is_inchoate)
+
 
 class WordUnicode(WordTests):
 
@@ -822,6 +828,14 @@ class WordMoreTests(WordTests):
         self.assertEqual(u'subthing1', subthing1.txt)
         self.assertEqual(u'subthing2', subthing2.txt)
         self.assertEqual(u'subthing3', subthing3.txt)
+
+    def test_description_uses_txt(self):
+        """Detects a"""
+        description = self.lex(qiki.Lex._IDN_AGENT).description()
+        self.assertIn('lex', description)
+        self.assertIn('define', description)
+        self.assertIn('noun', description)
+        self.assertIn('agent', description)
 
     def test_verb(self):
         self.lex.verb(u'like')
@@ -2102,6 +2116,9 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(len(b_l_y_after), len(b_l_y_before) + 1)
         self.assertEqual(10, b_l_y_before[-1].num)
         self.assertEqual(30, b_l_y_after[-1].num)
+
+    def test_num_add_out_of_the_blue(self):
+        self.display_all_word_descriptions()
 
 
     ################## obsolete or maybe someday #################################
