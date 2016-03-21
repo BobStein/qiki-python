@@ -200,6 +200,7 @@ class Word(object):
                 return self   # lex is a singleton.  Why is this important?
             else:
                 return existing_word
+
         elif self.is_a_verb(reflexive=False):   # Quintessential word creation:  s.v(o)  e.g. anna.like(bart)
             # (But not s.verb(o) -- the 'verb' word is not itself a verb.)
             assert self.lex.is_lex()
@@ -231,122 +232,58 @@ class Word(object):
 
             # TODO:  Groan, what follows should be simpler...
 
-            if len(args) < 1:
-                raise self.MissingObj("Calling a verb method requires an object.")
-            obj = args[0]
-
-            # noinspection PyClassHasNoInit
-            class KindOfCall:
-                getter = 1
-                setter = 2
-                adder = 3
-
-            try:
-                num_add = kwargs.pop('num_add')
-                # TODO:  Reply on num_add option (and many other features!) in sentence() instead.
-            except KeyError:
-                num_add = None
-                try:
-                    num_arg = kwargs.pop('num')
-                except KeyError:
-                    try:
-                        num_arg = args[1]
-                    except IndexError:
-                        num = None
-                        kind_of_call = KindOfCall.getter
-                    else:
-                        kind_of_call = KindOfCall.setter
-                        num = Number(num_arg)
-                else:
-                    kind_of_call = KindOfCall.setter
-                    num = Number(num_arg)
-            else:
-                kind_of_call = KindOfCall.adder
-                num = None
-
-            try:
-                txt = args[2]
-            except IndexError:
-                txt = u''
-
             if self._word_before_the_dot is None:
                 sbj = self.lex   # Lex can be the implicit subject. Renounce?
             else:
                 sbj = self._word_before_the_dot
                 del self._word_before_the_dot
-                # TODO:  This enforced SOME single use, but is it enough?
+                # TODO:  This enforces SOME single use, but is it enough?
                 # TODO:  And would this be too much if for example s.v([o1,o2,o3]) needed the sbj multiple times?
 
-            # assert self._word_before_the_dot is not None, "A verb can't (yet) be called without a preceding subject."
-            # TODO:  Allow  v(t)?  In English:  Lex defines a v named t.  And v is a verb.
-            # But this looks a lot like v(o) where o could be identified by a string, so maybe support neither?
-            # In other words, don't v(t), instead lex.define(v,n,t)
-            # And no v(object_name_string), instead s.v(lex(object_name),n,t)
+            try:
+                obj = args[0]
+            except IndexError:
+                raise self.MissingObj("Calling a verb method requires an object.")
 
-            if kind_of_call == KindOfCall.adder:   # subject.verb(object, num_add=delta)
-                assert num_add is not None
-                assert num is None
-                maybe_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
-                maybe_word._from_sbj_vrb_obj()
-                if maybe_word.exists():
-                    num = maybe_word.num + num_add
-                else:
-                    num = num_add
-                existing_word = self.sentence(
-                    sbj=sbj,
-                    vrb=self,
-                    obj=obj,
-                    num=num,
-                    txt=txt,
-                )
-            elif kind_of_call == KindOfCall.getter:   # subject.verb(object) <-- getter
-                assert num is None
-                assert num_add is None
-                existing_word = self.spawn(sbj=sbj.idn, vrb=self.idn, obj=obj.idn)
+            # XXX:  Refactor the following num/num_add logic
+            # Separate these tasks:  (1) getter or setter (2) num by position or keyword
+            # This will get worse after (3) txt by keyword
+            is_getter = False
+            try:
+                num = args[1]
+            except IndexError:
+                if not kwargs.has_key('num') and not kwargs.has_key('num_add'):
+                    is_getter = True
+            else:
+                if kwargs.has_key('num'):
+                    raise self.SentenceArgs("Twice specified num, by the 2nd position and by keyword.")
+                elif num is not None:
+                    kwargs['num'] = num
+
+            if is_getter:   # FLAVOR:  s.v(o) with no num or num_add -- this is a getter
+                if len(kwargs) != 0:
+                    raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
+                existing_word = self.spawn(sbj=sbj, vrb=self, obj=obj)
                 existing_word._from_sbj_vrb_obj()
                 if not existing_word.exists():
                     raise self.MissingFromLex(
                         "The form s.v(o) is a getter.  "
                         "So that word must exist already.  "
-                        "A setter would need at least a num, e.g.:  s.v(o,1)"
+                        "A setter would need a num or num_add, e.g.:  s.v(o,1)"
                     )
-            else:   # subject.verb(object, number)        \ <-- setter
-                    # subject.verb(object, number, text)  /
-                assert num is not None
-                assert num_add is None
-                # # TODO:  Simplify the following by options already in .spawn() and .sentence()?
-                # # May also be due some simplification because the inchoate feature was implemented.
-                # if kwargs.pop('use_already', False):
-                #     existing_word = self.spawn(
-                #         sbj=sbj.idn,
-                #         vrb=self.idn,
-                #         obj=obj.idn,
-                #         num=num,
-                #         txt=txt,
-                #     )
-                #     existing_word._from_sbj_vrb_obj_num_txt()
-                #     if not existing_word.exists():
-                #         existing_word.save()
-                # else:
-                #     existing_word = self.sentence(
-                #         sbj=sbj,
-                #         vrb=self,
-                #         obj=obj,
-                #         num=num,
-                #         txt=txt,
-                #     )
+                return existing_word
+            else:   # FLAVOR:  s.v(o, num or num_add, maybe txt, etc.) -- this is a setter or adder
+                try:
+                    kwargs['txt'] = args[2]
+                except IndexError:
+                    kwargs['txt'] = u''
                 return self.sentence(
                     sbj=sbj,
                     vrb=self,
                     obj=obj,
-                    num=num,
-                    txt=txt,
                     **kwargs
                 )
-            # EXAMPLE:  Should the following work??  x = s.v; x(o)
-            if len(kwargs) != 0:
-                raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
-            return existing_word
+
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
@@ -397,9 +334,6 @@ class Word(object):
         new_word = self.sentence(sbj=self, vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
         return new_word
 
-    class SentenceArgs(TypeError):
-        pass
-
     def sentence(self, *args, **kwargs):
         """
         Construct a new sentence from a 3-word subject-verb-object.
@@ -421,6 +355,13 @@ class Word(object):
             obj = kwargs.pop('obj')
         except KeyError:
             raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
+
+        try:
+            if kwargs['num'] is not None and kwargs['num_add'] is not None:
+                raise self.SentenceArgs("Word.sentence() cannot specify both num and num_add.")
+        except KeyError:
+            pass
+
         num = kwargs.pop('num', Number(1))
         txt = kwargs.pop('txt', u'')
         use_already = kwargs.pop('use_already', False)
@@ -429,7 +370,7 @@ class Word(object):
             raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
         if len(kwargs) != 0:
             raise self.SentenceArgs("Word.sentence() doesn't understand these arguments: " + repr(kwargs))
-        # TODO:  Move use_already option to here, from __call__()?
+        # DONE:  Moved use_already option to here, from __call__()?
         # Then define() could just call sentence() without checking spawn() first?
         # Only callers to sentence() are __call__() and define().
         assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
@@ -464,19 +405,14 @@ class Word(object):
             new_word.save()
         return new_word
 
+    class SentenceArgs(TypeError):
+        pass
+
     def spawn(self, *args, **kwargs):
         """
         Construct a Word() using the same lex as another word.
-
-        The constructed word may exist in the database already.
-        In any case, it will be prepared to .save().
         """
         assert hasattr(self, 'lex')
-        # if len(kwargs) == 0:
-        #     if len(args) == 1 and isinstance(args[0], Number) and args[0] == self._IDN_LEX:
-        #         if self.lex._exists:
-        #             return self.lex
-        #             # Enforce singleton:  spawn(lex.idn) is lex
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
 
@@ -633,9 +569,9 @@ class Word(object):
         vrb = self.spawn(self.vrb.idn)
         obj = self.spawn(self.obj.idn)
         return u"{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
-            sbj=str(sbj.idn),
-            vrb=str(vrb.idn),
-            obj=str(obj.idn),
+            sbj=str(sbj),
+            vrb=str(vrb),
+            obj=str(obj),
             # TODO:  Would str(x) cause infinite recursion?  Not if str() doesn't call description()
             num=self.presentable(self.num),
             maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
@@ -914,16 +850,6 @@ class LexMySQL(Lex):
             engine=self._engine,
         )
 
-        # If any of the SQL in this module generates an error in PyCharm like one of these:
-        #     <comma join expression> expected, unexpected end of file
-        #                 <reference> expected, unexpected end of file
-        #     '(', <reference>, GROUP, HAVING, UNION, WHERE or '{' expected, got '{'
-        # Then a work-around is to disable SQL inspection:
-        #     Settings | Editor | Language Injections | (uncheck) python: "SQL select/delete/insert/update/create"
-        # Sadly the SQL syntax highlighting is lost.
-        # SEE:  http://i.imgur.com/l61ARUX.png
-        # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
-
         query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
         cursor.execute(query)
         # TODO:  other keys?  sbj-vrb?   obj-vrb?
@@ -1034,23 +960,16 @@ class LexMySQL(Lex):
         # Groan, invent a qiki.Time() class?  Oh where does it end.
         # Might as well make classes qiki.Wheel() and qiki.KitchenSink().
 
-        # cursor.execute(
-        #     "INSERT INTO `{table}` "
-        #            "(idn, sbj, vrb, obj, num, txt, whn) "
-        #     "VALUES (  ?,   ?,   ?,   ?,   ?,   ?,   ?)"
-        #     .format(
-        #         table=self._table,
-        #     ),
-        #     (
-        #         word.idn.raw,
-        #         word.sbj.raw,
-        #         word.vrb.raw,
-        #         word.obj.raw,
-        #         word.num.raw,
-        #         word.txt,
-        #         whn.raw,
-        #     )
-        # )
+        # If any of the SQL in this module generates an error in PyCharm like one of these:
+        #     <comma join expression> expected, unexpected end of file
+        #                 <reference> expected, unexpected end of file
+        #     '(', <reference>, GROUP, HAVING, UNION, WHERE or '{' expected, got '{'
+        # Then a work-around is to disable SQL inspection:
+        #     Settings | Editor | Language Injections | (uncheck) python: "SQL select/delete/insert/update/create"
+        # Sadly the SQL syntax highlighting is lost.
+        # SEE:  http://i.imgur.com/l61ARUX.png
+        # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
+
         self.super_select(
             'INSERT INTO', self.table,
                    '(         idn,      sbj,      vrb,      obj,      num,      txt, whn) '

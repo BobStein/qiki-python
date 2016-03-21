@@ -830,7 +830,9 @@ class WordMoreTests(WordTests):
         self.assertEqual(u'subthing3', subthing3.txt)
 
     def test_description_uses_txt(self):
-        """Detects a"""
+        """Detects word names in a sentence description.
+
+        Detects a bug where Word.description() showed all the parts as their idn.qstring()."""
         description = self.lex(qiki.Lex._IDN_AGENT).description()
         self.assertIn('lex', description)
         self.assertIn('define', description)
@@ -1182,7 +1184,7 @@ class WordSentenceTests(WordTests):
 
     def test_sentence_use_already(self):
         w1 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
-        w2 =self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
+        w2 = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=9, txt=u'x'), 9, u'x')
         self.assertLess(w1.idn, w2.idn)
 
         w3a = self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, txt=u'y'), 8, u'y')
@@ -1231,6 +1233,21 @@ class WordSentenceTests(WordTests):
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt=u'x'), 11, u'x')
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num_add=2, txt=u'x'), 13, u'x')
         self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=None, num_add=2, txt=u'x'), 15, u'x')
+        self.assertGoodSentence(self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=8, num_add=None, txt=u'x'), 8, u'x')
+
+    def test_sentence_conflict_num_num_add(self):
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex.sentence(sbj=self.sam, vrb=self.vet, obj=self.orb, num=99, num_add=-99)
+
+    def test_call_conflict_num_num_add(self):
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.sam.vet(self.orb, num=99, num_add=-99)
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.sam.vet(self.orb, 99, num_add=-99)
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.sam.vet(self.orb, 99, num=-99)
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.sam.vet(self.orb, 99, num=-99, num_add=999999)
 
 
 class WordListingTests(WordTests):
@@ -1702,6 +1719,40 @@ class WordQoolbarTests(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
+        # Output of WordTests.display_all_word_descriptions():
+        #
+        # 1 lex.define(verb, 1, 'define')
+        # 2 lex.define(noun, 1, 'noun')
+        # 3 lex.define(noun, 1, 'verb')
+        # 4 lex.define(noun, 1, 'agent')
+        # 5 lex.define(agent, 1, 'lex')
+        # 6 lex.define(verb, 1, 'qool')
+        # 7 lex.define(verb, 1, 'like')
+        # 8 lex.define(verb, 1, 'delete')
+        # 9 lex.qool(like, 1)
+        # 10 lex.qool(delete, 1)
+        # 11 lex.define(agent, 1, 'anna')
+        # 12 lex.define(agent, 1, 'bart')
+        # 13 lex.define(noun, 1, 'youtube')
+        # 14 lex.define(noun, 1, 'zigzags')
+        # 15 anna.like(youtube, 1)
+        # 16 bart.like(youtube, 10)
+        # 17 anna.like(zigzags, 2)
+        # 18 bart.delete(zigzags, 1)
+        #
+        # 14 ⋅ Word(u'lex')
+        # 12 ⋅ Word(u'define')
+        # 5 ⋅ Word(u'noun')
+        # 4 ⋅ Word(u'verb')
+        # 4 ⋅ Word(u'like')
+        # 3 ⋅ Word(u'agent')
+        # 2 ⋅ Word(u'zigzags')
+        # 2 ⋅ Word(u'youtube')
+        # 2 ⋅ Word(u'qool')
+        # 2 ⋅ Word(u'anna')
+        # 2 ⋅ Word(u'bart')
+        # 2 ⋅ Word(u'delete')
+
     def test_get_all_qool_verbs(self):
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
         # print(", ".join([w.idn.qstring() for w in qool_words]))
@@ -2117,8 +2168,16 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(10, b_l_y_before[-1].num)
         self.assertEqual(30, b_l_y_after[-1].num)
 
+    def find_a_d_z(self):   # Find all the words where bart likes youtube.
+        return self.lex.find_words(sbj=self.anna, vrb=self.delete, obj=self.zigzags)
+
     def test_num_add_out_of_the_blue(self):
-        self.display_all_word_descriptions()
+        a_d_z_before = self.find_a_d_z()
+        self.assertEqual(0, len(a_d_z_before))
+        self.anna.delete(self.zigzags, num_add=-100)
+        a_d_z_after = self.find_a_d_z()
+        self.assertEqual(1, len(a_d_z_after))
+        self.assertEqual(-100, a_d_z_after[0].num)
 
 
     ################## obsolete or maybe someday #################################
