@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Qiki Numbers
 
@@ -7,7 +8,7 @@ Features:
  - arbitrary range
  - monotonicity (memcmp() order)\
 
-Written in 2016 by Bob Stein me@bobste.in
+⓪ PUBLIC DOMAIN - Written in 2016 by Bob Stein me@bobste.in
 
 To the extent possible under law, the author has dedicated all
 copyright and related and neighboring rights to this software to the
