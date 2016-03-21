@@ -260,7 +260,7 @@ class Word(object):
                 elif num is not None:
                     kwargs['num'] = num
 
-            if is_getter:   # FLAVOR:  s.v(o) with no num or num_add -- this is a getter
+            if is_getter:   # s.v(o) flavor -- with no num or num_add -- this is a getter
                 if len(kwargs) != 0:
                     raise self.NoSuchKwarg("Unrecognized keywords in s.v(o) call: " + repr(kwargs))
                 existing_word = self.spawn(sbj=sbj, vrb=self, obj=obj)
@@ -272,7 +272,7 @@ class Word(object):
                         "A setter would need a num or num_add, e.g.:  s.v(o,1)"
                     )
                 return existing_word
-            else:   # FLAVOR:  s.v(o, num or num_add, maybe txt, etc.) -- this is a setter or adder
+            else:   # s.v(o, num or num_add, maybe txt, etc.) flavor -- this is a setter or adder
                 try:
                     kwargs['txt'] = args[2]
                 except IndexError:
@@ -790,6 +790,9 @@ class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary,
     class TableName(str):
         pass
 
+    class NotFound(Exception):
+        pass
+
 
 class LexMySQL(Lex):
     def __init__(self, **kwargs):
@@ -1030,12 +1033,20 @@ class LexMySQL(Lex):
             return True
         return False
 
+    def find_last(self, **kwargs):
+        bunch = self.find_words(**kwargs)
+        # TODO:  Limit find_words() to latest using sql LIMIT.
+        try:
+            return bunch[-1]
+        except IndexError:
+            raise self.NotFound
+
     def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
+        # TODO:  Lex.find()
         """Select words by subject, verb, and/or object.
 
         Return list of words."""
         assert isinstance(jbo_vrb, (list, tuple, set, type(None)))
-        # TODO:  Lex.find()
         query_args = [
             'SELECT '
             'w.idn AS idn, '

@@ -1529,6 +1529,29 @@ class WordFindTests(WordTests):
         self.crave = self.lex.verb(u'crave')
         self.fred = self.lex.agent(u'fred')
 
+        # WordFindTests's lex:
+        #
+        # 1 lex.define(verb, 1, u'define')
+        # 2 lex.define(noun, 1, u'noun')
+        # 3 lex.define(noun, 1, u'verb')
+        # 4 lex.define(noun, 1, u'agent')
+        # 5 lex.define(agent, 1, u'lex')
+        # 6 lex.define(noun, 1, u'apple')
+        # 7 lex.define(noun, 1, u'berry')
+        # 8 lex.define(noun, 1, u'curry')
+        # 9 lex.define(apple, 1, u'macintosh')
+        # 10 lex.define(apple, 1, u'braburn')
+        # 11 lex.define(apple, 1, u'honeycrisp')
+        # 12 lex.define(verb, 1, u'crave')
+        # 13 lex.define(agent, 1, u'fred')
+        #
+        # 13 ⋅ Word(u'lex')
+        # 13 ⋅ Word(u'define')
+        # 6 ⋅ Word(u'noun')
+        # 3 ⋅ Word(u'apple')
+        # 2 ⋅ Word(u'agent')
+        # 2 ⋅ Word(u'verb')
+
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)
         self.assertEqual(3, len(apple_words))
@@ -1643,6 +1666,14 @@ class WordFindTests(WordTests):
         lex_by_idn = self.lex.find_words(idn=qiki.Number(-42))
         self.assertEqual(0, len(lex_by_idn))
 
+    def test_find_last(self):
+        w = self.lex.find_last(obj=self.lex('noun'))
+        self.assertEqual(self.curry, w)
+
+    def test_find_last_not(self):
+        with self.assertRaises(qiki.Lex.NotFound):
+            self.lex.find_last(obj=self.curry)
+
 
 class WordUtilities(WordTests):
 
@@ -1719,7 +1750,7 @@ class WordQoolbarTests(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
-        # Output of WordTests.display_all_word_descriptions():
+        # WordQoolbarTests's lex
         #
         # 1 lex.define(verb, 1, 'define')
         # 2 lex.define(noun, 1, 'noun')
