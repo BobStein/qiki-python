@@ -197,12 +197,14 @@ class Number(numbers.Number):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    # TODO:  Unit tests for Number < object, etc.  Ala 0 < object
+    # FIXME:  Unit tests for Number < object, etc. NOT raising errors.  Ala 0 < object
     # SEE:  test_incomparable()
     def __lt__(self, other):  self._both_real(other); return self._op_ready(self) <  self._op_ready(other)
     def __le__(self, other):  self._both_real(other); return self._op_ready(self) <= self._op_ready(other)
     def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
     def __ge__(self, other):  self._both_real(other); return self._op_ready(self) >= self._op_ready(other)
+
+    # SEE:  Greg Ward sez "avoid implementing __cmp__()", http://gerg.ca/blog/post/2012/python-comparison/
 
     # TODO:  Turn the blather below into documentation
     # The conundrum comparing Numbers is to comply with Postel's Law

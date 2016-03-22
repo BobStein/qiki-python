@@ -1121,7 +1121,7 @@ class LexMySQL(Lex):
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None)))
         assert idn_order in (None, 'ASC', 'DESC')
-        assert is_iterable(jbo_vrb) or jbo_vrb is None
+        assert isinstance(jbo_vrb, (Number, Word, type(None))) or is_iterable(jbo_vrb)
         query_args = [
             'SELECT '
             'w.idn AS idn, '

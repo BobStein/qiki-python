@@ -773,6 +773,7 @@ class WordFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
+    # TODO:  Words as dictionary keys preserve their inchoateness.
 
 
 class WordUnicode(WordTests):
@@ -2229,6 +2230,9 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(       nouns[4].jbo[0].num, qiki.Number(2))
         self.assertEqual(       nouns[4].jbo[1].idn, self.bart_delete_zigzags.idn)
         self.assertEqual(       nouns[4].jbo[1].num, qiki.Number(1))
+
+    # TODO:  Test jbo_vrb = a single verb, not just a container
+    # TODO:  Test jbo_vrb = idn
 
     def find_b_l_y(self):   # Find all the words where bart likes youtube.
         return self.lex.find_words(sbj=self.bart, vrb=self.like, obj=self.youtube)
