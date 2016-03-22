@@ -112,7 +112,12 @@ class Word(object):
 
         But these actions do not make a word choate.  If it was inchoate it stays so:
             word.idn
-            clone = lex(word)
+            word.lex
+            hash(word)
+            word == word2
+            word2 = lex(word)
+            word2 = word.spawn(word)
+            word2 = word.inchoate_copy()
 
         This makes it possible to dereference the parts of a sentence dynamically,
         only when they're needed, e.g.
@@ -516,6 +521,12 @@ class Word(object):
             self.txt
         )
 
+    def inchoate_copy(self):
+        """Word clones itself but the copy is inchoate.
+
+        Useful for words as dictionary keys."""
+        return self.spawn(self.idn)
+
     def populate_from_row(self, row, prefix=''):
         self._idn = row[prefix + 'idn']
         self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
@@ -646,8 +657,8 @@ class Word(object):
             return repr(self)
 
     def __hash__(self):
-        if not self.exists():
-            raise TypeError("A Word must exist to be hashable.")
+        # if not self.exists():
+        #     raise TypeError("A Word must exist to be hashable.")   WRONG!  It can be inchoate.
         return hash(self.idn)
 
     # class Incomparable(TypeError):
@@ -656,30 +667,48 @@ class Word(object):
 
     def __eq__(self, other):
         # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
-        # I think so, but I wonder if this would throw off other things.
-        # Because the "identity" of a word should be fully contained in its idn.
-        # And yet a patronized word (s.v) behaves differently from an orphan word (lex('v')).
-        if other is None:
-            return False   # Needed for a particular word == none comparison in Python 3
-            # Mystery:  Why isn't that test needed in Python 2?
-            # The actual distinction is comparing two word's _word_before_the_dot members when one is None.
-            # That should be a comparison of a word instance with None.
-            # Yet a simple Word() == None does seem to come here.
-            # See test_word.py test_verb_paren_object_deferred_subject()
         try:
-            other_exists = other.exists()
-            other_idn = other.idn
+            return self.idn == other.idn
         except AttributeError:
             return False
-            # It was not pythonic to raise an exception on comparing words and numbers.
-            # That is just plain simply False.
-            # For one thing, it flummoxed is_iterable(), which did `0 in x` and if x was a tuple
-            # containing words, it raised Incomparable, and since Incomparable was a TypeError,
-            # is_iterable() returned False.  Falsely so!
-            # What used to be here:
-            #     raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
-        else:
-            return self.exists() and other_exists and self.idn == other_idn
+
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+        # # I think so, but I wonder if this would throw off other things.
+        # # Because the "identity" of a word should be fully contained in its idn.
+        # # And yet a patronized word (s.v) behaves differently from an orphan word (lex('v')).
+        # if other is None:
+        #     return False   # Needed for a particular word == none comparison in Python 3
+        #     # Mystery:  Why isn't that test needed in Python 2?
+        #     # The actual distinction is comparing two word's _word_before_the_dot members when one is None.
+        #     # That should be a comparison of a word instance with None.
+        #     # Yet a simple Word() == None does seem to come here.
+        #     # See test_word.py test_verb_paren_object_deferred_subject()
+        #
+        # try:
+        #     other_is_inchoate = other._is_inchoate
+        #     self_is_inchoate = self._is_inchoate
+        # except AttributeError:
+        #     return False
+        #
+        #
+        #
+        # try:
+        #     other_exists = other.exists()
+        #     other_idn = other.idn
+        # except AttributeError:
+        #     return False
+        #     # It was not pythonic to raise an exception on comparing words and numbers.
+        #     # That is just plain simply False.
+        #     # For one thing, it flummoxed is_iterable(), which did `0 in x` and if x was a tuple
+        #     # containing words, it raised Incomparable, and since Incomparable was a TypeError,
+        #     # is_iterable() returned False.  Falsely so!
+        #     # What used to be here:
+        #     #     raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
+        # else:
+        #     return self.exists() and other_exists and self.idn == other_idn
 
     @property
     def idn(self):
@@ -1255,8 +1284,6 @@ class LexMySQL(Lex):
                             what=str(e)
                         )
                     )
-                # parameters += [x.unicode()   if isinstance(x, Text) else   idn_from_word_or_number(x).raw
-                #                for x in query_arg]
                 # TODO: make these embedded iterables recursive
             elif query_arg is None:
                 pass
@@ -1349,6 +1376,7 @@ class LexMySQL(Lex):
                 type(x).__name__,
             ))
 
+
 def idn_from_word_or_number(x):
     if isinstance(x, Word):
         return x.idn
@@ -1359,12 +1387,14 @@ def idn_from_word_or_number(x):
             type(x).__name__,
         ))
 
+
 def is_iterable(x):
     # return hasattr(x, '__getitem__')
     # return hasattr(x, '__iter__')
     try:
         0 in x
-    except TypeError:
+    except TypeError as e:
+        assert e.__class__ is TypeError   # A subclass of TypeError raised by comparison operators?  No thanks.
         return False
     else:
         return True

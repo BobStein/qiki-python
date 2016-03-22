@@ -475,6 +475,8 @@ class WordFirstTests(WordTests):
         noun1 = self.lex(u'noun')
         noun2 = qiki.Word(noun1)
         self.assertEqual(noun1, noun2)
+        self.assertTrue(noun1 == noun2)
+        self.assertFalse(noun1 != noun2)   # Exercises Word.__ne__()!
 
     def test_09b_copy_constructor_not_clone_constructor(self):
         noun1 = self.lex(u'noun')
@@ -708,7 +710,14 @@ class WordFirstTests(WordTests):
         # noinspection PyStatementEffect
         w1.sbj
         w2 = self.lex(w1)
+        self.assertFalse(w1._is_inchoate)
         self.assertFalse(w2._is_inchoate)
+
+    def test_17e_inchoate_txt(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertEqual(u"agent", agent.txt)
+        self.assertFalse(agent._is_inchoate)
 
     def test_17e_inchoate_str(self):
         agent = self.lex(qiki.Lex._IDN_AGENT)
@@ -726,6 +735,42 @@ class WordFirstTests(WordTests):
         agent = self.lex(qiki.Lex._IDN_AGENT)
         self.assertTrue(agent._is_inchoate)
         self.assertEqual(qiki.Lex._IDN_AGENT, agent.idn)
+        self.assertTrue(agent._is_inchoate)
+
+    def test_17h_inchoate_hash(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertIsInstance(hash(agent), int)
+        self.assertTrue(agent._is_inchoate)
+
+    def test_17i_inchoate_hash(self):
+        agent1 = self.lex(qiki.Lex._IDN_AGENT)
+        agent2 = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent1._is_inchoate)
+        self.assertTrue(agent2._is_inchoate)
+        self.assertTrue(agent1 == agent2)
+        self.assertTrue(agent1._is_inchoate)
+        self.assertTrue(agent2._is_inchoate)
+
+    def test_17j_inchoate_copy(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertIn(u"agent", agent.txt)
+        self.assertFalse(agent._is_inchoate)
+
+        agent2 = agent.inchoate_copy()
+        self.assertTrue(agent2._is_inchoate)
+
+        self.assertFalse(agent._is_inchoate)
+        self.assertIsNot(agent, agent2)
+        self.assertEqual(qiki.Lex._IDN_AGENT, agent.idn)
+        self.assertEqual(qiki.Lex._IDN_AGENT, agent2.idn)
+        self.assertEqual(agent, agent2)
+
+    def test_17k_inchoate_lex(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
 
