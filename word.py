@@ -1245,7 +1245,18 @@ class LexMySQL(Lex):
             # TODO:  Dictionary for INSERT or UPDATE syntax SET c=z, c=z, c=z, ...
             elif is_iterable(query_arg):
                 query += ','.join(['?']*len(query_arg))
-                parameters += [x.unicode() if isinstance(x, Text) else idn_from_word_or_number(x).raw for x in query_arg]
+                try:
+                    parameters += self._parametric_forms(query_arg)
+                except TypeError as e:
+                    raise self.SuperSelectTypeError(
+                        "super_select() argument {index_one_based} of {n} {what}.".format(
+                            index_one_based=index_zero_based+1,
+                            n=len(query_args),
+                            what=str(e)
+                        )
+                    )
+                # parameters += [x.unicode()   if isinstance(x, Text) else   idn_from_word_or_number(x).raw
+                #                for x in query_arg]
                 # TODO: make these embedded iterables recursive
             elif query_arg is None:
                 pass
@@ -1282,6 +1293,20 @@ class LexMySQL(Lex):
             if debug:
                 print()
         return rows_of_fields
+
+
+    @staticmethod
+    def _parametric_forms(sub_args):
+        """Convert objects into MySQL parameters, ready to be substituted for '?'s."""
+        for sub_arg in sub_args:
+            if isinstance(sub_arg, Text):
+                yield sub_arg.unicode()
+            elif isinstance(sub_arg, Number):
+                yield sub_arg.raw
+            elif isinstance(sub_arg, Word):
+                yield sub_arg.idn.raw
+            else:
+                raise TypeError("contains a " + type(sub_arg).__name__)
 
     def words_from_idns(self, idns):
         words = []
