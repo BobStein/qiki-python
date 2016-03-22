@@ -1700,16 +1700,14 @@ class WordUtilities(WordTests):
         with self.assertRaises(TypeError):
             idn_from_word_or_number(None)
 
-    # noinspection PyStatementEffect
     def test_inequality_words_and_numbers(self):
         """Sanity check to make sure words and idns aren't intrinsically equal or something."""
         word = self.lex.agent
         idn = word.idn
-        exceptions = (qiki.Number.Incomparable, qiki.Word.Incomparable)
-        with self.assertRaises(exceptions):   idn == word
-        with self.assertRaises(exceptions):   idn != word
-        with self.assertRaises(exceptions):   word == idn
-        with self.assertRaises(exceptions):   word != idn
+        self.assertEqual(idn, idn)
+        self.assertNotEqual(idn, word)
+        self.assertNotEqual(word, idn)
+        self.assertEqual(word, word)
 
     def test_words_from_idns(self):
         noun = self.lex(u'noun')
@@ -2166,9 +2164,10 @@ class WordQoolbarTests(WordTests):
     def test_find_words_jbo(self):
         nouns = self.lex.find_words(obj=self.lex.noun, jbo_vrb=self.qool_idns)
         self.assertEqual(5, len(nouns))
-        self.assertEqual(u'noun', nouns[0].txt)
-        self.assertEqual(u'verb', nouns[1].txt)
-        self.assertEqual(u'agent', nouns[2].txt)
+
+        self.assertEqual(u'noun',    nouns[0].txt)
+        self.assertEqual(u'verb',    nouns[1].txt)
+        self.assertEqual(u'agent',   nouns[2].txt)
         self.assertEqual(u'youtube', nouns[3].txt)
         self.assertEqual(u'zigzags', nouns[4].txt)
 

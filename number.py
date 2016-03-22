@@ -171,23 +171,44 @@ class Number(numbers.Number):
         try:
             return_value = cls(x, normalize=True).raw
         except cls.ConstructorTypeError:
+            # FIXME:  Unpythonic to raise an exception here.  0 < object is always True, 0 > object always False.
+            # This way we can't sort a list of Numbers and other objects
+            # (Who cares the order, but it shouldn't raise an exception.)
+            # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
+            # SEE:  about arbitrary ordering, http://docs.python.org/reference/expressions.html#not-in
+
             raise cls.Incomparable("Numbers cannot be compared with " + type(x).__name__)
         else:
             return return_value
 
     # Math
     # ----
-    def __eq__(self, other):                          return self._op_ready(self) == self._op_ready(other)
-    def __ne__(self, other):                          return self._op_ready(self) != self._op_ready(other)
+    # def __eq__(self, other):                          return self._op_ready(self) == self._op_ready(other)
+    # def __ne__(self, other):                          return self._op_ready(self) != self._op_ready(other)
+    def __eq__(self, other):
+        try:
+            self_ready = self._op_ready(self)
+            other_ready = self._op_ready(other)
+        except self.Incomparable:
+            return False
+        else:
+            return self_ready == other_ready
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    # TODO:  Unit tests for Number < object, etc.  Ala 0 < object
+    # SEE:  test_incomparable()
     def __lt__(self, other):  self._both_real(other); return self._op_ready(self) <  self._op_ready(other)
     def __le__(self, other):  self._both_real(other); return self._op_ready(self) <= self._op_ready(other)
     def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
     def __ge__(self, other):  self._both_real(other); return self._op_ready(self) >= self._op_ready(other)
+
     # TODO:  Turn the blather below into documentation
-    # The conundrum is to comply with Postel's Law
+    # The conundrum comparing Numbers is to comply with Postel's Law
     #     "Be conservative in what you emit, and liberal in what you accept."
     # That is, certain raw byte sequences should be interpreted with redundancy on input,
-    # but they should be generated with uniqueness.  E.g. 4-3 should always output 0q82_01 never 0q82
+    # but they should be generated with uniqueness.  E.g. 4 minus 3 should always output 0q82_01 never 0q82
     # They must behave immune to redundancies, e.g. 0q82 == 0q82_01.
     # They may be stored with compactness, e.g. '\x82' for 1.0 in a database.
     #

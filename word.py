@@ -271,10 +271,10 @@ class Word(object):
             try:
                 num = args[1]
             except IndexError:
-                if not kwargs.has_key('num') and not kwargs.has_key('num_add'):
+                if 'num' not in kwargs and 'num_add' not in kwargs:
                     is_getter = True
             else:
-                if kwargs.has_key('num'):
+                if 'num' in kwargs:
                     raise self.SentenceArgs("Twice specified num, by the 2nd position and by keyword.")
                 elif num is not None:
                     kwargs['num'] = num
@@ -650,8 +650,9 @@ class Word(object):
             raise TypeError("A Word must exist to be hashable.")
         return hash(self.idn)
 
-    class Incomparable(TypeError):
-        pass
+    # class Incomparable(TypeError):
+    # class Incomparable(Exception):
+    #     pass
 
     def __eq__(self, other):
         # TODO:  if self._word_before_the_dot != other._word_before_the_dot return False ?
@@ -669,7 +670,14 @@ class Word(object):
             other_exists = other.exists()
             other_idn = other.idn
         except AttributeError:
-            raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
+            return False
+            # It was not pythonic to raise an exception on comparing words and numbers.
+            # That is just plain simply False.
+            # For one thing, it flummoxed is_iterable(), which did `0 in x` and if x was a tuple
+            # containing words, it raised Incomparable, and since Incomparable was a TypeError,
+            # is_iterable() returned False.  Falsely so!
+            # What used to be here:
+            #     raise self.Incomparable("Words cannot be compared with a " + type(other).__name__)
         else:
             return self.exists() and other_exists and self.idn == other_idn
 
@@ -1066,11 +1074,24 @@ class LexMySQL(Lex):
         """Select words by subject, verb, and/or object.
 
         Return a list of choate words.
+
+        idn,sbj,vrb,obj all restrict the list of returned words.
+        jbo_vrb is not restrictive, it's elaborative.
         'jbo' being 'obj' backwards, it represents a reverse reference.
         If jbo_vrb is an iterable of verbs, each returned word has a jbo attribute
         that is a list of inchoate words whose object is the word.
+        In other words, it gloms onto each word the words that point to it.
+
+        The order of words is chronological.
+        idn_order='DESC' for reverse-chronological.
+        The order of jbo words is always chronological.
         """
 
+        assert isinstance(idn, (Number, Word, type(None)))
+        assert isinstance(sbj, (Number, Word, type(None)))
+        assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None)))
+        assert idn_order in (None, 'ASC', 'DESC')
         assert is_iterable(jbo_vrb) or jbo_vrb is None
         query_args = [
             'SELECT '
@@ -1138,6 +1159,10 @@ class LexMySQL(Lex):
 
     @staticmethod
     def _find_where(idn, sbj, vrb, obj):
+        assert isinstance(idn, (Number, Word, type(None)))
+        assert isinstance(sbj, (Number, Word, type(None)))
+        assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None)))
         query_args = []
         if idn is not None:
             query_args += ['AND w.idn=', idn_from_word_or_number(idn)]
@@ -1310,7 +1335,14 @@ def idn_from_word_or_number(x):
         ))
 
 def is_iterable(x):
-    return hasattr(x, '__iter__')
+    # return hasattr(x, '__getitem__')
+    # return hasattr(x, '__iter__')
+    try:
+        0 in x
+    except TypeError:
+        return False
+    else:
+        return True
 
 
 class Text(six.text_type):

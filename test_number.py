@@ -1670,14 +1670,14 @@ class NumberComparisonTests(NumberTests):
 
         with self.assertRaises(Number.Incomparable):   Number(1) <  SomeType()
         with self.assertRaises(Number.Incomparable):   Number(1) <= SomeType()
-        with self.assertRaises(Number.Incomparable):   Number(1) == SomeType()
-        with self.assertRaises(Number.Incomparable):   Number(1) != SomeType()
+        self.assertFalse(                              Number(1) == SomeType())
+        self.assertTrue(                               Number(1) != SomeType())
         with self.assertRaises(Number.Incomparable):   Number(1) >  SomeType()
         with self.assertRaises(Number.Incomparable):   Number(1) >= SomeType()
         with self.assertRaises(Number.Incomparable):   SomeType() <  Number(1)
         with self.assertRaises(Number.Incomparable):   SomeType() <= Number(1)
-        with self.assertRaises(Number.Incomparable):   SomeType() == Number(1)
-        with self.assertRaises(Number.Incomparable):   SomeType() != Number(1)
+        self.assertFalse(                              SomeType() == Number(1))
+        self.assertTrue(                               SomeType() != Number(1))
         with self.assertRaises(Number.Incomparable):   SomeType() >  Number(1)
         with self.assertRaises(Number.Incomparable):   SomeType() >= Number(1)
 
