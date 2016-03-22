@@ -692,8 +692,7 @@ class WordFirstTests(WordTests):
     def test_17b_choate(self):
         """A word that tries to use one of its parts becomes choate."""
         w = self.lex(qiki.Lex._IDN_DEFINE)
-        # noinspection PyStatementEffect
-        w.sbj
+        self.assertEqual(self.lex, w.sbj)
         self.assertFalse(w._is_inchoate)
 
     def test_17c_inchoate_copy_constructor(self):
@@ -716,6 +715,19 @@ class WordFirstTests(WordTests):
         self.assertTrue(agent._is_inchoate)
         self.assertIn(u"agent", str(agent))
         self.assertFalse(agent._is_inchoate)
+
+    def test_17f_inchoate_hasattr(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertTrue(hasattr(agent, 'txt'))
+        self.assertFalse(agent._is_inchoate)
+
+    def test_17g_inchoate_idn(self):
+        agent = self.lex(qiki.Lex._IDN_AGENT)
+        self.assertTrue(agent._is_inchoate)
+        self.assertEqual(qiki.Lex._IDN_AGENT, agent.idn)
+        self.assertTrue(agent._is_inchoate)
+
 
 
 class WordUnicode(WordTests):

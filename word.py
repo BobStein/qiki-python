@@ -102,6 +102,25 @@ class Word(object):
             word.txt
             word.whn
             word.exists()
+
+        These also make a word choate, but they do so implicitly
+        because they use one of the above members:
+            str(word)
+            repr(word)
+            hasattr(word, 'txt')
+            ...a lot more
+
+        But these actions do not make a word choate.  If it was inchoate it stays so:
+            word.idn
+            clone = lex(word)
+
+        This makes it possible to dereference the parts of a sentence dynamically,
+        only when they're needed, e.g.
+
+            word.obj.obj.obj.obj.txt
+
+        It also makes it possible to work with a list of words
+        in a way that's almost as resource-efficient as a list of idns.
         """
         self._idn = idn
         self._is_inchoate = True
@@ -111,7 +130,7 @@ class Word(object):
         """
         Transform an inchoate word into a not-inchoate word.
 
-        Prepare to use one of its properties, sbj, vrb, obj, txt, num, whn.
+        This in preparation to use one of its properties, sbj, vrb, obj, txt, num, whn.
         """
         if self._is_inchoate:
             del self._is_inchoate
@@ -464,6 +483,7 @@ class Word(object):
         #     raise ValueError("Lex is a singleton, so it cannot be copied.")
         #     # TODO:  Explain why this should be.
         #     # TODO:  Resolve inconsistency:  spawn(lex.idn) will clone lex
+        #     # And this ability may be needed anyway in the murk of LexMySQL.__init__()
         assert isinstance(word, Word)   # Instead of type(self)
         self.lex = word.lex
         if word._is_inchoate:
@@ -1045,8 +1065,13 @@ class LexMySQL(Lex):
         # TODO:  Lex.find()
         """Select words by subject, verb, and/or object.
 
-        Return list of words."""
-        assert isinstance(jbo_vrb, (list, tuple, set, type(None)))
+        Return a list of choate words.
+        'jbo' being 'obj' backwards, it represents a reverse reference.
+        If jbo_vrb is an iterable of verbs, each returned word has a jbo attribute
+        that is a list of inchoate words whose object is the word.
+        """
+
+        assert is_iterable(jbo_vrb) or jbo_vrb is None
         query_args = [
             'SELECT '
             'w.idn AS idn, '
@@ -1161,9 +1186,9 @@ class LexMySQL(Lex):
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments shouldn't be strings.  " +
                     "Pass string fields through qiki.Text().  " +
-                    "Or make a class to encapsulate.\n"
-                    "Argument {n1}: '{arg1}\n"
-                    "Argument {n2}: '{arg2}".format(
+                    "Or concatenate with +, or intersperse a None.\n"
+                    "Argument #{n1}: '{arg1}\n"
+                    "Argument #{n2}: '{arg2}".format(
                         n1=index+1,
                         n2=index+2,
                         arg1=arg_previous,
@@ -1171,7 +1196,7 @@ class LexMySQL(Lex):
                     )
                 )
                 # TODO:  Report all the query_args types in this error message.
-                # TODO:  Or maybe this can all just go away...
+                # TODO:  Or maybe this clunky for-loop can all just go away...
                 # Main purpose was to detect mistakes like this:
                 #     super_select('SELECT * in word WHERE txt=', 'define')
                 # Which could be an SQL injection bug.
@@ -1193,7 +1218,7 @@ class LexMySQL(Lex):
                 parameters.append(query_arg.idn.raw)
             # elif isinstance(query_arg, (list, tuple, set)):
             # TODO:  Dictionary for INSERT or UPDATE syntax SET c=z, c=z, c=z, ...
-            elif hasattr(query_arg, '__iter__'):
+            elif is_iterable(query_arg):
                 query += ','.join(['?']*len(query_arg))
                 parameters += [x.unicode() if isinstance(x, Text) else idn_from_word_or_number(x).raw for x in query_arg]
                 # TODO: make these embedded iterables recursive
@@ -1283,6 +1308,9 @@ def idn_from_word_or_number(x):
         raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
             type(x).__name__,
         ))
+
+def is_iterable(x):
+    return hasattr(x, '__iter__')
 
 
 class Text(six.text_type):
