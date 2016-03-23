@@ -1098,6 +1098,9 @@ class LexMySQL(Lex):
         except IndexError:
             raise self.NotFound
 
+    # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
+    # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
+
     def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
         # TODO:  Lex.find()
         """Select words by subject, verb, and/or object.
