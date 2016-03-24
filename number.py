@@ -199,6 +199,7 @@ class Number(numbers.Number):
 
     # FIXME:  Unit tests for Number < object, etc. NOT raising errors.  Ala 0 < object
     # SEE:  test_incomparable()
+    # TODO:  Just define __lt__ and decorate Number with @functools.total_ordering()?
     def __lt__(self, other):  self._both_real(other); return self._op_ready(self) <  self._op_ready(other)
     def __le__(self, other):  self._both_real(other); return self._op_ready(self) <= self._op_ready(other)
     def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
