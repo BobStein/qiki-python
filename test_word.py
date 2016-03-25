@@ -39,6 +39,11 @@ except ImportError:
 
         You also need an empty secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
+
+        In MySQL you only need to create the database:  (LexMySQL will create the table.)
+
+            CREATE DATABASE `database`;
+            GRANT CREATE, INSERT, SELECT ON `database`.* TO 'user'@'localhost' IDENTIFIED BY 'password';
     """)
     sys.exit(1)
 
@@ -51,6 +56,109 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
+
+class SafeNameTests(unittest.TestCase):
+    def test_table_name_at_creation_good(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+
+        def good_table_name(name):
+            credentials['table'] = name
+            lex = qiki.LexMySQL(**credentials)
+            self.assertEqual('verb', lex('define').obj.txt)
+            lex.uninstall_to_scratch()
+            lex.disconnect()
+
+        good_table_name('word_with_no_funny_business')
+        good_table_name('word')
+        good_table_name('w')
+
+    def test_table_name_at_creation_bad(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+
+        def bad_table_name(name):
+            credentials['table'] = name
+            with self.assertRaises(qiki.LexMySQL.IllegalTableName):
+                qiki.LexMySQL(**credentials)
+
+        bad_table_name('')
+        bad_table_name('word_with_backtick_`_oops')
+        bad_table_name('word_with_single_quote_\'_oops')
+        bad_table_name('word_with_double_quote_\"_oops')
+        bad_table_name('word_ending_in_backslash_oops_\\')
+        bad_table_name('word with spaces oops')
+
+    def test_engine_name_good(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+
+        def good_engine_name(name):
+            credentials['engine'] = name
+            lex = qiki.LexMySQL(**credentials)
+            self.assertEqual('verb', lex('define').obj.txt)
+            lex.uninstall_to_scratch()
+            lex.disconnect()
+
+        good_engine_name('MEMORY')
+        good_engine_name('InnoDB')
+
+    def test_engine_name_bad(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+
+        def bad_engine_name(name):
+            credentials['table'] = 'word_for_engine_name_test'
+            credentials['engine'] = name
+            with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
+                qiki.LexMySQL(**credentials)
+
+        bad_engine_name('MEMORY_oops_\'')
+        bad_engine_name('MEMORY_oops_\"')
+        bad_engine_name('MEMORY_oops_`')
+        bad_engine_name('MEMORY_oops_\\')
+        bad_engine_name('MEMORY oops')
+
+    def test_engine_name_bad_explicit_install(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+
+        def bad_engine_name(name):
+            credentials['table'] = 'word_for_engine_name_test_explicit_install'
+            lex = qiki.LexMySQL(**credentials)
+            lex.uninstall_to_scratch()
+            lex._engine = name
+            with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
+                lex.install_from_scratch()
+            lex.disconnect()
+
+        bad_engine_name('MEMORY_backtick_`_oops')
+        bad_engine_name('MEMORY_quote_\'_oops')
+        bad_engine_name('MEMORY_quote_\"_oops')
+
+    def test_table_name_later_bad(self):
+        credentials = secure.credentials.for_unit_testing_database.copy()
+        credentials['table'] = 'innocent_table_name_to_start_with'
+        lex = qiki.LexMySQL(**credentials)
+        self.assertEqual('verb', lex('define').obj.txt)
+
+        lex._table = 'evil_table_name_later_`\'_\"_oops_\\"'
+        with self.assertRaises(qiki.LexMySQL.IllegalTableName):
+            self.assertEqual('verb', lex('define').obj.txt)
+        lex._table = 'innocent_table_name_to_start_with'
+        lex.uninstall_to_scratch()
+        lex.disconnect()
+
+
+class LexErrorTests(unittest.TestCase):
+    """Try to generate common errors with instatiating a Lex."""
+
+    def test_bad_password(self):
+        """
+        Example of the entire bad-password exception message:
+
+        1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
+        """
+        credentials = secure.credentials.for_unit_testing_database.copy()
+        credentials['password'] = 'wrong'
+        with self.assertRaisesRegexp(qiki.Lex.ConnectError, r'Access denied'):
+            qiki.LexMySQL(**credentials)
+
 
 class WordTests(unittest.TestCase):
 
@@ -773,7 +881,7 @@ class WordFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
-    # TODO:  Words as dictionary keys preserve their inchoateness.
+    # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
 
 class WordUnicode(WordTests):
@@ -1784,6 +1892,7 @@ class WordUtilities(WordTests):
         ]))
 
 
+# noinspection SqlDialectInspection
 class WordQoolbarTests(WordTests):
 
     def setUp(self):

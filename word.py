@@ -850,6 +850,9 @@ class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary,
     class NotFound(Exception):
         pass
 
+    class ConnectError(Exception):
+        pass
+
 
 # noinspection SqlDialectInspection
 class LexMySQL(Lex):
@@ -859,7 +862,10 @@ class LexMySQL(Lex):
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
         self._txt_type = kwargs.pop('txt_type', 'TEXT')
-        self._connection = mysql.connector.connect(**kwargs)
+        try:
+            self._connection = mysql.connector.connect(**kwargs)
+        except mysql.connector.ProgrammingError as exception:
+            raise self.ConnectError(str(exception))
         self.lex = self
         self.last_inserted_whn = None
 
@@ -875,7 +881,7 @@ class LexMySQL(Lex):
                 # TODO:  Don't install in unit tests if we're about to uninstall.
                 super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
-                assert False, exception_message
+                raise self.ConnectError(str(exception))
         if not self.exists():
             self._install_seminal_words()
 
@@ -889,6 +895,9 @@ class LexMySQL(Lex):
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
+        if not re.match(self._ENGINE_NAME_VALIDITY, self._engine):
+            raise self.IllegalEngineName("Not a valid table name: " + repr(self._engine))
+
         cursor = self._cursor()
         query = """
             CREATE TABLE IF NOT EXISTS `{table}` (
@@ -906,7 +915,7 @@ class LexMySQL(Lex):
                 DEFAULT COLLATE = utf8mb4_general_ci
             ;
         """.format(
-            table=self._table,
+            table=self.table,
             txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
             engine=self._engine,
         )
@@ -992,10 +1001,10 @@ class LexMySQL(Lex):
         """Deletes table.  Opposite of install_from_scratch()."""
         cursor = self._cursor()
         try:
-            cursor.execute("DELETE FROM `{table}`".format(table=self._table))
+            cursor.execute("DELETE FROM `{table}`".format(table=self.table))
         except mysql.connector.ProgrammingError:
             pass
-        cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self._table))
+        cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self.table))
         cursor.close()
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
@@ -1325,7 +1334,6 @@ class LexMySQL(Lex):
                 print()
         return rows_of_fields
 
-
     @staticmethod
     def _parametric_forms(sub_args):
         """Convert objects into MySQL parameters, ready to be substituted for '?'s."""
@@ -1367,8 +1375,19 @@ class LexMySQL(Lex):
 
     @property
     def table(self):
-        """For super_select()"""
+        """For super_select() and for continuous validation of table name."""
+        if not re.match(self._TABLE_NAME_VALIDITY, self._table):
+            raise self.IllegalTableName("Not a valid table name: " + repr(self._table))
         return self.TableName(self._table)
+
+    _TABLE_NAME_VALIDITY = r'^[A-Za-z_][A-Za-z_0-9]*$'
+    _ENGINE_NAME_VALIDITY = r'^[A-Za-z_][A-Za-z_0-9]*$'
+
+    class IllegalTableName(Exception):
+        pass
+
+    class IllegalEngineName(Exception):
+        pass
 
     def word_from_word_or_number(self, x):
         if isinstance(x, Word):
