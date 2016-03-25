@@ -851,6 +851,7 @@ class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary,
         pass
 
 
+# noinspection SqlDialectInspection
 class LexMySQL(Lex):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
