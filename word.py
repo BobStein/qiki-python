@@ -838,11 +838,11 @@ class Listing(Word):
         pass
 
 
-class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
-                      #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
-                      #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
-                      # Eventually, this will encapsulate other word repositories
-                      # Make this an abstract base class
+class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
+                    #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
+                    #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
+                    # Eventually, this will encapsulate other word repositories
+                    # Make this an abstract base class
 
     class TableName(str):
         pass
@@ -854,7 +854,7 @@ class Lex(Word):   # rename candidates:  Site, Book, Server, Domain, Dictionary,
         pass
 
 
-# noinspection SqlDialectInspection
+# noinspection SqlDialectInspection,SqlNoDataSourceInspection
 class LexMySQL(Lex):
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
@@ -969,7 +969,6 @@ class LexMySQL(Lex):
                                                                     #-----
                                                                     # 3,3
 
-
         if not self.exists():
             self._from_idn(self._IDN_LEX)
         assert self.exists()
@@ -1046,7 +1045,7 @@ class LexMySQL(Lex):
             'VALUES (', (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn), ')')
         # TODO:  named substitutions with NON-prepared statements??
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
-        # THANKS:  http://stackoverflow.com/questions/1947750/does-python-support-mysql-prepared-statements/31979062#31979062
+        # THANKS:  About prepared statements, http://stackoverflow.com/a/31979062/673991
         self._connection.commit()
         cursor.close()
         word.whn = whn
@@ -1078,7 +1077,6 @@ class LexMySQL(Lex):
         )
         return self._populate_from_one_row(word, rows)
 
-
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
@@ -1093,7 +1091,7 @@ class LexMySQL(Lex):
 
     @staticmethod
     def _populate_from_one_row(word, rows):
-        assert len(rows) in (0,1), "Populating from unexpectedly {} rows.".format(len(rows))
+        assert len(rows) in (0, 1), "Populating from unexpectedly {} rows.".format(len(rows))
         if len(rows) > 0:
             row = rows[0]
             word.populate_from_row(row)
@@ -1186,7 +1184,6 @@ class LexMySQL(Lex):
                 new_jbo.populate_from_row(row, prefix='jbo_')
                 word.jbo.append(new_jbo)
         return words
-
 
     def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
         """Select word identifiers by subject, verb, and/or object.
