@@ -326,6 +326,7 @@ class Word(object):
                 )
 
         elif self.is_defined():   # Implicit define, e.g.  beth = lex.agent('beth'); like = lex.verb('like')
+            raise RuntimeError("Not implemented")
             # o(t) in English:  Lex defines an o named t.  And o is a noun.
             # object('text') ==> lex.define(object, Number(1), 'text')
             # And in this o(t) form you can't supply a num.
