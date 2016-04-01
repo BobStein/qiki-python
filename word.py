@@ -148,8 +148,8 @@ class Word(object):
     def _now_it_exists(self):
         self._exists = True
 
-    def _now_it_doesnt_exist(self):
-        self._exists = False
+    # def _now_it_doesnt_exist(self):
+    #     self._exists = False
 
     _IDN_DEFINE = Number(1)
     _IDN_NOUN   = Number(2)
@@ -170,22 +170,28 @@ class Word(object):
 
     def __getattr__(self, attribute_name):
         if attribute_name.startswith('_'):
-            # e.g. ('_not_exists', '_is_inchoate', '_idn', '_word_before_the_dot')
-            return None
+            # What about ('_exists', '_is_inchoate', '_idn', '_word_before_the_dot', '_fields')
+            # return None
+            if attribute_name in ('_exists', '_is_inchoate', '_idn'):
+                return None
             # XXX:  More pythonic to raise AttributeError
+            raise AttributeError("Verbs starting with underscore can't use the subject.verb syntax: " + attribute_name)
         if attribute_name in ('sbj', 'vrb', 'obj', 'num', 'txt', 'whn'):
             self._choate()
-            if self._fields is None:
-                return None
-                # XXX:  More pythonic to raise AttributeError
+            # if self._fields is None:
+            #     return None
+            #     # XXX:  More pythonic to raise AttributeError
             try:
                 return self._fields[attribute_name]
-            except KeyError:
+            except KeyError:   # Why don't I need AttributeError here too for _fields?
                 return None
                 # XXX:  More pythonic to raise AttributeError
         if attribute_name == 'do_not_call_in_templates':
             # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
             return True
+
+        raise RuntimeError("Neither is this implemented any more")
+
         noun_txt = Text.decode_if_desperate(attribute_name)
         assert hasattr(self, 'lex'), "No lex, can't x.{noun}".format(noun=noun_txt)
         assert self.lex is not None, "Lex is None, can't x.{noun}".format(noun=noun_txt)
@@ -214,11 +220,16 @@ class Word(object):
         # Might be safer somehow.
         return return_value
 
+    class NotExist(Exception):
+        pass
+
     def __call__(self, *args, **kwargs):
         if self.is_lex():   # Get a word by its text:  lex(t)  e.g.  lex('anna')
             # lex(t) in English:  Lex defines a word named t.
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
+            # if not existing_word.exists():
+            #     raise self.NotExist
             # FIXME:  if not exists: raise NotExist
             if existing_word.idn == self.idn:
                 return self   # lex is a singleton.  Why is this important?
@@ -226,6 +237,7 @@ class Word(object):
                 return existing_word
 
         elif self.is_a_verb(reflexive=False):   # Quintessential word creation:  s.v(o)  e.g. anna.like(bart)
+            raise RuntimeError("Not implemented")
             # (But not s.verb(o) -- the 'verb' word is not itself a verb.)
             assert self.lex.is_lex()
 
@@ -256,13 +268,19 @@ class Word(object):
 
             # TODO:  Groan, what follows should be simpler...
 
-            if self._word_before_the_dot is None:
-                sbj = self.lex   # Lex can be the implicit subject. Renounce?
-            else:
+            try:
                 sbj = self._word_before_the_dot
+            except AttributeError:
+                sbj = self.lex
+            else:
                 del self._word_before_the_dot
-                # TODO:  This enforces SOME single use, but is it enough?
+                # TODO:  This enforces SOME single use of self._word_before_the_dot, but is it enough?
                 # TODO:  And would this be too much if for example s.v([o1,o2,o3]) needed the sbj multiple times?
+            # if self._word_before_the_dot is None:
+            #     sbj = self.lex   # Lex can be the implicit subject. Renounce?
+            # else:
+            #     sbj = self._word_before_the_dot
+            #     del self._word_before_the_dot
 
             try:
                 obj = args[0]
@@ -290,7 +308,7 @@ class Word(object):
                 existing_word = self.spawn(sbj=sbj, vrb=self, obj=obj)
                 existing_word._from_sbj_vrb_obj()
                 if not existing_word.exists():
-                    raise self.MissingFromLex(
+                    raise self.NotExist(
                         "The form s.v(o) is a getter.  "
                         "So that word must exist already.  "
                         "A setter would need a num or num_add, e.g.:  s.v(o,1)"
@@ -301,8 +319,7 @@ class Word(object):
                     kwargs['txt'] = args[2]
                 except IndexError:
                     kwargs['txt'] = u''
-                return self.sentence(
-                    sbj=sbj,
+                return self.says(
                     vrb=self,
                     obj=obj,
                     **kwargs
@@ -324,6 +341,7 @@ class Word(object):
                 # - haven't thought of a simpler way to do lex.define(o,t) than o(t) yet.
                 # - But if o(t) is acceptable, allow s.o(t) shorthand for s.define(o,t), yuck
             return existing_or_new_word
+
         else:
             raise self.NonVerbUndefinedAsFunctionException(
                 "Word {idn} cannot be used as a function -- it's neither a verb nor a definition.".format(
@@ -355,10 +373,23 @@ class Word(object):
         if possibly_existing_word.exists():
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
-        new_word = self.sentence(sbj=self, vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
+        new_word = self.says(vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
         return new_word
 
-    def sentence(self, *args, **kwargs):
+    def said(self, vrb, obj):
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
+        existing_word = self.spawn(
+            sbj=self,
+            vrb=vrb,
+            obj=obj
+        )
+        existing_word._from_sbj_vrb_obj()
+        if not existing_word.exists():
+            raise self.NotExist
+        return existing_word
+
+    def says(self, vrb, obj, num=None, txt=None, **kwargs):
         """
         Construct a new sentence from a 3-word subject-verb-object.
 
@@ -372,37 +403,58 @@ class Word(object):
             sentence requires an explicit num, define defaults to 1
 
         """
-        original_kwargs = kwargs.copy()
-        try:
-            sbj = kwargs.pop('sbj')
-            vrb = kwargs.pop('vrb')
-            obj = kwargs.pop('obj')
-        except KeyError:
-            raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
+        # original_kwargs = kwargs.copy()
 
-        try:
-            if kwargs['num'] is not None and kwargs['num_add'] is not None:
-                raise self.SentenceArgs("Word.sentence() cannot specify both num and num_add.")
-        except KeyError:
-            pass
+        # sbj = self
 
-        num = kwargs.pop('num', Number(1))
-        txt = kwargs.pop('txt', u'')
-        use_already = kwargs.pop('use_already', False)
+        # try:
+        #     sbj = kwargs.pop('sbj')
+        # except KeyError:
+        #     sbj = self
+        #
+        # try:
+        #     vrb = kwargs.pop('vrb')
+        #     obj = kwargs.pop('obj')
+        # except KeyError:
+        #     raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
+
         num_add = kwargs.pop('num_add', None)
-        if len(args) != 0:
-            raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
+        use_already = kwargs.pop('use_already', False)
         if len(kwargs) != 0:
-            raise self.SentenceArgs("Word.sentence() doesn't understand these arguments: " + repr(kwargs))
+            raise self.SentenceArgs("Word.says() doesn't understand these arguments: " + repr(kwargs))
+
+        if isinstance(txt, numbers.Number) or Text.is_valid(num):
+            txt, num = num, txt
+
+        if num is not None and num_add is not None:
+            raise self.SentenceArgs("Word.says() cannot specify both num and num_add.")
+
+        num = num if num is not None else 1
+        txt = txt if txt is not None else u''
+
+        if not isinstance(num, numbers.Number) or not Text.is_valid(txt):
+            raise self.SentenceArgs("Wrong types for says() num or txt")
+
+        # if kwargs.has_key('num'):
+        #     num = kwargs['num']
+
+        # kw = to_kwargs(args, kwargs, dict(num=[], txt=[]), dict(num=Number(1), txt=u''))
+
+
+        # num = kwargs.pop('num', Number(1))
+        # txt = kwargs.pop('txt', u'')
+        # if len(args) != 0:
+        #     raise self.SentenceArgs("Word.sentence() requires keyword arguments, not positional: " + repr(args))
         # DONE:  Moved use_already option to here, from __call__()?
         # Then define() could just call sentence() without checking spawn() first?
         # Only callers to sentence() are __call__() and define().
-        assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
+
+        # assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
-        assert Text.is_valid(txt),              "txt cannot be a {type}".format(type=type(txt).__name__)
+        # assert Text.is_valid(txt),              "txt cannot be a {type}".format(type=type(txt).__name__)
         new_word = self.spawn(
-            sbj=sbj,
+            sbj=self,
             vrb=vrb,
             obj=obj,
             num=Number(num),
@@ -410,22 +462,23 @@ class Word(object):
         )
         if num_add is not None:
             new_word._from_sbj_vrb_obj()
+            assert isinstance(num_add, numbers.Number)
             if new_word.exists():
                 new_word._fields['num'] += Number(num_add)
             else:
                 new_word._fields['num'] = Number(num_add)
             new_word.save()
         elif use_already:
-            assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
+            # assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
             new_word._from_sbj_vrb_obj_num_txt()
             if not new_word.exists():
                 new_word.save()
         else:
-            assert isinstance(num, numbers.Number), \
-                "Invalid for num to be a {num_type} while num_add is a {num_add_type}".format(
-                    num_type=type(num).__name__,
-                    num_add_type=type(num_add).__name__,
-                )
+            # assert isinstance(num, numbers.Number), \
+            #     "Invalid for num to be a {num_type} while num_add is a {num_add_type}".format(
+            #         num_type=type(num).__name__,
+            #         num_add_type=type(num_add).__name__,
+            #     )
             new_word.save()
         return new_word
 
@@ -443,9 +496,9 @@ class Word(object):
     class NotAVerb(Exception):
         pass
 
-    class MissingFromLex(Exception):
-        """Looking up a word by a nonexistent idn or other criteria."""
-        pass
+    # class MissingFromLex(Exception):
+    #     """Looking up a word by a nonexistent idn or other criteria."""
+    #     pass
 
     class NotAWord(Exception):
         pass
@@ -561,12 +614,12 @@ class Word(object):
     def is_a_noun(self, reflexive=True, **kwargs):
         """Noun is a noun.  Really, everything is a noun."""
         assert hasattr(self, 'lex')
-        return self.is_a(self.lex.noun, reflexive=reflexive, **kwargs)
+        return self.is_a(self.lex.noun(), reflexive=reflexive, **kwargs)
 
     def is_a_verb(self, reflexive=False, **kwargs):
         """Verb is not a verb.  But anything defined as a verb is a verb."""
         assert hasattr(self, 'lex')
-        return self.is_a(self.lex.verb, reflexive=reflexive, **kwargs)
+        return self.is_a(self.lex.verb(), reflexive=reflexive, **kwargs)
 
     def is_define(self):
         """Is this word the one and only verb (whose txt is) 'define'."""
@@ -599,7 +652,7 @@ class Word(object):
         sbj = self.spawn(self.sbj.idn)
         vrb = self.spawn(self.vrb.idn)
         obj = self.spawn(self.obj.idn)
-        return u"{sbj}.{vrb}({obj}, {num}{maybe_txt})".format(
+        return u"{sbj}.says({vrb}, {obj}, {num}{maybe_txt})".format(
             sbj=str(sbj),
             vrb=str(vrb),
             obj=str(obj),
@@ -740,11 +793,9 @@ class Word(object):
         assert isinstance(self.idn, Number)
         self.lex.insert_word(self)
 
-    # noinspection PyClassHasNoInit
     class DefineDuplicateException(Exception):
         pass
 
-    # noinspection PyClassHasNoInit
     class NonVerbUndefinedAsFunctionException(TypeError):
         pass
 
@@ -882,16 +933,33 @@ class LexMySQL(Lex):
                 super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
                 raise self.ConnectError(str(exception))
+
         if not self.exists():
             self._install_seminal_words()
 
+        self._noun = self(self._IDN_NOUN)
+        self._verb = self(self._IDN_VERB)
+
         assert self.exists()
+
         cursor = self._cursor()
         cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         # THANKS:  http://stackoverflow.com/a/27390024/673991
         cursor.close()
         assert self.is_lex()
         assert self._connection.is_connected()
+
+    def noun(self, name=None):
+        if name is None:
+            return self._noun
+        else:
+            return self.define(self._noun, name)
+
+    def verb(self, name=None):
+        if name is None:
+            return self._verb
+        else:
+            return self.define(self._verb, name)
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
@@ -941,13 +1009,11 @@ class LexMySQL(Lex):
         At least that's how they'd be defined if forward references were not a problem.
         """
         def seminal_word(_idn, _obj, _txt):
-            x1 = repr(self._exists)
             """Subject is always 'lex'.  Verb is always 'define'."""
             word = self.spawn(_idn)
             if not word.exists():
                 self._install_word(_idn, _obj, _txt)
                 word = self.spawn(_idn)
-            assert self.max_idn() >= _idn, repr(self) + "\n" + repr(self.__dict__) + "\n" + x1
             assert word.exists()
                                                                     # forward, reflexive references
         seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
@@ -1406,6 +1472,23 @@ def idn_from_word_or_number(x):
         raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
             type(x).__name__,
         ))
+
+
+# class ToKwargsException(Exception):
+#     pass
+#
+#
+# def to_kwargs(args, kwargs, type_dictionary, default_dictionary):
+#     return_value = dict()
+#     for name, types in kwargs:
+#         if kwargs.has_key(name):
+#             return_value[name] = kwargs[name]
+#         else:
+#             for arg in args:
+#                 for type_ in types:
+#                     if isinstance(arg, type_):
+#                         return_value[name] = arg
+#     return return_value
 
 
 def is_iterable(x):
