@@ -159,6 +159,18 @@ class LexErrorTests(unittest.TestCase):
         with self.assertRaisesRegexp(qiki.Lex.ConnectError, r'Access denied'):
             qiki.LexMySQL(**credentials)
 
+    def test_two_lex(self):
+        lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+        max_start = lex1.max_idn()
+        lex1.define(lex1.noun(), u'borg')
+        self.assertEqual(max_start+1, lex1.max_idn())
+        lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+        self.assertEqual(max_start+1, lex2.max_idn())
+
+        # lex2.uninstall_to_scratch()   # WHy does this cause infinite hang?
+        lex2.disconnect()
+        lex1.uninstall_to_scratch()
+        lex1.disconnect()
 
 class WordTests(unittest.TestCase):
 
@@ -251,7 +263,7 @@ class WordTests(unittest.TestCase):
         """
         return self._CheckNewWordCount(self.lex, expected_new_words, message)
 
-    def assertNoNewWords(self, message=None):
+    def assertNoNewWord(self, message=None):
         return self.assertNewWords(0, message)
 
     def assertNewWord(self, message=None):
@@ -362,11 +374,11 @@ class WordExoticTests(WordTests):
 class InternalTestWordTests(WordTests):
     """Test the WordTests class itself."""
 
-    def test_assertNoNewWords(self):
-        with self.assertNoNewWords():
+    def test_assertNoNewWord(self):
+        with self.assertNoNewWord():
             pass
         with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
-            with self.assertNoNewWords():
+            with self.assertNoNewWord():
                 self._make_one_new_word(u'shrubbery')
 
     def test_assertNewWords(self):
@@ -620,7 +632,7 @@ class Word001aFirstTests(WordTests):
         noun = self.lex(u'noun')
         with self.assertNewWord():
             thing1 = self.lex.define(noun, u'thing')
-        with self.assertNoNewWords():
+        with self.assertNoNewWord():
             thing2 = self.lex.define(noun, u'thing')
         self.assertEqual(thing1.idn, thing2.idn)
 
@@ -945,20 +957,6 @@ class Word001aFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
-    def test_18_sentence_by_brackets(self):
-        art = self.lex.define(u'agent', u'art')
-        got = self.lex.verb(u'got')
-        lek = self.lex.noun(u'lek')
-        with self.assertNewWord():
-            word = art.says(vrb=got, obj=lek)
-            # self.lex[art](got)[lek] = 1
-            # word = self.lex[art](got)[lek]
-            # art(got)[lek] = 1
-        self.assertEqual(art, word.sbj)
-        self.assertEqual(got, word.vrb)
-        self.assertEqual(lek, word.obj)
-
-
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
 
@@ -1031,6 +1029,44 @@ class Word001bUtilities(WordTests):
     #         to_kwargs(('x', 'x'), dict(), dict(i=[int], s=[str]), dict(i=0, s=''))
     #     with self.assertRaises(ToKwargsException):
     #         to_kwargs(('x',), dict(s='x'), dict(i=[int], s=[str]), dict(i=0, s=''))
+
+
+class Word001cBrackets(WordTests):
+
+    def setUp(self):
+        super(Word001cBrackets, self).setUp()
+        self.art = self.lex.define(u'agent', u'art')
+        self.got = self.lex.verb(u'got')
+        self.lek = self.lex.noun(u'lek')
+
+    def test_01_subject_says(self):
+        with self.assertNewWord():
+            word = self.art.says(self.got, self.lek, 236)
+
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(236, word.num)
+
+    def test_02_subject_circle_square(self):
+        with self.assertNewWord():
+            self.art(self.got)[self.lek] = 236
+            word = self.art(self.got)[self.lek]
+
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(236, word.num)
+
+    def test_03_lex_square_circle_square(self):
+        with self.assertNewWord():
+            self.lex[self.art](self.got)[self.lek] = 236
+            word = self.lex[self.art](self.got)[self.lek]
+
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(236, word.num)
 
 
 class WordUnicode(WordTests):
@@ -1234,7 +1270,7 @@ class Word003MoreTests(WordTests):
 
         with self.assertNewWord():
             anna.says(like, bart, 8)
-        with self.assertNoNewWords():
+        with self.assertNoNewWord():
             anna.said(like, bart)
         self.assertEqual(8, anna.said(like, bart).num)
 
@@ -1252,32 +1288,33 @@ class Word003MoreTests(WordTests):
         bart =self.lex.define( human, u'bart')
         like = self.lex.verb(u'like')
 
-        with self.assertNewWord():
-            anna.says(like, bart, 5, u"just as friends")
 
-        # with self.assertNoNewWords("Identical s.v(o,n,t) shouldn't generate a new word."):
+        # with self.assertNoNewWord("Identical s.v(o,n,t) shouldn't generate a new word."):
         #     anna.says(like, bart, 5, "just as friends")
         # TODO:  Decide whether these "duplicates" should be errors or insert new records or not...
         # TODO:  Probably it should be an error for some verbs (e.g. like) and not for others (e.g. comment)
         # TODO: 'unique' option?  Imbue "like" verb with properties using Words??
 
+        with self.assertNewWord():    anna.says(like, bart, 5, u"just as friends")
+        with self.assertNewWord():    anna.says(like, bart, 5, u"maybe more than friends")
+        with self.assertNewWord():    anna.says(like, bart, 6, u"maybe more than friends")
+        with self.assertNewWord():    anna.says(like, bart, 7, u"maybe more than friends")
+        with self.assertNewWord():    anna.says(like, bart, 7, u"maybe more than friends")
+        with self.assertNoNewWord():  anna.says(like, bart, 7, u"maybe more than friends", use_already=True)
+        self.assertEqual(7, anna.said(like, bart).num)
+        with self.assertNewWord():    anna.says(like, bart, 6, u"maybe more than friends")
+        self.assertEqual(6, anna.said(like, bart).num)
         with self.assertNewWord():
-            anna.says(like, bart, 5, u"maybe more than friends")
-
-        with self.assertNewWord():
-            anna.says(like, bart, 6, u"maybe more than friends")
-
-        with self.assertNewWord():
-            anna.says(like, bart, 7, u"maybe more than friends")
-
-        with self.assertNewWord():
-            anna.says(like, bart, 7, u"maybe more than friends")
-
-        with self.assertNoNewWords():
             anna.says(like, bart, 7, u"maybe more than friends", use_already=True)
-
-        with self.assertNewWord():
-            anna.says(like, bart, 5, u"just friends")
+            # There was an earlier, identical sentence.
+            # But it's not the latest with that s,v,o.   (There's a 6.)
+            # So a new sentence should be generated.
+            # TODO:  Deal with a diversity of feature contours that might be wanted.
+            # (1) What is identical?  Just s,v,o?  Or s,v,o,n,t?
+            # (2) What is earlier, simply a lower idn?  How about on other lexes?
+        self.assertEqual(7, anna.said(like, bart).num)
+        with self.assertNewWord():    anna.says(like, bart, 5, u"just friends")
+        self.assertEqual(5, anna.said(like, bart).num)
 
     def test_is_defined(self):
         self.assertTrue(self.lex(u'noun').is_defined())
@@ -1889,8 +1926,8 @@ class Word006UseAlready(WordTests):
         with self.assertNewWord():  self.narcissus.says(self.like, self.narcissus, 100, u"Mirror", use_already=False)
 
     def test_use_already_same_true(self):
-        with self.assertNewWord():     self.narcissus.says(self.like, self.narcissus, 100, u"Mirror")
-        with self.assertNoNewWords():  self.narcissus.says(self.like, self.narcissus, 100, u"Mirror", use_already=True)
+        with self.assertNewWord():    self.narcissus.says(self.like, self.narcissus, 100, u"Mirror")
+        with self.assertNoNewWord():  self.narcissus.says(self.like, self.narcissus, 100, u"Mirror", use_already=True)
 
     # TODO:  Deal with the inconsistency that when defining a word, use_already defaults to True.
 

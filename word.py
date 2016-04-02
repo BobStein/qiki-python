@@ -471,9 +471,24 @@ class Word(object):
             new_word.save()
         elif use_already:
             # assert isinstance(num, numbers.Number), "num cannot be a {type}".format(type=type(num).__name__)
-            new_word._from_sbj_vrb_obj_num_txt()
-            if not new_word.exists():
+            old_word = self.spawn(
+                sbj=self,
+                vrb=vrb,
+                obj=obj
+            )
+            old_word._from_sbj_vrb_obj()
+            if not old_word.exists():
                 new_word.save()
+            elif old_word.txt != new_word.txt or old_word.num != new_word.num:
+                new_word.save()
+            else:
+                # There was an identical sentence already.  Fetch it so new_word.exists().
+                new_word._from_sbj_vrb_obj_num_txt()
+                assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
+                    old=old_word.idn.qstring(),
+                    new=new_word.idn.qstring()
+                )
+
         else:
             # assert isinstance(num, numbers.Number), \
             #     "Invalid for num to be a {num_type} while num_add is a {num_add_type}".format(
@@ -943,10 +958,9 @@ class LexMySQL(Lex):
 
         assert self.exists()
 
-        cursor = self._cursor()
-        cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
-        # THANKS:  http://stackoverflow.com/a/27390024/673991
-        cursor.close()
+        with self._cursor() as cursor:
+            cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
+            # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
 
@@ -967,32 +981,31 @@ class LexMySQL(Lex):
         if not re.match(self._ENGINE_NAME_VALIDITY, self._engine):
             raise self.IllegalEngineName("Not a valid table name: " + repr(self._engine))
 
-        cursor = self._cursor()
-        query = """
-            CREATE TABLE IF NOT EXISTS `{table}` (
-                `idn` VARBINARY(255) NOT NULL,
-                `sbj` VARBINARY(255) NOT NULL,
-                `vrb` VARBINARY(255) NOT NULL,
-                `obj` VARBINARY(255) NOT NULL,
-                `num` VARBINARY(255) NOT NULL,
-                `txt` TEXT NOT NULL,
-                `whn` VARBINARY(255) NOT NULL,
-                PRIMARY KEY (`idn`)
+        with self._cursor() as cursor:
+            query = """
+                CREATE TABLE IF NOT EXISTS `{table}` (
+                    `idn` VARBINARY(255) NOT NULL,
+                    `sbj` VARBINARY(255) NOT NULL,
+                    `vrb` VARBINARY(255) NOT NULL,
+                    `obj` VARBINARY(255) NOT NULL,
+                    `num` VARBINARY(255) NOT NULL,
+                    `txt` TEXT NOT NULL,
+                    `whn` VARBINARY(255) NOT NULL,
+                    PRIMARY KEY (`idn`)
+                )
+                    ENGINE = `{engine}`
+                    DEFAULT CHARACTER SET = utf8mb4
+                    DEFAULT COLLATE = utf8mb4_general_ci
+                ;
+            """.format(
+                table=self.table,
+                txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
+                engine=self._engine,
             )
-                ENGINE = `{engine}`
-                DEFAULT CHARACTER SET = utf8mb4
-                DEFAULT COLLATE = utf8mb4_general_ci
-            ;
-        """.format(
-            table=self.table,
-            txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
-            engine=self._engine,
-        )
 
-        query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
-        cursor.execute(query)
-        # TODO:  other keys?  sbj-vrb?   obj-vrb?
-        cursor.close()
+            query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
+            cursor.execute(query)
+            # TODO:  other keys?  sbj-vrb?   obj-vrb?
         self._install_seminal_words()
 
     def _install_seminal_words(self):
@@ -1065,13 +1078,12 @@ class LexMySQL(Lex):
 
     def uninstall_to_scratch(self):
         """Deletes table.  Opposite of install_from_scratch()."""
-        cursor = self._cursor()
-        try:
-            cursor.execute("DELETE FROM `{table}`".format(table=self.table))
-        except mysql.connector.ProgrammingError:
-            pass
-        cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self.table))
-        cursor.close()
+        with self._cursor() as cursor:
+            try:
+                cursor.execute("DELETE FROM `{table}`".format(table=self.table))
+            except mysql.connector.ProgrammingError:
+                pass
+            cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self.table))
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
 
@@ -1080,7 +1092,6 @@ class LexMySQL(Lex):
 
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
-        cursor = self._cursor()
         assert not word.idn.is_nan()
         whn = Number(time.time())
         # TODO:  Enforce uniqueness?
@@ -1114,16 +1125,25 @@ class LexMySQL(Lex):
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # THANKS:  About prepared statements, http://stackoverflow.com/a/31979062/673991
         self._connection.commit()
-        cursor.close()
         word.whn = whn
         # noinspection PyProtectedMember
         word._now_it_exists()
 
+    class Cursor(object):
+        def __init__(self, the_cursor):
+            self.the_cursor = the_cursor
+
+        def __enter__(self):
+            return self.the_cursor
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.the_cursor.close()
+
     def _cursor(self):
-        return self._connection.cursor(prepared=True)
+        return self.Cursor(self._connection.cursor(prepared=True))
 
     def populate_word_from_idn(self, word, idn):
-        rows = self.super_select("SELECT * FROM", self.table, "WHERE idn =", idn)
+        rows = self.super_select('SELECT * FROM', self.table, 'WHERE idn =', idn)
         return self._populate_from_one_row(word, rows)
 
     def populate_word_from_definition(self, word, define_txt):
@@ -1137,22 +1157,22 @@ class LexMySQL(Lex):
     def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
-            "WHERE sbj =", sbj,
-            "AND vrb =", vrb,
-            "AND obj =", obj,
-            "ORDER BY `idn` DESC LIMIT 1"
+            'WHERE sbj =', sbj,
+            'AND vrb =', vrb,
+            'AND obj =', obj,
+            'ORDER BY `idn` DESC LIMIT 1'
         )
         return self._populate_from_one_row(word, rows)
 
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
-            "WHERE sbj =", sbj,
-            "AND vrb =", vrb,
-            "AND obj =", obj,
-            "AND num =", num,
-            "AND txt =", Text(txt),
-            "ORDER BY `idn` DESC LIMIT 1"
+            'WHERE sbj =', sbj,
+            'AND vrb =', vrb,
+            'AND obj =', obj,
+            'AND num =', num,
+            'AND txt =', Text(txt),
+            'ORDER BY `idn` DESC LIMIT 1'
         )
         return self._populate_from_one_row(word, rows)
 
@@ -1305,7 +1325,7 @@ class LexMySQL(Lex):
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
         debug = kwargs.pop('debug', False)
-        query = ""
+        query = ''
         parameters = []
         for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
             if (
@@ -1373,30 +1393,31 @@ class LexMySQL(Lex):
                     )
                 )
             query += ' '
-        cursor = self.lex._connection.cursor(prepared=True)
-        if debug:
-            print("Query", query)
-        cursor.execute(query, parameters)
-        rows_of_fields = []
-        for row in cursor:
-            field_dictionary = dict()
+        # cursor = self.lex._connection.cursor(prepared=True)
+        with self._cursor() as cursor:
             if debug:
-                print(end='\t')
-            for field, name in zip(row, cursor.column_names):
-                if field is None:
-                    value = None
-                elif name == 'txt':
-                    # TODO:  If name ends in 'txt' also?
-                    value = Text.decode_if_desperate(field)
-                else:
-                    value = Number.from_mysql(field)
-                field_dictionary[name] = value
+                print("Query", query)
+            cursor.execute(query, parameters)
+            rows_of_fields = []
+            for row in cursor:
+                field_dictionary = dict()
                 if debug:
-                    print(name, repr(value), end='; ')
-            rows_of_fields.append(field_dictionary)
-            if debug:
-                print()
-        return rows_of_fields
+                    print(end='\t')
+                for field, name in zip(row, cursor.column_names):
+                    if field is None:
+                        value = None
+                    elif name == 'txt':
+                        # TODO:  If name ends in 'txt' also?
+                        value = Text.decode_if_desperate(field)
+                    else:
+                        value = Number.from_mysql(field)
+                    field_dictionary[name] = value
+                    if debug:
+                        print(name, repr(value), end='; ')
+                rows_of_fields.append(field_dictionary)
+                if debug:
+                    print()
+            return rows_of_fields
 
     @staticmethod
     def _parametric_forms(sub_args):
