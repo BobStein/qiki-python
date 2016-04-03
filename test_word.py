@@ -873,7 +873,7 @@ class Word001aFirstTests(WordTests):
     def test_17a_inchoate(self):
         """A word constructed by its idn is inchoate."""
         w = self.lex(qiki.Lex._IDN_DEFINE)
-        self.assertTrue(w._is_inchoate)
+        self.assertTrue(w._is_inchoate, "How can idn define be choate? " + repr(w))
 
     def test_17b_choate(self):
         """A word that tries to use one of its parts becomes choate."""
@@ -1048,7 +1048,7 @@ class Word001cBrackets(WordTests):
         self.assertEqual(self.lek, word.obj)
         self.assertEqual(236, word.num)
 
-    def test_02_subject_circle_square(self):
+    def test_02a_subject_circle_num_square(self):
         with self.assertNewWord():
             self.art(self.got)[self.lek] = 236
             word = self.art(self.got)[self.lek]
@@ -1058,7 +1058,17 @@ class Word001cBrackets(WordTests):
         self.assertEqual(self.lek, word.obj)
         self.assertEqual(236, word.num)
 
-    def test_03_lex_square_circle_square(self):
+    def test_02b_subject_circle_txt_square(self):
+        with self.assertNewWord():
+            self.art(self.got)[self.lek] = u"turnpike"
+            word = self.art(self.got)[self.lek]
+
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(u"turnpike", word.txt)
+
+    def test_03a_lex_square_circle_num_square(self):
         with self.assertNewWord():
             self.lex[self.art](self.got)[self.lek] = 236
             word = self.lex[self.art](self.got)[self.lek]
@@ -1335,17 +1345,17 @@ class Word003MoreTests(WordTests):
         self.assertTrue(like.is_defined())
         self.assertFalse(liking.is_defined())
 
-    def test_non_verb_undefined_as_function_disallowed(self):
-        human = self.lex.define(u'agent', u'human')
-        anna = self.lex.define(human, u'anna')
-        bart = self.lex.define(human, u'bart')
-        like = self.lex.verb(u'like')
-
-        liking = anna.says(like, bart, 5)
-        with self.assertRaises(TypeError):
-            liking(bart)
-        with self.assertRaises(qiki.Word.NonVerbUndefinedAsFunctionException):
-            liking(bart)
+    # def test_non_verb_undefined_as_function_disallowed(self):
+    #     human = self.lex.define(u'agent', u'human')
+    #     anna = self.lex.define(human, u'anna')
+    #     bart = self.lex.define(human, u'bart')
+    #     like = self.lex.verb(u'like')
+    #
+    #     liking = anna.says(like, bart, 5)
+    #     with self.assertRaises(TypeError):
+    #         liking(bart)
+    #     with self.assertRaises(qiki.Word.NonVerbUndefinedAsFunctionException):
+    #         liking(bart)
 
     def test_lex_is_lex(self):
         """Various ways a lex is a singleton, with it's lex."""
@@ -1495,6 +1505,11 @@ class Word003MoreTests(WordTests):
         self.assertEqual(55, word.num)
         with self.assertRaises(qiki.Word.NotExist):
             eve.said(clap, alf)
+
+    # def test_missing_lex_getter(self):
+    #     self.assertEqual(qiki.Lex._IDN_DEFINE, self.lex(u'define').idn)
+    #     with self.assertRaises(qiki.Word.NotExist):
+    #         self.lex(u'defibrillator')
 
 
 class Word004SentenceTests(WordTests):

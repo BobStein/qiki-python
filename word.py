@@ -51,7 +51,8 @@ class Word(object):
             self._from_definition(content)
         elif isinstance(content, Number):   # Word(idn)
             self._inchoate(content)
-        elif isinstance(content, type(self)):   # Word(some_other_word)
+        elif isinstance(content, Word):   # Word(some_other_word)
+        # elif isinstance(content, type(self)):   # Word(some_other_word)
             # TODO:  Should this be Word instead of type(self)?
             # As it stands with type(self), DerivedWord(Word) would TypeError, not copy.
             # For example Lex(Word).  Is that desirable or not?
@@ -224,7 +225,14 @@ class Word(object):
         pass
 
     def __call__(self, *args, **kwargs):
+        kwargs['lex'] = self.lex
+        that = SubjectedVerb(self, *args, **kwargs)
+        return that
+
+
+        raise RuntimeError("Not implemented")
         if self.is_lex():   # Get a word by its text:  lex(t)  e.g.  lex('anna')
+            raise RuntimeError("Not implemented")
             # lex(t) in English:  Lex defines a word named t.
             # lex('text') - find a word by its txt
             existing_word = self.spawn(*args, **kwargs)
@@ -425,6 +433,7 @@ class Word(object):
             raise self.SentenceArgs("Word.says() doesn't understand these arguments: " + repr(kwargs))
 
         if isinstance(txt, numbers.Number) or Text.is_valid(num):
+            # TODO:  Why `or` not `and`?
             txt, num = num, txt
 
         if num is not None and num_add is not None:
@@ -816,6 +825,29 @@ class Word(object):
         pass
 
 
+class SubjectedVerb(Word):
+    def __init__(self, subjected, *args, **kwargs):
+        self._subjected = subjected
+        super(SubjectedVerb, self).__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        objected = key
+        num_and_or_txt = value
+        if isinstance(num_and_or_txt, numbers.Number):
+            num = num_and_or_txt
+            txt = u""
+        elif Text.is_valid(num_and_or_txt):
+            txt = num_and_or_txt
+            num = Number(1)
+        else:
+            raise TypeError("Expecting num and/or txt, got " + repr(num_and_or_txt))
+        self._subjected.says(self, objected, num, txt)
+
+    def __getitem__(self, item):
+        objected = item
+        return self._subjected.said(self, objected)
+
+
 # noinspection PyAttributeOutsideInit
 class Listing(Word):
     meta_word = None   # This is the Word associated with Listing,
@@ -963,6 +995,16 @@ class LexMySQL(Lex):
             # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
+
+    def __call__(self, *args, **kwargs):
+        existing_word = self.spawn(*args, **kwargs)
+        # if not existing_word.exists():
+        #     raise self.NotExist
+        # No because inchoate words become choate, and it's just not (yet) the Word way of doing things.
+        if existing_word.idn == self.idn:
+            return self   # lex is a singleton.  Why is this important?
+        else:
+            return existing_word
 
     def noun(self, name=None):
         if name is None:
