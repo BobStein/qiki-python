@@ -225,6 +225,7 @@ class Word(object):
         pass
 
     def __call__(self, *args, **kwargs):
+        """subject(verb)"""
         kwargs['lex'] = self.lex
         that = SubjectedVerb(self, *args, **kwargs)
         return that
@@ -360,7 +361,8 @@ class Word(object):
 
     def define(self, obj, txt, num=Number(1)):
         # One of the only cases where txt comes before num.  Are there others?
-        """Define a word.  Name it txt.  Its type or class is obj.
+        """
+        Define a word.  Name it txt.  Its type or class is obj.
 
         Example:
             agent = lex('agent')
@@ -382,7 +384,7 @@ class Word(object):
         if possibly_existing_word.exists():
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
-        new_word = self.says(vrb=self.lex(u'define'), obj=obj, num=num, txt=txt)
+        new_word = self.says(vrb=self.lex[u'define'], obj=obj, num=num, txt=txt)
         return new_word
 
     def said(self, vrb, obj):
@@ -401,6 +403,14 @@ class Word(object):
     def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
         """
         Construct a new sentence from a 3-word subject-verb-object.
+
+        Subject is self.
+
+        use_already makes a difference if the same word with the same num and txt
+        exists already AND is the newest word with that sbj-vrb-obj combination.
+        In that case no new sentence is created, the old one is returned.
+
+        Either num or num_add may be specified.
 
         Differences between Word.sentence() and Word.spawn():
             sentence takes a Word-triple, spawn takes an idn-triple.
@@ -432,6 +442,9 @@ class Word(object):
         # if len(kwargs) != 0:
         #     raise self.SentenceArgs("Word.says() doesn't understand these arguments: " + repr(kwargs))
 
+        # assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
         if isinstance(txt, numbers.Number) or Text.is_valid(num):
             # TODO:  Why `or` not `and`?
             (txt, num) = (num, txt)
@@ -443,7 +456,7 @@ class Word(object):
         txt = txt if txt is not None else u''
 
         if not isinstance(num, numbers.Number) or not Text.is_valid(txt):
-            raise self.SentenceArgs("Wrong types for says() num or txt")
+            raise self.SentenceArgs("Wrong types for Word.says() num or txt")
 
         # if kwargs.has_key('num'):
         #     num = kwargs['num']
@@ -459,9 +472,6 @@ class Word(object):
         # Then define() could just call sentence() without checking spawn() first?
         # Only callers to sentence() are __call__() and define().
 
-        # assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type(sbj).__name__)
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
         # assert Text.is_valid(txt),              "txt cannot be a {type}".format(type=type(txt).__name__)
         new_word = self.spawn(
             sbj=self,
@@ -497,7 +507,7 @@ class Word(object):
                     old=old_word.idn.qstring(),
                     new=new_word.idn.qstring()
                 )
-
+                # This is the only path through says() where no new sentence is created.
         else:
             # assert isinstance(num, numbers.Number), \
             #     "Invalid for num to be a {num_type} while num_add is a {num_add_type}".format(
@@ -600,9 +610,11 @@ class Word(object):
         )
 
     def inchoate_copy(self):
-        """Word clones itself but the copy is inchoate.
+        """
+        Word clones itself but the copy is inchoate.
 
-        Useful for words as dictionary keys."""
+        Useful for words as dictionary keys.
+        """
         return self.spawn(self.idn)
 
     def populate_from_row(self, row, prefix=''):
@@ -651,16 +663,19 @@ class Word(object):
         return self.idn == self._IDN_DEFINE
 
     def is_defined(self):
-        """Test whether a word is the product of a definition.
+        """
+        Test whether a word is the product of a definition.
 
-        That is, whether the sentence that creates it uses the verb 'define'."""
+        That is, whether the sentence that creates it uses the verb 'define'.
+        """
         return self.vrb.idn == self._IDN_DEFINE
 
     def is_noun(self):
         return self.idn == self._IDN_NOUN
 
     def is_verb(self):
-        """Not to be confused with is_a_verb().
+        """
+        Not to be confused with is_a_verb().
 
         is_a_verb() -- is this word in a []-(define)-[verb] sentence, recursively.
         is_verb() -- is this the one-and-only "verb" word, i.e. [lex]-(define)-[noun]"verb", i.e. id == _IDN_VERB
@@ -674,16 +689,16 @@ class Word(object):
         return isinstance(self, Lex) and self.exists() and self.idn == self._IDN_LEX
 
     def description(self):
-        sbj = self.spawn(self.sbj.idn)
-        vrb = self.spawn(self.vrb.idn)
-        obj = self.spawn(self.obj.idn)
-        return u"{sbj}.says({vrb}, {obj}, {num}{maybe_txt})".format(
-            sbj=str(sbj),
-            vrb=str(vrb),
-            obj=str(obj),
+        # sbj = self.spawn(self.sbj.idn)
+        # vrb = self.spawn(self.vrb.idn)
+        # obj = self.spawn(self.obj.idn)
+        return u"[{sbj}]({vrb}{maybe_num}{maybe_txt})[{obj}]".format(
+            sbj=str(self.sbj),
+            vrb=str(self.vrb),
+            obj=str(self.obj),
             # TODO:  Would str(x) cause infinite recursion?  Not if str() doesn't call description()
-            num=self.presentable(self.num),
-            maybe_txt=(", " + repr(self.txt)) if self.txt != '' else "",
+            maybe_num=(", " + self.presentable(self.num)) if self.num != 1   else "",
+            maybe_txt=(", " + repr(self.txt))             if self.txt != u'' else "",
         )
 
     @staticmethod
@@ -825,15 +840,16 @@ class Word(object):
         pass
 
 
-class SubjectedVerb(Word):
-    """This is what happens when you s[v].
+class SubjectedVerb(object):
+    """
+    This is what happens when you s(v).
 
-    That is, when you index a subject by a verb.
-    The instance is a clone of the verb,
-    with the added attribute of knowing its subject."""
+    That is, when you subscript a subject by a verb.
+    """
     def __init__(self, subjected, *args, **kwargs):
         self._subjected = subjected
-        super(SubjectedVerb, self).__init__(*args, **kwargs)
+        self._verbed = subjected.spawn(*args, **kwargs)
+        # super(SubjectedVerb, self).__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
         objected = key
@@ -847,19 +863,22 @@ class SubjectedVerb(Word):
         else:
             num = Number(1)
             txt = Text(u"")
-            for num_or_txt in num_and_or_txt:
-                if isinstance(num_or_txt, numbers.Number):
-                    num = num_or_txt
-                elif Text.is_valid(num_or_txt):
-                    txt = num_or_txt
-                else:
-                    raise TypeError("Expecting num and/or txt, got " + repr(num_and_or_txt))
+            if is_iterable(num_and_or_txt):
+                for num_or_txt in num_and_or_txt:
+                    if isinstance(num_or_txt, numbers.Number):
+                        num = num_or_txt
+                    elif Text.is_valid(num_or_txt):
+                        txt = num_or_txt
+                    else:
+                        raise Word.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
+            else:
+                raise Word.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
 
-        self._subjected.says(self, objected, num, txt)
+        self._subjected.says(self._verbed, objected, num, txt)
 
     def __getitem__(self, item):
         objected = item
-        return self._subjected.said(self, objected)
+        return self._subjected.said(self._verbed, objected)
 
 
 # noinspection PyAttributeOutsideInit
@@ -999,8 +1018,8 @@ class LexMySQL(Lex):
         if not self.exists():
             self._install_seminal_words()
 
-        self._noun = self(self._IDN_NOUN)
-        self._verb = self(self._IDN_VERB)
+        self._noun = self[self._IDN_NOUN]
+        self._verb = self[self._IDN_VERB]
 
         assert self.exists()
 
@@ -1010,8 +1029,11 @@ class LexMySQL(Lex):
         assert self.is_lex()
         assert self._connection.is_connected()
 
-    def __call__(self, *args, **kwargs):
-        existing_word = self.spawn(*args, **kwargs)
+    # def __call__(self, *args, **kwargs):
+    #     raise RuntimeError("Use __getitem__ instead, i.e. lex[blah]")
+
+    def __getitem__(self, item):
+        existing_word = self.spawn(item)
         # if not existing_word.exists():
         #     raise self.NotExist
         # No because inchoate words become choate by virtue of calling .exists().
@@ -1023,10 +1045,6 @@ class LexMySQL(Lex):
             return self   # lex is a singleton.  Why is this important?
         else:
             return existing_word
-
-    def __getitem__(self, item):
-        subjected = item
-        return self.spawn(subjected)
 
     def noun(self, name=None):
         if name is None:
@@ -1262,7 +1280,8 @@ class LexMySQL(Lex):
 
     def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
         # TODO:  Lex.find()
-        """Select words by subject, verb, and/or object.
+        """
+        Select words by subject, verb, and/or object.
 
         Return a list of choate words.
 
@@ -1325,21 +1344,23 @@ class LexMySQL(Lex):
         word = None
         for row in rows:
             if word is None or row['idn'] != word.idn:
-                word = self()
+                word = self[None]
                 word.populate_from_row(row)
                 word.jbo = []
                 words.append(word)   # To be continued, we may append to word.jbo later.
             jbo_idn = row.get('jbo_idn', None)
             if jbo_idn is not None:
-                new_jbo = self()
+                new_jbo = self[None]
                 new_jbo.populate_from_row(row, prefix='jbo_')
                 word.jbo.append(new_jbo)
         return words
 
     def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
-        """Select word identifiers by subject, verb, and/or object.
+        """
+        Select word identifiers by subject, verb, and/or object.
 
-        Return list of idns."""
+        Return list of idns.
+        """
         query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
         query_args += self._find_where(idn, sbj, vrb, obj)
         query_args += ['ORDER BY idn ' + idn_order]
@@ -1499,7 +1520,7 @@ class LexMySQL(Lex):
     def words_from_idns(self, idns):
         words = []
         for idn in idns:
-            word = self(idn)
+            word = self[idn]
             # This calls Word._from_idn(), which calls Word._load_row().
             # TODO:  Move them here.
             words.append(word)
@@ -1578,6 +1599,11 @@ def idn_from_word_or_number(x):
 
 
 def is_iterable(x):
+    """
+    Ask permission before using in a for-loop.
+
+    SEE:  http://stackoverflow.com/a/36154791/673991
+    """
     # return hasattr(x, '__getitem__')
     # return hasattr(x, '__iter__')
     try:
@@ -1590,7 +1616,8 @@ def is_iterable(x):
 
 
 class Text(six.text_type):
-    """The class for the Word txt field.
+    """
+    The class for the Word txt field.
 
     The main use of qiki.Text() is for identifying txt field values to Lex.super_select().
     Note the only mention of UTF-8 in this module other than this class is in MySQL configuration.
@@ -1603,7 +1630,6 @@ class Text(six.text_type):
         t.unicode()
     To get the utf8 out:
         t.utf8()
-
     """
     # THANKS:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
     def __new__(cls, the_string):
