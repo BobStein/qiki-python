@@ -1158,6 +1158,54 @@ class Word001cBrackets(WordTests):
         self.assertEqual(99, word.num)
         self.assertEqual(u"brief as can be", word.txt)
 
+    def test_06a_subject_circle_text_square(self):
+        with self.assertNewWord():
+            self.art(u'got')[self.lek] = 2, u"two"
+            word = self.art(self.got)[self.lek]
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(2, word.num)
+        self.assertEqual(u"two", word.txt)
+
+    def test_06b_subject_circle_square_text(self):
+        with self.assertNewWord():
+            self.art(self.got)[u'lek'] = 2, u"two"
+            word = self.art(self.got)[self.lek]
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(2, word.num)
+        self.assertEqual(u"two", word.txt)
+
+    def test_06c_lex_square_text_circle_square(self):
+        with self.assertNewWord():
+            self.lex[u'art'](self.got)[self.lek] = 2, u"two"
+            word = self.art(self.got)[self.lek]
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(2, word.num)
+        self.assertEqual(u"two", word.txt)
+
+    def test_06c_lex_square_circle_square_all_text(self):
+        with self.assertNewWord():
+            self.lex[u'art'](u'got')[u'lek'] = 2, u"two"
+            word = self.art(self.got)[self.lek]
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(2, word.num)
+        self.assertEqual(u"two", word.txt)
+
+    def test_07a_subject_circle_use_already_square(self):
+        with self.assertNewWord():
+            self.art(self.got)[self.lek] = 2, u"two"
+        with self.assertNewWord():
+            self.art(self.got)[self.lek] = 2, u"two"
+        with self.assertNoNewWord():
+            self.art(self.got, use_already=True)[self.lek] = 2, u"two"
+
 
 class WordUnicode(WordTests):
 

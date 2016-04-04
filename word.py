@@ -226,7 +226,6 @@ class Word(object):
 
     def __call__(self, *args, **kwargs):
         """subject(verb)"""
-        kwargs['lex'] = self.lex
         that = SubjectedVerb(self, *args, **kwargs)
         return that
 
@@ -381,6 +380,7 @@ class Word(object):
         # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
         # TODO:  use_already option?
         # But why would anyone want to duplicate a definition with the same txt and num?
+        # Only if a later definition overrode it?
         if possibly_existing_word.exists():
             # TODO:  Create a new word if the num's are different?
             return possibly_existing_word
@@ -842,17 +842,19 @@ class Word(object):
 
 class SubjectedVerb(object):
     """
-    This is what happens when you s(v).
+    This is the result of s(v).
 
     That is, when you subscript a subject by a verb.
     """
-    def __init__(self, subjected, *args, **kwargs):
-        self._subjected = subjected
-        self._verbed = subjected.spawn(*args, **kwargs)
+    def __init__(self, sbj, vrb, *args, **kwargs):
+        self._subjected = sbj
+        self._verbed = self._subjected.spawn(vrb)
+        self._args = args
+        self._kwargs = kwargs
         # super(SubjectedVerb, self).__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
-        objected = key
+        objected = self._subjected.spawn(key)
         num_and_or_txt = value
         if isinstance(num_and_or_txt, numbers.Number):
             num = num_and_or_txt
@@ -874,7 +876,7 @@ class SubjectedVerb(object):
             else:
                 raise Word.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
 
-        self._subjected.says(self._verbed, objected, num, txt)
+        self._subjected.says(self._verbed, objected, num, txt, *self._args, **self._kwargs)
 
     def __getitem__(self, item):
         objected = item
