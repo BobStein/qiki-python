@@ -1068,6 +1068,17 @@ class Word001cBrackets(WordTests):
         self.assertEqual(self.lek, word.obj)
         self.assertEqual(u"turnpike", word.txt)
 
+    def test_02c_subject_circle_txt_num_square(self):
+        with self.assertNewWord():
+            self.art(self.got)[self.lek] = (u"turnpike", 496)
+            word = self.art(self.got)[self.lek]
+
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(u"turnpike", word.txt)
+        self.assertEqual(496, word.num)
+
     def test_03a_lex_square_circle_num_square(self):
         with self.assertNewWord():
             self.lex[self.art](self.got)[self.lek] = 236

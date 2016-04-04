@@ -826,6 +826,11 @@ class Word(object):
 
 
 class SubjectedVerb(Word):
+    """This is what happens when you s[v].
+
+    That is, when you index a subject by a verb.
+    The instance is a clone of the verb,
+    with the added attribute of knowing its subject."""
     def __init__(self, subjected, *args, **kwargs):
         self._subjected = subjected
         super(SubjectedVerb, self).__init__(*args, **kwargs)
@@ -840,7 +845,16 @@ class SubjectedVerb(Word):
             txt = num_and_or_txt
             num = Number(1)
         else:
-            raise TypeError("Expecting num and/or txt, got " + repr(num_and_or_txt))
+            num = Number(1)
+            txt = Text(u"")
+            for num_or_txt in num_and_or_txt:
+                if isinstance(num_or_txt, numbers.Number):
+                    num = num_or_txt
+                elif Text.is_valid(num_or_txt):
+                    txt = num_or_txt
+                else:
+                    raise TypeError("Expecting num and/or txt, got " + repr(num_and_or_txt))
+
         self._subjected.says(self, objected, num, txt)
 
     def __getitem__(self, item):
@@ -1000,11 +1014,19 @@ class LexMySQL(Lex):
         existing_word = self.spawn(*args, **kwargs)
         # if not existing_word.exists():
         #     raise self.NotExist
-        # No because inchoate words become choate, and it's just not (yet) the Word way of doing things.
+        # No because inchoate words become choate by virtue of calling .exists().
+        # And it's just not (yet) the Word way of doing things.
+        #     That is, lots of code asks permission rather than forgiveness.
+        #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
+        #     at this point, whether the word exists or not.
         if existing_word.idn == self.idn:
             return self   # lex is a singleton.  Why is this important?
         else:
             return existing_word
+
+    def __getitem__(self, item):
+        subjected = item
+        return self.spawn(subjected)
 
     def noun(self, name=None):
         if name is None:
