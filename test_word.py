@@ -1491,13 +1491,13 @@ class Word003MoreTests(WordTests):
         #     # noinspection PyArgumentList
         #     self.lex.define(not_a_keyword_argument=33)
 
-    def test_bogus_sentence_kwarg(self):
-        blurt = self.lex.verb(u'blurt')
-        self.lex.says(blurt, self.lex, 1, u'')
-        with self.assertRaises(TypeError):
-            self.lex.says(blurt, self.lex, no_such_keyword_argument=666)
-        with self.assertRaises(qiki.Word.SentenceArgs):
-            self.lex.says(blurt, self.lex, no_such_keyword_argument=666)
+    # def test_bogus_sentence_kwarg(self):
+    #     blurt = self.lex.verb(u'blurt')
+    #     self.lex.says(blurt, self.lex, 1, u'')
+    #     with self.assertRaises(TypeError):
+    #         self.lex.says(blurt, self.lex, no_such_keyword_argument=666)
+    #     with self.assertRaises(qiki.Word.SentenceArgs):
+    #         self.lex.says(blurt, self.lex, no_such_keyword_argument=666)
 
     # def test_missing_sentence_obj(self):
     #     self.lex.verb(u'blurt')
@@ -1665,7 +1665,8 @@ class Word004SentenceTests(WordTests):
     #         self.lex.says()
 
     def test_sentence_bad_args(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        # with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.sam.says(vrb=self.vet, obj=self.orb, no_such_arg=0)
 
     def test_sentence_num_add(self):

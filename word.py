@@ -229,8 +229,8 @@ class Word(object):
         that = SubjectedVerb(self, *args, **kwargs)
         return that
 
-
         raise RuntimeError("Not implemented")
+
         if self.is_lex():   # Get a word by its text:  lex(t)  e.g.  lex('anna')
             raise RuntimeError("Not implemented")
             # lex(t) in English:  Lex defines a word named t.
@@ -398,7 +398,7 @@ class Word(object):
             raise self.NotExist
         return existing_word
 
-    def says(self, vrb, obj, num=None, txt=None, **kwargs):
+    def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
         """
         Construct a new sentence from a 3-word subject-verb-object.
 
@@ -410,8 +410,8 @@ class Word(object):
             sentence takes a Word-triple,
             define takes only one word for the object (sbj and vrb are implied)
             sentence requires an explicit num, define defaults to 1
-
         """
+        # TODO:  rewrite this docstring
         # original_kwargs = kwargs.copy()
 
         # sbj = self
@@ -427,14 +427,14 @@ class Word(object):
         # except KeyError:
         #     raise self.SentenceArgs("Word.sentence() requires sbj, vrb, and obj arguments." + repr(original_kwargs))
 
-        num_add = kwargs.pop('num_add', None)
-        use_already = kwargs.pop('use_already', False)
-        if len(kwargs) != 0:
-            raise self.SentenceArgs("Word.says() doesn't understand these arguments: " + repr(kwargs))
+        # num_add = kwargs.pop('num_add', None)
+        # use_already = kwargs.pop('use_already', False)
+        # if len(kwargs) != 0:
+        #     raise self.SentenceArgs("Word.says() doesn't understand these arguments: " + repr(kwargs))
 
         if isinstance(txt, numbers.Number) or Text.is_valid(num):
             # TODO:  Why `or` not `and`?
-            txt, num = num, txt
+            (txt, num) = (num, txt)
 
         if num is not None and num_add is not None:
             raise self.SentenceArgs("Word.says() cannot specify both num and num_add.")
