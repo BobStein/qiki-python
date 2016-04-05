@@ -292,40 +292,43 @@ class WordDemoTests(WordTests):
         t = u'some text'
         n = qiki.Number(42)
 
-        # Deleter
-        # s[v][o] = 0
-        # s.says(v,o,0)
+        # Deleters
+        s(v)[o] = 0
+        s.says(v,o,0)
 
         # Setters
-        # s[v][o] = 1
-        # s[v][o] = n
-        # s[v][o] = t
-        # s[v][o] = n,t
-        # s[v] = o,n,t
+        s(v)[o] = n,t
+        s(v)[o] = t,n
+        s(v)[o] = t
+        s(v)[o] = n
+        s(v)[o] = 1
+        # s(v) = o,n,t
         # s = v,o,n,t
         # lex[s] = v,o,n,t
         # lex[s][v] = o,n,t
-        # lex[s][v][o] = n,t
-        # lex[s](v)[o] = n,t
+        lex[s](v)[o] = n,t
+        lex[s](v)[o] = t,n
+        lex[s](v)[o] = n
+        lex[s](v)[o] = t
+        lex[s](v)[o] = 1
         s.says(vrb=v, obj=o, num=n, txt=t)
-        s.says(v, o)
-        s.says(v, o, n)
-        s.says(v, o, t)
         s.says(v, o, n, t)
         s.says(v, o, t, n)
+        s.says(v, o, n)
+        s.says(v, o, t)
+        s.says(v, o)
         # s.v(o, n)
         # s.v(o, n, t)
         # s.v(o, num=n)
 
-        # s['define'][o] = t
-        # s['define'][o] = t, n
-        s.define(o, t)
+        s(u'define')[o] = t,n
+        s(u'define')[o] = t
         s.define(o, t, n)
+        s.define(o, t)
 
         # Getters
-        # w = lex[s](v)[o]
-        # w = s(v)[o]
-        # w = s.says(v, o)
+        w = lex[s](v)[o]
+        w = s(v)[o]
         w = s.said(v, o)
 
         # Setter if it does not exist already.  Getter only if it does.
@@ -337,16 +340,20 @@ class WordDemoTests(WordTests):
         # w = s(v, n)[o].setdefault(t)
         # w = s(v, t)[o].setdefault(n)
         # w = s(v)[o].append(n, t)
-        w = s.says(v, o, use_already=True)
+        s(v, use_already=True)[o] = 1;  w = s(v)[o]
+        s(v, use_already=True)[o] = n,t;  w = s(v)[o]
         w = s.says(v, o, n, t, use_already=True)
+        w = s.says(v, o, use_already=True)
         # w = s.v(o, n, use_already=True)
         # w = s.v(o, n, t, use_already=True)
 
         # Set and get the object.
-        # s(v)[o] = n,t; w = s(v)[o]
+        s(v)[o] = n,t; w = s(v)[o]
         w = s.says(v, o, n, t)
 
         # Delta if it exists already.  Setter if it does not.
+        # s(v)[o] += n
+        # s(v, num_add=n)[o]
         s.says(v, o, num_add=n)
         # s.v(o, num_add=n)
 
@@ -963,6 +970,14 @@ class Word001aFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
+    def test_18_define_with_num(self):
+        rock3 = self.lex.define(u'noun', u'rock', 3)
+        self.assertEqual(3, rock3.num)
+        rock33 = self.lex.define(u'noun', u'rock', 33)
+        self.assertEqual(33, rock33.num)
+        rock = self.lex.define(u'noun', u'rock')
+        self.assertEqual(1, rock.num)
+        self.display_all_word_descriptions()
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
 

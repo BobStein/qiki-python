@@ -374,17 +374,17 @@ class Word(object):
             obj = self.spawn(obj)
         assert isinstance(obj, Word)
         assert Text.is_valid(txt), "define() txt cannot be a {}".format(type(txt).__name__)
-        assert isinstance(num, Number)
-        possibly_existing_word = self.spawn(txt)
-        # How to handle "duplications"
-        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
-        # TODO:  use_already option?
-        # But why would anyone want to duplicate a definition with the same txt and num?
-        # Only if a later definition overrode it?
-        if possibly_existing_word.exists():
-            # TODO:  Create a new word if the num's are different?
-            return possibly_existing_word
-        new_word = self.says(vrb=self.lex[u'define'], obj=obj, num=num, txt=txt)
+        # possibly_existing_word = self.spawn(txt)
+        # # How to handle "duplications"
+        # # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
+        # # TODO:  use_already option?
+        # # But why would anyone want to duplicate a definition with the same txt and num?
+        # # Only to override a later definition with the same txt but different num?
+        # # e.g. lex.define(icon, 'smile', 16)
+        # if possibly_existing_word.exists():
+        #     # TODO:  Create a new word if the num's are different?
+        #     return possibly_existing_word
+        new_word = self.says(vrb=self.lex[u'define'], obj=obj, num=Number(num), txt=txt, use_already=True)
         return new_word
 
     def said(self, vrb, obj):
