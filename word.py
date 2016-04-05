@@ -358,7 +358,7 @@ class Word(object):
                 )
             )
 
-    def define(self, obj, txt, num=Number(1)):
+    def define(self, obj, txt):
         # One of the only cases where txt comes before num.  Are there others?
         """
         Define a word.  Name it txt.  Its type or class is obj.
@@ -370,21 +370,33 @@ class Word(object):
         The obj may be identified by its txt, example:
             lex.define('agent', 'fred')
         """
-        if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex('x'))
+        if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex['x'])
             obj = self.spawn(obj)
+        # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
+
         assert isinstance(obj, Word)
         assert Text.is_valid(txt), "define() txt cannot be a {}".format(type(txt).__name__)
-        # possibly_existing_word = self.spawn(txt)
-        # # How to handle "duplications"
-        # # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
-        # # TODO:  use_already option?
-        # # But why would anyone want to duplicate a definition with the same txt and num?
-        # # Only to override a later definition with the same txt but different num?
-        # # e.g. lex.define(icon, 'smile', 16)
-        # if possibly_existing_word.exists():
-        #     # TODO:  Create a new word if the num's are different?
-        #     return possibly_existing_word
-        new_word = self.says(vrb=self.lex[u'define'], obj=obj, num=Number(num), txt=txt, use_already=True)
+
+        # How to handle "duplications"
+
+        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
+        # Maybe someone else will define a word.
+        # Then everyone who tries to define that word will use that first person's definition.
+        # Anything interesting about the first definer of a word?  Maybe not much.
+        # What's important is consistency.
+        # And anyway, anyone could theoretically imbue the word with their own meaning,
+        # applicable to their uses.
+
+        # TODO:  Implement define() via says() with a use_earliest option?
+        # Not really, more subtle than that. Selecting uniqueness on txt and not on sbj.
+
+        # Who cares about num (yet)?  Used to, but now abolished.
+
+        # So anyway, this attempts to find the earliest definition by anybody of the same word:
+        possibly_existing_word = self.spawn(txt)
+        if possibly_existing_word.exists():
+            return possibly_existing_word
+        new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
         return new_word
 
     def said(self, vrb, obj):
@@ -848,7 +860,7 @@ class SubjectedVerb(object):
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
-        self._verbed = self._subjected.spawn(vrb)
+        self._verbed = self._subjected.spawn(vrb)   # TODO:  Move to
         self._args = args
         self._kwargs = kwargs
         # super(SubjectedVerb, self).__init__(*args, **kwargs)
@@ -1234,7 +1246,8 @@ class LexMySQL(Lex):
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
             'WHERE vrb =', Word._IDN_DEFINE,
-            'AND txt =', Text(define_txt)
+            'AND txt =', Text(define_txt),
+            'ORDER BY `idn` ASC LIMIT 1'   # select the EARLIEST definition, so it's the most universal.
         )
         return self._populate_from_one_row(word, rows)
 
@@ -1280,7 +1293,7 @@ class LexMySQL(Lex):
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
 
-    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=None):
+    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=()):
         # TODO:  Lex.find()
         """
         Select words by subject, verb, and/or object.
@@ -1316,7 +1329,7 @@ class LexMySQL(Lex):
             'w.whn AS whn',
             None
         ]
-        if jbo_vrb is not None:
+        if any(jbo_vrb):
             query_args += [
                 ', jbo.idn AS jbo_idn'
                 ', jbo.sbj AS jbo_sbj'
@@ -1328,7 +1341,7 @@ class LexMySQL(Lex):
                 None
             ]
         query_args += 'FROM', self.table, 'AS w', None,
-        if jbo_vrb is not None:
+        if any(jbo_vrb):
             query_args += [
                 'LEFT JOIN', self.table, 'AS jbo '
                     'ON jbo.obj = w.idn '
@@ -1338,7 +1351,7 @@ class LexMySQL(Lex):
         query_args += ['WHERE TRUE', None]
         query_args += self._find_where(idn, sbj, vrb, obj)
         order_clause = 'ORDER BY w.idn ' + idn_order
-        if jbo_vrb is not None:
+        if any(jbo_vrb):
             order_clause += ', jbo.idn ASC'
         query_args += [order_clause]
         rows = self.super_select(*query_args)

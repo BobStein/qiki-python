@@ -321,9 +321,9 @@ class WordDemoTests(WordTests):
         # s.v(o, n, t)
         # s.v(o, num=n)
 
-        s(u'define')[o] = t,n
+        # Definers
+        # s(define)[o] &= t ???
         s(u'define')[o] = t
-        s.define(o, t, n)
         s.define(o, t)
 
         # Getters
@@ -340,6 +340,7 @@ class WordDemoTests(WordTests):
         # w = s(v, n)[o].setdefault(t)
         # w = s(v, t)[o].setdefault(n)
         # w = s(v)[o].append(n, t)
+        # s(v)[o] |= 1 ???
         s(v, use_already=True)[o] = 1;  w = s(v)[o]
         s(v, use_already=True)[o] = n,t;  w = s(v)[o]
         w = s.says(v, o, n, t, use_already=True)
@@ -970,14 +971,25 @@ class Word001aFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
-    def test_18_define_with_num(self):
-        rock3 = self.lex.define(u'noun', u'rock', 3)
-        self.assertEqual(3, rock3.num)
-        rock33 = self.lex.define(u'noun', u'rock', 33)
-        self.assertEqual(33, rock33.num)
-        rock = self.lex.define(u'noun', u'rock')
-        self.assertEqual(1, rock.num)
-        self.display_all_word_descriptions()
+    # def test_18_define_with_num(self):
+    #     rock3 = self.lex.define(u'noun', u'rock', 3)
+    #     self.assertEqual(3, rock3.num)
+    #     rock33 = self.lex.define(u'noun', u'rock', 33)
+    #     self.assertEqual(33, rock33.num)
+    #     rock = self.lex.define(u'noun', u'rock')
+    #     self.assertEqual(1, rock.num)
+    #     self.display_all_word_descriptions()
+
+    def test_18a_define_duplicate(self):
+        noun = self.lex[u'noun']
+        define = self.lex[u'define']
+        punt1 = self.lex.says(define, noun, txt=u'punt')
+        punt2 = self.lex.says(define, noun, txt=u'punt')
+        self.assertNotEqual(punt1.idn, punt2.idn)
+        punt = self.lex.define(noun, u'punt')
+        self.assertEqual(punt.idn, punt1.idn)
+
+
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
 
