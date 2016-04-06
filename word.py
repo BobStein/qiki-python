@@ -1226,17 +1226,35 @@ class LexMySQL(Lex):
         word._now_it_exists()
 
     class Cursor(object):
-        def __init__(self, the_cursor):
-            self.the_cursor = the_cursor
+        def __init__(self, connection):
+            self.connection = connection
 
         def __enter__(self):
+            try:
+                self.the_cursor = self.connection.cursor(prepared=True)
+            except mysql.connector.OperationalError:
+                self.connection.connect()
+                self.the_cursor = self.connection.cursor(prepared=True)
             return self.the_cursor
 
+        # noinspection PyUnusedLocal
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.the_cursor.close()
 
     def _cursor(self):
-        return self.Cursor(self._connection.cursor(prepared=True))
+        return self.Cursor(self._connection)
+
+    def _simulate_connection_neglect(self):
+        """
+        For testing, simulate what happens when the MySQL connection is idle for too long.
+
+        This is easy to achieve, just close the connection.
+        The symptom is the same:
+            mysql.connector.errors.OperationalError: MySQL Connection not available.
+        I originally thought this had something to do with the connection_timeout
+        option aka socket.settimeout(), but it doesn't.
+        """
+        self._connection.close()
 
     def populate_word_from_idn(self, word, idn):
         rows = self.super_select('SELECT * FROM', self.table, 'WHERE idn =', idn)

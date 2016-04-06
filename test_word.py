@@ -14,6 +14,7 @@ import unicodedata
 import unittest
 import uuid
 
+import mysql.connector
 import six
 
 import qiki
@@ -57,6 +58,11 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
+
+# For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
+# while a project was loaded with another secure.credentials.  Hence the following noinspection.
+# The correct package imports when run however.
+# noinspection PyUnresolvedReferences
 class SafeNameTests(unittest.TestCase):
     def test_table_name_at_creation_good(self):
         credentials = secure.credentials.for_unit_testing_database.copy()
@@ -145,6 +151,7 @@ class SafeNameTests(unittest.TestCase):
         lex.disconnect()
 
 
+# noinspection PyUnresolvedReferences
 class LexErrorTests(unittest.TestCase):
     """Try to generate common errors with instatiating a Lex."""
 
@@ -172,6 +179,16 @@ class LexErrorTests(unittest.TestCase):
         lex1.uninstall_to_scratch()
         lex1.disconnect()
 
+    def test_connection_neglect(self):
+        """Test automatic reconnection of the Lex."""
+        lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+        self.assertEqual(1, lex.noun(u'noun').num)
+        lex._simulate_connection_neglect()
+        self.assertEqual(1, lex.noun(u'noun').num)
+        lex.disconnect()
+
+
+# noinspection PyUnresolvedReferences
 class WordTests(unittest.TestCase):
 
     def setUp(self):
