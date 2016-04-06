@@ -990,7 +990,12 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
                     # Eventually, this will encapsulate other word repositories
                     # Make this an abstract base class
 
-    class TableName(str):
+    class SuperIdentifier(str):
+        """Identifier in an SQL super-query that could go in `back-ticks`."""
+        pass
+
+    # noinspection PyClassHasNoInit
+    class TableName(SuperIdentifier):
         pass
 
     class NotFound(Exception):
@@ -1037,9 +1042,8 @@ class LexMySQL(Lex):
 
         assert self.exists()
 
-        with self._cursor() as cursor:
-            cursor.execute('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
-            # THANKS:  http://stackoverflow.com/a/27390024/673991
+        self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
+        # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
 
@@ -1085,7 +1089,7 @@ class LexMySQL(Lex):
                     `vrb` VARBINARY(255) NOT NULL,
                     `obj` VARBINARY(255) NOT NULL,
                     `num` VARBINARY(255) NOT NULL,
-                    `txt` TEXT NOT NULL,
+                    `txt` {txt_type} NOT NULL,
                     `whn` VARBINARY(255) NOT NULL,
                     PRIMARY KEY (`idn`)
                 )
@@ -1099,7 +1103,7 @@ class LexMySQL(Lex):
                 engine=self._engine,
             )
 
-            query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
+            # query = query.replace('TEXT', self._txt_type)   # Workaround for hard error using {txt_type}
             cursor.execute(query)
             # TODO:  other keys?  sbj-vrb?   obj-vrb?
         self._install_seminal_words()
@@ -1174,12 +1178,11 @@ class LexMySQL(Lex):
 
     def uninstall_to_scratch(self):
         """Deletes table.  Opposite of install_from_scratch()."""
-        with self._cursor() as cursor:
-            try:
-                cursor.execute("DELETE FROM `{table}`".format(table=self.table))
-            except mysql.connector.ProgrammingError:
-                pass
-            cursor.execute("DROP TABLE IF EXISTS `{table}`".format(table=self.table))
+        try:
+            self.super_query('DELETE FROM', self.table)
+        except mysql.connector.ProgrammingError:
+            pass
+        self.super_query('DROP TABLE IF EXISTS', self.table)
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
 
@@ -1213,7 +1216,7 @@ class LexMySQL(Lex):
         # SEE:  http://i.imgur.com/l61ARUX.png
         # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
 
-        self.super_select(
+        self.super_query(
             'INSERT INTO', self.table,
                    '(         idn,      sbj,      vrb,      obj,      num,      txt, whn) '
             'VALUES (', (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn), ')')
@@ -1293,7 +1296,21 @@ class LexMySQL(Lex):
 
     @staticmethod
     def _populate_from_one_row(word, rows):
-        assert len(rows) in (0, 1), "Populating from unexpectedly {} rows.".format(len(rows))
+        # assert len(rows) in (0, 1), "Populating from unexpectedly {} rows.".format(len(rows))
+        try:
+            row = next(rows)
+        except StopIteration:
+            return False
+        else:
+            word.populate_from_row(row)
+            try:
+                next(rows)
+            except StopIteration:
+                pass
+            else:
+                assert False, "Populating unexpected extra rows."
+            return True
+
         if len(rows) > 0:
             row = rows[0]
             word.populate_from_row(row)
@@ -1372,7 +1389,9 @@ class LexMySQL(Lex):
         if any(jbo_vrb):
             order_clause += ', jbo.idn ASC'
         query_args += [order_clause]
+
         rows = self.super_select(*query_args)
+
         words = []
         word = None
         for row in rows:
@@ -1437,8 +1456,13 @@ class LexMySQL(Lex):
     class SuperSelectStringString(TypeError):
         pass
 
-    def super_select(self, *query_args, **kwargs):
-        """Build a prepared statement query from a list of sql strings and data parameters."""
+    def _super_parse(self, *query_args, **kwargs):
+        """
+        Build a prepared statement query from a list of sql statement fragments
+        interleaved with data parameters.
+
+        Return the two parameters to cursor.execute(), namely a tuple of query and parameters.
+        """
         # TODO:  Recursive query_args?
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
@@ -1448,9 +1472,9 @@ class LexMySQL(Lex):
         for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
             if (
                     isinstance(arg_previous, six.string_types) and
-                not isinstance(arg_previous, (Text, Lex.TableName)) and
+                not isinstance(arg_previous, (Text, Lex.SuperIdentifier)) and
                     isinstance(arg_next, six.string_types) and
-                not isinstance(arg_next, (Text, Lex.TableName))
+                not isinstance(arg_next, (Text, Lex.SuperIdentifier))
             ):
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments shouldn't be strings.  " +
@@ -1475,9 +1499,9 @@ class LexMySQL(Lex):
             if isinstance(query_arg, Text):
                 query += '?'
                 parameters.append(query_arg.unicode())
-            elif isinstance(query_arg, Lex.TableName):
+            elif isinstance(query_arg, Lex.SuperIdentifier):
                 query += '`' + query_arg + '`'
-            elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.TableName tests.
+            elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
                 query += query_arg
             elif isinstance(query_arg, Number):
                 query += '?'
@@ -1511,12 +1535,21 @@ class LexMySQL(Lex):
                     )
                 )
             query += ' '
-        # cursor = self.lex._connection.cursor(prepared=True)
+        if debug:
+            print("Query", query)
+        return query, parameters
+
+    def super_query(self, *query_args, **kwargs):
+        query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
-            if debug:
-                print("Query", query)
             cursor.execute(query, parameters)
-            rows_of_fields = []
+
+    def super_select(self, *query_args, **kwargs):
+        debug = kwargs.pop('debug', False)
+        query, parameters = self._super_parse(*query_args, **kwargs)
+        with self._cursor() as cursor:
+            cursor.execute(query, parameters)
+            # rows_of_fields = []
             for row in cursor:
                 field_dictionary = dict()
                 if debug:
@@ -1532,10 +1565,11 @@ class LexMySQL(Lex):
                     field_dictionary[name] = value
                     if debug:
                         print(name, repr(value), end='; ')
-                rows_of_fields.append(field_dictionary)
+                # rows_of_fields.append(field_dictionary)
+                yield field_dictionary
                 if debug:
                     print()
-            return rows_of_fields
+            # return rows_of_fields
 
     @staticmethod
     def _parametric_forms(sub_args):
@@ -1568,7 +1602,7 @@ class LexMySQL(Lex):
 
     def max_idn(self):
         # TODO:  Store max_idn in a singleton table?
-        one_row_one_col = self.super_select('SELECT MAX(idn) AS max_idn FROM', self.table)
+        one_row_one_col = list(self.super_select('SELECT MAX(idn) AS max_idn FROM', self.table))
         if len(one_row_one_col) < 1:
             return Number(0)
         return_value = one_row_one_col[0]['max_idn']
