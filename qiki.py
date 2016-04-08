@@ -19,4 +19,6 @@ from word import Word
 from word import Lex
 from word import LexMySQL
 from word import Listing
+from word import Qoolbar
+from word import QoolbarSimple
 from word import Text

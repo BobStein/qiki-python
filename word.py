@@ -1056,7 +1056,7 @@ class LexMySQL(Lex):
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
 
-    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=()):
+    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=(), obj_group=False):
         # TODO:  Lex.find()
         """
         Select words by subject, verb, and/or object.
@@ -1073,6 +1073,8 @@ class LexMySQL(Lex):
         The order of words is chronological.
         idn_order='DESC' for reverse-chronological.
         The order of jbo words is always chronological.
+
+        obj_group=True to collapse by obj.
         """
 
         assert isinstance(idn, (Number, Word, type(None)))
@@ -1111,8 +1113,13 @@ class LexMySQL(Lex):
                         'AND jbo.vrb in (', jbo_vrb, ')',
                 None
             ]
+
         query_args += ['WHERE TRUE', None]
         query_args += self._find_where(idn, sbj, vrb, obj)
+
+        if obj_group:
+            query_args += ['GROUP BY obj', None]
+
         order_clause = 'ORDER BY w.idn ' + idn_order
         if any(jbo_vrb):
             order_clause += ', jbo.idn ASC'
@@ -1274,7 +1281,7 @@ class LexMySQL(Lex):
             cursor.execute(query, parameters)
 
     def super_select(self, *query_args, **kwargs):
-        debug = kwargs.pop('debug', False)
+        debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             cursor.execute(query, parameters)
@@ -1287,7 +1294,7 @@ class LexMySQL(Lex):
                         value = None
                     elif name == 'txt':
                         # TODO:  If name ends in 'txt' also?
-                        value = Text.decode_if_desperate(field)
+                        value = Text.decode_if_you_must(field)
                     else:
                         value = Number.from_mysql(field)
                     field_dictionary[name] = value
@@ -1419,7 +1426,7 @@ class Text(six.text_type):
             ))
 
     @classmethod
-    def decode_if_desperate(cls, x):
+    def decode_if_you_must(cls, x):
         """For __getattr__() name argument."""
         try:
             return cls(x)
@@ -1443,6 +1450,46 @@ class Text(six.text_type):
         return isinstance(x, six.text_type)
 
 
+class Qoolbar(object):
+    pass
+
+
+class QoolbarSimple(Qoolbar):
+    def __init__(self, lex):
+        self.lex = lex
+        self.say_initial_verbs()
+
+    def say_initial_verbs(self):
+        qool = self.lex.verb(u'qool')
+        iconify = self.lex.verb(u'iconify')
+
+        like = self.lex.verb(u'like')
+        self.lex(qool, use_already=True)[like] = 1
+        self.lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
+
+        delete = self.lex.verb(u'delete')
+        self.lex(qool, use_already=True)[delete] = 1
+        self.lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
+
+    def get_verbs(self):
+        qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True)
+        print("VERBS", len(qoolifications))
+        # TODO:  Use jbo_vrb to find iconify's?
+        verbs = []
+        for qoolification in qoolifications:
+            qool_verb = qoolification.obj
+            icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb)
+            icon = icons[-1]
+            # TODO:  Limit find_words to latest iconify using sql.
+            verbs.append(dict(
+                idn=qool_verb.idn.qstring(),
+                icon_url=icon.txt,
+                name=qool_verb.txt,
+            ))
+        return verbs
+
+
+
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
 # DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
@@ -1459,15 +1506,6 @@ class Text(six.text_type):
 # TODO:  ......and then "become" (i.e. by a database read and some shenanigans) words?
 # TODO:  Singleton pattern, so e.g. Word('noun') is Word('noun')
 # TODO:  Logging callbacks
-
-# TODO:  Exotic syntax?
-#        (s)[v](o)
-#        (s)[v](o, 2)
-#        (s)[v](o, "why")
-#    Or:
-#        [s](v)[o]
-#        [s](v, 2)[o]
-#        [s](v, "why")[o]
 
 # TODO:  Implement use_already as a "verb property".  Aka "adverb"??
 # lex.noun('adverb')
@@ -1518,3 +1556,17 @@ class Text(six.text_type):
 # It seems to rely on non-singleton lexes (that is,
 # more than one word instance that is also a LexMySQL instance)
 # for the database record to be written at the birth of a lex.
+
+# TODO:  define imbues a word with a string name, by which it can be found.  Another way?
+# Better to do that with a "name" verb?
+# So instead of:
+#     lex-define-noun "path"
+#     lex-browse-path "/root"
+# it could be:
+#     lex-define-noun  <-- this is the path word
+#     lex-name-path "path"   <-- this is how you find it
+#     lex-browse-path "/root"
+# That way the uniqueness thing would be confined to vrb=name words
+# And there could be defined nouns that didn't have a name, known only by their idn
+# Or maybe rewinding to the first method, an unnamed define would have a blank txt
+# And that didn't have to be unique, and could never be Word(txt) searched for.

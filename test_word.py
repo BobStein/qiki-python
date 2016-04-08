@@ -819,8 +819,8 @@ class Word001aFirstTests(WordTests):
             qiki.Text(b'string')
 
     def test_13d_text_decode(self):
-        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_desperate(u'string'))
-        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_desperate(b'string'))
+        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_you_must(u'string'))
+        self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_you_must(b'string'))
 
     # noinspection SpellCheckingInspection
     def test_13e_text_postel(self):
