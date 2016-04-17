@@ -14,7 +14,6 @@ import unicodedata
 import unittest
 import uuid
 
-import mysql.connector
 import six
 
 import qiki
@@ -2297,43 +2296,41 @@ class WordQoolbarTests(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
+    def disabled_test_display_all_word_descriptions(self):
+        """
+        1 [lex](define, u'define')[verb]
+        2 [lex](define, u'noun')[noun]
+        3 [lex](define, u'verb')[noun]
+        4 [lex](define, u'agent')[noun]
+        5 [lex](define, u'lex')[agent]
+        6 [lex](define, u'qool')[verb]
+        7 [lex](define, u'like')[verb]
+        8 [lex](define, u'delete')[verb]
+        9 [lex](qool)[like]
+        10 [lex](qool)[delete]
+        11 [lex](define, u'anna')[agent]
+        12 [lex](define, u'bart')[agent]
+        13 [lex](define, u'youtube')[noun]
+        14 [lex](define, u'zigzags')[noun]
+        15 [anna](like)[youtube]
+        16 [bart](like, 10)[youtube]
+        17 [anna](like, 2)[zigzags]
+        18 [bart](delete)[zigzags]
 
-    def test_display_all_word_descriptions(self):
+        14 ⋅ Word(u'lex')
+        12 ⋅ Word(u'define')
+        5 ⋅ Word(u'noun')
+        4 ⋅ Word(u'like')
+        4 ⋅ Word(u'verb')
+        3 ⋅ Word(u'agent')
+        2 ⋅ Word(u'qool')
+        2 ⋅ Word(u'bart')
+        2 ⋅ Word(u'youtube')
+        2 ⋅ Word(u'zigzags')
+        2 ⋅ Word(u'delete')
+        2 ⋅ Word(u'anna')
+        """
         self.display_all_word_descriptions()
-
-        # WordQoolbarTests's lex
-        #
-        # 1 [lex](define, u'define')[verb]
-        # 2 [lex](define, u'noun')[noun]
-        # 3 [lex](define, u'verb')[noun]
-        # 4 [lex](define, u'agent')[noun]
-        # 5 [lex](define, u'lex')[agent]
-        # 6 [lex](define, u'qool')[verb]
-        # 7 [lex](define, u'like')[verb]
-        # 8 [lex](define, u'delete')[verb]
-        # 9 [lex](qool)[like]
-        # 10 [lex](qool)[delete]
-        # 11 [lex](define, u'anna')[agent]
-        # 12 [lex](define, u'bart')[agent]
-        # 13 [lex](define, u'youtube')[noun]
-        # 14 [lex](define, u'zigzags')[noun]
-        # 15 [anna](like)[youtube]
-        # 16 [bart](like, 10)[youtube]
-        # 17 [anna](like, 2)[zigzags]
-        # 18 [bart](delete)[zigzags]
-        #
-        # 14 ⋅ Word(u'lex')
-        # 12 ⋅ Word(u'define')
-        # 5 ⋅ Word(u'noun')
-        # 4 ⋅ Word(u'like')
-        # 4 ⋅ Word(u'verb')
-        # 3 ⋅ Word(u'agent')
-        # 2 ⋅ Word(u'qool')
-        # 2 ⋅ Word(u'bart')
-        # 2 ⋅ Word(u'youtube')
-        # 2 ⋅ Word(u'zigzags')
-        # 2 ⋅ Word(u'delete')
-        # 2 ⋅ Word(u'anna')
 
     def test_get_all_qool_verbs(self):
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)

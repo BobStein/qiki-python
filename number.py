@@ -171,7 +171,7 @@ class Number(numbers.Number):
         try:
             return_value = cls(x, normalize=True).raw
         except cls.ConstructorTypeError:
-            # FIXME:  Unpythonic to raise an exception here.  0 < object is always True, 0 > object always False.
+            # FIXME:  Not pythonic to raise an exception here.  0 < object is always True, 0 > object always False.
             # This way we can't sort a list of Numbers and other objects
             # (Who cares the order, but it shouldn't raise an exception.)
             # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
