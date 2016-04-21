@@ -833,30 +833,42 @@ class NumberBasicTests(NumberTests):
         # So Number faithfully stored all 53 bits from the float.
 
     def test_float_qigits_fractional_neg(self):
-        self.assertEqual('0q7E00_E666666667', str(Number(-0.1, qigits=5)))
-        self.assertEqual('0q7E00_E66666666667', str(Number(-0.1, qigits=6)))
+        self.assertEqual('0q7E00_E666666666', str(Number(-0.1, qigits=5)))
+        self.assertEqual('0q7E00_E66666666666', str(Number(-0.1, qigits=6)))
         self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=7)))
         self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=8)))
         self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=9)))
 
-        self.assertEqual('0q7E00_CCCCCCCCCE', str(Number(-0.2, qigits=5)))   # FIXME: this should be 0q7E00_CCCCCCCCCD
-        self.assertEqual('0q7E00_CCCCCCCCCCCE', str(Number(-0.2, qigits=6)))
+        self.assertEqual('0q7E00_CCCCCCCCCD', str(Number(-0.2, qigits=5)))
+        self.assertEqual('0q7E00_CCCCCCCCCCCD', str(Number(-0.2, qigits=6)))
         self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=7)))
         self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=8)))
         self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=9)))
 
     def test_float_qigits_neg(self):
-        self.assertEqual('0q7D_FEE6666667', str(Number(-1.1, qigits=5)))   # FIXME: sometimes* this is 0q7D_FEE6666666666660 ?!?!  *change -0.2 test above to 0q7E00_CCCCCCCCCD  -- may be fixed with qigits a function parameter only
-        self.assertEqual('0q7D_FEE666666667', str(Number(-1.1, qigits=6)))
-        self.assertEqual('0q7D_FEE66666666667', str(Number(-1.1, qigits=7)))
+        self.assertEqual('0q7D_FEE6666666', str(Number(-1.1, qigits=5)))
+        self.assertEqual('0q7D_FEE666666666', str(Number(-1.1, qigits=6)))
+        self.assertEqual('0q7D_FEE66666666666', str(Number(-1.1, qigits=7)))
         self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=8)))   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
         self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=9)))
 
-        self.assertEqual('0q7D_FECCCCCCCE', str(Number(-1.2, qigits=5)))   # FIXME: this should be 0q7D_FECCCCCCCD
-        self.assertEqual('0q7D_FECCCCCCCCCE', str(Number(-1.2, qigits=6)))
-        self.assertEqual('0q7D_FECCCCCCCCCCCE', str(Number(-1.2, qigits=7)))
+        self.assertEqual('0q7D_FECCCCCCCD', str(Number(-1.2, qigits=5)))
+        self.assertEqual('0q7D_FECCCCCCCCCD', str(Number(-1.2, qigits=6)))
+        self.assertEqual('0q7D_FECCCCCCCCCCCD', str(Number(-1.2, qigits=7)))
         self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=8)))
         self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=9)))
+
+    def test_float_qigits_negative_one_bug(self):
+        self.assertEqual('0q7D_FF', str(Number(-1.0)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=9)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=8)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=7)))   # not 0q7D_FF000000000001
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=6)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=5)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=4)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=3)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=2)))
+        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=1)))
 
     def test_floats_and_q_strings(self):
 

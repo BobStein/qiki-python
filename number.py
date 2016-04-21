@@ -533,7 +533,7 @@ class Number(numbers.Number):
     # These 8 bytes are the
     QIGITS_PRECISION_DEFAULT = 8
 
-    def _from_float(self, x, qigits = None):
+    def _from_float(self, x, qigits=None):
         """Construct a Number from a Python IEEE 754 double-precision floating point number
 
         The big unwrapped if reveals this conversion in its lambdas:
@@ -576,7 +576,8 @@ class Number(numbers.Number):
         assert x == significand_base_256 * 256.0**exponent_base_256
         assert 0.00390625 <= abs(significand_base_256) < 1.0
 
-        qan_integer = int(significand_base_256 * exp256(qigits) + 0.5)
+        rounder = +0.5 if x >= 0 else -0.5
+        qan_integer = int(significand_base_256 * exp256(qigits) + rounder)
         qan00 = pack_integer(qan_integer, qigits)
         qan = right_strip00(qan00)
 
