@@ -1505,10 +1505,24 @@ class QoolbarSimple(Qoolbar):
             jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
             jbo_strictly=True
         )
-        return qool_verbs
+        verbs = []
+        qool = self.lex.verb(u'qool')
+        iconify = self.lex.verb(u'iconify')
+        for qool_verb in qool_verbs:
+            has_qool = False
+            last_iconify_url = None
+            for aux in qool_verb.jbo:
+                if aux.vrb == qool:
+                    has_qool = True
+                elif aux.vrb == iconify:
+                    last_iconify_url = aux.txt
+            if has_qool and last_iconify_url is not None:
+                qool_verb.icon_url = last_iconify_url
+                verbs.append(qool_verb)
+        return verbs
 
     def get_verbs(self):
-        return self.get_verbs_old()
+        return self.get_verbs_new()
 
     def get_verbs_old(self):
         qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True)

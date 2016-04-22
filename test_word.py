@@ -2783,14 +2783,14 @@ class WordQoolbarTests(WordTests):
         self.assertEqual([w.txt      for w in verbs_old], [w.txt         for w in verbs_new])
         self.assertEqual([w.icon_url for w in verbs_old], [w.jbo[-1].txt for w in verbs_new])
 
-    def test_qoolbar_verbs_extraneous_qool(self):
+    def test_qoolbar_verbs_qool_without_inconify(self):
         bleep = self.lex.verb(u'bleep')
         self.lex(self.qool)[bleep] = 1
 
         verbs = self.qoolbar.get_verbs()
         self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
 
-    def test_qoolbar_verbs_extraneous_iconify(self):
+    def test_qoolbar_verbs_iconify_without_qool(self):
         bleep = self.lex.verb(u'bleep')
         self.lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
 
