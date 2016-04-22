@@ -987,15 +987,6 @@ class Word001aFirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
-    # def test_18_define_with_num(self):
-    #     rock3 = self.lex.define(u'noun', u'rock', 3)
-    #     self.assertEqual(3, rock3.num)
-    #     rock33 = self.lex.define(u'noun', u'rock', 33)
-    #     self.assertEqual(33, rock33.num)
-    #     rock = self.lex.define(u'noun', u'rock')
-    #     self.assertEqual(1, rock.num)
-    #     self.display_all_word_descriptions()
-
     def test_18a_define_duplicate(self):
         noun = self.lex[u'noun']
         define = self.lex[u'define']
@@ -2278,11 +2269,14 @@ class WordQoolbarTests(WordTests):
 
     def setUp(self):
         super(WordQoolbarTests, self).setUp()
+
+        self.qoolbar = qiki.QoolbarSimple(self.lex)
         self.qool = self.lex.verb(u'qool')
         self.like = self.lex.verb(u'like')
         self.delete = self.lex.verb(u'delete')
-        self.lex.says(self.qool, self.like, qiki.Number(1))
-        self.lex.says(self.qool, self.delete, qiki.Number(1))
+
+        # self.lex.says(self.qool, self.like, qiki.Number(1))
+        # self.lex.says(self.qool, self.delete, qiki.Number(1))
         self.anna = self.lex.define(u'agent', u'anna')
         self.bart = self.lex.define(u'agent', u'bart')
         self.youtube = self.lex.noun(u'youtube')
@@ -2296,7 +2290,7 @@ class WordQoolbarTests(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
-    def disabled_test_display_all_word_descriptions(self):
+    def disable_test_display_all_word_descriptions(self):
         """
         1 [lex](define, u'define')[verb]
         2 [lex](define, u'noun')[noun]
@@ -2304,41 +2298,46 @@ class WordQoolbarTests(WordTests):
         4 [lex](define, u'agent')[noun]
         5 [lex](define, u'lex')[agent]
         6 [lex](define, u'qool')[verb]
-        7 [lex](define, u'like')[verb]
-        8 [lex](define, u'delete')[verb]
+        7 [lex](define, u'iconify')[verb]
+        8 [lex](define, u'like')[verb]
         9 [lex](qool)[like]
-        10 [lex](qool)[delete]
-        11 [lex](define, u'anna')[agent]
-        12 [lex](define, u'bart')[agent]
-        13 [lex](define, u'youtube')[noun]
-        14 [lex](define, u'zigzags')[noun]
-        15 [anna](like)[youtube]
-        16 [bart](like, 10)[youtube]
-        17 [anna](like, 2)[zigzags]
-        18 [bart](delete)[zigzags]
+        10 [lex](iconify, 16, u'http://tool.qiki.info/icon/thumbsup_16.png')[like]
+        11 [lex](define, u'delete')[verb]
+        12 [lex](qool)[delete]
+        13 [lex](iconify, 16, u'http://tool.qiki.info/icon/delete_16.png')[delete]
+        14 [lex](define, u'anna')[agent]
+        15 [lex](define, u'bart')[agent]
+        16 [lex](define, u'youtube')[noun]
+        17 [lex](define, u'zigzags')[noun]
+        18 [anna](like)[youtube]
+        19 [bart](like, 10)[youtube]
+        20 [anna](like, 2)[zigzags]
+        21 [bart](delete)[zigzags]
 
-        14 ⋅ Word(u'lex')
-        12 ⋅ Word(u'define')
+        17 ⋅ Word(u'lex')
+        13 ⋅ Word(u'define')
         5 ⋅ Word(u'noun')
-        4 ⋅ Word(u'like')
-        4 ⋅ Word(u'verb')
+        5 ⋅ Word(u'verb')
+        5 ⋅ Word(u'like')
         3 ⋅ Word(u'agent')
+        3 ⋅ Word(u'delete')
         2 ⋅ Word(u'qool')
+        2 ⋅ Word(u'iconify')
+        2 ⋅ Word(u'anna')
         2 ⋅ Word(u'bart')
         2 ⋅ Word(u'youtube')
         2 ⋅ Word(u'zigzags')
-        2 ⋅ Word(u'delete')
-        2 ⋅ Word(u'anna')
         """
         self.display_all_word_descriptions()
 
     def test_get_all_qool_verbs(self):
+        """Make sure the qool verbs were found."""
         self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
         # print(", ".join([w.idn.qstring() for w in qool_words]))
         # print(", ".join([n.qstring() for n in qool_idns]))
 
-    def test_find_qool_(self):
-        """Find by a list of verbs."""
+    def test_find_qool_verbed_words(self):
+        """Find words with qool verbs."""
         qool_uses = self.lex.find_words(vrb=self.qool_idns)
         self.assertEqual(4, len(qool_uses))
         self.assertEqual(qool_uses[0].sbj, self.anna)
@@ -2346,6 +2345,8 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[2].sbj, self.anna)
         self.assertEqual(qool_uses[3].sbj, self.bart)
 
+    def test_find_qool_verbed_words_with_particular_object(self):
+        """Find words with qool verbs and a specific object."""
         qool_uses = self.lex.find_words(vrb=self.qool_idns, obj=self.youtube)
         self.assertEqual(2, len(qool_uses))
         self.assertEqual(qool_uses[0].sbj, self.anna)
@@ -2353,6 +2354,8 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[1].sbj, self.bart)
         self.assertEqual(qool_uses[1].num, qiki.Number(10))
 
+    def test_find_qool_verbed_words_with_particular_subject(self):
+        """Find words with qool verbs and a specific subject."""
         qool_uses = self.lex.find_words(vrb=self.qool_idns, sbj=self.bart)
         self.assertEqual(2, len(qool_uses))
         self.assertEqual(qool_uses[0].obj, self.youtube)
@@ -2701,27 +2704,32 @@ class WordQoolbarTests(WordTests):
 
     def test_find_words_jbo(self):
         nouns = self.lex.find_words(obj=self.lex.noun(), jbo_vrb=self.qool_idns)
-        self.assertEqual(5, len(nouns))
+        self.assertEqual([
+            u'noun',
+            u'verb',
+            u'agent',
+            u'youtube',
+            u'zigzags',
+        ], [noun.txt for noun in nouns])
 
-        self.assertEqual(u'noun',    nouns[0].txt)
-        self.assertEqual(u'verb',    nouns[1].txt)
-        self.assertEqual(u'agent',   nouns[2].txt)
-        self.assertEqual(u'youtube', nouns[3].txt)
-        self.assertEqual(u'zigzags', nouns[4].txt)
+        self.assertEqual([], nouns[0].jbo)
+        self.assertEqual([], nouns[1].jbo)
+        self.assertEqual([], nouns[2].jbo)
+        self.assertEqual([self.anna_like_youtube, self.bart_like_youtube], nouns[3].jbo)
+        self.assertEqual([self.anna_like_zigzags, self.bart_delete_zigzags], nouns[4].jbo)
 
-        self.assertEqual(0, len(nouns[0].jbo))
-        self.assertEqual(0, len(nouns[1].jbo))
-        self.assertEqual(0, len(nouns[2].jbo))
-        self.assertEqual(2, len(nouns[3].jbo))
-        self.assertEqual(       nouns[3].jbo[0].idn, self.anna_like_youtube.idn)
-        self.assertEqual(       nouns[3].jbo[0].num, qiki.Number(1))
-        self.assertEqual(       nouns[3].jbo[1].idn, self.bart_like_youtube.idn)
-        self.assertEqual(       nouns[3].jbo[1].num, qiki.Number(10))
-        self.assertEqual(2, len(nouns[4].jbo))
-        self.assertEqual(       nouns[4].jbo[0].idn, self.anna_like_zigzags.idn)
-        self.assertEqual(       nouns[4].jbo[0].num, qiki.Number(2))
-        self.assertEqual(       nouns[4].jbo[1].idn, self.bart_delete_zigzags.idn)
-        self.assertEqual(       nouns[4].jbo[1].num, qiki.Number(1))
+        self.assertIsInstance(nouns[4].jbo[0].num, qiki.Number)
+        self.assertIsInstance(nouns[4].jbo[0].txt, qiki.Text)   # (This was broken once.)
+
+    def test_find_words_jbo_inner(self):
+        nouns = self.lex.find_words(obj=self.lex.noun(), jbo_vrb=self.qool_idns, jbo_strictly=True)
+        self.assertEqual([
+            u'youtube',
+            u'zigzags',
+        ], [noun.txt for noun in nouns])
+
+        self.assertEqual([self.anna_like_youtube, self.bart_like_youtube], nouns[0].jbo)
+        self.assertEqual([self.anna_like_zigzags, self.bart_delete_zigzags], nouns[1].jbo)
 
     # TODO:  Test jbo_vrb = a single verb, not just a container
     # TODO:  Test jbo_vrb = idn
@@ -2761,6 +2769,17 @@ class WordQoolbarTests(WordTests):
         a_d_z_after = self.find_a_d_z()
         self.assertEqual(1, len(a_d_z_after))
         self.assertEqual(-100, a_d_z_after[0].num)
+
+    def test_qoolbar_verbs(self):
+        verbs_old = self.qoolbar.get_verbs()
+        verbs_new = self.qoolbar.get_verbs_new()
+
+        self.assertEqual([d['idn'] for d in verbs_old],      [w.idn.qstring() for w in verbs_new])
+        self.assertEqual([d['name'] for d in verbs_old],     [w.txt for w in verbs_new])
+        self.assertIsInstance(verbs_new[0].jbo[-1].txt, qiki.Text)
+        # self.assertEqual(verbs_old[0]['icon_url'], verbs_new[0].jbo[-1].txt)
+        # self.assertEqual(verbs_old[1]['icon_url'], verbs_new[1].jbo[-1].txt)
+        self.assertEqual([d['icon_url'] for d in verbs_old], [w.jbo[-1].txt for w in verbs_new])
 
 
     ################## obsolete or maybe someday #################################

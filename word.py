@@ -1040,10 +1040,9 @@ class LexMySQL(Lex):
             try:
                 next(rows)
             except StopIteration:
-                pass
+                return True
             else:
                 assert False, "Populating unexpected extra rows."
-            return True
 
     def find_last(self, **kwargs):
         bunch = self.find_words(**kwargs)
@@ -1056,7 +1055,17 @@ class LexMySQL(Lex):
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
 
-    def find_words(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC', jbo_vrb=(), obj_group=False):
+    def find_words(
+        self,
+        idn=None,
+        sbj=None,
+        vrb=None,
+        obj=None,
+        idn_order='ASC',
+        jbo_vrb=(),
+        obj_group=False,
+        jbo_strictly=False
+    ):
         # TODO:  Lex.find()
         """
         Select words by subject, verb, and/or object.
@@ -1067,14 +1076,15 @@ class LexMySQL(Lex):
         jbo_vrb is not restrictive, it's elaborative.
         'jbo' being 'obj' backwards, it represents a reverse reference.
         If jbo_vrb is an iterable of verbs, each returned word has a jbo attribute
-        that is a list of inchoate words whose object is the word.
-        In other words, it gloms onto each word the words that point to it.
+        that is a list of choate words whose object is the word.
+        In other words, it gloms onto each word the words that point to it (using approved verbs).
 
         The order of words is chronological.
         idn_order='DESC' for reverse-chronological.
         The order of jbo words is always chronological.
 
         obj_group=True to collapse by obj.
+        jbo_strictly means only words that are glommed.
         """
 
         assert isinstance(idn, (Number, Word, type(None)))
@@ -1107,8 +1117,9 @@ class LexMySQL(Lex):
             ]
         query_args += 'FROM', self.table, 'AS w', None,
         if any(jbo_vrb):
+            join = 'JOIN' if jbo_strictly else 'LEFT JOIN'
             query_args += [
-                'LEFT JOIN', self.table, 'AS jbo '
+                join, self.table, 'AS jbo '
                     'ON jbo.obj = w.idn '
                         'AND jbo.vrb in (', jbo_vrb, ')',
                 None
@@ -1135,6 +1146,9 @@ class LexMySQL(Lex):
                 word.populate_from_row(row)
                 word.jbo = []
                 words.append(word)   # To be continued, we may append to word.jbo later.
+                # (So yield would not work here -- because word continues to be modified after
+                # it gets appended to words.  Similarly new_jbo after appended to word.jbo.
+                # No wait, that part is final.)
             jbo_idn = row.get('jbo_idn', None)
             if jbo_idn is not None:
                 new_jbo = self[None]
@@ -1292,8 +1306,7 @@ class LexMySQL(Lex):
                 for field, name in zip(row, cursor.column_names):
                     if field is None:
                         value = None
-                    elif name == 'txt':
-                        # TODO:  If name ends in 'txt' also?
+                    elif name.endswith('txt'):   # including jbo_txt
                         value = Text.decode_if_you_must(field)
                     else:
                         value = Number.from_mysql(field)
@@ -1427,11 +1440,16 @@ class Text(six.text_type):
 
     @classmethod
     def decode_if_you_must(cls, x):
-        """For __getattr__() name argument."""
+        """
+        Interpret a MySQL txt field.  (Possibly the only use left.)
+
+        Was once used by Word.__getattr__() on its name argument, when lex.word_name was a thing.
+        (Now we do lex[u'word_name'] instead.)
+        """
         try:
-            return cls(x)
+            return cls(x)   # This works in Python 3.  It raises an exception in Python 2.
         except TypeError:
-            return cls(x.decode('utf-8'))
+            return cls(x.decode('utf-8'))   # This happens in Python 2.
 
     def unicode(self):
         return six.text_type(self)
@@ -1456,6 +1474,7 @@ class Qoolbar(object):
 
 class QoolbarSimple(Qoolbar):
     def __init__(self, lex):
+        assert isinstance(lex, Lex)
         self.lex = lex
         self.say_initial_verbs()
 
@@ -1471,9 +1490,20 @@ class QoolbarSimple(Qoolbar):
         self.lex(qool, use_already=True)[delete] = 1
         self.lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
 
+    def get_verbs_new(self):
+        qool_verbs = self.lex.find_words(
+            vrb=self.lex[u'define'],
+            obj=self.lex[u'verb'],
+            jbo_vrb=(self.lex[u'iconify'],),
+            jbo_strictly=True
+        )
+        return qool_verbs
+
     def get_verbs(self):
+        return self.get_verbs_old()
+
+    def get_verbs_old(self):
         qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True)
-        print("VERBS", len(qoolifications))
         # TODO:  Use jbo_vrb to find iconify's?
         verbs = []
         for qoolification in qoolifications:
