@@ -1022,33 +1022,33 @@ class Word001bUtilities(WordTests):
         self.assertNotEqual(word, idn)
         self.assertEqual(word, word)
 
-    def test_words_from_idns(self):
-        noun = self.lex[u'noun']
-        agent = self.lex[u'agent']
-        define = self.lex[u'define']
-        self.assertEqual([
-            noun,
-            agent,
-            define
-        ], self.lex.words_from_idns([
-            noun.idn,
-            agent.idn,
-            define.idn
-        ]))
+    # def test_words_from_idns(self):
+    #     noun = self.lex[u'noun']
+    #     agent = self.lex[u'agent']
+    #     define = self.lex[u'define']
+    #     self.assertEqual([
+    #         noun,
+    #         agent,
+    #         define
+    #     ], self.lex.words_from_idns([
+    #         noun.idn,
+    #         agent.idn,
+    #         define.idn
+    #     ]))
 
-    def test_raw_values_from_idns(self):
-        noun = self.lex[u'noun']
-        agent = self.lex[u'agent']
-        define = self.lex[u'define']
-        self.assertEqual([
-            noun.idn.raw,
-            agent.idn.raw,
-            define.idn.raw,
-        ], self.lex.raws_from_idns([
-            noun.idn,
-            agent.idn,
-            define.idn,
-        ]))
+    # def test_raw_values_from_idns(self):
+    #     noun = self.lex[u'noun']
+    #     agent = self.lex[u'agent']
+    #     define = self.lex[u'define']
+    #     self.assertEqual([
+    #         noun.idn.raw,
+    #         agent.idn.raw,
+    #         define.idn.raw,
+    #     ], self.lex.raws_from_idns([
+    #         noun.idn,
+    #         agent.idn,
+    #         define.idn,
+    #     ]))
 
     # def test_to_kwargs(self):
     #     self.assertEqual(dict(i=42, s='x'), to_kwargs((42, 'x'), dict(), dict(i=[int], s=[str]), dict(i=0, s='')))
@@ -2272,6 +2272,7 @@ class WordQoolbarTests(WordTests):
 
         self.qoolbar = qiki.QoolbarSimple(self.lex)
         self.qool = self.lex.verb(u'qool')
+        self.iconify = self.lex.verb(u'iconify')
         self.like = self.lex.verb(u'like')
         self.delete = self.lex.verb(u'delete')
 
@@ -2771,16 +2772,38 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(-100, a_d_z_after[0].num)
 
     def test_qoolbar_verbs(self):
-        verbs_old = self.qoolbar.get_verbs()
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+
+    def test_qoolbar_verbs_new_way(self):
+        verbs_old = self.qoolbar.get_verbs_old()
         verbs_new = self.qoolbar.get_verbs_new()
 
-        self.assertEqual([d['idn'] for d in verbs_old],      [w.idn.qstring() for w in verbs_new])
-        self.assertEqual([d['name'] for d in verbs_old],     [w.txt for w in verbs_new])
-        self.assertIsInstance(verbs_new[0].jbo[-1].txt, qiki.Text)
-        # self.assertEqual(verbs_old[0]['icon_url'], verbs_new[0].jbo[-1].txt)
-        # self.assertEqual(verbs_old[1]['icon_url'], verbs_new[1].jbo[-1].txt)
-        self.assertEqual([d['icon_url'] for d in verbs_old], [w.jbo[-1].txt for w in verbs_new])
+        self.assertEqual([w.idn      for w in verbs_old], [w.idn         for w in verbs_new])
+        self.assertEqual([w.txt      for w in verbs_old], [w.txt         for w in verbs_new])
+        self.assertEqual([w.icon_url for w in verbs_old], [w.jbo[-1].txt for w in verbs_new])
 
+    def test_qoolbar_verbs_extraneous_qool(self):
+        bleep = self.lex.verb(u'bleep')
+        self.lex(self.qool)[bleep] = 1
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+
+    def test_qoolbar_verbs_extraneous_iconify(self):
+        bleep = self.lex.verb(u'bleep')
+        self.lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+
+    def test_qoolbar_verbs_one_more(self):
+        bleep = self.lex.verb(u'bleep')
+        self.lex(self.qool)[bleep] = 1
+        self.lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual([self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']], verbs)
 
     ################## obsolete or maybe someday #################################
 

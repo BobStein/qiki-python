@@ -1330,21 +1330,21 @@ class LexMySQL(Lex):
             else:
                 raise TypeError("contains a " + type(sub_arg).__name__)
 
-    def words_from_idns(self, idns):
-        # TODO:  Generator?  Is this even used anywhere??
-        words = []
-        for idn in idns:
-            word = self[idn]
-            words.append(word)
-        return words
+    # def words_from_idns(self, idns):
+    #     # TODO:  Generator?  Is this even used anywhere??
+    #     words = []
+    #     for idn in idns:
+    #         word = self[idn]
+    #         words.append(word)
+    #     return words
 
-    @classmethod
-    def raws_from_idns(cls, idns):
-        # TODO:  Generator?  Is this even used anywhere??
-        raws = []
-        for idn in idns:
-            raws.append(idn.raw)
-        return raws
+    # @classmethod
+    # def raws_from_idns(cls, idns):
+    #     # TODO:  Generator?  Is this even used anywhere??
+    #     raws = []
+    #     for idn in idns:
+    #         raws.append(idn.raw)
+    #     return raws
 
     def max_idn(self):
         # TODO:  Store max_idn in a singleton table?
@@ -1389,13 +1389,19 @@ def idn_from_word_or_number(x):
     elif isinstance(x, Number):
         return x
     else:
-        raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
-            type(x).__name__,
-        ))
+        raise TypeError(
+            "idn_from_word_or_number({}) is not supported, "
+            "only Word or Number.".format(
+                type(x).__name__,
+            )
+        )
 
 
 def is_iterable(x):
     """
+    Yes for (tuple) or [list] or {set} or {dictionary keys}.
+    No for strings.
+
     Ask permission before using in a for-loop.
 
     This implementation is better than either of:
@@ -1410,6 +1416,8 @@ def is_iterable(x):
         return False
     else:
         return True
+assert is_iterable(['a', 'list', 'is', 'iterable'])
+assert not is_iterable('a string is not')
 
 
 class Text(six.text_type):
@@ -1494,7 +1502,7 @@ class QoolbarSimple(Qoolbar):
         qool_verbs = self.lex.find_words(
             vrb=self.lex[u'define'],
             obj=self.lex[u'verb'],
-            jbo_vrb=(self.lex[u'iconify'],),
+            jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
             jbo_strictly=True
         )
         return qool_verbs
@@ -1504,18 +1512,22 @@ class QoolbarSimple(Qoolbar):
 
     def get_verbs_old(self):
         qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True)
-        # TODO:  Use jbo_vrb to find iconify's?
         verbs = []
         for qoolification in qoolifications:
             qool_verb = qoolification.obj
             icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb)
-            icon = icons[-1]
-            # TODO:  Limit find_words to latest iconify using sql.
-            verbs.append(dict(
-                idn=qool_verb.idn.qstring(),
-                icon_url=icon.txt,
-                name=qool_verb.txt,
-            ))
+            try:
+                icon = icons[-1]
+            except IndexError:
+                pass
+            else:
+                qool_verb.icon_url = icon.txt
+                verbs.append(qool_verb)
+                # verbs.append(dict(
+                #     idn=qool_verb.idn.qstring(),
+                #     icon_url=icon.txt,
+                #     name=qool_verb.txt,
+                # ))
         return verbs
 
 
