@@ -1064,7 +1064,8 @@ class LexMySQL(Lex):
         idn_order='ASC',
         jbo_vrb=(),
         obj_group=False,
-        jbo_strictly=False
+        jbo_strictly=False,
+        debug=False
     ):
         # TODO:  Lex.find()
         """
@@ -1136,7 +1137,7 @@ class LexMySQL(Lex):
             order_clause += ', jbo.idn ASC'
         query_args += [order_clause]
 
-        rows = self.super_select(*query_args)
+        rows = self.super_select(*query_args, debug=debug)
 
         words = []
         word = None
@@ -1177,9 +1178,9 @@ class LexMySQL(Lex):
         assert isinstance(obj, (Number, Word, type(None)))
         query_args = []
         if idn is not None:
-            query_args += ['AND w.idn=', idn_from_word_or_number(idn)]
+            query_args += ['AND w.idn =', idn_from_word_or_number(idn)]
         if sbj is not None:
-            query_args += ['AND w.sbj=', idn_from_word_or_number(sbj)]
+            query_args += ['AND w.sbj =', idn_from_word_or_number(sbj)]
         if vrb is not None:
             try:
                 verbs = [idn_from_word_or_number(v) for v in vrb]
@@ -1196,7 +1197,7 @@ class LexMySQL(Lex):
                 query_args += [')', None]
         if obj is not None:
             # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
-            query_args += ['AND w.obj=', idn_from_word_or_number(obj)]
+            query_args += ['AND w.obj =', idn_from_word_or_number(obj)]
         return query_args
 
     class SuperSelectTypeError(TypeError):
@@ -1297,6 +1298,8 @@ class LexMySQL(Lex):
     def super_select(self, *query_args, **kwargs):
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
+        if debug:
+            print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
         with self._cursor() as cursor:
             cursor.execute(query, parameters)
             for row in cursor:
@@ -1490,24 +1493,26 @@ class QoolbarSimple(Qoolbar):
         qool = self.lex.verb(u'qool')
         iconify = self.lex.verb(u'iconify')
 
-        like = self.lex.verb(u'like')
-        self.lex(qool, use_already=True)[like] = 1
-        self.lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
-
         delete = self.lex.verb(u'delete')
         self.lex(qool, use_already=True)[delete] = 1
         self.lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
 
-    def get_verbs_new(self):
+        like = self.lex.verb(u'like')
+        self.lex(qool, use_already=True)[like] = 1
+        self.lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
+
+    def get_verbs_new(self, debug=False):
         qool_verbs = self.lex.find_words(
             vrb=self.lex[u'define'],
-            obj=self.lex[u'verb'],
+            # obj=self.lex[u'verb'],   # Because qiki playground did [lex](define][qool] = 'like'
+                                       # instead of                  [lex](define][verb] = 'like'
             jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
-            jbo_strictly=True
+            jbo_strictly=True,
+            debug=debug
         )
         verbs = []
-        qool = self.lex.verb(u'qool')
-        iconify = self.lex.verb(u'iconify')
+        qool = self.lex[u'qool']
+        iconify = self.lex[u'iconify']
         for qool_verb in qool_verbs:
             has_qool = False
             last_iconify_url = None
@@ -1521,15 +1526,32 @@ class QoolbarSimple(Qoolbar):
                 verbs.append(qool_verb)
         return verbs
 
-    def get_verbs(self):
-        return self.get_verbs_new()
+    def get_verbs(self, debug=False):
+        return self.get_verbs_new(debug)
 
-    def get_verbs_old(self):
-        qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True)
+    def get_verb_dicts(self, debug=False):
+        """
+        Generate dictionaries about qoolbar verbs:
+            idn - qstring of the verb's idn
+            name - txt of the verb, e.g. 'like'
+            icon_url - txt from the iconify sentence
+        """
+        # TODO:  Make Word json serializable, http://stackoverflow.com/a/3768975/673991
+        # Then we wouldn't have to translate verbs to verb_dicts:
+        verbs = self.get_verbs(debug)
+        for verb in verbs:
+            yield dict(
+                idn=verb.idn.qstring(),
+                name=verb.txt,
+                icon_url=verb.icon_url
+            )
+
+    def get_verbs_old(self, debug=False):
+        qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)
         verbs = []
         for qoolification in qoolifications:
             qool_verb = qoolification.obj
-            icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb)
+            icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb, debug=debug)
             try:
                 icon = icons[-1]
             except IndexError:

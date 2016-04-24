@@ -2333,9 +2333,7 @@ class WordQoolbarTests(WordTests):
 
     def test_get_all_qool_verbs(self):
         """Make sure the qool verbs were found."""
-        self.assertEqual([self.like.idn, self.delete.idn], self.qool_idns)
-        # print(", ".join([w.idn.qstring() for w in qool_words]))
-        # print(", ".join([n.qstring() for n in qool_idns]))
+        self.assertEqual({self.like.idn, self.delete.idn}, set(self.qool_idns))
 
     def test_find_qool_verbed_words(self):
         """Find words with qool verbs."""
@@ -2772,30 +2770,38 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(-100, a_d_z_after[0].num)
 
     def test_qoolbar_verbs(self):
-        verbs = self.qoolbar.get_verbs()
-        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+        verbs = list(self.qoolbar.get_verbs())
+        self.assertEqual({self.like, self.delete}, set(verbs))
 
-    def test_qoolbar_verbs_new_way(self):
+    def test_qoolbar_verb_dicts(self):
+        verb_dicts = list(self.qoolbar.get_verb_dicts())
+        self.assertEqual({
+            self.like.idn.qstring(),
+            self.delete.idn.qstring()
+        }, {d['idn'] for d in verb_dicts})
+        self.assertEqual({
+            self.like.txt,
+            self.delete.txt
+        }, {d['name'] for d in verb_dicts})
+
+    def test_qoolbar_verbs_old_versus_new_way(self):
         verbs_old = self.qoolbar.get_verbs_old()
         verbs_new = self.qoolbar.get_verbs_new()
+        self.assertEqual(verbs_old, verbs_new)
 
-        self.assertEqual([w.idn      for w in verbs_old], [w.idn         for w in verbs_new])
-        self.assertEqual([w.txt      for w in verbs_old], [w.txt         for w in verbs_new])
-        self.assertEqual([w.icon_url for w in verbs_old], [w.jbo[-1].txt for w in verbs_new])
-
-    def test_qoolbar_verbs_qool_without_inconify(self):
+    def test_qoolbar_verbs_qool_without_iconify(self):
         bleep = self.lex.verb(u'bleep')
         self.lex(self.qool)[bleep] = 1
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
 
     def test_qoolbar_verbs_iconify_without_qool(self):
         bleep = self.lex.verb(u'bleep')
         self.lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual([self.lex[u'like'], self.lex[u'delete']], verbs)
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
 
     def test_qoolbar_verbs_one_more(self):
         bleep = self.lex.verb(u'bleep')
@@ -2803,7 +2809,7 @@ class WordQoolbarTests(WordTests):
         self.lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual([self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']], verbs)
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
 
     ################## obsolete or maybe someday #################################
 
