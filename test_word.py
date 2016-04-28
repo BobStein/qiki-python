@@ -2821,11 +2821,10 @@ class WordQoolbarTests(WordTests):
         }, nums)
 
     def test_qoolbar_jbo(self):
-        youtube_words = self.lex.find_words(obj=self.youtube, jbo_vrb=self.qoolbar.get_verbs())
-        # youtube_words = self.lex.find_words(idn=self.youtube, jbo_vrb=[self.like.idn, self.delete.idn])
+        youtube_words = self.lex.find_words(idn=self.youtube, jbo_vrb=self.qoolbar.get_verbs())
         youtube_word = youtube_words[0]
         youtube_jbo = youtube_word.jbo
-        print(repr(youtube_jbo))
+        self.assertEqual({self.anna_like_youtube, self.bart_like_youtube}, set(youtube_jbo))
 
 
 

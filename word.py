@@ -1508,8 +1508,9 @@ class QoolbarSimple(Qoolbar):
     def get_verbs_new(self, debug=False):
         qool_verbs = self.lex.find_words(
             vrb=self.lex[u'define'],
-            # obj=self.lex[u'verb'],   # Because qiki playground did [lex](define][qool] = 'like'
-                                       # instead of                  [lex](define][verb] = 'like'
+            # obj=self.lex[u'verb'],   # Ignore whether object is lex[verb] or lex[qool]
+                                       # Because qiki playground did [lex](define][qool] = 'like'
+                                       # but now we always do        [lex](define][verb] = 'like'
             jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
             jbo_strictly=True,
             debug=debug
@@ -1565,7 +1566,7 @@ class QoolbarSimple(Qoolbar):
                 verbs.append(qool_verb)
         return verbs
 
-    def nums(self, obj):
+    def nums(self, obj):   # TODO:  Obsolete?
         jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
         return_dict = dict()
         for word in jbo:
