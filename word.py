@@ -1062,6 +1062,7 @@ class LexMySQL(Lex):
         vrb=None,
         obj=None,
         idn_order='ASC',
+        jbo_order='ASC',
         jbo_vrb=(),
         obj_group=False,
         jbo_strictly=False,
@@ -1092,7 +1093,8 @@ class LexMySQL(Lex):
         assert isinstance(sbj, (Number, Word, type(None)))
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None)))
-        assert idn_order in (None, 'ASC', 'DESC')
+        assert idn_order in ('ASC', 'DESC')
+        assert jbo_order in ('ASC', 'DESC')
         assert isinstance(jbo_vrb, (Number, Word, type(None))) or is_iterable(jbo_vrb)
         query_args = [
             'SELECT '
@@ -1132,9 +1134,10 @@ class LexMySQL(Lex):
         if obj_group:
             query_args += ['GROUP BY obj', None]
 
+
         order_clause = 'ORDER BY w.idn ' + idn_order
         if any(jbo_vrb):
-            order_clause += ', jbo.idn ASC'
+            order_clause += ', jbo.idn ' + jbo_order
         query_args += [order_clause]
 
         rows = self.super_select(*query_args, debug=debug)
@@ -1488,6 +1491,7 @@ class QoolbarSimple(Qoolbar):
         assert isinstance(lex, Lex)
         self.lex = lex
         self.say_initial_verbs()
+        # TODO:  Cache get_verbs().
 
     def say_initial_verbs(self):
         qool = self.lex.verb(u'qool')
@@ -1559,14 +1563,15 @@ class QoolbarSimple(Qoolbar):
             else:
                 qool_verb.icon_url = icon.txt
                 verbs.append(qool_verb)
-                # verbs.append(dict(
-                #     idn=qool_verb.idn.qstring(),
-                #     icon_url=icon.txt,
-                #     name=qool_verb.txt,
-                # ))
         return verbs
 
-
+    def nums(self, obj):
+        jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
+        return_dict = dict()
+        for word in jbo:
+            icon_entry = return_dict.setdefault(word.vrb, dict())
+            icon_entry[word.sbj] = dict(num=word.num)
+        return return_dict
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex

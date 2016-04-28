@@ -2811,6 +2811,27 @@ class WordQoolbarTests(WordTests):
         verbs = self.qoolbar.get_verbs()
         self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
 
+    def test_nums(self):
+        nums = self.qoolbar.nums(self.youtube)
+        self.assertEqual({
+            self.like: {
+                self.anna: {'num': qiki.Number(1)},
+                self.bart: {'num': qiki.Number(10)},
+            }
+        }, nums)
+
+    def test_qoolbar_jbo(self):
+        youtube_words = self.lex.find_words(obj=self.youtube, jbo_vrb=self.qoolbar.get_verbs())
+        # youtube_words = self.lex.find_words(idn=self.youtube, jbo_vrb=[self.like.idn, self.delete.idn])
+        youtube_word = youtube_words[0]
+        youtube_jbo = youtube_word.jbo
+        print(repr(youtube_jbo))
+
+
+
+
+
+
     ################## obsolete or maybe someday #################################
 
     # def test_02_word_by_name(self):
