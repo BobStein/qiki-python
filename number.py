@@ -278,6 +278,16 @@ class Number(numbers.Number):
         else:
             return Number(-float(n))
 
+    def __abs__(self):
+        if self.is_negative():
+            return -self
+        else:
+            return self
+
+    def __pos__(self):
+        # TODO:  Should this deep-copy?
+        return self
+
     def __rsub__(self, other):
         return -self.__sub__(other)
 
@@ -1543,7 +1553,9 @@ Number.Suffix.internal_setup(Number)
 # TODO:  fractions.Fraction -- rational numbers
 
 # TODO:  Number.inc() native - taking advantage of raw encodings
-# TODO:  __neg__ native - taking advantage of two's complement encoding
+# TODO:  __neg__ native - taking advantage of two's complement encoding of (non suffixed) qex + qan
+#        (and fixing it for unreasonable numbers)
+# TODO:  Possibly generate an exception for __neg__ of suffixed number?  For any math on suffixed numbers??
 # TODO:  __add__, __mul__, etc. native
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
 
@@ -1564,10 +1576,11 @@ Number.Suffix.internal_setup(Number)
 #   This may not be worth solving, or it may indicate a negative number bug.
 #   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
 #   But things work as expected in f__s() unit test.  Why do they fail at the playground?
+#   (I think this last weirdness at least has been fixed.)
 
 # TODO:  Term for an unsuffixed Number?
 # TODO:  Term for a suffixed Number?
-# TODO:  Term for the unsuffixed part of a suffixed number?
+# TODO:  Term for the unsuffixed part of a suffixed number?  "Root"?
 # Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
 # Number class could be unsuffixed, and derived class could be suffixed?
 
@@ -1576,8 +1589,8 @@ Number.Suffix.internal_setup(Number)
 # TODO:  (little deal) subclass numbers.Complex.
 # First make unit tests for each the operations named in the following TypeError:
 #     "Can't instantiate abstract class Number with abstract methods ..."
-# TODO:  __abs__, __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
-# DONE:  imag, real, conjugate, __complex__
+# TODO:  __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
+# DONE:  __abs__, imag, real, conjugate, __complex__
 
 # TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
@@ -1585,7 +1598,8 @@ Number.Suffix.internal_setup(Number)
 # __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
 # __rxor__, __truediv__, __trunc__, __xor__
 
-# TODO:  Better object internals:  store separate qex, qan, suffixes (and synthesize raw on demand)
+# TODO:  Better object internal representation:  store separate qex, qan, suffixes (and synthesize raw on demand)
+# perhaps raw == qex + qan + ''.join([suffix.raw for suffix in suffixes])
 
 # TODO:  Number.to_JSON()
 # THANKS:  http://stackoverflow.com/q/3768895/673991

@@ -1770,6 +1770,19 @@ class NumberMathTests(NumberTests):
         self.assertEqual(Number(-42.0625), -Number(42.0625))
         self.assertEqual(Number('0q75_FEFFFFFFFFFFFFFFFF'), -Number('0q8A_010000000000000001'))
 
+    def test_pos(self):
+        self.assertEqual(Number(42), +Number(42))
+        self.assertEqual(Number(42.0625), +Number(42.0625))
+        self.assertEqual(Number('0q8A_010000000000000001'), +Number('0q8A_010000000000000001'))
+
+    def test_abs(self):
+        self.assertEqual(Number(42), abs(Number(42)))
+        self.assertEqual(Number(42), abs(Number(-42)))
+        self.assertEqual(Number(42.0625), abs(Number(42.0625)))
+        self.assertEqual(Number(42.0625), abs(Number(-42.0625)))
+        self.assertEqual(Number('0q8A_010000000000000001'), abs(Number('0q8A_010000000000000001')))
+        self.assertEqual(Number('0q8A_010000000000000001'), abs(Number('0q75_FEFFFFFFFFFFFFFFFF')))
+
     def test_add(self):
         self.assertEqual(Number(4), Number(2) + Number(2))
         self.assertEqual(Number(4), Number(2) +        2 )
