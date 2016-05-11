@@ -1596,11 +1596,10 @@ Number.Suffix.internal_setup(Number)
 
 # TODO:  Lengthed-export.
 # The raw attribute is an unlengthed representation of the number.
-# That's because there is no way to know the length of a string of raw bytes from their content.
-# It carries no reliable indication of its length. That must be encoded extrinsically somehow.
-# (Lintrinsic versus lextrinsic?  Ugh, no.)
-# So the unlengthed raw attribute may be used as the content for a VARBINARY
-# field of a MySQL table, where MySQL manages the length of the data.
+# That is to say there is no way to know the length of a string of raw bytes from their content.
+# Content carries no reliable indication of its length.  Length must be encoded extrinsically somehow.
+# So this unlengthed word.raw attribute may be used as the content for a VARBINARY
+# field of a MySQL table, where MySQL manages the length of that field.
 # For applications where a stream of bytes must encode its own length, a different
 # approach must be used.
 # One approach might be that if the first byte is 80-FF, what follows is a
@@ -1610,11 +1609,13 @@ Number.Suffix.internal_setup(Number)
 #    1    2    3      255    256    257    258     2**992            2**1000-1
 # In these cases the lengthed-export has the same bytes as the unlengthed export
 # except for multiples of 256, e.g. 830100 versus 8301 (for 0q83_01 == 256).
-# (Because of the no-trailing-00 rule for raw.  That does not apply to lengthed export.)
+# (Because of the no-trailing-00 rule for raw.  That would not apply to lengthed export.)
 # (So conversion when importing must strip those 00s.)
 
 # Any number other than nonnegative integers would be lengthed-exported as:  N + raw
-# Where N (0 to 127) was the length of the raw part.  So -1 is 027DFF, -2 is 027DFE, etc.
+# Where N (00 to 7F) is the length of the raw part.  So:
+# -1   is 027DFF
+# -2   is 027DFE
 # -2.5 is 037DFD80
 # +2.5 is 03820280
 
