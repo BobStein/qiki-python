@@ -95,8 +95,8 @@ class SafeNameTests(unittest.TestCase):
     def test_engine_name_good(self):
         credentials = secure.credentials.for_unit_testing_database.copy()
 
-        def good_engine_name(name):
-            credentials['engine'] = name
+        def good_engine_name(engine_name):
+            credentials['engine'] = engine_name
             lex = qiki.LexMySQL(**credentials)
             self.assertEqual('verb', lex['define'].obj.txt)
             lex.uninstall_to_scratch()
@@ -1544,6 +1544,7 @@ class Word003MoreTests(WordTests):
         lex = self.lex[u'lex']
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
         suffixed_lex_idn = lex.idn.add_suffix(3)
+        # FIXME:  Crap, this USED to mutate lex.idn!!
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
 

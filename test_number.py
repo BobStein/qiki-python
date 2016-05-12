@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import operator
 import pickle
 import sys
 import textwrap
@@ -1765,33 +1766,68 @@ class NumberIsTests(NumberTests):
 # noinspection SpellCheckingInspection
 class NumberMathTests(NumberTests):
 
-    def test_neg(self):
-        self.assertEqual(Number(-42), -Number(42))
-        self.assertEqual(Number(-42.0625), -Number(42.0625))
-        self.assertEqual(Number('0q75_FEFFFFFFFFFFFFFFFF'), -Number('0q8A_010000000000000001'))
+    def unary_op(self, op, output, input_):
+        self.assertEqual(output,              op(       input_ ))
+        self.assertEqual(output, type(output)(op(       input_ )))
+        self.assertEqual(output, type(output)(op(Number(input_))))
+        self.assertEqual(Number(output),      op(Number(input_)))
+
+    def binary_op(self, op, output, input_left, input_right):
+        self.assertEqual(output,              op(       input_left ,        input_right ))
+        self.assertEqual(output, type(output)(op(       input_left ,        input_right )))
+        self.assertEqual(output, type(output)(op(Number(input_left), Number(input_right))))
+        self.assertEqual(output, type(output)(op(Number(input_left),        input_right )))
+        self.assertEqual(output, type(output)(op(       input_left , Number(input_right))))
+        self.assertEqual(Number(output),      op(Number(input_left), Number(input_right)))
 
     def test_pos(self):
-        self.assertEqual(Number(42), +Number(42))
-        self.assertEqual(Number(42.0625), +Number(42.0625))
-        self.assertEqual(Number('0q8A_010000000000000001'), +Number('0q8A_010000000000000001'))
+        self.unary_op(operator.__pos__, 42, 42)
+        self.unary_op(operator.__pos__, -42, -42)
+        self.unary_op(operator.__pos__, 42.0625, 42.0625)
+        self.unary_op(operator.__pos__, -42.0625, -42.0625)
+        self.unary_op(operator.__pos__, Number('0q8A_010000000000000001'), Number('0q8A_010000000000000001'))
+
+    def test_neg(self):
+        self.unary_op(operator.__neg__, -42, 42)
+        self.unary_op(operator.__neg__, 42, -42)
+        self.unary_op(operator.__neg__, -42.0625, 42.0625)
+        self.unary_op(operator.__neg__, 42.0625, -42.0625)
+        self.unary_op(operator.__neg__, Number('0q75_FEFFFFFFFFFFFFFFFF'), Number('0q8A_010000000000000001'))
 
     def test_abs(self):
-        self.assertEqual(Number(42), abs(Number(42)))
-        self.assertEqual(Number(42), abs(Number(-42)))
-        self.assertEqual(Number(42.0625), abs(Number(42.0625)))
-        self.assertEqual(Number(42.0625), abs(Number(-42.0625)))
-        self.assertEqual(Number('0q8A_010000000000000001'), abs(Number('0q8A_010000000000000001')))
-        self.assertEqual(Number('0q8A_010000000000000001'), abs(Number('0q75_FEFFFFFFFFFFFFFFFF')))
+        self.unary_op(operator.__abs__, 42, 42)
+        self.unary_op(operator.__abs__, 42, -42)
+        self.unary_op(operator.__abs__, 42.0625, 42.0625)
+        self.unary_op(operator.__abs__, 42.0625, -42.0625)
+        self.unary_op(operator.__abs__, Number('0q8A_010000000000000001'), Number('0q8A_010000000000000001'))
+        self.unary_op(operator.__abs__, Number('0q8A_010000000000000001'), Number('0q75_FEFFFFFFFFFFFFFFFF'))
 
     def test_add(self):
-        self.assertEqual(Number(4), Number(2) + Number(2))
-        self.assertEqual(Number(4), Number(2) +        2 )
-        self.assertEqual(Number(4),        2  + Number(2))
+        self.binary_op(operator.__add__, 4, 2, 2)
+        self.binary_op(operator.__add__, 4.375, 2.125, 2.25)
+        self.binary_op(operator.__add__, 88+11j, 80+10j, 8+1j)
+        self.binary_op(operator.__add__, 88+11j, 88, 11j)
+        self.binary_op(operator.__add__, 88+11j, 11j, 88)
 
-    def test_add_real(self):
-        self.assertEqual(Number(4.375), Number(2.125) + Number(2.25))
-        self.assertEqual(Number(4.375), Number(2.125) +        2.25 )
-        self.assertEqual(Number(4.375),        2.125  + Number(2.25))
+    def test_mul(self):
+        self.assertEqual(Number(42), Number(6) * Number(7))
+        self.assertEqual(Number(42), Number(6) *        7 )
+        self.assertEqual(Number(42),        6  * Number(7))
+
+    def test_mul_real(self):
+        self.assertEqual(Number(3.75), Number(2.5) * Number(1.5))
+        self.assertEqual(Number(3.75), Number(2.5) *        1.5 )
+        self.assertEqual(Number(3.75),        2.5  * Number(1.5))
+
+    def test_div(self):
+        self.assertEqual(Number(7), Number(42) / Number(6))
+        self.assertEqual(Number(7), Number(42) /        6 )
+        self.assertEqual(Number(7),        42  / Number(6))
+
+    def test_div_real(self):
+        self.assertEqual(Number(1.5), Number(3.75) / Number(2.5))
+        self.assertEqual(Number(1.5), Number(3.75) /        2.5 )
+        self.assertEqual(Number(1.5),        3.75  / Number(2.5))
 
     def test_sub(self):
         self.assertEqual(Number(42), Number(8642) - Number(8600))
@@ -2116,6 +2152,7 @@ class NumberPickleTests(NumberTests):
             )
         elif six.PY3:
             self.assertEqual(
+                # XXX:  Is this ridonculously messed up, in that the raw string is being utf-8 encoded??
                 pickle.dumps(x314, 2),
                 (
                     b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00' +
@@ -2150,8 +2187,17 @@ class NumberSuffixTests(NumberTests):
     # (So, for example, a suffix someday for rational numbers might modify
     # the value returned by float(), and not break tests here when it's implemented.)
 
-    def test_add_suffix(self):
-        self.assertEqual(Number('0q82_01__030100'), Number(1).add_suffix(0x03))
+    def test_add_suffix_type(self):
+        self.assertEqual(Number('0q82_01__7F0100'), Number(1).add_suffix(Number.Suffix.TYPE_TEST))
+
+    def test_add_suffix_type_by_class(self):
+        self.assertEqual(Number('0q82_01__7F0100'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
+
+    def test_add_suffix_type_and_payload(self):
+        self.assertEqual(Number('0q82_01__887F0200'), Number(1).add_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
+
+    def test_add_suffix_type_and_payload_by_class(self):
+        self.assertEqual(Number('0q82_01__887F0200'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2181,7 +2227,30 @@ class NumberSuffixTests(NumberTests):
         n = Number('0q82_01__7F0100')
         n_deleted = Number(n)
         n_deleted.delete_suffix(Number.Suffix.TYPE_TEST)
-        self.assertEqual('0q82_01', str(n_deleted))
+        self.assertEqual('0q82_01', n_deleted.qstring())
+
+    def test_suffix_equality_impact(self):
+        """
+        In general, Number suffixes should impact equality.
+
+        That is, a suffixed Number should not equal an unsuffixed number.
+        Or two numbers with different suffixes should not be equal.
+        One exception is a complex number with a zero imaginary suffix, that should equal its
+        unsiffuxed, real-only version.
+        """
+        n_plain = Number('0q82_01')
+        n_suffixed = Number('0q82_01__7F0100')
+        n_another_suffixed = Number('0q82_01__887F0200')
+
+        self.assertTrue(n_plain == n_plain)
+        self.assertFalse(n_plain == n_suffixed)
+        self.assertFalse(n_suffixed == n_plain)
+        self.assertTrue(n_suffixed == n_suffixed)
+
+        self.assertTrue(n_suffixed == n_suffixed)
+        self.assertFalse(n_suffixed == n_another_suffixed)
+        self.assertFalse(n_another_suffixed == n_suffixed)
+        self.assertTrue(n_another_suffixed == n_another_suffixed)
 
     def test_delete_suffix_among_many(self):
         n = Number('0q82_01__990100__880100__770100')

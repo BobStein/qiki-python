@@ -651,6 +651,8 @@ class Listing(Word):
         assert self.meta_word is not None
         self.index = Number(index)
         self._idn = Number(self.meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
+        # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
+        # Did that morph a class property into an instance property?!?  MFIT...
         self.lookup(self.index, self.lookup_callback)
         self.lex = self.meta_word.lex
 
@@ -748,7 +750,15 @@ class LexMySQL(Lex):
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
-        self._txt_type = kwargs.pop('txt_type', 'TEXT')
+        default_txt_type = 'VARCHAR(10000)' if self._engine.upper() == 'MEMORY' else 'TEXT'
+        # VARCHAR(65536):  ProgrammingError: 1074 (42000): Column length too big for column 'txt'
+        #                  (max = 16383); use BLOB or TEXT instead
+        # VARCHAR(16383):  ProgrammingError: 1118 (42000): Row size too large. The maximum row size
+        #                  for the used table type, not counting BLOBs, is 65535. This includes
+        #                  storage overhead, check the manual. You have to change some columns to
+        #                  TEXT or BLOBs
+
+        self._txt_type = kwargs.pop('txt_type', default_txt_type)
         try:
             self._connection = mysql.connector.connect(**kwargs)
         except mysql.connector.ProgrammingError as exception:
@@ -834,7 +844,7 @@ class LexMySQL(Lex):
                 ;
             """.format(
                 table=self.table,
-                txt_type=self._txt_type,   # But using this is a hard error:  <type> expected found '{'
+                txt_type=self._txt_type,   # Using this was a hard error:  <type> expected found '{'
                 engine=self._engine,
             )
 

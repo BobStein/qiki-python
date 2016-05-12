@@ -263,14 +263,6 @@ class Number(numbers.Number):
     def __hash__(self):
         return hash(self.raw)
 
-    def __sub__(self, other):
-        n1 = Number(self)
-        n2 = Number(other)
-        if n1.is_whole() and n2.is_whole():
-            return Number(int(n1) - int(n2))
-        else:
-            return Number(float(n1) - float(n2))
-
     def __neg__(self):
         n = Number(self)
         if n.is_whole():
@@ -288,17 +280,50 @@ class Number(numbers.Number):
         # TODO:  Should this deep-copy?
         return self
 
+    def __sub__(self, other):
+        n1 = Number(self)
+        n2 = Number(other)
+        if n1.is_whole() and n2.is_whole():
+            return Number(int(n1) - int(n2))
+        else:
+            return Number(float(n1) - float(n2))
+
     def __rsub__(self, other):
-        return -self.__sub__(other)
+        return Number(other).__sub__(self)
 
     def __add__(self, other):
         n1 = Number(self)
         n2 = Number(other)
-        if n1.is_whole() and n2.is_whole():
+        if n1.is_complex() or n2.is_complex():
+            return Number(complex(n1) + complex(n2))
+        elif n1.is_whole() and n2.is_whole():
             return Number(int(n1) + int(n2))
         else:
             return Number(float(n1) + float(n2))
     __radd__ = __add__
+
+    def __mul__(self, other):
+        n1 = Number(self)
+        n2 = Number(other)
+        if n1.is_whole() and n2.is_whole():
+            return Number(int(n1) * int(n2))
+        else:
+            return Number(float(n1) * float(n2))
+    __rmul__ = __mul__
+
+    def __div__(self, other):
+        n1 = Number(self)
+        n2 = Number(other)
+        if n1.is_whole() and n2.is_whole():
+            return Number(int(n1) / int(n2))
+        else:
+            return Number(float(n1) / float(n2))
+
+    def __rdiv__(self, other):
+        return Number(other).__div__(self)
+
+    __rtruediv__ = __rdiv__
+    __truediv__ = __div__
 
     def _normalize_all(self):
         """Eliminate all redundancies in the internal __raw string.
@@ -344,7 +369,8 @@ class Number(numbers.Number):
                         self.raw = raw_qexponent + b'\xFF'
             if is_plateau:
                 for piece in pieces[1:]:
-                    self.add_suffix(piece)
+                    self.raw = self.add_suffix(piece).raw
+                    # TODO:  Test this branch
 
     def normalized(self):
         return type(self)(self, normalize=True)
@@ -427,7 +453,7 @@ class Number(numbers.Number):
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
-            return_value.add_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
+            return_value = return_value.add_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
         return return_value
 
     # "from" conversions:  Number <-- other type
@@ -598,7 +624,7 @@ class Number(numbers.Number):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw)
+        self.raw = self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
         # THANKS:  http://stackoverflow.com/a/14209708/673991 (how to call the constructor of whatever class we're in)
 
     # "to" conversions:  Number --> other type
@@ -963,7 +989,7 @@ class Number(numbers.Number):
 
         TYPE_LISTING   = 0x1D   # 'ID' in 1337
         TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
-        TYPE_TEST      = 0x7F   # for unit testing, no value, arbitrary payload.
+        TYPE_TEST      = 0x7F   # for unit testing, arbitrary payload.
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -1039,13 +1065,14 @@ class Number(numbers.Number):
         # TODO:  is_suffixed(type)?
 
     def add_suffix(self, suffix_or_type=None, payload=None):
-        """Add a suffix to this Number.
+        """
+        Add a suffix to this Number.  Does not mutate self, but returns a new suffixed number.
 
         Forms:
-            n.add_suffix(Number.Suffix.TYPE_TEST, b'byte string')
-            n.add_suffix(Number.Suffix.TYPE_TEST, Number(x))
-            n.add_suffix(Number.Suffix(...))
-            n.add_suffix()
+            m = n.add_suffix(Number.Suffix.TYPE_TEST, b'byte string')
+            m = n.add_suffix(Number.Suffix.TYPE_TEST, Number(x))
+            m = n.add_suffix(Number.Suffix(...))
+            m = n.add_suffix()
         """
         assert (
             isinstance(suffix_or_type, int) and isinstance(payload, six.binary_type) or
@@ -1062,13 +1089,11 @@ class Number(numbers.Number):
             raise self.SuffixValueError
         if isinstance(suffix_or_type, self.Suffix):
             the_suffix = suffix_or_type
-            self.raw += the_suffix.raw
-            # TODO:  Unit test this flavor of add_suffix().
-            return self
-        the_type = suffix_or_type
-        suffix = self.Suffix(the_type, payload)
-        self.add_suffix(suffix)
-        return self
+            return self.from_raw(self.raw + the_suffix.raw)
+        else:
+            the_type = suffix_or_type
+            suffix = self.Suffix(the_type, payload)
+            return self.add_suffix(suffix)
 
     def delete_suffix(self, old_type=None):
         pieces = self.parse_suffixes()
@@ -1078,7 +1103,7 @@ class Number(numbers.Number):
             if piece.type_ == old_type:
                 any_deleted = True
             else:
-                new_self.add_suffix(piece.type_, piece.payload)
+                new_self = new_self.add_suffix(piece.type_, piece.payload)
         if not any_deleted:
             raise self.Suffix.NoSuchType
         self.raw = new_self.raw
@@ -1108,7 +1133,10 @@ class Number(numbers.Number):
         assert \
             (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')) == \
              Number(1)    .add_suffix(2)    .add_suffix(3, b'\x4567').parse_suffixes()
+
+
         """
+        # FIXME:  Crap, resurrect mutating form of add_suffix, so we can chain them like the above example??
         return_array = []
         n = Number(self)   # Is this really necessary? self.raw is immutable is it not?
         while True:
@@ -1589,8 +1617,8 @@ Number.Suffix.internal_setup(Number)
 # TODO:  (little deal) subclass numbers.Complex.
 # First make unit tests for each the operations named in the following TypeError:
 #     "Can't instantiate abstract class Number with abstract methods ..."
-# TODO:  __div__,  __mul__, __pos__, __pow__, __rdiv__, __rmul__, __rpow__, __rtruediv__, __truediv__
-# DONE:  __abs__, imag, real, conjugate, __complex__
+# TODO:  __pow__, __rpow__
+# DONE:  __abs__, __complex__, conjugate, __div____, imag,  __mul, __pos__, __rdiv__, real, __rmul__, __rtruediv__, __truediv__
 
 # TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
