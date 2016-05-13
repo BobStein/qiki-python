@@ -274,6 +274,8 @@ class Number(numbers.Number):
     def __rmul__(self, other): return self._binary_op(operator.__mul__, other, self)
     def __truediv__( self, other): return self._binary_op(operator.__truediv__, self, other)
     def __rtruediv__(self, other): return self._binary_op(operator.__truediv__, other, self)
+    def __div__( self, other): return self._binary_op(operator.__div__, self, other)
+    def __rdiv__(self, other): return self._binary_op(operator.__div__, other, self)
 
     def _unary_op(self, op):
         n = Number(self)
@@ -1593,7 +1595,8 @@ Number.Suffix.internal_setup(Number)
 # First make unit tests for each the operations named in the following TypeError:
 #     "Can't instantiate abstract class Number with abstract methods ..."
 # TODO:  __pow__, __rpow__
-# DONE:  __abs__, __complex__, conjugate, __div____, imag,  __mul, __pos__, __rdiv__, real, __rmul__, __rtruediv__, __truediv__
+# DONE:  __abs__, __complex__, conjugate, __div__, imag,  __mul__, __pos__, __rdiv__, real,
+# __rmul__, __rtruediv__, __truediv__
 
 # TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
 # TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,

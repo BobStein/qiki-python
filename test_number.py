@@ -1777,11 +1777,12 @@ class NumberMathTests(NumberTests):
         Test case for a binary operator.
 
         Make sure the operation works, as well as it's 'r' (right) alternate.
-        Equality is tested most often in the native type of the output,
-        and (if output is a Number) by comparing qstrings
-        so as not to be vulnerable to false passes by a flawed Number.__eq__().
+        Equality is tested primarily in the native type of the output
+        so as not to rely so much on Number.__eq__().
+        For a similar reason, if output is a Number, qstrings are compared.
         """
         self.assertEqual(output,              op(       input_left ,        input_right ))
+        self.assertIs(type(output),      type(op(       input_left ,        input_right)))
         self.assertEqual(output, type(output)(op(       input_left ,        input_right )))
         self.assertEqual(output, type(output)(op(Number(input_left), Number(input_right))))
         self.assertEqual(output, type(output)(op(Number(input_left),        input_right )))
@@ -1796,9 +1797,10 @@ class NumberMathTests(NumberTests):
 
         So we can proove Number math isn't simply float math.
         """
-        self.assertNotEqual(0x10000000000000001, int(float(0x10000000000000001)))
-        self.assertEqual(   0x10000000000000000, int(float(0x10000000000000001)))
-        self.assertEqual('0q8A_010000000000000001', Number(0x10000000000000001).qstring())
+        self.assertEqual(     0x10000000000000001, 2**64 + 1)
+        self.assertNotEqual(  0x10000000000000001,         int(float(0x10000000000000001)))
+        self.assertEqual(     0x10000000000000000,         int(float(0x10000000000000001)))
+        self.assertEqual('0q8A_010000000000000001',           Number(0x10000000000000001).qstring())
         self.assertEqual(Number('0q8A_01'), Number(float(Number('0q8A_010000000000000001'))))
 
     def test_pos(self):
@@ -1841,6 +1843,14 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__add__, 88+11j, 88, 11j)
         self.binary_op(operator.__add__, 88+11j, 11j, 88)
 
+    def test_sub(self):
+        self.binary_op(operator.__sub__, 42, 8642, 8600)
+        self.binary_op(operator.__sub__, -0.125, 2.125, 2.25)
+        self.binary_op(operator.__sub__, Number('0q8A_010000000000000001'),
+                                         Number('0q8A_020000000000000002'),
+                                         Number('0q8A_010000000000000001'))
+        self.binary_op(operator.__sub__, 8+1j, 88+11j, 80+10j)
+
     def test_mul(self):
         self.binary_op(operator.__mul__, 42, 6, 7)
         self.binary_op(operator.__mul__, 3.75, 2.5, 1.5)
@@ -1851,31 +1861,19 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__mul__, 3+6j, 1+2j, 3)
         self.binary_op(operator.__mul__, 6+8j, 2, 3+4j)
 
+    def test_truediv(self):
+        self.binary_op(operator.__truediv__, 7.0, 42.0, 6.0)
+        self.binary_op(operator.__truediv__, 1.5, 3.75, 2.5)
+        self.binary_op(operator.__truediv__, 1+2j, -5+10j, 3+4j)
+
     def test_div(self):
-        self.assertEqual(Number(7), Number(42) / Number(6))
-        self.assertEqual(Number(7), Number(42) /        6 )
-        self.assertEqual(Number(7),        42  / Number(6))
+        self.binary_op(operator.__div__, 7, 42, 6)
+        self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
+                                         Number('0q92_0100000000000000020000000000000001'),
+                                         Number('0q8A_010000000000000001'))
 
-    def test_div_real(self):
-        self.assertEqual(Number(1.5), Number(3.75) / Number(2.5))
-        self.assertEqual(Number(1.5), Number(3.75) /        2.5 )
-        self.assertEqual(Number(1.5),        3.75  / Number(2.5))
-
-    def test_sub(self):
-        self.assertEqual(Number(42), Number(8642) - Number(8600))
-        self.assertEqual(Number(42), Number(8642) -        8600 )
-        self.assertEqual(Number(42),        8642  - Number(8600))
-
-    def test_sub_real(self):
-        self.assertEqual(Number(-0.125), Number(2.125) - Number(2.25))
-        self.assertEqual(Number(-0.125), Number(2.125) -        2.25 )
-        self.assertEqual(Number(-0.125),        2.125  - Number(2.25))
-
-    def test_big_int_add(self):
-        self.assertEqual(Number('0q8A_010000000000000001'), Number('0q8A_01') + Number('0q82_01'))
-
-    def test_float_cant_distinguish_big_integers(self):
-        self.assertEqual(float(Number('0q8A_010000000000000001')), float(Number('0q8A_01')))
+    def test_pow(self):
+        self.binary_op(operator.__pow__, 65536, 2, 16)
 
     def test_add_assign(self):
         n = 2
@@ -1889,6 +1887,19 @@ class NumberMathTests(NumberTests):
         n = Number(2)
         n += 2
         self.assertEqual(Number(4), n)
+
+    def test_div_assign(self):
+        n = 42
+        n /= Number(6)
+        self.assertEqual(Number(7), n)
+
+        n = Number(42)
+        n /= Number(6)
+        self.assertEqual(Number(7), n)
+
+        n = Number(42)
+        n /= 6
+        self.assertEqual(Number(7), n)
 
     def assert_inc_works_on(self, integer):
         n = Number(integer)
