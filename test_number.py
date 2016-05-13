@@ -1773,12 +1773,33 @@ class NumberMathTests(NumberTests):
         self.assertEqual(Number(output),      op(Number(input_)))
 
     def binary_op(self, op, output, input_left, input_right):
+        """
+        Test case for a binary operator.
+
+        Make sure the operation works, as well as it's 'r' (right) alternate.
+        Equality is tested most often in the native type of the output,
+        and (if output is a Number) by comparing qstrings
+        so as not to be vulnerable to false passes by a flawed Number.__eq__().
+        """
         self.assertEqual(output,              op(       input_left ,        input_right ))
         self.assertEqual(output, type(output)(op(       input_left ,        input_right )))
         self.assertEqual(output, type(output)(op(Number(input_left), Number(input_right))))
         self.assertEqual(output, type(output)(op(Number(input_left),        input_right )))
         self.assertEqual(output, type(output)(op(       input_left , Number(input_right))))
         self.assertEqual(Number(output),      op(Number(input_left), Number(input_right)))
+        if isinstance(output, Number):
+            self.assertEqual(output.qstring(), op(Number(input_left), Number(input_right)).qstring())
+
+    def test_int_too_big_to_be_a_float(self):
+        """
+        Proove that 0q8A_010000000000000001 is too big to be a float, accurately.
+
+        So we can proove Number math isn't simply float math.
+        """
+        self.assertNotEqual(0x10000000000000001, int(float(0x10000000000000001)))
+        self.assertEqual(   0x10000000000000000, int(float(0x10000000000000001)))
+        self.assertEqual('0q8A_010000000000000001', Number(0x10000000000000001).qstring())
+        self.assertEqual(Number('0q8A_01'), Number(float(Number('0q8A_010000000000000001'))))
 
     def test_pos(self):
         self.unary_op(operator.__pos__, 42, 42)
@@ -1786,6 +1807,7 @@ class NumberMathTests(NumberTests):
         self.unary_op(operator.__pos__, 42.0625, 42.0625)
         self.unary_op(operator.__pos__, -42.0625, -42.0625)
         self.unary_op(operator.__pos__, Number('0q8A_010000000000000001'), Number('0q8A_010000000000000001'))
+        self.unary_op(operator.__pos__, Number('0q75_FEFFFFFFFFFFFFFFFF'), Number('0q75_FEFFFFFFFFFFFFFFFF'))
 
     def test_neg(self):
         self.unary_op(operator.__neg__, -42, 42)
@@ -1793,6 +1815,7 @@ class NumberMathTests(NumberTests):
         self.unary_op(operator.__neg__, -42.0625, 42.0625)
         self.unary_op(operator.__neg__, 42.0625, -42.0625)
         self.unary_op(operator.__neg__, Number('0q75_FEFFFFFFFFFFFFFFFF'), Number('0q8A_010000000000000001'))
+        self.unary_op(operator.__neg__, Number('0q8A_010000000000000001'), Number('0q75_FEFFFFFFFFFFFFFFFF'))
 
     def test_abs(self):
         self.unary_op(operator.__abs__, 42, 42)
@@ -1805,19 +1828,28 @@ class NumberMathTests(NumberTests):
     def test_add(self):
         self.binary_op(operator.__add__, 4, 2, 2)
         self.binary_op(operator.__add__, 4.375, 2.125, 2.25)
+        self.binary_op(operator.__add__, Number('0q8A_020000000000000002'),
+                                         Number('0q8A_010000000000000001'),
+                                         Number('0q8A_010000000000000001'))
+        self.binary_op(operator.__add__, Number('0q8A_010000000000000002'),
+                                         Number('0q8A_010000000000000001'),
+                                         1)
+        self.binary_op(operator.__add__, Number('0q8A_010000000000000003'),
+                                         2,
+                                         Number('0q8A_010000000000000001'))
         self.binary_op(operator.__add__, 88+11j, 80+10j, 8+1j)
         self.binary_op(operator.__add__, 88+11j, 88, 11j)
         self.binary_op(operator.__add__, 88+11j, 11j, 88)
 
     def test_mul(self):
-        self.assertEqual(Number(42), Number(6) * Number(7))
-        self.assertEqual(Number(42), Number(6) *        7 )
-        self.assertEqual(Number(42),        6  * Number(7))
-
-    def test_mul_real(self):
-        self.assertEqual(Number(3.75), Number(2.5) * Number(1.5))
-        self.assertEqual(Number(3.75), Number(2.5) *        1.5 )
-        self.assertEqual(Number(3.75),        2.5  * Number(1.5))
+        self.binary_op(operator.__mul__, 42, 6, 7)
+        self.binary_op(operator.__mul__, 3.75, 2.5, 1.5)
+        self.binary_op(operator.__mul__, Number('0q92_0100000000000000020000000000000001'),
+                                         Number('0q8A_010000000000000001'),
+                                         Number('0q8A_010000000000000001'))
+        self.binary_op(operator.__mul__, -5+10j, 1+2j, 3+4j)
+        self.binary_op(operator.__mul__, 3+6j, 1+2j, 3)
+        self.binary_op(operator.__mul__, 6+8j, 2, 3+4j)
 
     def test_div(self):
         self.assertEqual(Number(7), Number(42) / Number(6))

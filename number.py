@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import binascii
 import math
 import numbers
+import operator
 import struct
 
 import six
@@ -177,14 +178,12 @@ class Number(numbers.Number):
             # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
             # SEE:  about arbitrary ordering, http://docs.python.org/reference/expressions.html#not-in
 
-            raise cls.Incomparable("Numbers cannot be compared with " + type(x).__name__)
+            raise cls.Incomparable("A Number cannot be compared with a " + type(x).__name__)
         else:
             return return_value
 
     # Math
     # ----
-    # def __eq__(self, other):                          return self._op_ready(self) == self._op_ready(other)
-    # def __ne__(self, other):                          return self._op_ready(self) != self._op_ready(other)
     def __eq__(self, other):
         try:
             self_ready = self._op_ready(self)
@@ -263,79 +262,55 @@ class Number(numbers.Number):
     def __hash__(self):
         return hash(self.raw)
 
-    def __neg__(self):
+    def __pos__( self): return self._unary_op(operator.__pos__)
+    def __neg__( self): return self._unary_op(operator.__neg__)
+    def __abs__( self): return self._unary_op(operator.__abs__)
+
+    def __add__( self, other): return self._binary_op(operator.__add__, self, other)
+    def __radd__(self, other): return self._binary_op(operator.__add__, other, self)
+    def __sub__( self, other): return self._binary_op(operator.__sub__, self, other)
+    def __rsub__(self, other): return self._binary_op(operator.__sub__, other, self)
+    def __mul__( self, other): return self._binary_op(operator.__mul__, self, other)
+    def __rmul__(self, other): return self._binary_op(operator.__mul__, other, self)
+    def __truediv__( self, other): return self._binary_op(operator.__truediv__, self, other)
+    def __rtruediv__(self, other): return self._binary_op(operator.__truediv__, other, self)
+
+    def _unary_op(self, op):
         n = Number(self)
-        if n.is_whole():
-            return Number(-int(n))
+        if n.is_complex():
+            return Number(op(complex(n)))
+        elif n.is_whole():
+            return Number(op(int(n)))
         else:
-            return Number(-float(n))
+            return Number(op(float(n)))
 
-    def __abs__(self):
-        if self.is_negative():
-            return -self
-        else:
-            return self
-
-    def __pos__(self):
-        # TODO:  Should this deep-copy?
-        return self
-
-    def __sub__(self, other):
-        n1 = Number(self)
-        n2 = Number(other)
-        if n1.is_whole() and n2.is_whole():
-            return Number(int(n1) - int(n2))
-        else:
-            return Number(float(n1) - float(n2))
-
-    def __rsub__(self, other):
-        return Number(other).__sub__(self)
-
-    def __add__(self, other):
-        n1 = Number(self)
-        n2 = Number(other)
+    @staticmethod
+    def _binary_op(op, input_left, input_right):
+        n1 = Number(input_left)
+        n2 = Number(input_right)
         if n1.is_complex() or n2.is_complex():
-            return Number(complex(n1) + complex(n2))
+            return Number(op(complex(n1), complex(n2)))
         elif n1.is_whole() and n2.is_whole():
-            return Number(int(n1) + int(n2))
+            return Number(op(int(n1), int(n2)))
         else:
-            return Number(float(n1) + float(n2))
-    __radd__ = __add__
-
-    def __mul__(self, other):
-        n1 = Number(self)
-        n2 = Number(other)
-        if n1.is_whole() and n2.is_whole():
-            return Number(int(n1) * int(n2))
-        else:
-            return Number(float(n1) * float(n2))
-    __rmul__ = __mul__
-
-    def __div__(self, other):
-        n1 = Number(self)
-        n2 = Number(other)
-        if n1.is_whole() and n2.is_whole():
-            return Number(int(n1) / int(n2))
-        else:
-            return Number(float(n1) / float(n2))
-
-    def __rdiv__(self, other):
-        return Number(other).__div__(self)
-
-    __rtruediv__ = __rdiv__
-    __truediv__ = __div__
+            return Number(op(float(n1), float(n2)))
 
     def _normalize_all(self):
-        """Eliminate all redundancies in the internal __raw string.
+        """
+        Eliminate redundancies in the internal __raw string.
 
-        Normalization routines operate in-place, modifying self.  There are no return values."""
+        This and other normalization routines operate in-place, modifying self.
+        There are no return values.
+        """
         self._normalize_plateau()
         self._normalize_imaginary()
 
     def _normalize_imaginary(self):
-        """Eliminate imaginary suffix if it's zero.
+        """
+        Eliminate imaginary suffix if it's zero.
 
-        So e.g. 1+0i == 1 truly."""
+        So e.g. 1+0j == 1
+        """
         try:
             if self.get_suffix_number(self.Suffix.TYPE_IMAGINARY) == self.ZERO:
                 # We don't check self.imag == self.ZERO because that would try to delete a missing suffix.
@@ -370,7 +345,7 @@ class Number(numbers.Number):
             if is_plateau:
                 for piece in pieces[1:]:
                     self.raw = self.add_suffix(piece).raw
-                    # TODO:  Test this branch
+                    # TODO:  Test this branch (on a number with suffixes)
 
     def normalized(self):
         return type(self)(self, normalize=True)
