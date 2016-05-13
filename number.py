@@ -24,7 +24,7 @@ import six
 # noinspection PyUnresolvedReferences
 # (Otherwise there are warnings about the raw @property violating __slots__.)
 # DONE:  Got rid of this unsightly decorator:  @six.python_2_unicode_compatible
-class Number(numbers.Number):
+class Number(numbers.Complex):
 
     # __slots__ = ('__raw', )   # less memory
     __slots__ = ('__raw', '_zone')   # faster
@@ -59,6 +59,66 @@ class Number(numbers.Number):
 
     class ConstructorValueError(ValueError):
         pass
+
+    # Raw internal format
+    # -------------------
+    # The raw string is the internal representation of a qiki Number.
+    # It is a string of 8-bit binary bytes.
+    # E.g. b"\x82\x01" in Python version 2 or 3.
+    # Any storage mechanism for the raw format (such as a database)
+    # should expect any of the 256 values for any of the bytes.
+    # So for example they couldn't be stored in a C-language string with NUL terminators.
+    # The length must be stored extrinsic to the raw string
+    # though it can be limited, such as to 255 bytes max.
+    # It is represented textually by a "qstring" which is hexadecimal digits,
+    # preceded by '0q', and containing optional '_' underscores.
+    # The raw string consists of a qex and a qan.
+    # Conventionally one underscore separates the qex and qan.
+    # These are analogous to a floating point exponent and a significand or mantissa.
+    # The qex and qan are encoded so that the raw mapping is monotonic.
+    # That is, iff x1.raw < x2.raw then x1 < x2.
+    # With a few caveats raw strings are also bijective
+    # (aka one-to-one and onto, aka unique).
+    # That is, if x1.raw == x2.raw then x1 == x2.
+    # Caveat #1, some raw strings represent the same number,
+    # for example 0q82 and 0q82_01 are both exactly one.
+    # Computations normalize to a standard and unique representation (0q82_01).
+    # Storage (e.g. a database) may opt for brevity (0q82).
+    # So all 8-bit binary strings have exactly one interpretation as the raw part of a Number.
+    # And some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
+    # The qex and qan may be followed by suffixes.
+    # Two underscores conventionally precede each suffix.
+    # See the Number.Suffix class for underscore conventions within a suffix.
+
+    RAW_INFINITY          = b'\xFF\x81'
+    RAW_INFINITESIMAL     = b'\x80\x7F'
+    RAW_ZERO              = b'\x80'
+    RAW_INFINITESIMAL_NEG = b'\x7F\x81'
+    RAW_INFINITY_NEG      = b'\x00\x7F'
+    RAW_NAN               = b''
+
+    @property
+    def raw(self):
+        return self.__raw
+
+    @raw.setter
+    def raw(self, value):
+        assert(isinstance(value, six.binary_type))
+        # noinspection PyAttributeOutsideInit
+        self.__raw = value
+        self._zone_refresh()
+
+    def __getstate__(self):
+        return self.raw
+
+    def __setstate__(self, d):
+        self.raw = d
+
+    def __repr__(self):
+        return "Number('{}')".format(self.qstring())
+
+    def __str__(self):
+        return self.qstring()
 
     # Zone
     # ----
@@ -97,71 +157,11 @@ class Number(numbers.Number):
     # Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
     # That's never a legal raw because it ends in 00 (and not as part of a suffix).
     # The real minimum of that zone would be an impossible hypothetical
-    # b'\x7E\x00\x00\x00...infinite number of \x00s ... followed by something other than \x00'
+    # b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
     # Representing a surreal -0.99999999999...infinitely many 9s, but not equal to -1.
-    # So instead we use the illegal, inter-zone b'\x7E\x00' is *between* legal raw values.
+    # So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
     # And all legal raw values in Zone FRACTIONAL_NEG are above it.
-    # All legal raw values in Zone NEGATIVE are below it.
-
-    # Raw internal format
-    # -------------------
-    # The raw string is the internal representation of a qiki Number.
-    # It is an 8-bit binary string of bytes.
-    # E.g. b"\x82\x01" in Python version 2 or 3.
-    # Any storage mechanism for the raw format (such as a database)
-    # should expect any of the 256 values for any of the bytes.
-    # So for example they couldn't be stored in a C-language string.
-    # The length must be stored extrinsic to the raw string
-    # though it can be limited, such as 255 bytes max.
-    # It is represented textually by a "qstring" which is hexadecimal digits,
-    # preceded by '0q', and containing optional '_' underscores.
-    # The raw string consists of a qex and a qan.
-    # Conventionally one underscore separates the qex and qan.
-    # These are analogous to a floating point exponent and a significand or mantissa.
-    # The qex and qan are encoded so that the raw mapping is monotonic.
-    # That is, if x1.raw < x2.raw then x1 < x2.
-    # With a few caveats raw strings are also bijective
-    # (aka one-to-one and onto, aka unique).
-    # That is, if x1.raw == x2.raw then x1 == x2.
-    # Caveat #1, some raw strings represent the same number,
-    # for example 0q82 and 0q82_01 are both exactly one.
-    # Computations normalize to a standard and unique representation (0q82_01).
-    # Storage (e.g. a database) may opt for brevity (0q82).
-    # All 8-bit binary strings have exactly one interpretation as the raw part of a Number.
-    # Some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
-    # The qex and qan may be followed by suffixes.
-    # Two underscores conventionally precede each suffix.
-    # See the Number.Suffix class for underscore conventions within a suffix.
-
-    RAW_INFINITY          = b'\xFF\x81'
-    RAW_INFINITESIMAL     = b'\x80\x7F'
-    RAW_ZERO              = b'\x80'
-    RAW_INFINITESIMAL_NEG = b'\x7F\x81'
-    RAW_INFINITY_NEG      = b'\x00\x7F'
-    RAW_NAN               = b''
-
-    @property
-    def raw(self):
-        return self.__raw
-
-    @raw.setter
-    def raw(self, value):
-        assert(isinstance(value, six.binary_type))
-        # noinspection PyAttributeOutsideInit
-        self.__raw = value
-        self._zone_refresh()
-
-    def __getstate__(self):
-        return self.raw
-
-    def __setstate__(self, d):
-        self.raw = d
-
-    def __repr__(self):
-        return "Number('{}')".format(self.qstring())
-
-    def __str__(self):
-        return self.qstring()
+    # And all legal raw values in Zone NEGATIVE are below it.
 
     class Incomparable(TypeError):
         pass
@@ -276,6 +276,8 @@ class Number(numbers.Number):
     def __rtruediv__(self, other): return self._binary_op(operator.__truediv__, other, self)
     def __div__( self, other): return self._binary_op(operator.__div__, self, other)
     def __rdiv__(self, other): return self._binary_op(operator.__div__, other, self)
+    def __pow__( self, other): return self._binary_op(operator.__pow__, self, other)
+    def __rpow__(self, other): return self._binary_op(operator.__pow__, other, self)
 
     def _unary_op(self, op):
         n = Number(self)
@@ -1590,19 +1592,16 @@ Number.Suffix.internal_setup(Number)
 # Number class could be unsuffixed, and derived class could be suffixed?
 
 # DONE:  (littlest deal) subclass numbers.Number.
-
-# TODO:  (little deal) subclass numbers.Complex.
-# First make unit tests for each the operations named in the following TypeError:
+# DONE:  (little deal) subclass numbers.Complex.
+# First made unit tests for each of the operations named in the following TypeError:
 #     "Can't instantiate abstract class Number with abstract methods ..."
-# TODO:  __pow__, __rpow__
-# DONE:  __abs__, __complex__, conjugate, __div__, imag,  __mul__, __pos__, __rdiv__, real,
-# __rmul__, __rtruediv__, __truediv__
+# DONE:  __abs__, __complex__, conjugate, __div__, imag,  __mul__, __pos__, __pow____, __rdiv__, real,
+# __rmul__, __rpow, __rtruediv__, __truediv__
 
 # TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
-# TypeError: Can't instantiate abstract class Number with abstract methods __abs__, __and__, __div__,
-# __floordiv__, __invert__, __lshift__, __mod__, __mul__, __or__, __pos__, __pow__, __rand__, __rdiv__,
-# __rfloordiv__, __rlshift__, __rmod__, __rmul__, __ror__, __rpow__, __rrshift__, __rshift__, __rtruediv__,
-# __rxor__, __truediv__, __trunc__, __xor__
+# TypeError: Can't instantiate abstract class Number with abstract methods __and__, __floordiv__,
+# __invert__, __lshift__, __mod__, __or__, __rand__, __rfloordiv__, __rlshift__, __rmod__, __ror__,
+# __rrshift__, __rshift__, __rxor__, __trunc__, __xor__
 
 # TODO:  Better object internal representation:  store separate qex, qan, suffixes (and synthesize raw on demand)
 # perhaps raw == qex + qan + ''.join([suffix.raw for suffix in suffixes])

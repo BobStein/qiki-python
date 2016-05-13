@@ -1867,15 +1867,22 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__truediv__, 1+2j, -5+10j, 3+4j)
 
     def test_div(self):
-        self.binary_op(operator.__div__, 7, 42, 6)
-        self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
-                                         Number('0q92_0100000000000000020000000000000001'),
-                                         Number('0q8A_010000000000000001'))
+        if six.PY2:
+            self.assertTrue(hasattr(operator, '__div__'))
+            self.binary_op(operator.__div__, 7, 42, 6)
+            self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
+                                             Number('0q92_0100000000000000020000000000000001'),
+                                             Number('0q8A_010000000000000001'))
+        elif six.PY3:
+            self.assertFalse(hasattr(operator, '__div__'))
 
     def test_pow(self):
         self.binary_op(operator.__pow__, 65536, 2, 16)
+        self.binary_op(operator.__pow__, 3.375, 1.5, 3.0)
+        self.binary_op(operator.__pow__, Number('0qFE_80'), Number(2), Number(999))
 
     def test_add_assign(self):
+        # So apparently implementing __add__ means you get __iadd__ for free.
         n = 2
         n += Number(2)
         self.assertEqual(Number(4), n)
