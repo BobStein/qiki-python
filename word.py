@@ -1636,7 +1636,9 @@ class QoolbarSimple(Qoolbar):
 # Or w.jbo(vrb=qool_verbs) could filter that set down to the words whose verbs were in the iterator qool_verbs
 # Maybe it should always be a method.
 # Similarly word.jbs.
+    # The set of words whose subject is word.
 # word.brv?  The set of definitions and qualifiers supporting this verb??
+    # No, that would be word.jbo.  word.brv is the set of sentences that use word as their verb!
 
 # TODO:  Word iterators and iteratables.
 # These will be needed for large sets, or sets that take a long time to determine, E.g.

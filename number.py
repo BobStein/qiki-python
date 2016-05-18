@@ -1577,13 +1577,8 @@ Number.Suffix.internal_setup(Number)
 # TODO:  Number.natural() should be int() if whole, float if non-whole.
 # Maybe .__str__() should call .natural()
 
-# FIXME:  Why is pi 0q82_03243F6A8885A3 but pi-5 = 0q7D_FE243F6A8885A4 ?  (BTW pi in hex is 3.243F6A8885A308D3...)
-#   Is that an IEEE float problem or a qiki.Number problem?
-#   Similarly e = 0q82_02B7E151628AED but e-5 = 0q7D_FDB7E151628AEE
-#   This may not be worth solving, or it may indicate a negative number bug.
-#   1.9375 = 0q82_01F0, but 1.9375-5 = 0q7D_FCF00000000001, and -3.062500000000005 = 0q7D_FCF0
-#   But things work as expected in f__s() unit test.  Why do they fail at the playground?
-#   (I think this last weirdness at least has been fixed.)
+# FIXED:  pi = 0q82_03243F6A8885A3 and pi-5 = 0q7D_FE243F6A8885A3  (BTW pi in hex is 3.243F6A8885A308D3...)
+#   Also, e  = 0q82_02B7E151628AED and e-5  = 0q7D_FDB7E151628AED  (BTW e  in hex is 2.B7E151628AED2A6A...)
 
 # TODO:  Term for an unsuffixed Number?
 # TODO:  Term for a suffixed Number?
