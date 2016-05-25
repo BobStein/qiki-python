@@ -1088,11 +1088,13 @@ class LexMySQL(Lex):
         Return a list of choate words.
 
         idn,sbj,vrb,obj all restrict the list of returned words.
-        jbo_vrb is not restrictive, it's elaborative.
+        jbo_vrb is not restrictive it's elaborative (note 1).
         'jbo' being 'obj' backwards, it represents a reverse reference.
-        If jbo_vrb is an iterable of verbs, each returned word has a jbo attribute
+        If jbo_vrb is a container of verbs, each returned word has a jbo attribute
         that is a list of choate words whose object is the word.
         In other words, it gloms onto each word the words that point to it (using approved verbs).
+        jbo_vrb cannot be a generator's iterator, because super_select()
+        will probably need two passes on it anyway.
 
         The order of words is chronological.
         idn_order='DESC' for reverse-chronological.
@@ -1100,16 +1102,21 @@ class LexMySQL(Lex):
 
         obj_group=True to collapse by obj.
         jbo_strictly means only words that are the objects of jbo_vrb verbs.
+
+        (note 1) If jbo_strictly is true, then jbo_vrb IS restrictive.
         """
-        if isinstance(jbo_vrb, Word):
+        if isinstance(jbo_vrb, (Word, Number)):
             jbo_vrb = (jbo_vrb,)
+        if jbo_vrb is None:
+            jbo_vrb = ()
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None)))
         assert idn_order in ('ASC', 'DESC')
         assert jbo_order in ('ASC', 'DESC')
-        assert isinstance(jbo_vrb, (Number, Word, type(None))) or is_iterable(jbo_vrb)
+        assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type(jbo_vrb).__name__
+        assert hasattr(jbo_vrb, '__iter__')
         query_args = [
             'SELECT '
             'w.idn AS idn, '
@@ -1164,10 +1171,12 @@ class LexMySQL(Lex):
                 word.populate_from_row(row)
                 word.jbo = []
                 words.append(word)   # To be continued, we may append to word.jbo later.
-                # (So yield would not work here -- because word continues to be modified after
+                # So yield would not work here -- because word continues to be modified after
                 # it gets appended to words.  Similarly new_jbo after appended to word.jbo.
-                # No wait, new_jbo is final, and not modified after appended to word.jbo.)
-                # (But wait a minute, who's to say an object can't be modified after yielded?)
+                # No wait, new_jbo is final, and not modified after appended to word.jbo.
+                # But wait a minute, who's to say an object can't be modified after yielded?
+                # It could, but that could lead to ferociously complicated bugs!
+                # Upshot:  append not yield
             jbo_idn = row.get('jbo_idn', None)
             if jbo_idn is not None:
                 new_jbo = self[None]
@@ -1430,6 +1439,10 @@ def is_iterable(x):
         return hasattr(x, '__getitem__')
         return hasattr(x, '__iter__')
     SEE:  http://stackoverflow.com/a/36154791/673991
+
+    CAUTION:  This will likely break a generator's iterator.
+    It may consume some or all of it's elements.
+
     """
     try:
         0 in x
@@ -1546,6 +1559,10 @@ class QoolbarSimple(Qoolbar):
             if has_qool and last_iconify_url is not None:
                 qool_verb.icon_url = last_iconify_url
                 verbs.append(qool_verb)
+                # yield is not used here because find_word(jbo_vrb) doesn't handle
+                # a generator's iterator well.  Can that be done in one pass anyway?
+                # Probably not because of super_select() -- the MySQL version of which
+                # needs to pass a list of its values and know its length anyway.
         return verbs
 
     def get_verbs(self, debug=False):
@@ -1583,13 +1600,13 @@ class QoolbarSimple(Qoolbar):
                 verbs.append(qool_verb)
         return verbs
 
-    def nums(self, obj):   # TODO:  Obsolete?
-        jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
-        return_dict = dict()
-        for word in jbo:
-            icon_entry = return_dict.setdefault(word.vrb, dict())
-            icon_entry[word.sbj] = dict(num=word.num)
-        return return_dict
+    # def nums(self, obj):   # TODO:  Obsolete?
+    #     jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
+    #     return_dict = dict()
+    #     for word in jbo:
+    #         icon_entry = return_dict.setdefault(word.vrb, dict())
+    #         icon_entry[word.sbj] = dict(num=word.num)
+    #     return return_dict
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
