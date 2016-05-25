@@ -1163,7 +1163,7 @@ class LexMySQL(Lex):
                 word = self[None]
                 word.populate_from_row(row)
                 word.jbo = []
-                words += [word]   # To be continued, we may append to word.jbo later.
+                words.append(word)   # To be continued, we may append to word.jbo later.
                 # (So yield would not work here -- because word continues to be modified after
                 # it gets appended to words.  Similarly new_jbo after appended to word.jbo.
                 # No wait, new_jbo is final, and not modified after appended to word.jbo.)
@@ -1172,7 +1172,7 @@ class LexMySQL(Lex):
             if jbo_idn is not None:
                 new_jbo = self[None]
                 new_jbo.populate_from_row(row, prefix='jbo_')
-                word.jbo += [new_jbo]
+                word.jbo.append(new_jbo)
         return words
 
     def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
