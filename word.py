@@ -278,8 +278,11 @@ class Word(object):
         num = num if num is not None else 1
         txt = txt if txt is not None else u''
 
-        if not isinstance(num, numbers.Number) or not Text.is_valid(txt):
-            raise self.SentenceArgs("Wrong types for Word.says() num or txt")
+        if not isinstance(num, numbers.Number):
+            raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type(num).__name__))
+
+        if not Text.is_valid(txt):
+            raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type(txt).__name__))
 
         new_word = self.spawn(
             sbj=self,
@@ -1096,9 +1099,10 @@ class LexMySQL(Lex):
         The order of jbo words is always chronological.
 
         obj_group=True to collapse by obj.
-        jbo_strictly means only words that are glommed.
+        jbo_strictly means only words that are the objects of jbo_vrb verbs.
         """
-
+        if isinstance(jbo_vrb, Word):
+            jbo_vrb = (jbo_vrb,)
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
@@ -1139,7 +1143,7 @@ class LexMySQL(Lex):
             ]
 
         query_args += ['WHERE TRUE', None]
-        query_args += self._find_where(idn, sbj, vrb, obj)
+        query_args += self._and_clauses(idn, sbj, vrb, obj)
 
         if obj_group:
             query_args += ['GROUP BY obj', None]
@@ -1159,15 +1163,16 @@ class LexMySQL(Lex):
                 word = self[None]
                 word.populate_from_row(row)
                 word.jbo = []
-                words.append(word)   # To be continued, we may append to word.jbo later.
+                words += [word]   # To be continued, we may append to word.jbo later.
                 # (So yield would not work here -- because word continues to be modified after
                 # it gets appended to words.  Similarly new_jbo after appended to word.jbo.
-                # No wait, that part is final.)
+                # No wait, new_jbo is final, and not modified after appended to word.jbo.)
+                # (But wait a minute, who's to say an object can't be modified after yielded?)
             jbo_idn = row.get('jbo_idn', None)
             if jbo_idn is not None:
                 new_jbo = self[None]
                 new_jbo.populate_from_row(row, prefix='jbo_')
-                word.jbo.append(new_jbo)
+                word.jbo += [new_jbo]
         return words
 
     def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
@@ -1177,14 +1182,14 @@ class LexMySQL(Lex):
         Return list of idns.
         """
         query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
-        query_args += self._find_where(idn, sbj, vrb, obj)
+        query_args += self._and_clauses(idn, sbj, vrb, obj)
         query_args += ['ORDER BY idn ' + idn_order]
         rows_of_idns = self.super_select(*query_args)
         idns = [row['idn'] for row in rows_of_idns]
         return idns
 
     @staticmethod
-    def _find_where(idn, sbj, vrb, obj):
+    def _and_clauses(idn, sbj, vrb, obj):
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
@@ -1229,6 +1234,7 @@ class LexMySQL(Lex):
         # TODO:  Recursive query_args?
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
+        # Instead of                 super_select('SELECT +', None, 'FROM table')
 
         debug = kwargs.pop('debug', False)
         query = ''
@@ -1498,6 +1504,7 @@ class Qoolbar(object):
 
 class QoolbarSimple(Qoolbar):
     def __init__(self, lex):
+        # TODO:  __init__(self, qool, iconify)
         assert isinstance(lex, Lex)
         self.lex = lex
         self.say_initial_verbs()
@@ -1551,7 +1558,7 @@ class QoolbarSimple(Qoolbar):
             name - txt of the verb, e.g. 'like'
             icon_url - txt from the iconify sentence
         """
-        # TODO:  Make Word json serializable, http://stackoverflow.com/a/3768975/673991
+        # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
         # Then we wouldn't have to translate verbs to verb_dicts:
         verbs = self.get_verbs(debug)
         for verb in verbs:

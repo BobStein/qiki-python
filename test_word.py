@@ -327,6 +327,7 @@ class WordDemoTests(WordTests):
         lex[s](v)[o] = n
         lex[s](v)[o] = t
         lex[s](v)[o] = 1
+        lex[s](v)[o] = ''
         s.says(vrb=v, obj=o, num=n, txt=t)
         s.says(v, o, n, t)
         s.says(v, o, t, n)
@@ -2730,6 +2731,12 @@ class WordQoolbarTests(WordTests):
 
         self.assertEqual([self.anna_like_youtube, self.bart_like_youtube], nouns[0].jbo)
         self.assertEqual([self.anna_like_zigzags, self.bart_delete_zigzags], nouns[1].jbo)
+
+    def test_jbo_single_verb(self):
+        deleted_things = self.lex.find_words(jbo_vrb=self.delete, jbo_strictly=True)
+        self.assertEqual([
+            u'zigzags'
+        ], [thing.txt for thing in deleted_things])
 
     # TODO:  Test jbo_vrb = a single verb, not just a container
     # TODO:  Test jbo_vrb = idn
