@@ -1484,7 +1484,9 @@ class Text(six.text_type):
     @classmethod
     def decode_if_you_must(cls, x):
         """
-        Interpret a MySQL txt field.  (Possibly the only use left.)
+        Interpret a MySQL txt field.  (Possibly the only use remaining in word.py.)
+
+        How evil is this?  What's the better way?
 
         Was once used by Word.__getattr__() on its name argument, when lex.word_name was a thing.
         (Now we do lex[u'word_name'] instead.)

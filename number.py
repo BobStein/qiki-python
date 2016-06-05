@@ -465,6 +465,7 @@ class Number(numbers.Complex):
         """Construct a Number from a printable, hexadecimal rendering of its raw, internal binary string of qigits
 
         Example:  assert Number(1) == Number('0q82_01')
+        Example:  assert Number(1) == Number('1')
         """
         assert(isinstance(s, six.string_types))
         if s.startswith('0q'):
