@@ -180,7 +180,7 @@ class Word(object):
             # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
             return True
 
-        raise RuntimeError("Neither is this implemented any more")
+        raise RuntimeError("This word has no ''{}'' member".format(attribute_name))
 
     class NotExist(Exception):
         pass
@@ -607,6 +607,15 @@ class SubjectedVerb(object):
         self._kwargs = kwargs
 
     def __setitem__(self, key, value):
+        """
+        Square-bracket sentence insert (the C in CRUD).
+
+        This is the result of:
+
+            lex[s](v)[o] = n,t
+
+        Specifically, the assignment combined with the right-most square-bracket operator.
+        """
         objected = self._subjected.spawn(key)
         num_and_or_txt = value
         if isinstance(num_and_or_txt, numbers.Number):
@@ -618,20 +627,43 @@ class SubjectedVerb(object):
         else:
             num = Number(1)
             txt = Text(u"")
+            num_count = 0
+            txt_count = 0
             if is_iterable(num_and_or_txt):
                 for num_or_txt in num_and_or_txt:
                     if isinstance(num_or_txt, numbers.Number):
                         num = num_or_txt
+                        num_count += 1
                     elif Text.is_valid(num_or_txt):
                         txt = num_or_txt
+                        txt_count += 1
                     else:
                         raise Word.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
             else:
                 raise Word.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
+            if num_count > 1:
+                raise Word.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
+                    n=num_count,
+                    arg=repr(num_and_or_txt)
+                ))
+            if txt_count > 1:
+                raise Word.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
+                    n=txt_count,
+                    arg=repr(num_and_or_txt)
+                ))
 
         self._subjected.says(self._verbed, objected, num, txt, *self._args, **self._kwargs)
 
     def __getitem__(self, item):
+        """
+        Square-bracket sentence lookup (the R in CRUD).
+
+        This is the result of:
+
+            w = lex[s](v)[o]
+
+        Specifically, the right-most square-bracket operator.
+        """
         objected = item
         return self._subjected.said(self._verbed, objected)
 
@@ -672,8 +704,11 @@ class Listing(Word):
     @classmethod
     def install(cls, meta_word):
         """
-        Associate the class with a (simple) word in the database.
-        That word's idn will be the root of the idn for all instances.
+        Associate the derived class with a word in the lex that represents the class.
+        That class word should already exist, and it will (probably) have no suffix.
+        The class word's idn will be the root of the idn for all instances of the class.
+        Each instance will have a unique suffix,
+        automatically created each time the class is instantiated with a unique index.
 
         This must be called before any instantiations.
         """
@@ -730,6 +765,29 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
                     #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                     # Eventually, this will encapsulate other word repositories
                     # Make this an abstract base class
+
+    def __getitem__(self, item):
+        """
+        Square-bracket Word instantiation.
+
+        This is the result of
+            lex[idn]
+            lex[txt]  (for a definition)
+            lex[word]  (for copy construction)
+        """
+        existing_word = self.spawn(item)
+        # if not existing_word.exists():
+        #     raise self.NotExist
+        # No, because inchoate words become choate by virtue of calling .exists().
+        # And it's just not (yet) the Word way of doing things.
+        #     That is, lots of code asks permission rather than forgiveness.
+        #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
+        #     at this point, whether the word exists or not.
+
+        if existing_word.idn == self.idn:
+            return self   # lex is a singleton, i.e. assert(lex[lex] is lex).  Why is this important?
+        else:
+            return existing_word
 
     class SuperIdentifier(str):
         """Identifier in an SQL super-query that could go in `back-ticks`."""
@@ -795,22 +853,6 @@ class LexMySQL(Lex):
         # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
-
-    def __getitem__(self, item):
-
-        existing_word = self.spawn(item)
-        # if not existing_word.exists():
-        #     raise self.NotExist
-        # No because inchoate words become choate by virtue of calling .exists().
-        # And it's just not (yet) the Word way of doing things.
-        #     That is, lots of code asks permission rather than forgiveness.
-        #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
-        #     at this point, whether the word exists or not.
-
-        if existing_word.idn == self.idn:
-            return self   # lex is a singleton.  Why is this important?
-        else:
-            return existing_word
 
     def noun(self, name=None):
         if name is None:

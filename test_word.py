@@ -477,7 +477,7 @@ class InternalTestWordTests(WordTests):
         with self.fails(): self.assertExactlyFalse('')
 
 
-class Word001aFirstTests(WordTests):
+class Word0011FirstTests(WordTests):
 
     def test_00_number(self):
         n = qiki.Number(1)
@@ -703,7 +703,7 @@ class Word001aFirstTests(WordTests):
         self.assertEqual(lex1, lex2)
         self.assertIs(lex1, lex2)
 
-    def test_09d_lex_singleton_by_call(self):
+    def test_09d_lex_singleton_by_index(self):
         lex1 = self.lex
         lex2 = self.lex[u'lex']
         self.assertEqual(lex1, lex2)
@@ -1001,7 +1001,7 @@ class Word001aFirstTests(WordTests):
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
 
-class Word001bUtilities(WordTests):
+class Word0012Utilities(WordTests):
 
     def test_idn_from_word_or_number(self):
         agent = self.lex[u'agent']
@@ -1072,10 +1072,10 @@ class Word001bUtilities(WordTests):
     #         to_kwargs(('x',), dict(s='x'), dict(i=[int], s=[str]), dict(i=0, s=''))
 
 
-class Word001cBrackets(WordTests):
+class Word0013Brackets(WordTests):
 
     def setUp(self):
-        super(Word001cBrackets, self).setUp()
+        super(Word0013Brackets, self).setUp()
         self.art = self.lex.define(u'agent', u'art')
         self.got = self.lex.verb(u'got')
         self.lek = self.lex.noun(u'lek')
@@ -1174,6 +1174,36 @@ class Word001cBrackets(WordTests):
         self.assertEqual(236, word.num)
         self.assertEqual(u"route", word.txt)
 
+    def test_04d_lex_square_circle_square_txt_txt(self):
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = u"one string", u"another string"
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = u"one string", u"another string", u"third"
+
+    def test_04e_lex_square_circle_square_num_num(self):
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = 42, 24
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = 11, 22, 33
+
+    def test_04f_lex_square_circle_square_num_num_txt_txt(self):
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = 11, 22, u"one"
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = 11, u"one", 22
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = u"one", 11, 22
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = 11, u"one", u"two"
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = u"one", 11, u"two"
+        with self.assertRaises(qiki.Word.SentenceArgs):
+            self.lex[self.art](self.got)[self.lek] = u"one", u"two", 11
+
+    # TODO:  What about lex[s](v)[o] = (n,t)   (In other words, explicit tuple)
+    # TODO:  What about lex[s](v)[o] = (n,)
+    # TODO:  What about lex[s](v)[o] = ()
+
     def test_05a_lex_circle_square_num(self):
         with self.assertNewWord():
             self.lex(self.got)[self.lek] = 1
@@ -1223,7 +1253,7 @@ class Word001cBrackets(WordTests):
         self.assertEqual(2, word.num)
         self.assertEqual(u"two", word.txt)
 
-    def test_06c_lex_square_circle_square_all_text(self):
+    def test_06d_lex_square_circle_square_all_text(self):
         with self.assertNewWord():
             self.lex[u'art'](u'got')[u'lek'] = 2, u"two"
             word = self.art(self.got)[self.lek]
@@ -1240,6 +1270,10 @@ class Word001cBrackets(WordTests):
             self.art(self.got)[self.lek] = 2, u"two"
         with self.assertNoNewWord():
             self.art(self.got, use_already=True)[self.lek] = 2, u"two"
+
+    def test_08_lex_square_lex(self):
+        """Lex is a singleton when indexing itself."""
+        self.assertIs(self.lex[self.lex], self.lex)
 
 
 class WordUnicode(WordTests):
