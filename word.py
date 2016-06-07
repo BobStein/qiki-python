@@ -1533,6 +1533,9 @@ class Text(six.text_type):
         Was once used by Word.__getattr__() on its name argument, when lex.word_name was a thing.
         (Now we do lex[u'word_name'] instead.)
         """
+        # TODO:  Better to if six.PY2 ... else six.PY3?
+        # and call the method from_str()
+        # so the constructor is implicitly a from_unicode()
         try:
             return cls(x)   # This works in Python 3.  It raises an exception in Python 2.
         except TypeError:

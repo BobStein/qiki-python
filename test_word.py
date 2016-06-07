@@ -348,7 +348,8 @@ class WordDemoTests(WordTests):
         w = s(v)[o]
         w = s.said(v, o)
 
-        # Setter if it does not exist already.  Getter only if it does.
+        # Setter if it does not exist already.  Getter either way.
+        # (By exist, I mean all five match: s,v,o,n,t.)
         # w = lex[s](v, n, t)[o]
         # w = lex[s](v, num=n, txt=t)[o]
         # w = lex[s](v).setdefault(o, n, t)
@@ -1317,7 +1318,7 @@ class WordUnicodeTxt(WordUnicode):
 
 
 # noinspection SpellCheckingInspection
-class Word002UnicodeVerb(WordUnicode):
+class Word0020UnicodeVerb(WordUnicode):
     """Unicode characters in verb names."""
     # TODO:  OBSOLETE, verb names are no longer method names
 
@@ -1360,7 +1361,7 @@ class Word002UnicodeVerb(WordUnicode):
             self.assertTrue(self.lex[u'\U0001F47Dlienate'].is_a_verb())
 
 
-class Word003MoreTests(WordTests):
+class Word0030MoreTests(WordTests):
 
     def test_describe(self):
         thing = self.lex.noun(u'thingamajig')
@@ -1710,10 +1711,10 @@ class Word003MoreTests(WordTests):
     #         self.lex[u'defibrillator']
 
 
-class Word004SentenceTests(WordTests):
+class Word0040SentenceTests(WordTests):
 
     def setUp(self):
-        super(Word004SentenceTests, self).setUp()
+        super(Word0040SentenceTests, self).setUp()
         self.sam = self.lex.define(u'agent', u'sam')
         self.vet = self.lex.verb(u'vet')
         self.orb = self.lex.noun(u'orb')
@@ -1900,7 +1901,7 @@ class WordListingTests(WordTests):
         self.Student.install(self.names)
 
 
-class Word005aListingBasicTests(WordListingTests):
+class Word0051ListingBasicTests(WordListingTests):
 
     def test_listing_suffix(self):
         number_two = qiki.Number(2)
@@ -1995,7 +1996,7 @@ class Word005aListingBasicTests(WordListingTests):
         self.assertEqual(u"Chad", chad2.txt)
 
 
-class Word005bListingInternalsTests(WordListingTests):
+class Word0052ListingInternalsTests(WordListingTests):
 
     class SubStudent(WordListingTests.Student):
         def lookup(self, index, callback):
@@ -2006,7 +2007,7 @@ class Word005bListingInternalsTests(WordListingTests):
             raise self.NotFound
 
     def setUp(self):
-        super(Word005bListingInternalsTests, self).setUp()
+        super(Word0052ListingInternalsTests, self).setUp()
         self.SubStudent.install(self.lex.noun(u'sub_student'))
         self.AnotherListing.install(self.lex.noun(u'another_listing'))
 
@@ -2048,6 +2049,7 @@ class Word005bListingInternalsTests(WordListingTests):
         chad = self.Student(2)
         self.assertEqual(u"Chad", chad.txt)
         chad_clone = qiki.Listing.word_lookup(chad.idn)
+        self.assertEqual(u"Chad", chad_clone.txt)
         self.assertEqual(chad, chad_clone)
 
     def test_listing_word_lookup_not_suffixed(self):
@@ -2065,6 +2067,16 @@ class Word005bListingInternalsTests(WordListingTests):
         not_a_listing_idn.add_suffix(listed_thing_number)
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.word_lookup(not_a_listing_idn)
+
+    def test_listing_word_lookup_type(self):
+        chad_clone = qiki.Listing.word_lookup(self.Student(2).idn)
+        self.assertIs(type(chad_clone), self.Student)
+
+    def test_listing_lex_lookup_type(self):
+        chad_clone = self.lex[self.Student(2).idn]
+        self.assertEqual(self.Student(2).idn, chad_clone.idn)
+        self.assertEqual(u"Chad", chad_clone.txt)
+        self.assertIs(type(chad_clone), self.Student)
 
     def test_class_from_meta_idn(self):
         chad = self.Student(2)
@@ -2088,10 +2100,10 @@ class Word005bListingInternalsTests(WordListingTests):
             bogus_word.exists()
 
 
-class Word006UseAlready(WordTests):
+class Word0060UseAlready(WordTests):
 
     def setUp(self):
-        super(Word006UseAlready, self).setUp()
+        super(Word0060UseAlready, self).setUp()
         self.narcissus = self.lex.define(u'agent', u'narcissus')
         self.like = self.lex.verb(u'like')
 
@@ -2141,10 +2153,10 @@ class Word006UseAlready(WordTests):
     # TODO:  Deal with the inconsistency that when defining a word, use_already defaults to True.
 
 
-class Word007FindTests(WordTests):
+class Word0070FindTests(WordTests):
 
     def setUp(self):
-        super(Word007FindTests, self).setUp()
+        super(Word0070FindTests, self).setUp()
         self.apple = self.lex.noun(u'apple')
         self.berry = self.lex.noun(u'berry')
         self.curry = self.lex.noun(u'curry')
