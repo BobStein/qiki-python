@@ -419,6 +419,10 @@ class Number(numbers.Complex):
 
     @property
     def real(self):
+        return self.root()
+
+    def root(self):
+        # Too generic a name?  Better to name it unsuffixed()?
         return self.parse_suffixes()[0]
 
     @property
@@ -969,7 +973,7 @@ class Number(numbers.Complex):
 
         TYPE_LISTING   = 0x1D   # 'ID' in 1337
         TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
-        TYPE_TEST      = 0x7F   # for unit testing, arbitrary payload.
+        TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -1107,7 +1111,7 @@ class Number(numbers.Complex):
     def parse_suffixes(self):
         """Parse a Number into its root and suffixes.
 
-        Return a tuple of at least one element (the root unsuffixed Number)
+        Return a tuple of at least one element (the root of the Number)
         followed by zero or more suffixes.
 
         assert \
@@ -1143,8 +1147,6 @@ class Number(numbers.Complex):
                 break
         return_array.append(n)
         return tuple(reversed(return_array))
-
-    # TODO:  def unsuffixed()
 
 
     # Setup
@@ -1583,9 +1585,9 @@ Number.Suffix.internal_setup(Number)
 
 # TODO:  Term for an unsuffixed Number?
 # TODO:  Term for a suffixed Number?
-# TODO:  Term for the unsuffixed part of a suffixed number?  "Root"?
-# Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
-# Number class could be unsuffixed, and derived class could be suffixed?
+# DONE:  Term for the unsuffixed part of a suffixed number:  "root"
+# NOPE:  Name it "Numeraloid?  Identifier?  SuperNumber?  UberNumber?  Umber?
+# NOPE:  Number class could be unsuffixed, and derived class could be suffixed?
 
 # DONE:  (littlest deal) subclass numbers.Number.
 # DONE:  (little deal) subclass numbers.Complex.

@@ -2238,16 +2238,16 @@ class NumberSuffixTests(NumberTests):
     # the value returned by float(), and not break tests here when it's implemented.)
 
     def test_add_suffix_type(self):
-        self.assertEqual(Number('0q82_01__7F0100'), Number(1).add_suffix(Number.Suffix.TYPE_TEST))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).add_suffix(Number.Suffix.TYPE_TEST))
 
     def test_add_suffix_type_by_class(self):
-        self.assertEqual(Number('0q82_01__7F0100'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
 
     def test_add_suffix_type_and_payload(self):
-        self.assertEqual(Number('0q82_01__887F0200'), Number(1).add_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).add_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
 
     def test_add_suffix_type_and_payload_by_class(self):
-        self.assertEqual(Number('0q82_01__887F0200'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2274,7 +2274,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
 
     def test_delete_suffix(self):
-        n = Number('0q82_01__7F0100')
+        n = Number('0q82_01__{:02X}0100'.format(Number.Suffix.TYPE_TEST))
         n_deleted = Number(n)
         n_deleted.delete_suffix(Number.Suffix.TYPE_TEST)
         self.assertEqual('0q82_01', n_deleted.qstring())
@@ -2283,10 +2283,10 @@ class NumberSuffixTests(NumberTests):
         """
         In general, Number suffixes should impact equality.
 
-        That is, a suffixed Number should not equal an unsuffixed number.
+        That is, a suffixed Number should not equal an unsuffixed number, not even its root.
         Or two numbers with different suffixes should not be equal.
         One exception is a complex number with a zero imaginary suffix, that should equal its
-        unsiffuxed, real-only version.
+        root, real-only version.
         """
         n_plain = Number('0q82_01')
         n_suffixed = Number('0q82_01__7F0100')
@@ -2533,6 +2533,10 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0, float(Number('0q82_10__FFFFFF_7F0400')))
         self.assertEqual(16.0, float(Number('0q82_10__123456_7F0400')))
         self.assertEqual(16.0625, float(Number('0q82_1010')))
+
+    def test_root(self):
+        suffixed_word = Number(42).add_suffix(Number.Suffix.TYPE_TEST)
+        self.assertEqual(Number(42), suffixed_word.root())
 
 
 # noinspection SpellCheckingInspection

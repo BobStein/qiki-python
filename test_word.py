@@ -1876,6 +1876,8 @@ class Word0040SentenceTests(WordTests):
 
 class WordListingTests(WordTests):
 
+    _lookup_has_been_called = False   # ... since the current test was SetUp()
+
     class Student(qiki.Listing):
         names_and_grades = [
             (u"Archie", 4.0),
@@ -1885,18 +1887,20 @@ class WordListingTests(WordTests):
         ]
 
         def lookup(self, index, callback):
+            WordListingTests._lookup_has_been_called = True
             try:
                 name_and_grade = self.names_and_grades[int(index)]
             except IndexError:
-                raise self.NotFound
+                raise self.NotFound("Cannot find student '{}'".format(repr(index)))
             name = name_and_grade[0]
             grade = name_and_grade[1]
             callback(name, grade)
 
     def setUp(self):
+        WordListingTests._lookup_has_been_called = False
         super(WordListingTests, self).setUp()
         self.listing = self.lex.noun(u'listing')
-        qiki.Listing.install(self.listing)
+        # qiki.Listing.install(self.listing)   # Why?!?  Can't this be omitted?  (Listing.meta_word would remain None)
         self.names = self.lex.define(self.listing, u'names')
         self.Student.install(self.names)
 
@@ -1968,8 +1972,10 @@ class Word0051ListingBasicTests(WordListingTests):
             archie.says(vrb=laud, obj=thing, num=qiki.Number(123456789), txt=u"most sincerely")
 
     def test_listing_not_found(self):
+        """Bogus index raises a Listing.NotFound exception."""
+        not_a_student = self.Student(qiki.Number(5))
         with self.assertRaises(qiki.Listing.NotFound):
-            self.Student(qiki.Number(5))
+            _ = not_a_student.txt
 
     def test_listing_index_Number(self):
         deanne = self.Student(qiki.Number(3))
@@ -2017,9 +2023,9 @@ class Word0052ListingInternalsTests(WordListingTests):
         self.assertIs(qiki.Listing.class_dictionary, self.AnotherListing.class_dictionary)
 
     def test_one_meta_word_per_subclass(self):
-        self.assertNotEqual(qiki.Listing.meta_word.idn, self.Student.meta_word.idn)
-        self.assertNotEqual(qiki.Listing.meta_word.idn, self.SubStudent.meta_word.idn)
-        self.assertNotEqual(qiki.Listing.meta_word.idn, self.AnotherListing.meta_word.idn)
+        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.Student.meta_word.idn)
+        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.SubStudent.meta_word.idn)
+        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.AnotherListing.meta_word.idn)
 
         self.assertNotEqual(self.Student.meta_word.idn, self.SubStudent.meta_word.idn)
         self.assertNotEqual(self.Student.meta_word.idn, self.AnotherListing.meta_word.idn)
@@ -2029,7 +2035,7 @@ class Word0052ListingInternalsTests(WordListingTests):
     def test_idn_suffixed(self):
         chad = self.Student(2)
         deanne = self.Student(3)
-        self.assertFalse(qiki.Listing.meta_word.idn.is_suffixed())
+        # self.assertFalse(qiki.Listing.meta_word.idn.is_suffixed())
         self.assertFalse(self.Student.meta_word.idn.is_suffixed())
         self.assertFalse(self.SubStudent.meta_word.idn.is_suffixed())
         self.assertTrue(chad.idn.is_suffixed())
@@ -2039,38 +2045,52 @@ class Word0052ListingInternalsTests(WordListingTests):
         chad = self.Student(2)
         # Serious assumption here, that only 5 words were defined before lex.noun('listing').
         # But this helps to demonstrate Listing meta_word and instance idn contents.
-        self.assertEqual('0q82_06', qiki.Listing.meta_word.idn.qstring())
+        # self.assertEqual('0q82_06', qiki.Listing.meta_word.idn.qstring())
         self.assertEqual('0q82_07', self.Student.meta_word.idn.qstring())   # Number(7)
         self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root is Number(7), payload is Number(2).
         self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
         self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
 
-    def test_listing_word_lookup(self):
+    def test_listing_instance_from_idn(self):
         chad = self.Student(2)
         self.assertEqual(u"Chad", chad.txt)
-        chad_clone = qiki.Listing.word_lookup(chad.idn)
+        chad_clone = qiki.Listing.instance_from_idn(chad.idn)
         self.assertEqual(u"Chad", chad_clone.txt)
         self.assertEqual(chad, chad_clone)
 
-    def test_listing_word_lookup_not_suffixed(self):
+    def test_listing_instance_from_idn_not_suffixed(self):
         with self.assertRaises(qiki.Listing.NotAListing):
-            qiki.Listing.word_lookup(qiki.Number(666))
+            qiki.Listing.instance_from_idn(qiki.Number(666))
 
-    def test_listing_word_lookup_wrong_suffixed(self):
+    def test_listing_instance_from_idn_wrong_suffixed(self):
         with self.assertRaises(qiki.Listing.NotAListing):
-            qiki.Listing.word_lookup(qiki.Number(666+666j))
+            qiki.Listing.instance_from_idn(qiki.Number(666+666j))
 
-    def test_listing_word_lookup_not_listing(self):
+    def test_listing_instance_from_idn_not_listing(self):
         chad = self.Student(2)
         (listing_class_idn, listed_thing_number) = chad.idn.parse_suffixes()
         not_a_listing_idn = qiki.Number(listing_class_idn + 666)
         not_a_listing_idn.add_suffix(listed_thing_number)
         with self.assertRaises(qiki.Listing.NotAListing):
-            qiki.Listing.word_lookup(not_a_listing_idn)
+            qiki.Listing.instance_from_idn(not_a_listing_idn)
 
-    def test_listing_word_lookup_type(self):
-        chad_clone = qiki.Listing.word_lookup(self.Student(2).idn)
+    def test_listing_instance_from_idn_type(self):
+        chad_clone = qiki.Listing.instance_from_idn(self.Student(2).idn)
         self.assertIs(type(chad_clone), self.Student)
+
+    def test_listing_instance_from_idn_inchoate(self):
+        """Make sure a listing instantiated its idn is inchoate until used."""
+        chad_clone = qiki.Listing.instance_from_idn(self.Student(2).idn)
+        self.assertTrue(chad_clone._is_inchoate)
+        _ = chad_clone.txt
+        self.assertFalse(chad_clone._is_inchoate)
+
+    def test_listing_instance_from_idn_lookup_call(self):
+        self.assertFalse(WordListingTests._lookup_has_been_called)
+        chad_clone = qiki.Listing.instance_from_idn(self.Student(2).idn)
+        self.assertFalse(WordListingTests._lookup_has_been_called)
+        _ = chad_clone.txt
+        self.assertTrue(WordListingTests._lookup_has_been_called)
 
     def test_listing_lex_lookup_type(self):
         chad_clone = self.lex[self.Student(2).idn]
@@ -2086,7 +2106,7 @@ class Word0052ListingInternalsTests(WordListingTests):
         self.assertEqual(self.Student, chad_class)
         self.assertNotEqual(qiki.Listing, chad_class)
 
-        self.assertTrue(issubclass(chad_class, self.Student))
+        self.assertIs(chad_class, self.Student)
         self.assertTrue(issubclass(chad_class, qiki.Listing))
 
     def test_class_from_meta_idn_bogus(self):
@@ -2095,9 +2115,42 @@ class Word0052ListingInternalsTests(WordListingTests):
             qiki.Listing.class_from_meta_idn(some_word.idn)
 
     def test_non_listing_suffix(self):
+        """
+        Try lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
+
+        Importantly, the exception must come when the word becomes choate, NOT when it's instantiated.
+        """
         bogus_word = self.lex[qiki.Number(1+2j)]
         with self.assertRaises(qiki.Word.NotAWord):
             bogus_word.exists()
+
+    def test_listing_inchoate(self):
+        """Make sure a listing instantiated from its class & index is inchoate until used."""
+        chad = self.Student(2)
+        self.assertTrue(chad._is_inchoate)
+        _ = chad.txt
+        self.assertFalse(chad._is_inchoate)
+
+    def test_listing_lookup_call(self):
+        self.assertFalse(WordListingTests._lookup_has_been_called)
+        chad = self.Student(2)
+        self.assertFalse(WordListingTests._lookup_has_been_called)
+        _ = chad.txt
+        self.assertTrue(WordListingTests._lookup_has_been_called)
+
+    def test_class_from_listing_idn(self):
+        """Find the class from the listing id."""
+        chad = self.Student(2)
+        listing_idn = chad.idn
+        chad_class = qiki.Listing.class_from_listing_idn(listing_idn)
+        self.assertIs(chad_class, self.Student)
+
+    def test_class_from_listing_idn_bogus(self):
+        """Bogus listing id crashes when you try to find its class."""
+        not_a_listing = self.lex.noun(u'not a listing')
+        not_a_listing_idn = not_a_listing.idn
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.class_from_listing_idn(not_a_listing_idn)
 
 
 class Word0060UseAlready(WordTests):

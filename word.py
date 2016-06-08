@@ -51,7 +51,7 @@ class Word(object):
             self._from_definition(content)
         elif isinstance(content, Number):   # Word(idn)
             self._inchoate(content)
-        elif isinstance(content, Word):   # Word(some_other_word)
+        elif isinstance(content, Word):   # Word(another_word)
             self._from_word(content)
         elif content is None:   # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
@@ -122,12 +122,14 @@ class Word(object):
         """
         self._idn = idn
         self._is_inchoate = True
-        assert self.lex is not None
+        # assert self.lex is not None   # lex == None if you:  x = ListingSubclass(index)
 
     def _choate(self):
         """
         Transform an inchoate word into a not-inchoate word.
 
+        That is for a mere container of an idn to a fleshed-out word
+        with num and txt (and if not a Listing, sbj, vrb, obj).
         This in preparation to use one of its properties, sbj, vrb, obj, txt, num, whn.
         """
         if self._is_inchoate:
@@ -159,6 +161,7 @@ class Word(object):
         pass
 
     def __getattr__(self, attribute_name):
+        # TODO:  Make this all less smelly.  Comments and error messages included.  This one especially.
         if attribute_name.startswith('_'):
             # What about ('_exists', '_is_inchoate', '_idn', '_word_before_the_dot', '_fields')
             # return None
@@ -329,9 +332,32 @@ class Word(object):
         """
         Construct a Word() using the same lex as another word.
         """
+        if len(args) >= 1 and isinstance(args[0], Number):
+            idn = args[0]
+            if idn.is_suffixed():
+                try:
+                    listing_class = Listing.class_from_listing_idn(idn)
+                    # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
+                except Listing.NotAListing:
+                    pass
+                else:
+                    assert issubclass(listing_class, Listing), repr(listing_class)
+                    return listing_class.instance_from_idn(idn)
+                    # _, hack_index = Listing._parse_listing_idn(idn)
+                    # return listing_class(hack_index)
+                # pieces = idn.parse_suffixes()
+                # assert len(pieces) == 1 or isinstance(pieces[1], Number.Suffix)
+                # if len(pieces) == 2 and pieces[1].
+
         assert hasattr(self, 'lex')
+        # XXX:  Why did PY2 need this to be a b'lex'?!  And why doesn't it now??
+        # Otherwise hasattr(): attribute name must be string
+        assert isinstance(self.lex, Lex)
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
+        # NOTE:  This should be the only call to the (base) Word constructor.  Enforce?  Refactor somehow?
+        # (The chicken/egg problem is resolved by the first Word being instantiated
+        # via the derived class Lex (e.g. LexMySQL).)
 
     class NotAVerb(Exception):
         pass
@@ -348,7 +374,7 @@ class Word(object):
         assert isinstance(idn, Number)
         if idn.is_suffixed():
             try:
-                listed_instance = Listing.word_lookup(idn)
+                listed_instance = Listing.instance_from_idn(idn)
             except Listing.NotAListing:
                 raise self.NotAWord("Not a Word identifier: " + idn.qstring())
             else:
@@ -417,6 +443,13 @@ class Word(object):
         return self.spawn(self.idn)
 
     def populate_from_row(self, row, prefix=''):
+        assert isinstance(row[prefix + 'idn'], Number)
+        assert isinstance(row[prefix + 'sbj'], Number)
+        assert isinstance(row[prefix + 'vrb'], Number)
+        assert isinstance(row[prefix + 'obj'], Number)
+        assert isinstance(row[prefix + 'num'], Number)
+        assert isinstance(row[prefix + 'txt'], Text)
+        assert isinstance(row[prefix + 'whn'], Number)
         self._idn = row[prefix + 'idn']
         self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
@@ -602,7 +635,7 @@ class SubjectedVerb(object):
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
-        self._verbed = self._subjected.spawn(vrb)   # TODO:  Move to
+        self._verbed = self._subjected.spawn(vrb)   # TODO:  Move to ... (?)
         self._args = args
         self._kwargs = kwargs
 
@@ -670,26 +703,49 @@ class SubjectedVerb(object):
 
 # noinspection PyAttributeOutsideInit
 class Listing(Word):
-    meta_word = None   # This is the Word associated with Listing,
-                       # or the Word associated with each derived class,
-                       # in both cases assigned by install().
-                       # Listing.meta_word.idn is an unsuffixed qiki.Number.
-                       # Subclass.meta_word.idn is another unsuffixed qiki.Number.
-                       # An instance_of_subclass.idn is a suffixed qiki.Number
-                       # and the root of that idn is its class's meta_word.idn.
+    meta_word = None   # This class variable is a Word associated with a Listing subclass.
+                       # It is assigned by install().
+                       # listing_subclass.meta_word.idn is an unsuffixed qiki.Number.
+                       # If x is an instance of a listing_subclass, then x.idn is a suffixed qiki.Number.
+                       # The root of x.idn is its class's meta_word.idn.
+                       # I.e. x.idn.root() == x.meta_word.idn
                        # See examples in test_example_idn().
+                       # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
 
-    def __init__(self, index):
-        super(Listing, self).__init__()
-        assert isinstance(index, (int, Number))   # TODO:  Support a non-Number index.
+    SUFFIX_TYPE = Number.Suffix.TYPE_LISTING
+
+    def __init__(self, index, lex=None):
+        """
+        self.index - The index is an integer or Number that's opaque to qiki.
+                     It is unique to whatever is represented by the Listing derived class (LDC) instance.
+                     (So two LDC instances with the same index can be said to be equal.
+                     Just as two Words with the same idns are equal.  Which in fact they also are.)
+                     It is passed to the LDC constructor, and to it's lookup() method.
+        self.idn - The identifier is a suffixed number:
+                   root - meta_idn for the LDC, the idn of the meta_word that defined the LDC
+                   type - TYPE_LISTING
+                   payload - the index
+        """
+        assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         assert self.meta_word is not None
         self.index = Number(index)
-        self._idn = Number(self.meta_word.idn).add_suffix(Number.Suffix.TYPE_LISTING, self.index)
+
+        if lex is None:
+            lex = self.meta_word.lex
+        super(Listing, self).__init__(lex=lex)
+
+        idn = Number(self.meta_word.idn).add_suffix(self.SUFFIX_TYPE, self.index)
         # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
         # Did that morph a class property into an instance property?!?  MFIT...
+
+        self._inchoate(idn)
+
+        # self.lookup(self.index, self.lookup_callback)
+        # self.lex = self.meta_word.lex
+
+    def _from_idn(self, idn):
         self.lookup(self.index, self.lookup_callback)
-        self.lex = self.meta_word.lex
 
     # TODO:  @abstractmethod
     def lookup(self, index, callback):
@@ -697,8 +753,18 @@ class Listing(Word):
 
     def lookup_callback(self, txt, num):
         # Another case where txt comes before num, the exception.
-        self.num = num
-        self.txt = Text(txt)
+        # XXX:  Wait, WHY does lookup need a callback?  Can't it just RETURN (txt, num)??
+        # It could even return a flexible tuple (n), (t), (n,t), (t,n), dict(num=n, txt=t)
+        # Oh wait, there's that pesky fact that the word shouldn't "exist" until num,txt are populated.
+        # But maybe lookup should populate those fields instead.
+        # The lookup's caller could check that they were populated, then call _now_it_exists()
+        # Listing is just a burbling cauldron of refactoring need.
+        # self.num = num
+        # self.txt = Text(txt)
+        self._fields = dict(
+            num=num,
+            txt=Text(txt)
+        )
         self._now_it_exists()
 
     @classmethod
@@ -722,9 +788,10 @@ class Listing(Word):
         pass
 
     @classmethod
-    def word_lookup(cls, idn):
+    def instance_from_idn(cls, idn):
         """
         Turn a suffixed Number identifier into a (word) instance of some subclass of Listing.
+        The ListingSubclass constructor is like an instance_from_index()
 
         So it's a double-lookup.
         First we look up which class this idn is for.
@@ -733,28 +800,53 @@ class Listing(Word):
         This class will be a subclass of Listing.
         Second we call that class's lookup on the suffix of the idn.
         """
-        pieces = idn.parse_suffixes()
-        try:
-            (identifier, suffix) = pieces
-        except ValueError:
-            raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
-        assert isinstance(identifier, Number)
-        assert isinstance(suffix, Number.Suffix)
-        subclass = cls.class_from_meta_idn(identifier)
-        listed_instance = subclass(suffix.payload_number())
+        # pieces = idn.parse_suffixes()
+        # try:
+        #     (identifier, suffix) = pieces
+        # except ValueError:
+        #     raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
+        # assert isinstance(identifier, Number)
+        # assert isinstance(suffix, Number.Suffix)
+
+        meta_idn, index = cls._parse_listing_idn(idn)
+        listing_subclass = cls.class_from_meta_idn(meta_idn)
+        listed_instance = listing_subclass(index)
         # TODO:  Support non-Number suffixes?  The Listing index must now be a Number.
         return listed_instance
+
+    @classmethod
+    def class_from_listing_idn(cls, idn):
+        meta_idn, index = cls._parse_listing_idn(idn)
+        listing_subclass = cls.class_from_meta_idn(meta_idn)
+        return listing_subclass
 
     @classmethod
     def class_from_meta_idn(cls, meta_idn):
         # print(repr(cls.class_dictionary))
         try:
-            return_value = cls.class_dictionary[meta_idn]
+            listing_subclass = cls.class_dictionary[meta_idn]
         except KeyError:
             raise cls.NotAListing("Not a Listing class identifier: " + meta_idn.qstring())
-        assert issubclass(return_value, cls), repr(return_value) + " is not a subclass of " + repr(cls)
-        assert return_value.meta_word.idn == meta_idn
-        return return_value
+        assert issubclass(listing_subclass, cls), repr(listing_subclass) + " is not a subclass of " + repr(cls)
+        assert listing_subclass.meta_word.idn == meta_idn
+        return listing_subclass
+
+    @classmethod
+    def _parse_listing_idn(cls, idn):
+        """Return (meta_idn, index) or raise NotAListing."""
+        pieces = idn.parse_suffixes()
+        try:
+            (identifier, suffix) = pieces
+        except ValueError:
+            raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
+        if suffix.type_ != cls.SUFFIX_TYPE:
+            raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
+
+        assert isinstance(identifier, Number)
+        assert isinstance(suffix, Number.Suffix)
+        meta_idn = identifier
+        index = suffix.payload_number()
+        return meta_idn, index
 
     class NotFound(Exception):
         pass
@@ -939,7 +1031,8 @@ class LexMySQL(Lex):
                                                                     # 3,3
 
         if not self.exists():
-            self._from_idn(self._IDN_LEX)
+            self._from_idn(self._IDN_LEX)   # XXX:  Does this make sense??
+                                            # Why should from_idn() cause lex to "exist" if it "didn't" already?
         assert self.exists()
         assert self.is_lex()
 
@@ -1449,7 +1542,8 @@ class LexMySQL(Lex):
         if isinstance(x, Word):
             return x
         elif isinstance(x, Number):
-            return Word(x, lex=self)
+            return self.spawn(x)
+            # return Word(x, lex=self)
         else:
             raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
                 type(x).__name__,
