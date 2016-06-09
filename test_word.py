@@ -1876,7 +1876,7 @@ class Word0040SentenceTests(WordTests):
 
 class WordListingTests(WordTests):
 
-    _lookup_has_been_called = False   # ... since the current test was SetUp()
+    _lookup_call_count = None   # ... since each test was SetUp()
 
     class Student(qiki.Listing):
         names_and_grades = [
@@ -1887,7 +1887,7 @@ class WordListingTests(WordTests):
         ]
 
         def lookup(self, index, callback):
-            WordListingTests._lookup_has_been_called = True
+            WordListingTests._lookup_call_count += 1
             try:
                 name_and_grade = self.names_and_grades[int(index)]
             except IndexError:
@@ -1897,7 +1897,7 @@ class WordListingTests(WordTests):
             callback(name, grade)
 
     def setUp(self):
-        WordListingTests._lookup_has_been_called = False
+        WordListingTests._lookup_call_count = 0
         super(WordListingTests, self).setUp()
         self.listing = self.lex.noun(u'listing')
         # qiki.Listing.install(self.listing)   # Why?!?  Can't this be omitted?  (Listing.meta_word would remain None)
@@ -2086,11 +2086,11 @@ class Word0052ListingInternalsTests(WordListingTests):
         self.assertFalse(chad_clone._is_inchoate)
 
     def test_listing_instance_from_idn_lookup_call(self):
-        self.assertFalse(WordListingTests._lookup_has_been_called)
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
         chad_clone = qiki.Listing.instance_from_idn(self.Student(2).idn)
-        self.assertFalse(WordListingTests._lookup_has_been_called)
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
         _ = chad_clone.txt
-        self.assertTrue(WordListingTests._lookup_has_been_called)
+        self.assertEqual(WordListingTests._lookup_call_count, 1)
 
     def test_listing_lex_lookup_type(self):
         chad_clone = self.lex[self.Student(2).idn]
@@ -2118,11 +2118,12 @@ class Word0052ListingInternalsTests(WordListingTests):
         """
         Try lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
 
-        Importantly, the exception must come when the word becomes choate, NOT when it's instantiated.
+        The exception may be raised on instantiation or (possibly in some future implementation)
+        when the word becomes choate.
         """
-        bogus_word = self.lex[qiki.Number(1+2j)]
         with self.assertRaises(qiki.Word.NotAWord):
-            bogus_word.exists()
+            bogus_word = self.lex[qiki.Number(1+2j)]
+            _ = bogus_word.txt
 
     def test_listing_inchoate(self):
         """Make sure a listing instantiated from its class & index is inchoate until used."""
@@ -2131,12 +2132,34 @@ class Word0052ListingInternalsTests(WordListingTests):
         _ = chad.txt
         self.assertFalse(chad._is_inchoate)
 
-    def test_listing_lookup_call(self):
-        self.assertFalse(WordListingTests._lookup_has_been_called)
+    def test_listing_lookup_call_txt(self):
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
         chad = self.Student(2)
-        self.assertFalse(WordListingTests._lookup_has_been_called)
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
         _ = chad.txt
-        self.assertTrue(WordListingTests._lookup_has_been_called)
+        self.assertEqual(WordListingTests._lookup_call_count, 1)   # w.txt triggers lookup
+        _ = chad.txt
+        self.assertEqual(WordListingTests._lookup_call_count, 1)   # once
+        _ = chad.num
+        self.assertEqual(WordListingTests._lookup_call_count, 1)
+
+    def test_listing_lookup_call_num(self):
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        chad = self.Student(2)
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        _ = chad.num
+        self.assertEqual(WordListingTests._lookup_call_count, 1)   # w.num triggers lookup
+        _ = chad.num
+        self.assertEqual(WordListingTests._lookup_call_count, 1)   # once
+        _ = chad.txt
+        self.assertEqual(WordListingTests._lookup_call_count, 1)
+
+    def test_listing_lookup_call_idn(self):
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        chad = self.Student(2)
+        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        _ = chad.idn
+        self.assertEqual(WordListingTests._lookup_call_count, 0)   # w.idn doesn't trigger lookup
 
     def test_class_from_listing_idn(self):
         """Find the class from the listing id."""
@@ -2149,6 +2172,12 @@ class Word0052ListingInternalsTests(WordListingTests):
         """Bogus listing id crashes when you try to find its class."""
         not_a_listing = self.lex.noun(u'not a listing')
         not_a_listing_idn = not_a_listing.idn
+        with self.assertRaises(qiki.Listing.NotAListing):
+            qiki.Listing.class_from_listing_idn(not_a_listing_idn)
+
+    def test_class_from_listing_idn_complex(self):
+        """Suffixed but bogus listing id crashes when you try to find its class."""
+        not_a_listing_idn = qiki.Number(11+22j)
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.class_from_listing_idn(not_a_listing_idn)
 

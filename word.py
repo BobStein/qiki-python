@@ -339,7 +339,7 @@ class Word(object):
                     listing_class = Listing.class_from_listing_idn(idn)
                     # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
                 except Listing.NotAListing:
-                    pass
+                    raise self.NotAWord
                 else:
                     assert issubclass(listing_class, Listing), repr(listing_class)
                     return listing_class.instance_from_idn(idn)
@@ -368,26 +368,11 @@ class Word(object):
     def _from_idn(self, idn):
         """
         Construct a Word from its idn.
-
-        :type idn: Number
         """
         assert isinstance(idn, Number)
-        if idn.is_suffixed():
-            try:
-                listed_instance = Listing.instance_from_idn(idn)
-            except Listing.NotAListing:
-                raise self.NotAWord("Not a Word identifier: " + idn.qstring())
-            else:
-                assert listed_instance.exists()
-                self._fields = dict(txt=listed_instance.txt)
-                self._now_it_exists()
-                # TODO:  This was a fudge. Word(suffixed idn) should return a Listing instance
-                # i.e. something like self = listed_instance
-                # or self.__class__ = Listing subclass
-                # SEE:  http://stackoverflow.com/a/3209240/673991
-        else:
-            self._idn = idn
-            self.lex.populate_word_from_idn(self, idn)
+        assert not idn.is_suffixed()
+        self._idn = idn
+        self.lex.populate_word_from_idn(self, idn)
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -396,20 +381,20 @@ class Word(object):
         if not self.lex.populate_word_from_definition(self, txt):
             self._fields = dict(txt=Text(txt))
 
-    def _from_word(self, word):
-        # if word.is_lex():
+    def _from_word(self, other):
+        # if other.is_lex():
         #     raise ValueError("Lex is a singleton, so it cannot be copied.")
         #     # TODO:  Explain why this should be.
         #     # TODO:  Resolve inconsistency:  spawn(lex.idn) will clone lex
         #     # And this ability may be needed anyway in the murk of LexMySQL.__init__()
-        assert isinstance(word, Word)   # Instead of type(self)
-        self.lex = word.lex
-        if word._is_inchoate:
-            self._idn         = word._idn
-            self._is_inchoate = word._is_inchoate
+        assert isinstance(other, Word)   # Instead of type(self)
+        self.lex = other.lex
+        if other._is_inchoate:
+            self._idn         = other._idn
+            self._is_inchoate = other._is_inchoate
         else:
-            assert word.exists()
-            self._from_idn(word.idn)
+            assert other.exists()
+            self._from_idn(other.idn)
 
     def _from_sbj_vrb_obj(self):
         """Construct a word by looking up its subject-verb-object."""
@@ -745,6 +730,9 @@ class Listing(Word):
         # self.lex = self.meta_word.lex
 
     def _from_idn(self, idn):
+        assert idn.is_suffixed()
+        assert idn.root() == self.meta_word.idn
+        assert idn.get_suffix(self.SUFFIX_TYPE) == Number.Suffix(self.SUFFIX_TYPE, self.index)
         self.lookup(self.index, self.lookup_callback)
 
     # TODO:  @abstractmethod
@@ -1030,9 +1018,12 @@ class LexMySQL(Lex):
                                                                     #-----
                                                                     # 3,3
 
-        if not self.exists():
-            self._from_idn(self._IDN_LEX)   # XXX:  Does this make sense??
-                                            # Why should from_idn() cause lex to "exist" if it "didn't" already?
+        assert not self.exists()
+        # if not self.exists():     # XXX:  Does this make sense??
+                                    # Why should from_idn() cause lex to "exist" if it "didn't" already?
+                                    # Could lex just start out inchoate and that would take care of this??!??
+        self._from_idn(self._IDN_LEX)
+
         assert self.exists()
         assert self.is_lex()
 
@@ -1188,9 +1179,10 @@ class LexMySQL(Lex):
             try:
                 next(rows)
             except StopIteration:
-                return True
+                pass
             else:
-                assert False, "Populating unexpected extra rows."
+                assert False, "Cannot populate from unexpected extra rows."
+            return True
 
     def find_last(self, **kwargs):
         bunch = self.find_words(**kwargs)
