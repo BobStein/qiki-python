@@ -120,6 +120,9 @@ class Word(object):
         It also makes it possible to work with a list of words
         in a way that's almost as resource-efficient as a list of idns.
         """
+        # TODO:  Refactor _is_inchoate property to check for the existence of self._fields
+        # CAUTION:  But Word(content=None) does populate self._fields, and Listing relies on that,
+        # AND expects to instantiate to an inchoate word, so that needs to be refactored too.
         self._idn = idn
         self._is_inchoate = True
         # assert self.lex is not None   # lex == None if you:  x = ListingSubclass(index)
@@ -298,8 +301,10 @@ class Word(object):
             new_word._from_sbj_vrb_obj()
             assert isinstance(num_add, numbers.Number)
             if new_word.exists():
+                # noinspection PyProtectedMember
                 new_word._fields['num'] += Number(num_add)
             else:
+                # noinspection PyProtectedMember
                 new_word._fields['num'] = Number(num_add)
             new_word.save()
         elif use_already:
@@ -338,8 +343,12 @@ class Word(object):
                 try:
                     listing_class = Listing.class_from_listing_idn(idn)
                     # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
-                except Listing.NotAListing:
-                    raise self.NotAWord
+                except Listing.NotAListing:   # as e:
+                    return ListingNotInstalled(idn)
+                    # raise self.NotAWord("Listing identifier {q} exception: {e}".format(
+                    #     q=idn.qstring(),
+                    #     e=str(e)
+                    # ))
                 else:
                     assert issubclass(listing_class, Listing), repr(listing_class)
                     return listing_class.instance_from_idn(idn)
@@ -713,7 +722,11 @@ class Listing(Word):
                    payload - the index
         """
         assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
-        assert self.meta_word is not None
+        assert self.meta_word is not None, (
+            "Class {c} must be installed with its meta_word before it can be instantiated".format(
+                c=type(self).__name__
+            )
+        )
         self.index = Number(index)
 
         if lex is None:
@@ -722,7 +735,7 @@ class Listing(Word):
 
         idn = Number(self.meta_word.idn).add_suffix(self.SUFFIX_TYPE, self.index)
         # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
-        # Did that morph a class property into an instance property?!?  MFIT...
+        # Did that morph a class property into an instance property?!?
 
         self._inchoate(idn)
 
@@ -736,6 +749,9 @@ class Listing(Word):
         self.lookup(self.index, self.lookup_callback)
 
     # TODO:  @abstractmethod
+    # TODO:  No parameters for lookup()?  Don't pass index, and just return txt and num?
+    # Or was the callback some kind of async feature, in case looking up took a while?
+    # Because I'm doubtful that would work anyway.
     def lookup(self, index, callback):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
 
@@ -814,7 +830,7 @@ class Listing(Word):
         try:
             listing_subclass = cls.class_dictionary[meta_idn]
         except KeyError:
-            raise cls.NotAListing("Not a Listing class identifier: " + meta_idn.qstring())
+            raise cls.NotAListing("Not an installed Listing class identifier: " + meta_idn.qstring())
         assert issubclass(listing_subclass, cls), repr(listing_subclass) + " is not a subclass of " + repr(cls)
         assert listing_subclass.meta_word.idn == meta_idn
         return listing_subclass
@@ -837,6 +853,42 @@ class Listing(Word):
         return meta_idn, index
 
     class NotFound(Exception):
+        pass
+
+
+class ListingNotInstalled(Listing):
+    """
+    Smelly class where spawn() can dump uninstalled Listings.
+
+    To defer raising NotAWord until it becomes choate.
+    So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
+    And exceptions are raised only if those words become choate.
+    All this so we don't have to install obsolete listing classes.
+    """
+    # noinspection PyUnresolvedReferences
+    meta_idn = Number.NAN
+
+    # noinspection PyMissingConstructor
+    def __init__(self, idn):
+        self.index = None
+        self._inchoate(idn)   # So Word.choate() calls Listing._from_idn().  So this is smelly.
+
+    def _choate(self):
+        assert self.idn.is_suffixed()
+        try:
+            self.idn.get_suffix(Listing.SUFFIX_TYPE)
+        except Number.Suffix.NoSuchType:
+            raise Word.NotAWord("Word identifier {idn} does not have a listing suffix.".format(
+                idn=self.idn,
+                meta_idn=self.idn.root(),
+            ))
+        else:
+            raise Listing.NotAListing("Listing identifier {idn} has meta_idn {meta_idn} which was not installed to a class.".format(
+                idn=self.idn,
+                meta_idn=self.idn.root(),
+            ))
+
+    def lookup(self, index, callback):
         pass
 
 

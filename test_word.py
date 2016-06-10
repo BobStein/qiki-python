@@ -2109,21 +2109,54 @@ class Word0052ListingInternalsTests(WordListingTests):
         self.assertIs(chad_class, self.Student)
         self.assertTrue(issubclass(chad_class, qiki.Listing))
 
+    def test_listing_instance_from_class_has_a_lex(self):
+        chad_from_class = self.Student(2)
+        self.assertIsNotNone(chad_from_class.lex)
+        self.assertIs(chad_from_class.lex, self.lex)
+
+    def test_listing_instance_from_lex_has_a_lex(self):
+        chad_from_class = self.Student(2)
+        chad_from_lex = self.lex[chad_from_class.idn]
+        self.assertIsNotNone(chad_from_lex.lex)
+        self.assertIs(chad_from_lex.lex, self.lex)
+
     def test_class_from_meta_idn_bogus(self):
         some_word = self.lex.noun(u'some word')
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.class_from_meta_idn(some_word.idn)
 
-    def test_non_listing_suffix(self):
+    def test_not_a_listing_suffix(self):
         """
         Try lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
 
-        The exception may be raised on instantiation or (possibly in some future implementation)
-        when the word becomes choate.
+        The exception is not raised on instantiation.
+        If it's bogus, the exception comes when the word becomes choate.
         """
+        bogus_word = self.lex[qiki.Number(1+2j)]
         with self.assertRaises(qiki.Word.NotAWord):
-            bogus_word = self.lex[qiki.Number(1+2j)]
             _ = bogus_word.txt
+
+    def test_uninstalled_listing_instance(self):
+        """
+        Try lex[idn] on an obsolete listing that isn't installed.
+
+        The exception is not raised on instantiation.
+        Unlike a non-listing suffixed word (e.g. complex) the exception is NotAListing.
+        """
+        obsolete_listing_meta_word = self.lex.define(self.listing, 'obsolete listing')
+
+        class ObsoleteListing(qiki.Listing):
+            meta_word = obsolete_listing_meta_word
+
+            def lookup(self, index, callback):
+                callback("foo", qiki.Number(1))
+
+        obsolete_listing_instance = ObsoleteListing(42)
+        print(obsolete_listing_instance.idn.qstring())
+        instance_clone = self.lex[obsolete_listing_instance.idn]
+        print(type(instance_clone).__name__)
+        with self.assertRaises(qiki.Listing.NotAListing):
+            _ = instance_clone.txt
 
     def test_listing_inchoate(self):
         """Make sure a listing instantiated from its class & index is inchoate until used."""
