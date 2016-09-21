@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+# noinspection PyUnresolvedReferences
 import operator
 import pickle
 import sys
@@ -60,7 +61,8 @@ class NumberTests(unittest.TestCase):
         self.assertTrue(n.is_negative())
 
 
-# noinspection SpellCheckingInspection
+# TODO:  Why does PyCharm warn Number.ZERO "Unresolved attribute reference 'ZERO' for class 'Number'"?
+# noinspection SpellCheckingInspection,PyUnresolvedReferences
 class NumberBasicTests(NumberTests):
 
     def test_raw(self):
@@ -104,11 +106,11 @@ class NumberBasicTests(NumberTests):
     def test_unicode(self):
         n = Number('0q83_03E8')
         if six.PY2:
-            self.assertEqual(u"0q83_03E8", unicode(n))
-            self.assertEqual('unicode', type(unicode(n)).__name__)
+            self.assertEqual(u"0q83_03E8", six.text_type(n))
+            self.assertEqual('unicode', type(six.text_type(n)).__name__)
         elif six.PY3:
             with self.assertRaises(NameError):
-                unicode(n)
+                six.text_type(n)
         else:
             self.fail()
 
@@ -1721,6 +1723,7 @@ class NumberIsTests(NumberTests):
         self.assertFalse(Number(1).is_nan())
         self.assertFalse(Number(float('inf')).is_nan())
         self.assertTrue(Number(float('nan')).is_nan())
+        # noinspection PyUnresolvedReferences
         self.assertTrue(Number.NAN.is_nan())
 
     def test_is_pos_zer_neg(self):
@@ -2524,6 +2527,7 @@ class NumberSuffixTests(NumberTests):
         self.assertTrue(Number(22).add_suffix(0x11, b'abcd').is_suffixed())
         self.assertTrue(Number(22).add_suffix(0x11, Number(42)).is_suffixed())
         self.assertFalse(Number(22).is_suffixed())
+        # noinspection PyUnresolvedReferences
         self.assertFalse(Number.NAN.is_suffixed())
 
     def test_suffix_float(self):

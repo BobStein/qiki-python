@@ -368,11 +368,12 @@ class WordDemoTests(WordTests):
 
         # Set and get the object.
         s(v)[o] = n,t; w = s(v)[o]
+        # w = s(v, num=n, txt=t)[o]   TODO?
         w = s.says(v, o, n, t)
 
         # Delta if it exists already.  Setter if it does not.
-        # s(v)[o] += n
-        # s(v, num_add=n)[o]
+        # s(v)[o] += n   TODO, but how?
+        # s(v, num_add=n)[o]   TODO?
         s.says(v, o, num_add=n)
         # s.v(o, num_add=n)
 

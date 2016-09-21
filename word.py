@@ -623,9 +623,11 @@ class Word(object):
 
 class SubjectedVerb(object):
     """
-    This is the result of s(v).
+    This is the currying intermediary, the "x" in x = s(v) and x[o].  Thus allowing:  s(v)[o].
 
-    That is, when you subscript a subject by a verb.
+    So this is the Python-object that is "returned" when you "call" a subject and pass it a verb.
+    In that function call (which becomes an instantiation of this class)
+    modifiers can be inserted in the form of args and kwargs.
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
@@ -637,7 +639,7 @@ class SubjectedVerb(object):
         """
         Square-bracket sentence insert (the C in CRUD).
 
-        This is the result of:
+        This is the result of the curried expression:
 
             lex[s](v)[o] = n,t
 
@@ -685,7 +687,7 @@ class SubjectedVerb(object):
         """
         Square-bracket sentence lookup (the R in CRUD).
 
-        This is the result of:
+        This is the result of the curried expression:
 
             w = lex[s](v)[o]
 
@@ -1663,6 +1665,7 @@ class Text(six.text_type):
 
     @classmethod
     def decode_if_you_must(cls, x):
+        # TODO:  Rename from_str()?
         """
         Interpret a MySQL txt field.  (Possibly the only use remaining in word.py.)
 
@@ -1759,6 +1762,9 @@ class QoolbarSimple(Qoolbar):
             idn - qstring of the verb's idn
             name - txt of the verb, e.g. 'like'
             icon_url - txt from the iconify sentence
+
+        :param debug: bool - print() SQL (to log) and other details.
+        :rtype: collections.Iterable[dict[string, string]]
         """
         # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
         # Then we wouldn't have to translate verbs to verb_dicts:
@@ -1868,10 +1874,16 @@ class QoolbarSimple(Qoolbar):
 #     lex-define-noun "path"
 #     lex-browse-path "/root"
 # it could be:
-#     lex-define-noun  <-- this is the path word
+#     lex-define-noun "" <-- this is the path word
 #     lex-name-path "path"   <-- this is how you find it
 #     lex-browse-path "/root"
 # That way the uniqueness thing would be confined to vrb=name words
+# (instead of vrb=define words)
 # And there could be defined nouns that didn't have a name, known only by their idn
 # Or maybe rewinding to the first method, an unnamed define would have a blank txt
 # And that didn't have to be unique, and could never be Word(txt) searched for.
+# This could help multilingual implementation by defining a different verb.
+#     lex.nombre-path "calle"
+# Or the word might be named in a computer language for reference by code.
+# Not so much language but application
+#     lex-apacheName-path "pth"

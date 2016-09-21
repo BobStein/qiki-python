@@ -25,11 +25,13 @@ import six
 # (Otherwise there are warnings about the raw @property violating __slots__.)
 # DONE:  Got rid of this unsightly decorator:  @six.python_2_unicode_compatible
 class Number(numbers.Complex):
-
     # __slots__ = ('__raw', )   # less memory
     __slots__ = ('__raw', '_zone')   # faster
 
     def __init__(self, content=None, qigits=None, normalize=False):
+        """
+        :type ZERO: Number
+        """
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
@@ -497,7 +499,7 @@ class Number(numbers.Complex):
 
     @classmethod
     def from_qstring(cls, s):
-        """Public routine to generate a new Number."""
+        """Public factory method to generate a new Number."""
         if s.startswith('0q'):
             return_value = cls()
             return_value._from_qstring(s)
@@ -508,7 +510,7 @@ class Number(numbers.Complex):
             )
 
     def _from_qstring(self, s):
-        """Private routine to modify self."""
+        """Private instance method to modify self."""
         digits = s[2:].replace('_', '')
         if len(digits) % 2 != 0:
             digits += '0'
@@ -652,8 +654,10 @@ class Number(numbers.Complex):
         )
         return int_by_dictionary
 
-    def __long__(self):
-       return long(self.__int__())
+    if six.PY2:
+        def __long__(self):
+           # noinspection PyCompatibility
+           return long(self.__int__())
 
     def __complex__(self):
         return complex(float(self.real), float(self.imag))
@@ -1269,7 +1273,8 @@ class Number(numbers.Complex):
         #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
         # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
         # Confusing?  Because then epsilon is both reasonable and unreasonable?
-        # If not confusing, we could also define REASONABLY_INFINITE as ludicrously large plus transfinite.
+        # If not (sufficiently, haha) confusing, we could also define
+        # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
 
         cls.ZONE_WHOLE_NO = {
             cls.Zone.FRACTIONAL,
@@ -1415,7 +1420,6 @@ assert 2 == log256(65536)
 
 def shift_leftward(n, nbits):
     """Shift positive left, or negative right."""
-    # GENERIC:  This function might be useful elsewhere.
     if nbits < 0:
         return n >> -nbits
     else:
