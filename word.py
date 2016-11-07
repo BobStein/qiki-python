@@ -818,6 +818,7 @@ class Listing(Word):
     # Because I'm doubtful that would work anyway.
     def lookup(self, index, callback):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
+        # THANKS:  Pseudo-abstract method, http://stackoverflow.com/a/4383103/673991
 
     def lookup_callback(self, txt, num):
         # Another case where txt comes before num, the exception.
@@ -855,6 +856,7 @@ class Listing(Word):
     class NotAListing(Exception):
         pass
 
+    # noinspection PyClassHasNoInit
     class NotAListingRightNow(NotAListing):
         pass
 
@@ -945,24 +947,13 @@ class ListingNotInstalled(Listing):
 
     def _choate(self):
         assert self.idn.is_suffixed()
-        try:
-            self.idn.get_suffix(Listing.SUFFIX_TYPE)
-        except Number.Suffix.NoSuchType:
-            raise Word.NotAWord("Word identifier {idn} does not have a listing suffix.".format(
-                idn=self.idn,
-                meta_idn=self.idn.root(),
-            ))
-        # TODO:  Remove this exception?
-        # It should never happen, because ListingNotInstalled is only instantiated for a Listing idn
-        # A Listing idn is an idn whose root is the lex['listing'].idn
-        else:
-            raise Listing.NotAListing("Listing identifier {idn} has meta_idn {meta_idn} which was not installed to a class.".format(
-                idn=self.idn,
-                meta_idn=self.idn.root(),
-            ))
+        raise Listing.NotAListing("Listing identifier {idn} has meta_idn {meta_idn} which was not installed to a class.".format(
+            idn=self.idn,
+            meta_idn=self.idn.root(),
+        ))
 
     def lookup(self, index, callback):
-        pass
+        raise self.NotAListing
 
 
 class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon

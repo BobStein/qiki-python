@@ -2170,7 +2170,7 @@ class Word0052ListingInternalsTests(WordListingTests):
         An "obsolete" listing has an idn somewhere in the lex,
         but its class has not been installed.
         Why does this happen?  If a class has been redefined?  Not expected to be used?
-        The exception is not raised on instantiation.
+        The exception is not raised on instantiation; it happens when/if the word becomes choate.
         Unlike a non-listing suffixed word (e.g. complex) this exception is NotAListing.
         """
         obsolete_listing_meta_word = self.lex.define(self.listing, 'obsolete listing')
@@ -2185,8 +2185,8 @@ class Word0052ListingInternalsTests(WordListingTests):
         # print(obsolete_listing_instance.idn.qstring())
         # 0q82_0A__822A_1D0300
         instance_clone = self.lex[obsolete_listing_instance.idn]
-        print(type(instance_clone).__name__)
-        # # ListingNotInstalled
+        # print(type(instance_clone).__name__)
+        # ListingNotInstalled
         with self.assertRaises(qiki.Listing.NotAListing):
             _ = instance_clone.txt
 
