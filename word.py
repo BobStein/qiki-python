@@ -340,18 +340,18 @@ class Word(object):
 
         try:
             idn = idn_from_word_or_number(args[0])
-        except IndexError:          # args is empty
+        except IndexError:                        # args is empty
             pass
-        except TypeError:           # args[0] is neither a Word nor a Number
+        except TypeError:                         # args[0] is neither a Word nor a Number
             pass
         else:
             try:
                 return Listing.instance_from_idn(idn)
             except Listing.NotAListingRightNow:
-                return ListingNotInstalled(idn)
-                                    # args[0] is a listing word but the listing class was never installed
+                return ListingNotInstalled(idn)   # args[0] is a listing word
+                                                  # but the listing class was never installed
             except Listing.NotAListing:
-                pass                # args[0] is not a listing word
+                pass                              # args[0] is not a listing word
 
             if idn.is_suffixed():
                 raise self.NotAWord("Don't know how to spawn this suffixed idn " + idn.qstring())
@@ -1661,6 +1661,7 @@ class LexMySQL(Lex):
 
 def idn_from_word_or_number(x):
     if isinstance(x, Word):
+        assert isinstance(x.idn, Number)
         return x.idn
     elif isinstance(x, Number):
         return x
