@@ -105,12 +105,14 @@ class NumberBasicTests(NumberTests):
 
     def test_unicode(self):
         n = Number('0q83_03E8')
+        self.assertEqual(u"0q83_03E8", six.text_type(n))
         if six.PY2:
-            self.assertEqual(u"0q83_03E8", six.text_type(n))
             self.assertEqual('unicode', type(six.text_type(n)).__name__)
         elif six.PY3:
-            with self.assertRaises(NameError):
-                six.text_type(n)
+            self.assertEqual('str', type(six.text_type(n)).__name__)
+            # with self.assertRaises(NameError):
+            #     six.text_type(n)
+            # WTF was this here?
         else:
             self.fail()
 

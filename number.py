@@ -616,13 +616,17 @@ class Number(numbers.Complex):
     # "to" conversions:  Number --> other type
     # ----------------------------------------
     def qstring(self, underscore=1):
-        """Output Number as a q-string, e.g.  '0q82_01'
+        """Output Number as a q-string:  assert '0q82_01' == Number(1).qstring()
 
         assert '0q85_12345678' == Number(0x12345678).qstring()
         Q-string is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
         Except q for x, underscores optional, and of course the value interpretation differs.
         """
+        # DONE:  double-underscore 1-deep suffixes.  E.g. 0x82_01__8202_7F0300
+        # TODO:  triple-underscore 2-deep suffixes?  E.g. 0x82_01___8202__8203_7F0300_7F0800
+        # TODO:    quad-underscore 3-deep suffixes?  E.g. 0x82_01____8202___8203__8204_7F0300_7F0800_7F0D00
+        # TODO:  Alternative repr() for suffixed numbers, where calling-parens coincide with nesting depth.
         if underscore == 0:
             return_value = '0q' + self.hex()
         else:

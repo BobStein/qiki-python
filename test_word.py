@@ -113,6 +113,8 @@ class SafeNameTests(unittest.TestCase):
             credentials['engine'] = name
             with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
                 qiki.LexMySQL(**credentials)
+                # Why did this break once (a few times in a row) for 3 of these bad engine names?
+                # Seemed to fix itself after a few hours.  Or switching python versions.
 
         bad_engine_name('MEMORY_oops_\'')
         bad_engine_name('MEMORY_oops_\"')
@@ -1995,12 +1997,43 @@ class Word0051ListingBasicTests(WordListingTests):
             deanne.says(vrb=like, obj=barbara, num=qiki.Number(-1000000000))
 
     def test_listing_by_lex_idn(self):
-        """Make sure lex[suffixed number] will look up a listing."""
+        """Make sure lex[listing idn, which is a suffixed number] will look up a listing."""
         chad1 = self.Student(2)
-        idn_chad = chad1.idn
-        chad2 = self.lex[idn_chad]
+        chad2 = self.lex[chad1.idn]
         self.assertEqual(u"Chad", chad1.txt)
         self.assertEqual(u"Chad", chad2.txt)
+        self.assertEqual(chad1, chad2)
+
+    def test_listing_by_spawn_idn(self):
+        """Make sure word.spawn(listing idn) will look up a listing."""
+        chad1 = self.Student(2)
+        chad2 = self.lex.sbj.spawn(chad1.idn)
+        self.assertEqual(u"Chad", chad1.txt)
+        self.assertEqual(u"Chad", chad2.txt)
+        self.assertEqual(chad1, chad2)
+
+    def test_listing_by_spawn_word_inchoate(self):
+        """Make sure word.spawn(inchoate listing word) will look up a listing."""
+        chad1 = self.Student(2)
+        chad2 = self.lex.sbj.spawn(chad1)
+        self.assertTrue(chad1._is_inchoate)
+        self.assertTrue(chad2._is_inchoate)
+        self.assertEqual(u"Chad", chad1.txt)
+        self.assertEqual(u"Chad", chad2.txt)
+        self.assertFalse(chad1._is_inchoate)
+        self.assertFalse(chad2._is_inchoate)
+        self.assertEqual(chad1, chad2)
+
+    def test_listing_by_spawn_word_choate(self):
+        """Make sure word.spawn(choate listing word) will look up a listing."""
+        chad1 = self.Student(2)
+        self.assertEqual(u"Chad", chad1.txt)
+        chad2 = self.lex.sbj.spawn(chad1)
+        self.assertFalse(chad1._is_inchoate)
+        self.assertTrue(chad2._is_inchoate)
+        self.assertEqual(u"Chad", chad2.txt)
+        self.assertFalse(chad2._is_inchoate)
+        self.assertEqual(chad1, chad2)
 
 
 class Word0052ListingInternalsTests(WordListingTests):
@@ -2017,17 +2050,14 @@ class Word0052ListingInternalsTests(WordListingTests):
         super(Word0052ListingInternalsTests, self).setUp()
         self.SubStudent.install(self.lex.noun(u'sub_student'))
         self.AnotherListing.install(self.lex.noun(u'another_listing'))
+        # TODO:  Shouldn't these be lex.define(listing, u'blah')?
 
-    def test_one_class_dictionary(self):
+    def test_singleton_class_dictionary(self):
         self.assertIs(qiki.Listing.class_dictionary, self.Student.class_dictionary)
         self.assertIs(qiki.Listing.class_dictionary, self.SubStudent.class_dictionary)
         self.assertIs(qiki.Listing.class_dictionary, self.AnotherListing.class_dictionary)
 
     def test_one_meta_word_per_subclass(self):
-        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.Student.meta_word.idn)
-        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.SubStudent.meta_word.idn)
-        # self.assertNotEqual(qiki.Listing.meta_word.idn, self.AnotherListing.meta_word.idn)
-
         self.assertNotEqual(self.Student.meta_word.idn, self.SubStudent.meta_word.idn)
         self.assertNotEqual(self.Student.meta_word.idn, self.AnotherListing.meta_word.idn)
 
@@ -2036,26 +2066,26 @@ class Word0052ListingInternalsTests(WordListingTests):
     def test_idn_suffixed(self):
         chad = self.Student(2)
         deanne = self.Student(3)
-        # self.assertFalse(qiki.Listing.meta_word.idn.is_suffixed())
         self.assertFalse(self.Student.meta_word.idn.is_suffixed())
         self.assertFalse(self.SubStudent.meta_word.idn.is_suffixed())
+        self.assertFalse(self.AnotherListing.meta_word.idn.is_suffixed())
         self.assertTrue(chad.idn.is_suffixed())
         self.assertTrue(deanne.idn.is_suffixed())
 
     def test_example_idn(self):
         chad = self.Student(2)
-        # Serious assumption here, that only 5 words were defined before lex.noun('listing').
+        # Serious assumption:  5 words were defined before lex.noun('listing').
         # But this helps to demonstrate Listing meta_word and instance idn contents.
-        # self.assertEqual('0q82_06', qiki.Listing.meta_word.idn.qstring())
+        self.assertEqual('0q82_06', self.listing.idn.qstring())
         self.assertEqual('0q82_07', self.Student.meta_word.idn.qstring())   # Number(7)
-        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root is Number(7), payload is Number(2).
+        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root Number(7), payload Number(2)
         self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
         self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
 
     def test_listing_instance_from_idn(self):
         chad = self.Student(2)
-        self.assertEqual(u"Chad", chad.txt)
         chad_clone = qiki.Listing.instance_from_idn(chad.idn)
+        self.assertEqual(u"Chad", chad.txt)
         self.assertEqual(u"Chad", chad_clone.txt)
         self.assertEqual(chad, chad_clone)
 
@@ -2128,21 +2158,20 @@ class Word0052ListingInternalsTests(WordListingTests):
 
     def test_not_a_listing_suffix(self):
         """
-        Try lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
-
-        The exception is not raised on instantiation.
-        If it's bogus, the exception comes when the word becomes choate.
+        Cannot lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
         """
-        bogus_word = self.lex[qiki.Number(1+2j)]
         with self.assertRaises(qiki.Word.NotAWord):
-            _ = bogus_word.txt
+            _ = self.lex[qiki.Number(1+2j)]
 
     def test_uninstalled_listing_instance(self):
         """
-        Try lex[idn] on an obsolete listing that isn't installed.
+        Cannot lex[idn] on a listing whose class was never installed, e.g. an obsolete listing.
 
+        An "obsolete" listing has an idn somewhere in the lex,
+        but its class has not been installed.
+        Why does this happen?  If a class has been redefined?  Not expected to be used?
         The exception is not raised on instantiation.
-        Unlike a non-listing suffixed word (e.g. complex) the exception is NotAListing.
+        Unlike a non-listing suffixed word (e.g. complex) this exception is NotAListing.
         """
         obsolete_listing_meta_word = self.lex.define(self.listing, 'obsolete listing')
 
@@ -2153,9 +2182,11 @@ class Word0052ListingInternalsTests(WordListingTests):
                 callback("foo", qiki.Number(1))
 
         obsolete_listing_instance = ObsoleteListing(42)
-        print(obsolete_listing_instance.idn.qstring())
+        # print(obsolete_listing_instance.idn.qstring())
+        # 0q82_0A__822A_1D0300
         instance_clone = self.lex[obsolete_listing_instance.idn]
         print(type(instance_clone).__name__)
+        # # ListingNotInstalled
         with self.assertRaises(qiki.Listing.NotAListing):
             _ = instance_clone.txt
 

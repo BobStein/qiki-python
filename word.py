@@ -166,7 +166,7 @@ class Word(object):
     def __getattr__(self, attribute_name):
         # TODO:  Make this all less smelly.  Comments and error messages included.  This one especially.
         if attribute_name.startswith('_'):
-            # What about ('_exists', '_is_inchoate', '_idn', '_word_before_the_dot', '_fields')
+            # TODO:  What about ('_word_before_the_dot', '_fields')
             # return None
             if attribute_name in ('_exists', '_is_inchoate', '_idn'):
                 return None
@@ -186,7 +186,7 @@ class Word(object):
             # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
             return True
 
-        raise RuntimeError("This word has no ''{}'' member".format(attribute_name))
+        raise AttributeError("This word has no ''{}'' member".format(attribute_name))
 
     class NotExist(Exception):
         pass
@@ -337,26 +337,24 @@ class Word(object):
         """
         Construct a Word() using the same lex as another word.
         """
-        if len(args) >= 1 and isinstance(args[0], Number):
-            idn = args[0]
+
+        try:
+            idn = idn_from_word_or_number(args[0])
+        except IndexError:          # args is empty
+            pass
+        except TypeError:           # args[0] is neither a Word nor a Number
+            pass
+        else:
+            try:
+                return Listing.instance_from_idn(idn)
+            except Listing.NotAListingRightNow:
+                return ListingNotInstalled(idn)
+                                    # args[0] is a listing word but the listing class was never installed
+            except Listing.NotAListing:
+                pass                # args[0] is not a listing word
+
             if idn.is_suffixed():
-                try:
-                    listing_class = Listing.class_from_listing_idn(idn)
-                    # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
-                except Listing.NotAListing:   # as e:
-                    return ListingNotInstalled(idn)
-                    # raise self.NotAWord("Listing identifier {q} exception: {e}".format(
-                    #     q=idn.qstring(),
-                    #     e=str(e)
-                    # ))
-                else:
-                    assert issubclass(listing_class, Listing), repr(listing_class)
-                    return listing_class.instance_from_idn(idn)
-                    # _, hack_index = Listing._parse_listing_idn(idn)
-                    # return listing_class(hack_index)
-                # pieces = idn.parse_suffixes()
-                # assert len(pieces) == 1 or isinstance(pieces[1], Number.Suffix)
-                # if len(pieces) == 2 and pieces[1].
+                raise self.NotAWord("Don't know how to spawn this suffixed idn " + idn.qstring())
 
         assert hasattr(self, 'lex')
         # XXX:  Why did PY2 need this to be a b'lex'?!  And why doesn't it now??
@@ -364,9 +362,49 @@ class Word(object):
         assert isinstance(self.lex, Lex)
         kwargs['lex'] = self.lex
         return Word(*args, **kwargs)
-        # NOTE:  This should be the only call to the (base) Word constructor.  Enforce?  Refactor somehow?
+        # NOTE:  This should be the only call to the Word constructor.
+        # (Except of course from derived class constructors that call their super().)
+        # Enforce?  Refactor somehow?
         # (The chicken/egg problem is resolved by the first Word being instantiated
         # via the derived class Lex (e.g. LexMySQL).)
+
+
+        #     else:
+        #         return listing_class.instance_from_idn(args[0].idn)
+        # else:
+        #     kwargs['lex'] = self.lex
+        #     return Word(*args, **kwargs)
+        #
+        # if len(args) >= 1 and isinstance(args[0], Number):
+        #     idn = args[0]
+        #     if idn.is_suffixed():
+        #         try:
+        #             listing_class = Listing.class_from_listing_idn(idn)
+        #             # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
+        #         except Listing.NotAListing:   # as e:
+        #             return ListingNotInstalled(idn)
+        #             # raise self.NotAWord("Listing identifier {q} exception: {e}".format(
+        #             #     q=idn.qstring(),
+        #             #     e=str(e)
+        #             # ))
+        #         else:
+        #             assert issubclass(listing_class, Listing), repr(listing_class)
+        #             return listing_class.instance_from_idn(idn)
+        #             # _, hack_index = Listing._parse_listing_idn(idn)
+        #             # return listing_class(hack_index)
+        #         # pieces = idn.parse_suffixes()
+        #         # assert len(pieces) == 1 or isinstance(pieces[1], Number.Suffix)
+        #         # if len(pieces) == 2 and pieces[1].
+        #
+        # assert hasattr(self, 'lex')
+        # # XXX:  Why did PY2 need this to be a b'lex'?!  And why doesn't it now??
+        # # Otherwise hasattr(): attribute name must be string
+        # assert isinstance(self.lex, Lex)
+        # kwargs['lex'] = self.lex
+        # return Word(*args, **kwargs)
+        # # NOTE:  This should be the only call to the (base) Word constructor.  Enforce?  Refactor somehow?
+        # # (The chicken/egg problem is resolved by the first Word being instantiated
+        # # via the derived class Lex (e.g. LexMySQL).)
 
     class NotAVerb(Exception):
         pass
@@ -377,9 +415,32 @@ class Word(object):
     def _from_idn(self, idn):
         """
         Construct a Word from its idn.
+
+        :type idn: Number
         """
         assert isinstance(idn, Number)
         assert not idn.is_suffixed()
+        # if idn.is_suffixed():
+        #     try:
+        #         listed_instance = Listing.instance_from_idn(idn)
+        #     except Listing.NotAListing:
+        #         raise self.NotAWord("Not a Word identifier (Number, but wrong suffix): " + idn.qstring())
+        #     else:
+        #         assert listed_instance.exists()
+        #         self._fields = dict(txt=listed_instance.txt)
+        #         self._now_it_exists()
+        #         # TODO:  This was a fudge. Word(suffixed idn) should return a Listing instance
+        #         # i.e. something like self = listed_instance
+        #         # or self.__class__ = Listing subclass
+        #         # SEE:  http://stackoverflow.com/a/3209240/673991
+        #         # Or maybe the only Word() caller, spawn() should do this dynamic typing.
+        #         # But that would mean a listing index could never be inchoate.
+        #         # Isn't that desirable?  Putting off.
+        #
+        #
+        #
+        # else:
+
         self._idn = idn
         self.lex.populate_word_from_idn(self, idn)
 
@@ -685,7 +746,7 @@ class SubjectedVerb(object):
 
     def __getitem__(self, item):
         """
-        Square-bracket sentence lookup (the R in CRUD).
+        Square-bracket sentence extraction from its lex (the R in CRUD).
 
         This is the result of the curried expression:
 
@@ -699,6 +760,7 @@ class SubjectedVerb(object):
 
 # noinspection PyAttributeOutsideInit
 class Listing(Word):
+    # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
     meta_word = None   # This class variable is a Word associated with a Listing subclass.
                        # It is assigned by install().
                        # listing_subclass.meta_word.idn is an unsuffixed qiki.Number.
@@ -793,6 +855,9 @@ class Listing(Word):
     class NotAListing(Exception):
         pass
 
+    class NotAListingRightNow(NotAListing):
+        pass
+
     @classmethod
     def instance_from_idn(cls, idn):
         """
@@ -817,7 +882,7 @@ class Listing(Word):
         meta_idn, index = cls._parse_listing_idn(idn)
         listing_subclass = cls.class_from_meta_idn(meta_idn)
         listed_instance = listing_subclass(index)
-        # TODO:  Support non-Number suffixes?  The Listing index must now be a Number.
+        # TODO:  Support non-Number suffix payloads?  The Listing index must now be a Number.
         return listed_instance
 
     @classmethod
@@ -832,7 +897,7 @@ class Listing(Word):
         try:
             listing_subclass = cls.class_dictionary[meta_idn]
         except KeyError:
-            raise cls.NotAListing("Not an installed Listing class identifier: " + meta_idn.qstring())
+            raise cls.NotAListingRightNow("Not an installed Listing class identifier: " + meta_idn.qstring())
         assert issubclass(listing_subclass, cls), repr(listing_subclass) + " is not a subclass of " + repr(cls)
         assert listing_subclass.meta_word.idn == meta_idn
         return listing_subclass
@@ -840,11 +905,14 @@ class Listing(Word):
     @classmethod
     def _parse_listing_idn(cls, idn):
         """Return (meta_idn, index) or raise NotAListing."""
-        pieces = idn.parse_suffixes()
+        try:
+            pieces = idn.parse_suffixes()
+        except AttributeError:
+            raise cls.NotAListing("Not a Number: " + type(idn).__name__)
         try:
             (identifier, suffix) = pieces
         except ValueError:
-            raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
+            raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())
         if suffix.type_ != cls.SUFFIX_TYPE:
             raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
 
@@ -864,7 +932,7 @@ class ListingNotInstalled(Listing):
 
     To defer raising NotAWord until it becomes choate.
     So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
-    And exceptions are raised only if those words become choate.
+    And exceptions are raised only if those words try to become choate.
     All this so we don't have to install obsolete listing classes.
     """
     # noinspection PyUnresolvedReferences
@@ -873,7 +941,7 @@ class ListingNotInstalled(Listing):
     # noinspection PyMissingConstructor
     def __init__(self, idn):
         self.index = None
-        self._inchoate(idn)   # So Word.choate() calls Listing._from_idn().  So this is smelly.
+        self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
 
     def _choate(self):
         assert self.idn.is_suffixed()
@@ -884,6 +952,9 @@ class ListingNotInstalled(Listing):
                 idn=self.idn,
                 meta_idn=self.idn.root(),
             ))
+        # TODO:  Remove this exception?
+        # It should never happen, because ListingNotInstalled is only instantiated for a Listing idn
+        # A Listing idn is an idn whose root is the lex['listing'].idn
         else:
             raise Listing.NotAListing("Listing identifier {idn} has meta_idn {meta_idn} which was not installed to a class.".format(
                 idn=self.idn,
@@ -919,7 +990,8 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         #     at this point, whether the word exists or not.
 
         if existing_word.idn == self.idn:
-            return self   # lex is a singleton, i.e. assert(lex[lex] is lex).  Why is this important?
+            return self   # lex is a singleton, i.e. assert lex[lex] is lex
+            # TODO:  Explain, why is this important?
         else:
             return existing_word
 
