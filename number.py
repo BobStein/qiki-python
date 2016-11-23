@@ -1678,3 +1678,23 @@ Number.Suffix.internal_setup(Number)
 # This lengthed export is not monotonic.
 
 # This scheme leaves an initial FF free for future something-or-other.
+
+# What to call it?
+#     lengthed export
+#     dna
+#     freeze-dried
+#     p-string
+#         "packed"
+#         "packet"
+#         but it's not a string
+#         but p has some symmetry with q
+#         but it shouldn't)
+#     b or d string would also be symmetrical with q, but it should rather be symmetrical with raw
+#     ink
+#     What real-world analogy for packaging a word for transport down a stream?
+#     stream byte array
+#     morse code
+#     packet
+#     Think of a tardigrade, dessicated.  And reconstituted back to life.
+#         but this is not condensing, in fact it's expanding.
+#         really is more like a packetized number

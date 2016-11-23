@@ -11,6 +11,7 @@ import re
 import time
 
 import mysql.connector
+# TODO:  Move mysql stuff to lex_mysql.py?
 import six
 
 from qiki import Number
@@ -327,7 +328,7 @@ class Word(object):
                     new=new_word.idn.qstring()
                 )
         else:
-             new_word.save()
+            new_word.save()
         return new_word
 
     class SentenceArgs(TypeError):
@@ -340,7 +341,7 @@ class Word(object):
 
         try:
             idn = idn_from_word_or_number(args[0])
-        except IndexError:                        # args is empty
+        except IndexError:                        # args is empty (kwargs probably isn't)
             pass
         except TypeError:                         # args[0] is neither a Word nor a Number
             pass
@@ -348,8 +349,7 @@ class Word(object):
             try:
                 return Listing.instance_from_idn(idn)
             except Listing.NotAListingRightNow:
-                return ListingNotInstalled(idn)   # args[0] is a listing word
-                                                  # but the listing class was never installed
+                return ListingNotInstalled(idn)   # args[0] is a listing, but its class wasn't installed
             except Listing.NotAListing:
                 pass                              # args[0] is not a listing word
 
@@ -367,7 +367,6 @@ class Word(object):
         # Enforce?  Refactor somehow?
         # (The chicken/egg problem is resolved by the first Word being instantiated
         # via the derived class Lex (e.g. LexMySQL).)
-
 
         #     else:
         #         return listing_class.instance_from_idn(args[0].idn)
@@ -935,7 +934,8 @@ class ListingNotInstalled(Listing):
     To defer raising NotAWord until it becomes choate.
     So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
     And exceptions are raised only if those words try to become choate.
-    All this so we don't have to install obsolete listing classes.
+    All this so we don't have to install obsolete listing classes,
+    but we can still instantiate the no-longer-used words that refer to them.
     """
     # noinspection PyUnresolvedReferences
     meta_idn = Number.NAN
@@ -947,10 +947,13 @@ class ListingNotInstalled(Listing):
 
     def _choate(self):
         assert self.idn.is_suffixed()
-        raise Listing.NotAListing("Listing identifier {idn} has meta_idn {meta_idn} which was not installed to a class.".format(
-            idn=self.idn,
-            meta_idn=self.idn.root(),
-        ))
+        raise Listing.NotAListing(
+            "Listing identifier {idn} has meta_idn {meta_idn} "
+            "which was not installed to a class.".format(
+                idn=self.idn,
+                meta_idn=self.idn.root(),
+            )
+        )
 
     def lookup(self, index, callback):
         raise self.NotAListing
@@ -1121,7 +1124,7 @@ class LexMySQL(Lex):
         seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
         seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
         seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 0,1    0,-4,-1
-                                                                    #-----
+                                                                    # ---
                                                                     # 5,3
         return
         # noinspection PyUnreachableCode
@@ -1132,7 +1135,7 @@ class LexMySQL(Lex):
         seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
         seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
         seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
-                                                                    #-----
+                                                                    # ---
                                                                     # 3,3
 
         assert not self.exists()
@@ -1398,7 +1401,6 @@ class LexMySQL(Lex):
 
         if obj_group:
             query_args += ['GROUP BY obj', None]
-
 
         order_clause = 'ORDER BY w.idn ' + idn_order
         if any(jbo_vrb):
