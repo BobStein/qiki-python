@@ -1320,24 +1320,30 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7C_FEFF', GrandDaughterOfNumber(GrandSonOfNumber('0q7C_FEFF')).qstring())
 
     def test_sizeof(self):
-        self.assertIn(sys.getsizeof(Number('0q')), (28, 32))  # depends on Zone.__slots__ containing _zone or not
-        self.assertIn(sys.getsizeof(Number('0q80')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
+        self.assertIn(sys.getsizeof(Number('0q')), (
+            28,
+            32,
+            56,   # Windows laptop, Python 2.7.12
+        ))  # depends on Zone.__slots__ containing _zone or not
+        self.assertIn(sys.getsizeof(Number('0q80')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
 
-        self.assertEqual(py23( 21, 17), sys.getsizeof(Number('0q').raw))
-        self.assertEqual(py23( 22, 18), sys.getsizeof(Number('0q80').raw))
-        self.assertEqual(py23( 23, 19), sys.getsizeof(Number('0q82_01').raw))
-        self.assertEqual(py23( 24, 20), sys.getsizeof(Number('0q83_03E8').raw))
-        self.assertEqual(py23( 25, 21), sys.getsizeof(Number('0q82_018888').raw))
-        self.assertEqual(py23( 45, 41), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
-        self.assertEqual(py23(144,140), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        PY2_7_12 = sys.version_info[0:3] >= (2, 7, 12)
+        q12 = 12 if PY2_7_12 else 0
+        self.assertEqual(py23( 21 + q12, 17), sys.getsizeof(Number('0q').raw))
+        self.assertEqual(py23( 22 + q12, 18), sys.getsizeof(Number('0q80').raw))
+        self.assertEqual(py23( 23 + q12, 19), sys.getsizeof(Number('0q82_01').raw))
+        self.assertEqual(py23( 24 + q12, 20), sys.getsizeof(Number('0q83_03E8').raw))
+        self.assertEqual(py23( 25 + q12, 21), sys.getsizeof(Number('0q82_018888').raw))
+        self.assertEqual(py23( 45 + q12, 41), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        self.assertEqual(py23(144 + q12,140), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
 
-        self.assertEqual(py23(21, 17), sys.getsizeof(b''))
-        self.assertEqual(py23(22, 18), sys.getsizeof(b'\x80'))
-        self.assertEqual(py23(24, 20), sys.getsizeof(b'\x83\x03\xE8'))
-        self.assertEqual(py23(45, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
+        self.assertEqual(py23(21 + q12, 17), sys.getsizeof(b''))
+        self.assertEqual(py23(22 + q12, 18), sys.getsizeof(b'\x80'))
+        self.assertEqual(py23(24 + q12, 20), sys.getsizeof(b'\x83\x03\xE8'))
+        self.assertEqual(py23(45 + q12, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def test_uneven_hex(self):
         if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
