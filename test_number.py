@@ -3020,6 +3020,7 @@ class PythonTests(NumberTests):
         self.assertIsInstance(float('nan'), float)
 
 
+# FIXME:  The "12" situation is NOT due to the Python version.  It's unique to one computer.
 PY2_7_12 = sys.version_info[0:3] >= (2, 7, 12)
 PY3_5_2 = sys.version_info[0:3] >= (3, 5, 2)
 
