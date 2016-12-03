@@ -23,9 +23,6 @@ TEST_INC_ON_ALL_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_01000000000
 
 class NumberTests(unittest.TestCase):
 
-    def setUp(self):
-        pass
-
     def assertFloatSame(self, x1, x2):
         self.assertTrue(floats_really_same(x1, x2), "{x1} is not the same as {x2}".format(
             x1=x1,
@@ -76,18 +73,16 @@ class NumberBasicTests(NumberTests):
     def test_raw_from_byte_string(self):
         self.assertEqual(Number(1), Number(u'0q82'))
         if six.PY2:
+            # THANKS:  http://astrofrog.github.io/blog/2016/01/12/stop-writing-python-4-incompatible-code/
             self.assertEqual(Number(u'0q82'), Number(b'0q82'))
             self.assertEqual(       u'0q82',         b'0q82')
-        elif six.PY3:
+        else:
             self.assertNotEqual(    u'0q82',         b'0q82')
             with self.assertRaises(TypeError):
                 Number(b'0q82')
-        else:
-            self.fail()
 
     def test_unsupported_type(self):
-        # noinspection PyClassHasNoInit
-        class SomeType:
+        class SomeType(object):
             pass
         with self.assertRaises(TypeError):
             Number(SomeType)
@@ -105,16 +100,15 @@ class NumberBasicTests(NumberTests):
 
     def test_unicode(self):
         n = Number('0q83_03E8')
-        self.assertEqual(u"0q83_03E8", six.text_type(n))
         if six.PY2:
-            self.assertEqual('unicode', type(six.text_type(n)).__name__)
-        elif six.PY3:
-            self.assertEqual('str', type(six.text_type(n)).__name__)
-            # with self.assertRaises(NameError):
-            #     six.text_type(n)
-            # WTF was this here?
+            # noinspection PyCompatibility
+            self.assertEqual('0q83_03E8', unicode(n))
+            # noinspection PyCompatibility
+            self.assertEqual('unicode', type(unicode(n)).__name__)
         else:
-            self.fail()
+            with self.assertRaises(NameError):
+                # noinspection PyCompatibility
+                unicode(n)
 
     def test_unicode_output(self):
         n = Number('0q83_03E8')
@@ -1319,6 +1313,22 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q83_03E8', GrandSonOfNumber(GrandDaughterOfNumber('0q83_03E8')).qstring())
         self.assertEqual('0q7C_FEFF', GrandDaughterOfNumber(GrandSonOfNumber('0q7C_FEFF')).qstring())
 
+    def test_copy_constructor_by_value(self):
+        """Make sure copy constructor copies by value, not reference."""
+        source = Number(1)
+        destination = Number(source)
+        source.raw = Number(9).raw
+        self.assertEqual('0q82_01', destination.qstring())
+
+    def test_assignment_by_reference(self):
+        """Make sure assignment copies by reference, not by value."""
+        # TODO:  Make Number an immutable class, so assignment is by value?
+        # SEE:  Immuutable object, http://stackoverflow.com/q/4828080/673991
+        source = Number(1)
+        destination = source
+        source.raw = Number(9).raw
+        self.assertEqual('0q82_09', destination.qstring())
+
     def test_sizeof(self):
         self.assertIn(sys.getsizeof(Number('0q')), (28, 32))  # depends on Zone.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q80')), (28, 32))
@@ -1460,11 +1470,9 @@ class NumberBasicTests(NumberTests):
 
         if six.PY2:
             self.assertEqual(-42, Number("- 42"))   # int() is guilty, float() is innocent.
-        elif six.PY3:
+        else:
             with self.assertRaises(Number.ConstructorValueError):
                 Number("- 42")
-        else:
-            self.fail()
 
         with self.assertRaises(Number.ConstructorValueError):
             Number("       ")
@@ -1878,7 +1886,7 @@ class NumberMathTests(NumberTests):
             self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
                                              Number('0q92_0100000000000000020000000000000001'),
                                              Number('0q8A_010000000000000001'))
-        elif six.PY3:
+        else:
             self.assertFalse(hasattr(operator, '__div__'))
 
     def test_pow(self):
@@ -2143,13 +2151,11 @@ class NumberPickleTests(NumberTests):
                     ."""
                 ),   # when run via qiki-python or number_playground
             )
-        elif six.PY3:
+        else:
             self.assertEqual(
                 pickle.dumps(Number),
                 b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
             )
-        else:
-            self.fail()
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
@@ -2174,15 +2180,13 @@ class NumberPickleTests(NumberTests):
                     b."""
                 ).format(x314_raw_repr=repr(x314.raw)),   # via qiki-python or number_playground
             )
-        elif six.PY3:
+        else:
             self.assertEqual(
                 pickle.dumps(x314),
                 b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' +
                 x314.raw +
                 b'q\x02b.'
             )
-        else:
-            self.fail()
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
@@ -2205,7 +2209,7 @@ class NumberPickleTests(NumberTests):
                     b'q\x02b.'
                 )
             )
-        elif six.PY3:
+        else:
             self.assertEqual(
                 # XXX:  Is this ridonculously messed up, in that the raw string is being utf-8 encoded??
                 pickle.dumps(x314, 2),
@@ -2215,8 +2219,6 @@ class NumberPickleTests(NumberTests):
                     b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
                 )
             )
-        else:
-            self.fail()
 
         # print(repr(pickle.dumps(x314, 2)))
         # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
@@ -3013,13 +3015,11 @@ class PythonTests(NumberTests):
         self.assertIsInstance(float('nan'), float)
 
 
-def py23(if2, if3):
+def py23(if2, if3_or_greater):
     if six.PY2:
         return if2
-    elif six.PY3:
-        return if3
     else:
-        assert False
+        return if3_or_greater
 
 if __name__ == '__main__':
     import unittest
