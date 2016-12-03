@@ -1331,28 +1331,28 @@ class NumberBasicTests(NumberTests):
 
     def test_sizeof(self):
         self.assertIn(sys.getsizeof(Number('0q')), (
-            28,
-            32,
-            56,   # Windows laptop, Python 2.7.12
+            28,   # Windows 7, 64-bit desktop, Python 2.7.9-12
+            32,   # Windows 7, 64-bit desktop, Python 3.5.1-2
+            56,   # Windows 7, 64-bit laptop, Python 2.7.12, 3.5.2
         ))  # depends on Zone.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q80')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
 
-
-        self.assertEqual(py2312( 21, 17, 33), sys.getsizeof(Number('0q').raw))
-        self.assertEqual(py2312( 22, 18, 34), sys.getsizeof(Number('0q80').raw))
-        self.assertEqual(py2312( 23, 19, 35), sys.getsizeof(Number('0q82_01').raw))
-        self.assertEqual(py2312( 24, 20, 36), sys.getsizeof(Number('0q83_03E8').raw))
-        self.assertEqual(py2312( 25, 21, 37), sys.getsizeof(Number('0q82_018888').raw))
-        self.assertEqual(py2312( 45, 41, 57), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
-        self.assertEqual(py2312(144,140,156), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
-
-        self.assertEqual(py2312(21, 17, 33), sys.getsizeof(b''))
-        self.assertEqual(py2312(22, 18, 34), sys.getsizeof(b'\x80'))
-        self.assertEqual(py2312(24, 20, 36), sys.getsizeof(b'\x83\x03\xE8'))
-        self.assertEqual(py2312(45, 41, 57), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
+        # Testing getsizeof() was a dumb idea.  Anyway it broke over some distinction between laptop and desktop.
+        # self.assertEqual(py2312( 21, 17, 33), sys.getsizeof(Number('0q').raw))
+        # self.assertEqual(py2312( 22, 18, 34), sys.getsizeof(Number('0q80').raw))
+        # self.assertEqual(py2312( 23, 19, 35), sys.getsizeof(Number('0q82_01').raw))
+        # self.assertEqual(py2312( 24, 20, 36), sys.getsizeof(Number('0q83_03E8').raw))
+        # self.assertEqual(py2312( 25, 21, 37), sys.getsizeof(Number('0q82_018888').raw))
+        # self.assertEqual(py2312( 45, 41, 57), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        # self.assertEqual(py2312(144,140,156), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        #
+        # self.assertEqual(py2312(21, 17, 33), sys.getsizeof(b''))
+        # self.assertEqual(py2312(22, 18, 34), sys.getsizeof(b'\x80'))
+        # self.assertEqual(py2312(24, 20, 36), sys.getsizeof(b'\x83\x03\xE8'))
+        # self.assertEqual(py2312(45, 41, 57), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def test_uneven_hex(self):
         if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
@@ -3020,28 +3020,12 @@ class PythonTests(NumberTests):
         self.assertIsInstance(float('nan'), float)
 
 
-# FIXME:  The "12" situation is NOT due to the Python version.  It's unique to one computer.
-PY2_7_12 = sys.version_info[0:3] >= (2, 7, 12)
-PY3_5_2 = sys.version_info[0:3] >= (3, 5, 2)
-
-def py2312(if2, if3, if12):
-    """Python 2, Python 3, and (Python 2.7.12 or Python 3.5.2)"""
-    if six.PY2:
-        if PY2_7_12:
-            return if12
-        else:
-            return if2
-    else:
-        if PY3_5_2:
-            return if12
-        else:
-            return if3
-
 def py23(if2, if3_or_greater):
     if six.PY2:
         return if2
     else:
         return if3_or_greater
+
 
 if __name__ == '__main__':
     import unittest
