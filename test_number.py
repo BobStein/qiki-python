@@ -73,7 +73,6 @@ class NumberBasicTests(NumberTests):
     def test_raw_from_byte_string(self):
         self.assertEqual(Number(1), Number(u'0q82'))
         if six.PY2:
-            # THANKS:  http://astrofrog.github.io/blog/2016/01/12/stop-writing-python-4-incompatible-code/
             self.assertEqual(Number(u'0q82'), Number(b'0q82'))
             self.assertEqual(       u'0q82',         b'0q82')
         else:
@@ -94,9 +93,16 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('82', n.hex())
 
     def test_str(self):
+        """
+        Don't test what str() outputs -- it's some human-readable string version of the Number.
+        This test only makes sure that plowing that string back into Number() leads to the same value.
+
+        NOTE:  Throughout these unit tests, str(n) is avoided in favor of n.qstring().
+        That way str(Number(1)) is free to be e.g. '0q82_01' or '1'.
+        """
         n = Number('0q83_03E8')
-        self.assertEqual("0q83_03E8", str(n))
         self.assertEqual('str', type(str(n)).__name__)
+        self.assertEqual(n, Number(str(n)))
 
     def test_unicode(self):
         n = Number('0q83_03E8')
@@ -117,7 +123,7 @@ class NumberBasicTests(NumberTests):
 
     def test_unicode_input(self):
         n = Number(u'0q83_03E8')
-        self.assertEqual("0q83_03E8", str(n))
+        self.assertEqual("0q83_03E8", n.qstring())
         self.assertEqual(u"0q83_03E8", six.text_type(n))
 
     def test_isinstance(self):
@@ -202,13 +208,13 @@ class NumberBasicTests(NumberTests):
         self.assertEqual("Number('0q83_03E8')", repr(n))
 
     def test_zero(self):
-        self.assertEqual('0q80', str(Number.ZERO))
+        self.assertEqual('0q80', Number.ZERO.qstring())
         self.assertEqual(0, int(Number.ZERO))
         self.assertEqual(0.0, float(Number.ZERO))
 
     # yes_inspection PyUnresolvedReferences
     def test_nan(self):
-        self.assertEqual('0q', str(Number.NAN))
+        self.assertEqual('0q', Number.NAN.qstring())
         self.assertEqual(b'', Number.NAN.raw)
         self.assertEqual('', Number.NAN.hex())
         self.assertEqual('nan', str(float(Number.NAN)))
@@ -547,7 +553,7 @@ class NumberBasicTests(NumberTests):
             assert isinstance(i, six.integer_types)
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
-            s_new = str(Number(i))
+            s_new =     Number(i).qstring()
             self.assertEqual(s_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       s_new, s))
             self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
 
@@ -791,40 +797,40 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number.Zone.NAN,                 Number('0q').zone)
 
     def test_float_qigits(self):
-        self.assertEqual('0q82_01', str(Number(1.1, qigits=1)))
-        self.assertEqual('0q82_011A', str(Number(1.1, qigits=2)))
-        self.assertEqual('0q82_01199A', str(Number(1.1, qigits=3)))
-        self.assertEqual('0q82_0119999A', str(Number(1.1, qigits=4)))
-        self.assertEqual('0q82_011999999A', str(Number(1.1, qigits=5)))
-        self.assertEqual('0q82_01199999999A', str(Number(1.1, qigits=6)))
-        self.assertEqual('0q82_0119999999999A', str(Number(1.1, qigits=7)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=8)))   # so float has about 7 significant qigits
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=9)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=15)))
+        self.assertEqual('0q82_01', Number(1.1, qigits=1).qstring())
+        self.assertEqual('0q82_011A', Number(1.1, qigits=2).qstring())
+        self.assertEqual('0q82_01199A', Number(1.1, qigits=3).qstring())
+        self.assertEqual('0q82_0119999A', Number(1.1, qigits=4).qstring())
+        self.assertEqual('0q82_011999999A', Number(1.1, qigits=5).qstring())
+        self.assertEqual('0q82_01199999999A', Number(1.1, qigits=6).qstring())
+        self.assertEqual('0q82_0119999999999A', Number(1.1, qigits=7).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=8).qstring())   # so float has about 7 significant qigits
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=9).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=15).qstring())
 
     def test_float_qigits_default(self):
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=None)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=-1)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1, qigits=0)))
+        self.assertEqual('0q82_01199999999999A0', Number(1.1).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=None).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=-1).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=0).qstring())
 
     def test_float_qigits_default_not_sticky(self):
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
-        self.assertEqual('0q82_0119999A', str(Number(1.1, qigits=4)))
-        self.assertEqual('0q82_01199999999999A0', str(Number(1.1)))
+        self.assertEqual('0q82_01199999999999A0', Number(1.1).qstring())
+        self.assertEqual('0q82_0119999A', Number(1.1, qigits=4).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1).qstring())
 
     def test_float_qigits_fractional(self):
-        self.assertEqual('0q81FF_199999999A', str(Number(0.1, qigits=5)))
-        self.assertEqual('0q81FF_19999999999A', str(Number(0.1, qigits=6)))
-        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=7)))
-        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=8)))
-        self.assertEqual('0q81FF_1999999999999A', str(Number(0.1, qigits=9)))
+        self.assertEqual('0q81FF_199999999A', Number(0.1, qigits=5).qstring())
+        self.assertEqual('0q81FF_19999999999A', Number(0.1, qigits=6).qstring())
+        self.assertEqual('0q81FF_1999999999999A', Number(0.1, qigits=7).qstring())
+        self.assertEqual('0q81FF_1999999999999A', Number(0.1, qigits=8).qstring())
+        self.assertEqual('0q81FF_1999999999999A', Number(0.1, qigits=9).qstring())
 
-        self.assertEqual('0q81FF_3333333333', str(Number(0.2, qigits=5)))
-        self.assertEqual('0q81FF_333333333333', str(Number(0.2, qigits=6)))
-        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=7)))
-        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=8)))
-        self.assertEqual('0q81FF_33333333333334', str(Number(0.2, qigits=9)))
+        self.assertEqual('0q81FF_3333333333', Number(0.2, qigits=5).qstring())
+        self.assertEqual('0q81FF_333333333333', Number(0.2, qigits=6).qstring())
+        self.assertEqual('0q81FF_33333333333334', Number(0.2, qigits=7).qstring())
+        self.assertEqual('0q81FF_33333333333334', Number(0.2, qigits=8).qstring())
+        self.assertEqual('0q81FF_33333333333334', Number(0.2, qigits=9).qstring())
         # Ending in 34 is not a bug.
         # The 7th qigit above gets rounded to 34, not in Number, but when float was originally decoded from 0.2.
         # That's because the IEEE-754 53-bit (double precision) float significand can only fit 7 of those bits there.
@@ -832,42 +838,42 @@ class NumberBasicTests(NumberTests):
         # So Number faithfully stored all 53 bits from the float.
 
     def test_float_qigits_fractional_neg(self):
-        self.assertEqual('0q7E00_E666666666', str(Number(-0.1, qigits=5)))
-        self.assertEqual('0q7E00_E66666666666', str(Number(-0.1, qigits=6)))
-        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=7)))
-        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=8)))
-        self.assertEqual('0q7E00_E6666666666666', str(Number(-0.1, qigits=9)))
+        self.assertEqual('0q7E00_E666666666', Number(-0.1, qigits=5).qstring())
+        self.assertEqual('0q7E00_E66666666666', Number(-0.1, qigits=6).qstring())
+        self.assertEqual('0q7E00_E6666666666666', Number(-0.1, qigits=7).qstring())
+        self.assertEqual('0q7E00_E6666666666666', Number(-0.1, qigits=8).qstring())
+        self.assertEqual('0q7E00_E6666666666666', Number(-0.1, qigits=9).qstring())
 
-        self.assertEqual('0q7E00_CCCCCCCCCD', str(Number(-0.2, qigits=5)))
-        self.assertEqual('0q7E00_CCCCCCCCCCCD', str(Number(-0.2, qigits=6)))
-        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=7)))
-        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=8)))
-        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', str(Number(-0.2, qigits=9)))
+        self.assertEqual('0q7E00_CCCCCCCCCD', Number(-0.2, qigits=5).qstring())
+        self.assertEqual('0q7E00_CCCCCCCCCCCD', Number(-0.2, qigits=6).qstring())
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', Number(-0.2, qigits=7).qstring())
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', Number(-0.2, qigits=8).qstring())
+        self.assertEqual('0q7E00_CCCCCCCCCCCCCC', Number(-0.2, qigits=9).qstring())
 
     def test_float_qigits_neg(self):
-        self.assertEqual('0q7D_FEE6666666', str(Number(-1.1, qigits=5)))
-        self.assertEqual('0q7D_FEE666666666', str(Number(-1.1, qigits=6)))
-        self.assertEqual('0q7D_FEE66666666666', str(Number(-1.1, qigits=7)))
-        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=8)))   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
-        self.assertEqual('0q7D_FEE6666666666660', str(Number(-1.1, qigits=9)))
+        self.assertEqual('0q7D_FEE6666666', Number(-1.1, qigits=5).qstring())
+        self.assertEqual('0q7D_FEE666666666', Number(-1.1, qigits=6).qstring())
+        self.assertEqual('0q7D_FEE66666666666', Number(-1.1, qigits=7).qstring())
+        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=8).qstring())   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
+        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=9).qstring())
 
-        self.assertEqual('0q7D_FECCCCCCCD', str(Number(-1.2, qigits=5)))
-        self.assertEqual('0q7D_FECCCCCCCCCD', str(Number(-1.2, qigits=6)))
-        self.assertEqual('0q7D_FECCCCCCCCCCCD', str(Number(-1.2, qigits=7)))
-        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=8)))
-        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', str(Number(-1.2, qigits=9)))
+        self.assertEqual('0q7D_FECCCCCCCD', Number(-1.2, qigits=5).qstring())
+        self.assertEqual('0q7D_FECCCCCCCCCD', Number(-1.2, qigits=6).qstring())
+        self.assertEqual('0q7D_FECCCCCCCCCCCD', Number(-1.2, qigits=7).qstring())
+        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', Number(-1.2, qigits=8).qstring())
+        self.assertEqual('0q7D_FECCCCCCCCCCCCD0', Number(-1.2, qigits=9).qstring())
 
     def test_float_qigits_negative_one_bug(self):
-        self.assertEqual('0q7D_FF', str(Number(-1.0)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=9)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=8)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=7)))   # not 0q7D_FF000000000001
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=6)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=5)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=4)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=3)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=2)))
-        self.assertEqual('0q7D_FF', str(Number(-1.0, qigits=1)))
+        self.assertEqual('0q7D_FF', Number(-1.0).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=9).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=8).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=7).qstring())   # not 0q7D_FF000000000001
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=6).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=5).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=4).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=3).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=2).qstring())
+        self.assertEqual('0q7D_FF', Number(-1.0, qigits=1).qstring())
 
     def test_floats_and_q_strings(self):
 
@@ -881,21 +887,21 @@ class NumberBasicTests(NumberTests):
             try:
                 x_new = float(Number(s_in))
             except Exception as e:
-                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, str(e), s_in))
+                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, e.qstring(), s_in))
                 raise
             match_x = floats_really_same(x_new, x_out)
 
             try:
-                s_new = str(Number(x_in))
+                s_new = Number(x_in).qstring()
             except Exception as e:
-                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, str(e)))
+                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, e.qstring()))
                 raise
             match_s = s_new == s_out
 
             if not match_x or not match_s:
                 report = "\n"
                 if not match_x:
-                    s_shoulda = str(Number(x_out, qigits = 7))
+                    s_shoulda = Number(x_out, qigits = 7).qstring()
                     report += "Number(%s) ~~ " % s_shoulda
                 report += "%.17e %s %.17e <--- Number(%s).__float__()" % (
                     x_out,
@@ -1275,7 +1281,7 @@ class NumberBasicTests(NumberTests):
             pass
 
         self.assertEqual('0q83_03E8', Number(SonOfNumber('0q83_03E8')).qstring())
-        self.assertEqual('0q7C_FEFF', str(Number(SonOfNumber('0q7C_FEFF'))))
+        self.assertEqual('0q7C_FEFF', Number(SonOfNumber('0q7C_FEFF')).qstring())
 
     def test_copy_constructor_inherited(self):
         """Propagate down the type hierarchy."""
@@ -1462,8 +1468,19 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(Number.ConstructorValueError):
             Number("(1)")
 
-        # Also
+    def test_string_numeric_space_after_minus(self):
+        if six.PY2:
+            self.assertEqual(-42, Number("- 42"))
+            # NOTE:  Python 2 int() is too permissive with space after minus.
+        else:
+            with self.assertRaises(Number.ConstructorValueError):
+                Number("- 42")
 
+        with self.assertRaises(Number.ConstructorValueError):
+            Number("- 42.0")
+            # NOTE:  float() sensibly rejects space after minus at any version.
+
+    def test_string_numeric_more_errors(self):
         with self.assertRaises(Number.ConstructorValueError):
             Number("2+2")
         with self.assertRaises(Number.ConstructorValueError):
@@ -1472,15 +1489,10 @@ class NumberBasicTests(NumberTests):
             Number("0 0")
         with self.assertRaises(Number.ConstructorValueError):
             Number("--0")
-
-        if six.PY2:
-            self.assertEqual(-42, Number("- 42"))   # int() is guilty, float() is innocent.
-        else:
-            with self.assertRaises(Number.ConstructorValueError):
-                Number("- 42")
-
         with self.assertRaises(Number.ConstructorValueError):
             Number("       ")
+
+    def test_string_numeric_more_formats(self):
         self.assertEqual(32, Number("0x20"))
         self.assertEqual(0, Number("-0"))
         self.assertEqual(10, Number("00010"))   # Not octal
@@ -1497,26 +1509,26 @@ class NumberBasicTests(NumberTests):
             Number(u"\u200B" + "42" + u"\u200B")   # Zero-width spaces not allowed
 
     def test_from_int_negative(self):
-        self.assertEqual('0q80',    str(Number(-0)))
-        self.assertEqual('0q7D_FF', str(Number(-1)))
-        self.assertEqual('0q7D_FE', str(Number(-2)))
-        self.assertEqual('0q7D_FD', str(Number(-3)))
-        self.assertEqual('0q7D_FC', str(Number(-4)))
-        self.assertEqual('0q7D_01', str(Number(-255)))
-        self.assertEqual('0q7C_FF', str(Number(-256)))
-        self.assertEqual('0q7C_FEFF', str(Number(-257)))
+        self.assertEqual('0q80',    Number(-0).qstring())
+        self.assertEqual('0q7D_FF', Number(-1).qstring())
+        self.assertEqual('0q7D_FE', Number(-2).qstring())
+        self.assertEqual('0q7D_FD', Number(-3).qstring())
+        self.assertEqual('0q7D_FC', Number(-4).qstring())
+        self.assertEqual('0q7D_01', Number(-255).qstring())
+        self.assertEqual('0q7C_FF', Number(-256).qstring())
+        self.assertEqual('0q7C_FEFF', Number(-257).qstring())
 
     def test_from_int(self):
-        self.assertEqual('0q80', str(Number(0)))
-        self.assertEqual('0q82_01', str(Number(1)))
-        self.assertEqual('0q82_02', str(Number(2)))
-        self.assertEqual('0q82_03', str(Number(3)))
-        self.assertEqual('0q82_FF', str(Number(255)))
-        self.assertEqual('0q83_01', str(Number(256)))
-        self.assertEqual('0q83_0101', str(Number(257)))
-        self.assertEqual('0q8C_01', str(Number(256*256*256*256*256*256*256*256*256*256)))
-        self.assertEqual('0q8B_FFFFFFFFFFFFFFFFFFFF', str(Number(256*256*256*256*256*256*256*256*256*256-1)))
-        self.assertEqual('0q8C_0100000000000000000001', str(Number(256*256*256*256*256*256*256*256*256*256+1)))
+        self.assertEqual('0q80', Number(0).qstring())
+        self.assertEqual('0q82_01', Number(1).qstring())
+        self.assertEqual('0q82_02', Number(2).qstring())
+        self.assertEqual('0q82_03', Number(3).qstring())
+        self.assertEqual('0q82_FF', Number(255).qstring())
+        self.assertEqual('0q83_01', Number(256).qstring())
+        self.assertEqual('0q83_0101', Number(257).qstring())
+        self.assertEqual('0q8C_01', Number(256*256*256*256*256*256*256*256*256*256).qstring())
+        self.assertEqual('0q8B_FFFFFFFFFFFFFFFFFFFF', Number(256*256*256*256*256*256*256*256*256*256-1).qstring())
+        self.assertEqual('0q8C_0100000000000000000001', Number(256*256*256*256*256*256*256*256*256*256+1).qstring())
 
     def test_from_raw_docstring_example(self):
         with self.assertRaises((ValueError, Number.ConstructorTypeError)):
@@ -2140,58 +2152,50 @@ class NumberComplex(NumberTests):
 
 # noinspection SpellCheckingInspection
 class NumberPickleTests(NumberTests):
-    """ This isn't so much testing as revealing what pickle does to a qiki.Number.
+    """
+    This isn't so much testing as revealing what pickle does to a qiki.Number.
 
     Hint, there's a whole buncha baggage in addition to what __getstate__ and
-    __setstate__ generate and consume."""
+    __setstate__ generate and consume.
+    """
 
     def test_pickle_protocol_0_class(self):
-        if six.PY2:
-            self.assertEqual(
-                pickle.dumps(Number),
-                textwrap.dedent("""\
-                    cnumber
-                    Number
-                    p0
-                    ."""
-                ),   # when run via qiki-python or number_playground
-            )
-        else:
-            self.assertEqual(
-                pickle.dumps(Number),
-                b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
-            )
+        self.assertEqual(pickle.dumps(Number), py23(
+            textwrap.dedent("""\
+                cnumber
+                Number
+                p0
+                ."""
+            ),                                    # Python 2.X
+
+            b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
+        ))
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
         self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
-        if six.PY2:
-            self.assertEqual(
-                pickle.dumps(x314),
-                textwrap.dedent(b"""\
-                    ccopy_reg
-                    _reconstructor
-                    p0
-                    (cnumber
-                    Number
-                    p1
-                    c__builtin__
-                    object
-                    p2
-                    Ntp3
-                    Rp4
-                    S{x314_raw_repr}
-                    p5
-                    b."""
-                ).format(x314_raw_repr=repr(x314.raw)),   # via qiki-python or number_playground
-            )
-        else:
-            self.assertEqual(
-                pickle.dumps(x314),
-                b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' +
-                x314.raw +
-                b'q\x02b.'
-            )
+        self.assertEqual(pickle.dumps(x314), py23(
+            textwrap.dedent("""\
+                ccopy_reg
+                _reconstructor
+                p0
+                (cnumber
+                Number
+                p1
+                c__builtin__
+                object
+                p2
+                Ntp3
+                Rp4
+                S{x314_raw_repr}
+                p5
+                b."""
+            ).format(x314_raw_repr=repr(x314.raw)),            # Python 2.X
+
+            b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' +   # Python 3.X
+            x314.raw +
+            b'q\x02b.'
+        ))
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
@@ -2205,25 +2209,17 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(x314.raw, b'\x82\x03#\xd7\n=p\xa3\xe0')
         x314_raw_utf8 = b'\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0'
 
-        if six.PY2:
-            self.assertEqual(
-                pickle.dumps(x314, 2),
-                (
-                    b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t' +
-                    x314.raw +
-                    b'q\x02b.'
-                )
-            )
-        else:
-            self.assertEqual(
-                # XXX:  Is this ridonculously messed up, in that the raw string is being utf-8 encoded??
-                pickle.dumps(x314, 2),
-                (
-                    b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00' +
-                    x314_raw_utf8 +
-                    b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
-                )
-            )
+        self.assertEqual(pickle.dumps(x314, 2), py23(
+            b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01' +
+            b'U\t' +
+            x314.raw +
+            b'q\x02b.',                                     # Python 2.X
+
+            b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01' +   # Python 3.X
+            b'c_codecs\nencode\nq\x02X\r\x00\x00\x00' +
+            x314_raw_utf8 +
+            b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+        ))
 
         # print(repr(pickle.dumps(x314, 2)))
         # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
@@ -2322,15 +2318,15 @@ class NumberSuffixTests(NumberTests):
         n88.delete_suffix(0x88)
         n99 = Number(n)
         n99.delete_suffix(0x99)
-        self.assertEqual('0q82_01__990100__880100', str(n77))
-        self.assertEqual('0q82_01__990100__770100', str(n88))
-        self.assertEqual('0q82_01__880100__770100', str(n99))
+        self.assertEqual('0q82_01__990100__880100', n77.qstring())
+        self.assertEqual('0q82_01__990100__770100', n88.qstring())
+        self.assertEqual('0q82_01__880100__770100', n99.qstring())
 
     def test_delete_suffix_multiple(self):
         n = Number('0q82_01__990100__880100__880100__110100__880100__880100__770100')
         n88 = Number(n)
         n88.delete_suffix(0x88)
-        self.assertEqual('0q82_01__990100__110100__770100', str(n88))
+        self.assertEqual('0q82_01__990100__110100__770100', n88.qstring())
 
     def test_delete_missing_suffix(self):
         n = Number('0q82_01__8201_7F0300')
@@ -3021,6 +3017,13 @@ class PythonTests(NumberTests):
 
 
 def py23(if2, if3_or_greater):
+    """
+    Python-2-specific value.  Versus Python-3-or-later-specific value.
+
+    Sensibly returns a value that stands a reasonable chance of not breaking on Python 4,
+    if there ever is such a thing.
+    SEE:  http://astrofrog.github.io/blog/2016/01/12/stop-writing-python-4-incompatible-code/
+    """
     if six.PY2:
         return if2
     else:
@@ -3030,8 +3033,3 @@ def py23(if2, if3_or_greater):
 if __name__ == '__main__':
     import unittest
     unittest.main()
-
-
-# TODO:  Don't test verbatim against str().  Test .qstring() instead.
-# Because now '0q82_01' == str(Number(1))
-# But someday maybe '1' == str(Number(1))
