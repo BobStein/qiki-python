@@ -1330,24 +1330,29 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q82_09', destination.qstring())
 
     def test_sizeof(self):
-        self.assertIn(sys.getsizeof(Number('0q')), (28, 32))  # depends on Zone.__slots__ containing _zone or not
-        self.assertIn(sys.getsizeof(Number('0q80')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32))
+        self.assertIn(sys.getsizeof(Number('0q')), (
+            28,
+            32,
+            56,   # Windows laptop, Python 2.7.12
+        ))  # depends on Zone.__slots__ containing _zone or not
+        self.assertIn(sys.getsizeof(Number('0q80')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
 
-        self.assertEqual(py23( 21, 17), sys.getsizeof(Number('0q').raw))
-        self.assertEqual(py23( 22, 18), sys.getsizeof(Number('0q80').raw))
-        self.assertEqual(py23( 23, 19), sys.getsizeof(Number('0q82_01').raw))
-        self.assertEqual(py23( 24, 20), sys.getsizeof(Number('0q83_03E8').raw))
-        self.assertEqual(py23( 25, 21), sys.getsizeof(Number('0q82_018888').raw))
-        self.assertEqual(py23( 45, 41), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
-        self.assertEqual(py23(144,140), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
 
-        self.assertEqual(py23(21, 17), sys.getsizeof(b''))
-        self.assertEqual(py23(22, 18), sys.getsizeof(b'\x80'))
-        self.assertEqual(py23(24, 20), sys.getsizeof(b'\x83\x03\xE8'))
-        self.assertEqual(py23(45, 41), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
+        self.assertEqual(py2312( 21, 17, 33), sys.getsizeof(Number('0q').raw))
+        self.assertEqual(py2312( 22, 18, 34), sys.getsizeof(Number('0q80').raw))
+        self.assertEqual(py2312( 23, 19, 35), sys.getsizeof(Number('0q82_01').raw))
+        self.assertEqual(py2312( 24, 20, 36), sys.getsizeof(Number('0q83_03E8').raw))
+        self.assertEqual(py2312( 25, 21, 37), sys.getsizeof(Number('0q82_018888').raw))
+        self.assertEqual(py2312( 45, 41, 57), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+        self.assertEqual(py2312(144,140,156), sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8').raw))
+
+        self.assertEqual(py2312(21, 17, 33), sys.getsizeof(b''))
+        self.assertEqual(py2312(22, 18, 34), sys.getsizeof(b'\x80'))
+        self.assertEqual(py2312(24, 20, 36), sys.getsizeof(b'\x83\x03\xE8'))
+        self.assertEqual(py2312(45, 41, 57), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def test_uneven_hex(self):
         if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
@@ -3014,6 +3019,22 @@ class PythonTests(NumberTests):
         self.assertIsNot(float('nan'), float('nan'))
         self.assertIsInstance(float('nan'), float)
 
+
+PY2_7_12 = sys.version_info[0:3] >= (2, 7, 12)
+PY3_5_2 = sys.version_info[0:3] >= (3, 5, 2)
+
+def py2312(if2, if3, if12):
+    """Python 2, Python 3, and (Python 2.7.12 or Python 3.5.2)"""
+    if six.PY2:
+        if PY2_7_12:
+            return if12
+        else:
+            return if2
+    else:
+        if PY3_5_2:
+            return if12
+        else:
+            return if3
 
 def py23(if2, if3_or_greater):
     if six.PY2:
