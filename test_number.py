@@ -161,8 +161,8 @@ class NumberBasicTests(NumberTests):
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
     def test_from_qstring(self):
-        n = Number.from_qstring('0q82')
-        self.assertEqual('0q82', n.qstring())
+        n = Number.from_qstring('0q82_01')
+        self.assertEqual('0q82_01', n.qstring())
         with self.assertRaises(Number.ConstructorValueError):
             Number.from_qstring('qqqqq')
 
@@ -582,8 +582,8 @@ class NumberBasicTests(NumberTests):
             context.s_last = s
             context.the_first = False
 
-        # noinspection PyClassHasNoInit,PyPep8Naming
-        class context:   # variables that are local to test_ints_and_strings(), but global to i__s()
+        # noinspection PyPep8Naming
+        class context(object):   # variables that are local to test_ints_and_strings(), but global to i__s()
             the_first = True
 
         # i__s(  2**65536,         '0qFF00FFFF00010000_01')   # TODO:  Ludicrous Numbers.
@@ -736,6 +736,32 @@ class NumberBasicTests(NumberTests):
         i__s(  -2**1000+1,'0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000001')
+
+    def test_int_ludicrous_large(self):
+        smallest_ludicrous = 2 ** 1000
+        biggest_reasonable = 2 ** 1000 - 1
+        assert smallest_ludicrous == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376
+        assert biggest_reasonable == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375
+        self.assertEqual(
+            '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            Number(biggest_reasonable).qstring()
+        )
+        with self.assertRaises(NotImplementedError):
+            Number(smallest_ludicrous)
+
+    def test_int_ludicrous_large_negative(self):
+        smallest_ludicrous = -2 ** 1000
+        biggest_reasonable = -2 ** 1000 + 1
+        assert smallest_ludicrous == -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376
+        assert biggest_reasonable == -10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375
+        self.assertEqual(
+            '0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+            '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+            '00000000000000000000000000000000000000000000000000000000000000000000001',
+            Number(biggest_reasonable).qstring()
+        )
+        with self.assertRaises(NotImplementedError):
+            Number(smallest_ludicrous)
 
     def test_integer_nan(self):
         nan = Number(float('nan'))
@@ -939,8 +965,8 @@ class NumberBasicTests(NumberTests):
             context.the_first = False
             context.after_zone_boundary = False
 
-        # noinspection PyClassHasNoInit,PyPep8Naming
-        class context:   # variables that are local to test_floats_and_strings(), but global to f__s()
+        # noinspection PyPep8Naming
+        class context(object):   # variables that are local to test_floats_and_strings(), but global to f__s()
             the_first = True
             after_zone_boundary = False
 
@@ -954,11 +980,11 @@ class NumberBasicTests(NumberTests):
         f__s(float('+inf'),               '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
         # m__s(mpmath.power(2,1024),        '0qFF000080_01')   # A smidgen too big for floating point
         # f__s(1.7976931348623157e+308,     '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
-        # f__s(math.pow(2,1000),            '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large integer, +2 ** +1000.
+        # f__s(math.pow(2,1000),            '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
         zone_boundary()
         f__s(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
         f__s(5.3575430359313366e+300,     '0qFE_80')
-        f__s(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2
+        f__s(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2:  +2 ** +999.
         f__s(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
         f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol, or as close to it as float can get
         f__s(       1e25,                 '0q8C_0845951614014880')
@@ -995,9 +1021,9 @@ class NumberBasicTests(NumberTests):
         f__s(       128.0,                '0q82_80')
         f__s(       100.0,                '0q82_64')
         f__s(math.pi*2,                   '0q82_06487ED5110B46')
-        f__s(math.pi,                     '0q82_03243F6A8885A3')
+        f__s(math.pi,                     '0q82_03243F6A8885A3')   # 50-bit pi mantissa?  Next qigit:  '08'.
         f__s(         3.0,                '0q82_03')
-        f__s(math.exp(1),                 '0q82_02B7E151628AED20')
+        f__s(math.exp(1),                 '0q82_02B7E151628AED20')   # 53-bit mantissa for e.
         f__s(         2.5,                '0q82_0280')
         f__s(         2.4,                '0q82_0266666666666660')
         f__s(         2.3,                '0q82_024CCCCCCCCCCCC0')
@@ -1119,7 +1145,9 @@ class NumberBasicTests(NumberTests):
         f__s(math.pow(  2, -994),         '0q8183_40')
         f__s(math.pow(  2, -998),         '0q8183_04')
         f__s(math.pow(  2, -999),         '0q8183_02')
-        f__s(math.pow(  2, -1000),        '0q8183_01')
+        f__s(math.pow(  2, -1000) + math.pow(2,-1052),
+                                          '0q8183_0100000000000010')   # boldest reasonable float, near positive ludicrously small boundary
+        f__s(math.pow(  2, -1000),        '0q8183_01')   # gentlest positive ludicrously small number
         f__s(math.pow(256, -125),         '0q8183_01')
         zone_boundary()
         f__s(         0.0,                '0q80',  '0q80FF0000_FF4143E0_01')   # +2**-99999999, a ludicrously small positive number
@@ -1133,7 +1161,9 @@ class NumberBasicTests(NumberTests):
         f__s(        -0.0,                '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
         f__s(-math.pow(256, -125),        '0q7E7C_FF')
-        f__s(-math.pow(  2, -1000),       '0q7E7C_FF')
+        f__s(-math.pow(  2, -1000),       '0q7E7C_FF')   # gentlest negative ludicrously small number
+        f__s(-math.pow(  2, -1000) - math.pow(2,-1052),
+                                          '0q7E7C_FEFFFFFFFFFFFFF0')   # boldest reasonable float, near negative ludicrously small boundary
         f__s(-math.pow(  2, -999),        '0q7E7C_FE')
         f__s(-math.pow(  2, -998),        '0q7E7C_FC')
         f__s(-math.pow(  2, -994),        '0q7E7C_C0')
@@ -1260,15 +1290,80 @@ class NumberBasicTests(NumberTests):
         f__s(-math.pow(2,997),            '0q01_E0')
         f__s(-math.pow(2,998),            '0q01_C0')
         f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Lowest (furthest from zero) reasonable number that floating point can represent
+        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Boldest (furthest from one) reasonable number that floating point can represent
         zone_boundary()
-        # f__s(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Closest to zero, negative, Ludicrously Large integer.
+        # f__s(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Gentlest (closest to one) negative Ludicrously Large integer.
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
         zone_boundary()
         f__s(float('-inf'),               '0q00_7F')
         zone_boundary()
         f__s(float('nan'),                '0q')
+
+    def test_float_ludicrous_large(self):
+        gentlest_ludicrous = 2.0 ** 1000
+        boldest_reasonable = 2.0 ** 1000 - 2.0 ** 947
+        assert gentlest_ludicrous == 1.0715086071862673e+301
+        assert boldest_reasonable == 1.0715086071862672e+301
+        self.assertEqual('0qFE_FFFFFFFFFFFFF8', Number(boldest_reasonable).qstring())
+        with self.assertRaises(NotImplementedError):
+            Number(gentlest_ludicrous)
+        with self.assertRaises(NotImplementedError):
+            Number(sys.float_info.max)   # boldest ludicrously large float
+
+    def test_float_ludicrous_large_negative(self):
+        gentlest_ludicrous = -2.0 ** 1000
+        boldest_reasonable = -2.0 ** 1000 + 2.0 ** 947
+        assert gentlest_ludicrous == -1.0715086071862673e+301
+        assert boldest_reasonable == -1.0715086071862672e+301
+        self.assertEqual('0q01_00000000000008', Number(boldest_reasonable).qstring())
+        with self.assertRaises(NotImplementedError):
+            Number(gentlest_ludicrous)
+        with self.assertRaises(NotImplementedError):
+            Number(-sys.float_info.max)
+
+    def test_float_ludicrous_small(self):
+        """
+        Test floats near the positive ludicrously small boundary.
+
+        In the naming of all these test cases
+            gentlest_ludicrous means
+                closest to 1.0
+                at the limit of the ludicrous numbers
+                closest to the reasonable numbers
+                furthest from 0.0 or infinity
+            boldest_reasonable means
+                furthest from 1.0
+                at the limit of the reasonable numbers
+                closest to 0.0 or infinity
+                closest to the ludicrous numbers
+        """
+        gentlest_ludicrous = 2.0 ** -1000
+        boldest_reasonable = 2.0 ** -1000 + 2.0 ** -1052   # Why -1052 not -1053?
+        assert gentlest_ludicrous == 9.332636185032189e-302
+        assert boldest_reasonable == 9.33263618503219e-302
+        self.assertEqual('0q8183_0100000000000010', Number(boldest_reasonable).qstring())
+        # TODO:  Enforce ludicrously small boundary -- or implement these ludicrous numbers:
+        self.assertEqual('0q8183_01', Number(gentlest_ludicrous).qstring())
+        # with self.assertRaises(NotImplementedError):
+        #     Number(gentlest_ludicrous)
+        self.assertEqual('0q8180_04', Number(sys.float_info.min).qstring())   # boldest ludicrously small float
+        # with self.assertRaises(NotImplementedError):
+        #     Number(sys.float_info.min)
+
+    def test_float_ludicrous_small_negative(self):
+        gentlest_ludicrous = -2.0 ** -1000
+        boldest_reasonable = -2.0 ** -1000 - 2.0 ** -1052
+        assert gentlest_ludicrous == -9.332636185032189e-302
+        assert boldest_reasonable == -9.33263618503219e-302
+        self.assertEqual('0q7E7C_FEFFFFFFFFFFFFF0', Number(boldest_reasonable).qstring())
+        # TODO:  Enforce ludicrously small boundary -- or implement these ludicrous numbers:
+        self.assertEqual('0q7E7C_FF', Number(gentlest_ludicrous).qstring())
+        # with self.assertRaises(NotImplementedError):
+        #     Number(gentlest_ludicrous)
+        self.assertEqual('0q7E7F_FC', Number(-sys.float_info.min).qstring())
+        # with self.assertRaises(NotImplementedError):
+        #     Number(-sys.float_info.min)
 
     def test_copy_constructor(self):
         self.assertEqual('0q83_03E8', Number(Number('0q83_03E8')).qstring())
@@ -1706,8 +1801,7 @@ class NumberComparisonTests(NumberTests):
         self.assertEqual(126, len(biggie_minus_one.raw))   # So biggie needs 126 qigits
 
     def test_incomparable(self):
-        # noinspection PyClassHasNoInit
-        class SomeType:
+        class SomeType(object):
             pass
 
         with self.assertRaises(Number.Incomparable):   Number(1) <  SomeType()
@@ -1722,6 +1816,43 @@ class NumberComparisonTests(NumberTests):
         self.assertTrue(                               SomeType() != Number(1))
         with self.assertRaises(Number.Incomparable):   SomeType() >  Number(1)
         with self.assertRaises(Number.Incomparable):   SomeType() >= Number(1)
+
+    def test_in_and_sorted(self):
+        """
+        The 'in' operator should work, even though comparisons of Number with
+        an arbitrary type raises an exception.
+
+        Inspired by this ominous statement in docs.python:
+
+        "...objects of different types always compare unequal, and are ordered consistently but arbitrarily. ...
+        This unusual definition of comparison was used to simplify the definition of operations
+        like sorting and the in and not in operators."
+
+        So sorted(numbers) should work but sorted(mixed) should raise an exception.
+        """
+
+        number_tuple = (Number(33), Number(22), Number(11))
+        self.assertIn(Number(22), number_tuple)
+        self.assertNotIn(Number(99), number_tuple)
+
+        sorted_tuple = sorted(number_tuple)
+        self.assertIn(Number(22), sorted_tuple)
+        self.assertNotIn(Number(99), sorted_tuple)
+        self.assertEqual([Number(11), Number(22), Number(33)], sorted_tuple)
+
+        class SomeType(object):
+            pass
+        some_instance = SomeType()
+        another_instance = SomeType()
+        mixed_tuple = (Number(11), Number(22), Number(33), some_instance)
+
+        self.assertIn(Number(22), mixed_tuple)
+        self.assertNotIn(Number(99), mixed_tuple)
+        self.assertIn(some_instance, mixed_tuple)
+        self.assertNotIn(another_instance, mixed_tuple)
+
+        with self.assertRaises(Number.Incomparable):
+            sorted(mixed_tuple)
 
 
 # noinspection SpellCheckingInspection
@@ -1744,6 +1875,10 @@ class NumberIsTests(NumberTests):
         self.assertFalse(Number('0q8A_01000000000000000180').is_whole())
         self.assertTrue (Number('0q8A_01000000000000000200').is_whole())
         self.assertTrue (Number('0q8A_010000000000000002').is_whole())
+
+    def test_is_whole_indeterminate(self):
+        with self.assertRaises(Number.WholeIndeterminate):
+            Number(float('+inf')).is_whole()
 
     def test_is_nan(self):
         self.assertFalse(Number(0).is_nan())
@@ -2068,17 +2203,19 @@ class NumberComplex(NumberTests):
     def test_06b_compare(self):
         """Complex ordered-comparison < should raise a TypeError, both native and qiki numbers."""
         x, x_bar = 888+111j, 888-111j
-        n, n_bar = Number(x), Number(x_bar)
         with self.assertRaises(TypeError):   # Comparing native complex numbers raises a TypeError.
             # noinspection PyStatementEffect
             x_bar < x
+
+        n, n_bar = Number(888+111j), Number(888-111j)
         with self.assertRaises(TypeError):   # So should Number() comparisons with a nonzero imaginary.
+            n_bar < n
+        with self.assertRaises(Number.Incomparable):   # By the way, Number.Incomparable is a TypeError.
             n_bar < n
 
     def test_06c_more_or_less_complex_comparisons(self):
         """Complex ordered-comparisons < <= > >= should raise a TypeError, qiki numbers. """
-        x, x_bar = 888+111j, 888-111j
-        n, n_bar = Number(x), Number(x_bar)
+        n, n_bar = Number(888+111j), Number(888-111j)
         with self.assertRaises(TypeError):   # Check all comparison operators.
             n_bar < n
         with self.assertRaises(TypeError):
@@ -2333,9 +2470,8 @@ class NumberSuffixTests(NumberTests):
         with self.assertRaises(Number.Suffix.NoSuchType):
             n.delete_suffix(Number.Suffix.TYPE_IMAGINARY)
 
-    # noinspection PyClassHasNoInit
     def test_suffix_weird_type(self):
-        class WeirdType:
+        class WeirdType(object):
             pass
 
         weird_type = WeirdType()
@@ -2853,11 +2989,11 @@ class PythonTests(NumberTests):
         self.assertNotEqual(float('nan'), float('nan'))
 
     def test_00_python_ldexp(self):
-        self.assertEqual(1.0, math.ldexp(.5, 1))
-        self.assertEqual(-1.0, math.ldexp(-.5, 1))
-        self.assertEqual(3.0, math.ldexp(.75, 2))
-        self.assertEqual(100.0, math.ldexp(25, 2))   # ldexp() does more than invert frexp() -- it doesn't require a normalized mantissa
-        self.assertEqual(625.0, math.ldexp(2500, -2))
+        self.assertEqual(   1.0, math.ldexp(   .5, 1))
+        self.assertEqual(  -1.0, math.ldexp(  -.5, 1))
+        self.assertEqual(   3.0, math.ldexp(  .75, 2))
+        self.assertEqual( 100.0, math.ldexp(   25, 2))   # ldexp() does more than invert frexp() -- it doesn't require a normalized mantissa
+        self.assertEqual( 625.0, math.ldexp( 2500, -2))
         self.assertEqual(-625.0, math.ldexp(-2500, -2))
 
     def test_00_python_int_floors_toward_zero(self):
@@ -2876,14 +3012,14 @@ class PythonTests(NumberTests):
         self.assertEqual(-3, int(Number(-3.0)))
 
     def test_00_python_weird_big_math(self):
-        self.assertEqual((1 << 1000),              1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
-        self.assertEqual((1 << 1000)-1,             10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
-        self.assertEqual(     pow(2,1000),         1.0715086071862673e+301)
-        self.assertEqual(math.pow(2,1000),         1.0715086071862673e+301)
-        self.assertEqual(     pow(2,1000)-1,        10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
-        self.assertEqual(math.pow(2,1000)-1,       1.0715086071862673e+301)
-        self.assertTrue (     pow(2,1000)-1      == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
-        self.assertTrue (math.pow(2,1000)-1     == 1.0715086071862673e+301)
+        self.assertEqual((1 << 1000),          1.0715086071862673e+301)   # What does this?  Python math?  optimization?  assert comparison?  assert message?  Windows-only??
+        self.assertEqual((1 << 1000)-1,         10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertEqual(     pow(2,1000),     1.0715086071862673e+301)
+        self.assertEqual(math.pow(2,1000),     1.0715086071862673e+301)
+        self.assertEqual(     pow(2,1000)-1,    10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertEqual(math.pow(2,1000)-1,   1.0715086071862673e+301)
+        self.assertTrue (     pow(2,1000)-1 ==  10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375)
+        self.assertTrue (math.pow(2,1000)-1 == 1.0715086071862673e+301)
 
     def test_00_python_binary_shift_negative_left(self):
         self.assertEqual( -2, -2 << 0)
@@ -3021,7 +3157,7 @@ def py23(if2, if3_or_greater):
     Python-2-specific value.  Versus Python-3-or-later-specific value.
 
     Sensibly returns a value that stands a reasonable chance of not breaking on Python 4,
-    if there ever is such a thing.
+    if there ever is such a thing.  That is, assumes Python 4 will be more like 3 than 2.
     SEE:  http://astrofrog.github.io/blog/2016/01/12/stop-writing-python-4-incompatible-code/
     """
     if six.PY2:
