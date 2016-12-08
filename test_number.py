@@ -18,7 +18,8 @@ from number import *
 
 
 # Slow tests:
-TEST_INC_ON_ALL_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (12 seconds on slow laptops)
+TEST_INC_ON_THOUSAND_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (2-12 seconds)
+LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.  False => invalid values, or raise LudicrousNotImplemented
 
 
 class NumberTests(unittest.TestCase):
@@ -59,26 +60,27 @@ class NumberTests(unittest.TestCase):
 
 
 # TODO:  Why does PyCharm warn Number.ZERO "Unresolved attribute reference 'ZERO' for class 'Number'"?
+# It worked once, why not now?
 # noinspection SpellCheckingInspection,PyUnresolvedReferences
 class NumberBasicTests(NumberTests):
 
     def test_raw(self):
-        n = Number('0q82')
-        self.assertEqual(b'\x82', n.raw)
+        n = Number('0q82_01')
+        self.assertEqual(b'\x82\x01', n.raw)
 
     def test_raw_from_unicode(self):
-        n = Number(u'0q82')
-        self.assertEqual(b'\x82', n.raw)
+        n = Number(u'0q82_01')
+        self.assertEqual(b'\x82\x01', n.raw)
 
     def test_raw_from_byte_string(self):
-        self.assertEqual(Number(1), Number(u'0q82'))
+        self.assertEqual(Number(1), Number(u'0q82_01'))
         if six.PY2:
-            self.assertEqual(Number(u'0q82'), Number(b'0q82'))
-            self.assertEqual(       u'0q82',         b'0q82')
+            self.assertEqual(Number(u'0q82_01'), Number(b'0q82_01'))
+            self.assertEqual(       u'0q82_01',         b'0q82_01')
         else:
-            self.assertNotEqual(    u'0q82',         b'0q82')
+            self.assertNotEqual(    u'0q82_01',         b'0q82_01')
             with self.assertRaises(TypeError):
-                Number(b'0q82')
+                Number(b'0q82_01')
 
     def test_unsupported_type(self):
         class SomeType(object):
@@ -94,11 +96,13 @@ class NumberBasicTests(NumberTests):
 
     def test_str(self):
         """
+        Test that str(Number) outputs a string, and it can reconstitute the value.
+
         Don't test what str() outputs -- it's some human-readable string version of the Number.
         This test only makes sure that plowing that string back into Number() leads to the same value.
 
         NOTE:  Throughout these unit tests, str(n) is avoided in favor of n.qstring().
-        That way str(Number(1)) is free to be e.g. '0q82_01' or '1'.
+        That way e.g. str(Number(1)) is free to be '0q82_01' or '1'.
         """
         n = Number('0q83_03E8')
         self.assertEqual('str', type(str(n)).__name__)
@@ -157,6 +161,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q', Number('0q').qstring())
 
     def test_invalid_qstring(self):
+        """Invalid Number contents still have a value."""
         self.assertFloatSame(+0.0, float(Number('0q81')))
         self.assertFloatSame(-0.0, float(Number('0q7EFF')))
 
@@ -195,7 +200,7 @@ class NumberBasicTests(NumberTests):
 
     # TODO: test from_mysql and to_mysql using SELECT and @-variables -- maybe in test_word.py because it already has a db connection.
 
-    # Blob literal surtaxes:
+    # Blob literal syntaxes:
     # ----------------------
     # mysql: x'822A' or 0x822A
     # mssql: 0x822A
@@ -206,13 +211,14 @@ class NumberBasicTests(NumberTests):
     def test_repr(self):
         n =               Number('0q83_03E8')
         self.assertEqual("Number('0q83_03E8')", repr(n))
+        self.assertEqual(        '0q83_03E8', eval(repr(n)).qstring())
+        self.assertEqual(n, eval(repr(n)))
 
     def test_zero(self):
         self.assertEqual('0q80', Number.ZERO.qstring())
         self.assertEqual(0, int(Number.ZERO))
         self.assertEqual(0.0, float(Number.ZERO))
 
-    # yes_inspection PyUnresolvedReferences
     def test_nan(self):
         self.assertEqual('0q', Number.NAN.qstring())
         self.assertEqual(b'', Number.NAN.raw)
@@ -223,11 +229,10 @@ class NumberBasicTests(NumberTests):
     def test_nan_default(self):
         self.assertEqual('0q', Number().qstring())
 
-    # yes_inspection PyUnresolvedReferences
     def test_nan_equality(self):
         # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
         # SEE:  http://stackoverflow.com/questions/1565164/what-is-the-rationale-for-all-comparisons-returning-false-for-ieee754-nan-values
-        # TODO:  Any comparisons with NAN raise Number.Incomparable("...use is_nan() instead...").
+        # TODO:  Any comparisons with NAN should raise Number.Incomparable("...is_nan() instead...").
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
         self.assertEqual(nan, Number(None))
@@ -235,14 +240,12 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(nan, Number(float('nan')))
         self.assertEqual(nan, float('nan'))
 
-    # yes_inspection PyUnresolvedReferences
     def test_nan_inequality(self):
         nan = Number.NAN
         self.assertNotEqual(nan, Number(0))
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
-    # # noinspection PyUnresolvedReferences
     def test_infinite_constants(self):
         self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
         self.assertEqual('0q00_7F', Number.NEGATIVE_INFINITY.qstring())
@@ -339,6 +342,12 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-124, Number('0q7E7C_FF').qexponent())
 
     def test_alias_one(self):
+        """
+        Redundant, invalid values near 1 should be interpreted as 1.
+
+        NOTE:  Every integral power of 256 (including negative exponents or significands)
+        has a plateau of redundant, invalid values like this.
+        """
         self.assertEqual(1.0, float(Number('0q82_01')))
         self.assertEqual(1.0, float(Number('0q82_00FFFFFF')))
         self.assertEqual(1.0, float(Number('0q82_00C0')))
@@ -547,9 +556,15 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number('0q7D'), Number('0q7C_FF'))        # -256**1
         self.assertEqual(Number('0q7C'), Number('0q7B_FF'))        # -256**2
 
-    def test_integers_and_q_strings(self):
+    def test_integers_and_qstrings(self):
 
-        def i__s(i, s):   # why a buncha calls to i__s() is superior to a 2D tuple:  so the stack trace identifies the line with the failing data
+        def i__s(i, s):
+            """
+            Test an integer and a qstring, converting in both directions.
+
+            Why a buncha calls to i__s() is superior to a 2D tuple of test cases:
+            so the stack trace identifies the line with the failing data.
+            """
             assert isinstance(i, six.integer_types)
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
@@ -586,11 +601,12 @@ class NumberBasicTests(NumberTests):
         class context(object):   # variables that are local to test_ints_and_strings(), but global to i__s()
             the_first = True
 
-        # i__s(  2**65536,         '0qFF00FFFF00010000_01')   # TODO:  Ludicrous Numbers.
-        # i__s(  2**65535,         '0qFF00FFFF_01')
-        # i__s(256**128,           '0qFF000080_01')
-        # i__s(  2**1024,          '0qFF000080_01')
-        # i__s(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional
+        if LUDICROUS_NUMBER_SUPPORT:
+            i__s(  2**65536,         '0qFF00FFFF00010000_01')   # XXX:  Or is it 0qFF00FFFF00010001_01 == 1/256 * 256**(65536+1)
+            i__s(  2**65535,         '0qFF00FFFF_01')   # XXX:  No!  Confusion with larger lexponents.  Note monotonicity failure!  See qikiNumbers.txt.
+            i__s(256**128,           '0qFF000080_01')
+            i__s(  2**1024,          '0qFF000080_01')
+            i__s(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional?
         i__s(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__s(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
                           '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
@@ -743,11 +759,14 @@ class NumberBasicTests(NumberTests):
         assert smallest_ludicrous == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376
         assert biggest_reasonable == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375
         self.assertEqual(
-            '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
             Number(biggest_reasonable).qstring()
         )
-        with self.assertRaises(NotImplementedError):
-            Number(smallest_ludicrous)
+        if not LUDICROUS_NUMBER_SUPPORT:
+            with self.assertRaises(NotImplementedError):
+                Number(smallest_ludicrous)
 
     def test_int_ludicrous_large_negative(self):
         smallest_ludicrous = -2 ** 1000
@@ -760,21 +779,30 @@ class NumberBasicTests(NumberTests):
             '00000000000000000000000000000000000000000000000000000000000000000000001',
             Number(biggest_reasonable).qstring()
         )
-        with self.assertRaises(NotImplementedError):
-            Number(smallest_ludicrous)
+        if not LUDICROUS_NUMBER_SUPPORT:
+            with self.assertRaises(NotImplementedError):
+                Number(smallest_ludicrous)
 
     def test_integer_nan(self):
         nan = Number(float('nan'))
         with self.assertRaises(ValueError):
             int(nan)
+        with self.assertRaises(ValueError):
+            int(float('nan'))
 
     def test_integer_infinity(self):
         positive_infinity = Number(float('+inf'))
         with self.assertRaises(OverflowError):
             int(positive_infinity)
+        with self.assertRaises(OverflowError):
+            int(float('+inf'))
+
+    def test_integer_infinity_negative(self):
         negative_infinity = Number(float('-inf'))
         with self.assertRaises(OverflowError):
             int(negative_infinity)
+        with self.assertRaises(OverflowError):
+            int(float('-inf'))
 
     def test_integer_infinitesimal(self):
         self.assertEqual(0, int(Number('0q807F')))
@@ -794,7 +822,6 @@ class NumberBasicTests(NumberTests):
             with self.assertRaises(AssertionError):
                 union_of_distinct_sets({1,2,3}, {3,4,5})
 
-    # noinspection PyUnresolvedReferences
     def test_zone_sets(self):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
@@ -803,6 +830,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_WHOLENESS)
 
     def test_zone(self):
+        """Test an example number in each zone."""
         self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
         self.assertEqual(Number.Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
         self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_2A').zone)
@@ -901,9 +929,20 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FF', Number(-1.0, qigits=2).qstring())
         self.assertEqual('0q7D_FF', Number(-1.0, qigits=1).qstring())
 
-    def test_floats_and_q_strings(self):
+    def test_floats_and_qstrings(self):
 
         def f__s(x_in, s_out, s_in_opt=None):
+            """
+            Test a float and a qstring, converting in both directions.
+
+            Test each float and string in descending order, verifying monotonicity.
+
+            Convert the optional alternative string s_in_opt to the same float.
+            It may represent a different value, too finely for float to register.
+            Or it may represent the same value in one of the redundant, invalid plateau values.
+
+            Call zone_boundary() between zones.
+            """
             assert isinstance(x_in,      float),                                 "f__s(%s,_) should be a float"  % type(x_in).__name__
             assert isinstance(s_out,    six.string_types),                       "f__s(_,%s) should be a string" % type(s_out).__name__
             assert isinstance(s_in_opt, six.string_types) or s_in_opt is None, "f__s(_,_,%s) should be a string" % type(s_in_opt).__name__
@@ -976,11 +1015,13 @@ class NumberBasicTests(NumberTests):
 
         f__s(float('+inf'),               '0qFF_81')
         zone_boundary()
-        f__s(float('+inf'),               '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
-        f__s(float('+inf'),               '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
-        # m__s(mpmath.power(2,1024),        '0qFF000080_01')   # A smidgen too big for floating point
-        # f__s(1.7976931348623157e+308,     '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
-        # f__s(math.pow(2,1000),            '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
+        if LUDICROUS_NUMBER_SUPPORT:
+            m__s(mpmath.power(2,1024),    '0qFF000080_01')   # A smidgen too big for floating point
+            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
+            f__s(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
+        else:
+            f__s(float('+inf'),           '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
+            f__s(float('+inf'),           '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
         zone_boundary()
         f__s(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
         f__s(5.3575430359313366e+300,     '0qFE_80')
@@ -1147,8 +1188,12 @@ class NumberBasicTests(NumberTests):
         f__s(math.pow(  2, -999),         '0q8183_02')
         f__s(math.pow(  2, -1000) + math.pow(2,-1052),
                                           '0q8183_0100000000000010')   # boldest reasonable float, near positive ludicrously small boundary
-        f__s(math.pow(  2, -1000),        '0q8183_01')   # gentlest positive ludicrously small number
-        f__s(math.pow(256, -125),         '0q8183_01')
+        if LUDICROUS_NUMBER_SUPPORT:
+            f__s(math.pow(  2, -1000),    'something')   # gentlest positive ludicrously small number
+            f__s(math.pow(256, -125),     'something')
+        else:
+            f__s(math.pow(  2, -1000),    '0q8183_01')   # gentlest positive ludicrously small number
+            f__s(math.pow(256, -125),     '0q8183_01')
         zone_boundary()
         f__s(         0.0,                '0q80',  '0q80FF0000_FF4143E0_01')   # +2**-99999999, a ludicrously small positive number
         zone_boundary()
@@ -1160,8 +1205,12 @@ class NumberBasicTests(NumberTests):
         zone_boundary()
         f__s(        -0.0,                '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
-        f__s(-math.pow(256, -125),        '0q7E7C_FF')
-        f__s(-math.pow(  2, -1000),       '0q7E7C_FF')   # gentlest negative ludicrously small number
+        if LUDICROUS_NUMBER_SUPPORT:
+            f__s(-math.pow(256, -125),    'something')
+            f__s(-math.pow(  2, -100),    'something')   # gentlest negative ludicrously small number
+        else:
+            f__s(-math.pow(256, -125),    '0q7E7C_FF')
+            f__s(-math.pow(  2, -1000),   '0q7E7C_FF')   # gentlest negative ludicrously small number
         f__s(-math.pow(  2, -1000) - math.pow(2,-1052),
                                           '0q7E7C_FEFFFFFFFFFFFFF0')   # boldest reasonable float, near negative ludicrously small boundary
         f__s(-math.pow(  2, -999),        '0q7E7C_FE')
@@ -1306,10 +1355,13 @@ class NumberBasicTests(NumberTests):
         assert gentlest_ludicrous == 1.0715086071862673e+301
         assert boldest_reasonable == 1.0715086071862672e+301
         self.assertEqual('0qFE_FFFFFFFFFFFFF8', Number(boldest_reasonable).qstring())
-        with self.assertRaises(NotImplementedError):
-            Number(gentlest_ludicrous)
-        with self.assertRaises(NotImplementedError):
-            Number(sys.float_info.max)   # boldest ludicrously large float
+        # NOTE:  significant is 53 1-bits.
+        if not LUDICROUS_NUMBER_SUPPORT:
+            with self.assertRaises(NotImplementedError):
+                Number(gentlest_ludicrous)
+            with self.assertRaises(NotImplementedError):
+                Number(sys.float_info.max)   # boldest ludicrously large float
+                # THANKS:  http://stackoverflow.com/a/3477332/673991
 
     def test_float_ludicrous_large_negative(self):
         gentlest_ludicrous = -2.0 ** 1000
@@ -1317,16 +1369,17 @@ class NumberBasicTests(NumberTests):
         assert gentlest_ludicrous == -1.0715086071862673e+301
         assert boldest_reasonable == -1.0715086071862672e+301
         self.assertEqual('0q01_00000000000008', Number(boldest_reasonable).qstring())
-        with self.assertRaises(NotImplementedError):
-            Number(gentlest_ludicrous)
-        with self.assertRaises(NotImplementedError):
-            Number(-sys.float_info.max)
+        if not LUDICROUS_NUMBER_SUPPORT:
+            with self.assertRaises(NotImplementedError):
+                Number(gentlest_ludicrous)
+            with self.assertRaises(NotImplementedError):
+                Number(-sys.float_info.max)
 
     def test_float_ludicrous_small(self):
         """
-        Test floats near the positive ludicrously small boundary.
+        Test floats near the positive ludicrously small boundary (2**-1000).
 
-        In the naming of all these test cases
+        In the naming of all these ludicrous/reasonable boundary test cases
             gentlest_ludicrous means
                 closest to 1.0
                 at the limit of the ludicrous numbers
@@ -1339,17 +1392,19 @@ class NumberBasicTests(NumberTests):
                 closest to the ludicrous numbers
         """
         gentlest_ludicrous = 2.0 ** -1000
-        boldest_reasonable = 2.0 ** -1000 + 2.0 ** -1052   # Why -1052 not -1053?
+        boldest_reasonable = 2.0 ** -1000 + 2.0 ** -1052
+        # NOTE:  Why -1052, not -1053?
         assert gentlest_ludicrous == 9.332636185032189e-302
         assert boldest_reasonable == 9.33263618503219e-302
         self.assertEqual('0q8183_0100000000000010', Number(boldest_reasonable).qstring())
-        # TODO:  Enforce ludicrously small boundary -- or implement these ludicrous numbers:
-        self.assertEqual('0q8183_01', Number(gentlest_ludicrous).qstring())
-        # with self.assertRaises(NotImplementedError):
-        #     Number(gentlest_ludicrous)
-        self.assertEqual('0q8180_04', Number(sys.float_info.min).qstring())   # boldest ludicrously small float
-        # with self.assertRaises(NotImplementedError):
-        #     Number(sys.float_info.min)
+        # NOTE:  Significand is 1 1-bit, 51 0-bits, 1 1-bit.
+        if not LUDICROUS_NUMBER_SUPPORT:
+            self.assertEqual('0q8183_01', Number(gentlest_ludicrous).qstring())
+            # with self.assertRaises(NotImplementedError):
+            #     Number(gentlest_ludicrous)
+            self.assertEqual('0q8180_04', Number(sys.float_info.min).qstring())   # boldest ludicrously small float
+            # with self.assertRaises(NotImplementedError):
+            #     Number(sys.float_info.min)
 
     def test_float_ludicrous_small_negative(self):
         gentlest_ludicrous = -2.0 ** -1000
@@ -1357,7 +1412,7 @@ class NumberBasicTests(NumberTests):
         assert gentlest_ludicrous == -9.332636185032189e-302
         assert boldest_reasonable == -9.33263618503219e-302
         self.assertEqual('0q7E7C_FEFFFFFFFFFFFFF0', Number(boldest_reasonable).qstring())
-        # TODO:  Enforce ludicrously small boundary -- or implement these ludicrous numbers:
+        # TODO:  Enforce negative ludicrously small boundary -- or implement these ludicrous numbers:
         self.assertEqual('0q7E7C_FF', Number(gentlest_ludicrous).qstring())
         # with self.assertRaises(NotImplementedError):
         #     Number(gentlest_ludicrous)
@@ -1424,13 +1479,14 @@ class NumberBasicTests(NumberTests):
     def test_assignment_by_reference(self):
         """Make sure assignment copies by reference, not by value."""
         # TODO:  Make Number an immutable class, so assignment is by value?
-        # SEE:  Immuutable object, http://stackoverflow.com/q/4828080/673991
+        # SEE:  Immuutable objects, http://stackoverflow.com/q/4828080/673991
         source = Number(1)
         destination = source
         source.raw = Number(9).raw
         self.assertEqual('0q82_09', destination.qstring())
 
     def test_sizeof(self):
+        """Illicit snooping into how big these things are."""
         self.assertIn(sys.getsizeof(Number('0q')), (
             28,   # Windows 7, 64-bit desktop, Python 2.7.9-12
             32,   # Windows 7, 64-bit desktop, Python 3.5.1-2
@@ -1441,7 +1497,7 @@ class NumberBasicTests(NumberTests):
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
 
-        # Testing getsizeof() was a dumb idea.  Anyway it broke over some distinction between laptop and desktop.
+        # Testing getsizeof() on raw was a dumb idea.  Anyway it broke over some distinction between laptop and desktop.
         # self.assertEqual(py2312( 21, 17, 33), sys.getsizeof(Number('0q').raw))
         # self.assertEqual(py2312( 22, 18, 34), sys.getsizeof(Number('0q80').raw))
         # self.assertEqual(py2312( 23, 19, 35), sys.getsizeof(Number('0q82_01').raw))
@@ -1456,30 +1512,18 @@ class NumberBasicTests(NumberTests):
         # self.assertEqual(py2312(45, 41, 57), sys.getsizeof(b'\x83\x03\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8\xE8'))
 
     def test_uneven_hex(self):
-        if getattr(Number, "WE_ARE_BEING_SUPER_STRICT_ABOUT_THERE_BEING_AN_EVEN_NUMBER_OF_HEX_DIGITS", False):
-            with self.assertRaises(Number.ConstructorValueError):
-                Number('0q8')
-            with self.assertRaises(Number.ConstructorValueError):
-                Number('0q8_')
-            with self.assertRaises(Number.ConstructorValueError):
-                Number('0q_8')
-            with self.assertRaises(Number.ConstructorValueError):
-                Number('0q82_028')
+        self.assertEqual(
+            Number('0q82_028'),
             Number('0q82_0280')
-        else:
-            Number('0q8')
-            Number('0q8_')
-            Number('0q_8')
-            self.assertEqual(
-                Number('0q82_028'),
-                Number('0q82_0280')
-            )
+        )
+        self.assertEqual('0q80', Number('0q8').qstring())
+        self.assertEqual('0q80', Number('0q8_').qstring())
+        self.assertEqual('0q80', Number('0q_8').qstring())
 
     def test_bad_string_hex(self):
         Number('0q')
         Number('0q80')
         Number('0q82_FF')
-
         with self.assertRaises(Number.ConstructorValueError):
             Number('0q8X')
         with self.assertRaises(Number.ConstructorValueError):
@@ -1507,7 +1551,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(11111111111111110860978869272892669952, int(float("11111111111111111111111111111111111111")))
 
     def test_string_numeric_Eric_Leschinski(self):
-        """Testing the examples (for Python float()) by Eric Leschinski.
+        """
+        Testing the example number formats (for Python float()) as described by Eric Leschinski.
 
         SPECIAL THANKS:  http://stackoverflow.com/a/20929983/673991
         """
@@ -1539,6 +1584,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(0x3fade, Number(0x3fade))
         self.assertEqual(Number.POSITIVE_INFINITY, Number("6e7777777777777"))   # TODO:  Ludicrous Number
         self.assertEqual(1.797693e+300, Number("1.797693e+300"))   # TODO:  MAX_FLOAT support (e+308)
+        self.assertEqual(Number.POSITIVE_INFINITY, Number("inf"))
         self.assertEqual(Number.POSITIVE_INFINITY, Number("infinity"))
         with self.assertRaises(Number.ConstructorValueError):
             Number("infinityandBEYOND")
@@ -1566,7 +1612,7 @@ class NumberBasicTests(NumberTests):
     def test_string_numeric_space_after_minus(self):
         if six.PY2:
             self.assertEqual(-42, Number("- 42"))
-            # NOTE:  Python 2 int() is too permissive with space after minus.
+            # NOTE:  Python 2 int() is crazy permissive with space after minus.
         else:
             with self.assertRaises(Number.ConstructorValueError):
                 Number("- 42")
@@ -1603,16 +1649,6 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(Number.ConstructorValueError):
             Number(u"\u200B" + "42" + u"\u200B")   # Zero-width spaces not allowed
 
-    def test_from_int_negative(self):
-        self.assertEqual('0q80',    Number(-0).qstring())
-        self.assertEqual('0q7D_FF', Number(-1).qstring())
-        self.assertEqual('0q7D_FE', Number(-2).qstring())
-        self.assertEqual('0q7D_FD', Number(-3).qstring())
-        self.assertEqual('0q7D_FC', Number(-4).qstring())
-        self.assertEqual('0q7D_01', Number(-255).qstring())
-        self.assertEqual('0q7C_FF', Number(-256).qstring())
-        self.assertEqual('0q7C_FEFF', Number(-257).qstring())
-
     def test_from_int(self):
         self.assertEqual('0q80', Number(0).qstring())
         self.assertEqual('0q82_01', Number(1).qstring())
@@ -1624,6 +1660,16 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q8C_01', Number(256*256*256*256*256*256*256*256*256*256).qstring())
         self.assertEqual('0q8B_FFFFFFFFFFFFFFFFFFFF', Number(256*256*256*256*256*256*256*256*256*256-1).qstring())
         self.assertEqual('0q8C_0100000000000000000001', Number(256*256*256*256*256*256*256*256*256*256+1).qstring())
+
+    def test_from_int_negative(self):
+        self.assertEqual('0q80',    Number(-0).qstring())
+        self.assertEqual('0q7D_FF', Number(-1).qstring())
+        self.assertEqual('0q7D_FE', Number(-2).qstring())
+        self.assertEqual('0q7D_FD', Number(-3).qstring())
+        self.assertEqual('0q7D_FC', Number(-4).qstring())
+        self.assertEqual('0q7D_01', Number(-255).qstring())
+        self.assertEqual('0q7C_FF', Number(-256).qstring())
+        self.assertEqual('0q7C_FEFF', Number(-257).qstring())
 
     def test_from_raw_docstring_example(self):
         with self.assertRaises((ValueError, Number.ConstructorTypeError)):
@@ -1638,12 +1684,6 @@ class NumberBasicTests(NumberTests):
     def test_from_raw_unicode(self):
         with self.assertRaises(Number.ConstructorValueError):
             Number.from_raw(u'\x80')
-
-    # def test_from_bytearray(self):
-    #     self.assertEqual(six.binary_type, type(                          Number(2)      .raw))
-    #     self.assertEqual(six.binary_type, type(Number.from_raw(bytearray(Number(2).raw)).raw))
-    #     self.assertEqual('0q82_42', Number.from_raw(          b'\x82\x42' ).qstring())
-    #     self.assertEqual('0q82_42', Number.from_raw(bytearray(b'\x82\x42')).qstring())
 
     def test_number_subclasses_number(self):
         self.assertTrue(issubclass(Number, numbers.Number))
@@ -1724,34 +1764,36 @@ class NumberComparisonTests(NumberTests):
 
     # noinspection PyRedundantParentheses
     def test_rich_comparison_float_op_number(self):
-        self.assertFalse(      (1.0) == Number(0.0))
-        self.assertTrue (      (0.0) == Number(0.0))
-        self.assertFalse(      (0.0) == Number(1.0))
+        self.assertFalse(       1.0  == Number(0.0))
+        self.assertTrue (       0.0  == Number(0.0))
+        self.assertFalse(       0.0  == Number(1.0))
 
-        self.assertTrue (      (1.0) != Number(0.0))
-        self.assertFalse(      (0.0) != Number(0.0))
-        self.assertTrue (      (0.0) != Number(1.0))
+        self.assertTrue (       1.0  != Number(0.0))
+        self.assertFalse(       0.0  != Number(0.0))
+        self.assertTrue (       0.0  != Number(1.0))
 
-        self.assertFalse(      (1.0) <  Number(0.0))
-        self.assertFalse(      (0.0) <  Number(0.0))
-        self.assertTrue (      (0.0) <  Number(1.0))
+        self.assertFalse(       1.0  <  Number(0.0))
+        self.assertFalse(       0.0  <  Number(0.0))
+        self.assertTrue (       0.0  <  Number(1.0))
 
-        self.assertFalse(      (1.0) <= Number(0.0))
-        self.assertTrue (      (0.0) <= Number(0.0))
-        self.assertTrue (      (0.0) <= Number(1.0))
+        self.assertFalse(       1.0  <= Number(0.0))
+        self.assertTrue (       0.0  <= Number(0.0))
+        self.assertTrue (       0.0  <= Number(1.0))
 
-        self.assertTrue (      (1.0) >  Number(0.0))
-        self.assertFalse(      (0.0) >  Number(0.0))
-        self.assertFalse(      (0.0) >  Number(1.0))
+        self.assertTrue (       1.0  >  Number(0.0))
+        self.assertFalse(       0.0  >  Number(0.0))
+        self.assertFalse(       0.0  >  Number(1.0))
 
-        self.assertTrue (      (1.0) >= Number(0.0))
-        self.assertTrue (      (0.0) >= Number(0.0))
-        self.assertFalse(      (0.0) >= Number(1.0))
+        self.assertTrue (       1.0  >= Number(0.0))
+        self.assertTrue (       0.0  >= Number(0.0))
+        self.assertFalse(       0.0  >= Number(1.0))
 
     def test_unittest_equality(self):
-        """Do qiki.Number and assertEqual() handle googol with finesse?
+        """
+        Do qiki.Number and assertEqual() handle googol with finesse?
 
-        See also test_02_big_int_unittest_equality()."""
+        See also test_02_big_int_unittest_equality().
+        """
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertEqual   (googol       , googol)
@@ -1760,9 +1802,11 @@ class NumberComparisonTests(NumberTests):
         self.assertEqual   (googol_plus_1, googol_plus_1)
 
     def test_op_equality(self):
-        """Do qiki.Number and its own equality operator handle googol with finesse?
+        """
+        Do qiki.Number and its own equality operator handle googol with finesse?
 
-        See also test_02_big_int_op_equality()."""
+        See also test_02_big_int_op_equality().
+        """
         googol        = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
         googol_plus_1 = Number(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001)
         self.assertTrue (googol        == googol)
@@ -1777,6 +1821,7 @@ class NumberComparisonTests(NumberTests):
         self.assertNotEqual(googol, googol_plus_one)
         self.assertTrue(googol != googol_plus_one)
 
+    # noinspection SpellCheckingInspection
     def test_googol_raw_string(self):
         """Googol is big huh!  How big is it?  How long is the qstring?"""
         googol = Number(10**100)
@@ -1785,7 +1830,11 @@ class NumberComparisonTests(NumberTests):
         self.assertEqual(31, len(googol.raw))             # So 1e100 needs 31 qigits
         self.assertEqual(43, len(googol_plus_one.raw))    # But 1e100+1 needs 43 qigits.
         self.assertEqual(43, len(googol_minus_one.raw))   # Because 1e100 has 12 stripped 00 qigits.
+        self.assertEqual('0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10', googol.qstring())
+        self.assertEqual('0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001', googol_plus_one.qstring())
+        self.assertEqual('0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F0FFFFFFFFFFFFFFFFFFFFFFFFF', googol_minus_one.qstring())
 
+    # noinspection SpellCheckingInspection
     def test_googol_cubed_raw_string(self):
         """Googol cubed is really big huh!!  How long is the qstring?"""
         g_cubed = Number(10**300)
@@ -1794,6 +1843,9 @@ class NumberComparisonTests(NumberTests):
         self.assertEqual(89, len(g_cubed.raw))              # So 1e300 needs 89 qigits
         self.assertEqual(126, len(g_cubed_plus_one.raw))    # But 1e300+1 needs 126 qigits.
         self.assertEqual(126, len(g_cubed_minus_one.raw))   # Because 1e300 has 37 stripped 00 qigits.
+        self.assertEqual('0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD10', g_cubed.qstring())
+        self.assertEqual('0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD1000000000000000000000000000000000000000000000000000000000000000000000000001', g_cubed_plus_one.qstring())
+        self.assertEqual('0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', g_cubed_minus_one.qstring())
 
     def test_biggie_raw_string(self):
         """How long is the raw string for "biggie" the biggest reasonable integer?"""
@@ -1804,12 +1856,12 @@ class NumberComparisonTests(NumberTests):
         class SomeType(object):
             pass
 
-        with self.assertRaises(Number.Incomparable):   Number(1) <  SomeType()
-        with self.assertRaises(Number.Incomparable):   Number(1) <= SomeType()
-        self.assertFalse(                              Number(1) == SomeType())
-        self.assertTrue(                               Number(1) != SomeType())
-        with self.assertRaises(Number.Incomparable):   Number(1) >  SomeType()
-        with self.assertRaises(Number.Incomparable):   Number(1) >= SomeType()
+        with self.assertRaises(Number.Incomparable):    Number(1) <  SomeType()
+        with self.assertRaises(Number.Incomparable):    Number(1) <= SomeType()
+        self.assertFalse(                               Number(1) == SomeType())
+        self.assertTrue(                                Number(1) != SomeType())
+        with self.assertRaises(Number.Incomparable):    Number(1) >  SomeType()
+        with self.assertRaises(Number.Incomparable):    Number(1) >= SomeType()
         with self.assertRaises(Number.Incomparable):   SomeType() <  Number(1)
         with self.assertRaises(Number.Incomparable):   SomeType() <= Number(1)
         self.assertFalse(                              SomeType() == Number(1))
@@ -1824,11 +1876,13 @@ class NumberComparisonTests(NumberTests):
 
         Inspired by this ominous statement in docs.python:
 
-        "...objects of different types always compare unequal, and are ordered consistently but arbitrarily. ...
+        "...objects of different types always compare unequal, and are ordered consistently but arbitrarily.
         This unusual definition of comparison was used to simplify the definition of operations
-        like sorting and the in and not in operators."
+        ... like sorting and the in and not in operators."
 
         So sorted(numbers) should work but sorted(mixed) should raise an exception.
+
+        SEE:  Number._op_ready().
         """
 
         number_tuple = (Number(33), Number(22), Number(11))
@@ -1899,7 +1953,7 @@ class NumberIsTests(NumberTests):
         self.assertNegative(Number(-math.pow(10,100)))
         self.assertNegative(Number(float('-inf')))
 
-    # noinspection PyUnresolvedReferences,PyUnusedLocal
+    # noinspection PyUnusedLocal
     def someday_assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):
         number = Number(number_able)
         if is_zero is not None:
@@ -1958,9 +2012,9 @@ class NumberMathTests(NumberTests):
 
     def test_int_too_big_to_be_a_float(self):
         """
-        Proove that 0q8A_010000000000000001 is too big to be a float, accurately.
+        Prove that 0q8A_010000000000000001 is too big to be a float, accurately.
 
-        So we can proove Number math isn't simply float math.
+        So we can prove Number math isn't simply float math.
         """
         self.assertEqual(     0x10000000000000001, 2**64 + 1)
         self.assertNotEqual(  0x10000000000000001,         int(float(0x10000000000000001)))
@@ -2034,7 +2088,9 @@ class NumberMathTests(NumberTests):
     def test_div(self):
         if six.PY2:
             self.assertTrue(hasattr(operator, '__div__'))
+            # noinspection PyUnresolvedReferences
             self.binary_op(operator.__div__, 7, 42, 6)
+            # noinspection PyUnresolvedReferences
             self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
                                              Number('0q92_0100000000000000020000000000000001'),
                                              Number('0q8A_010000000000000001'))
@@ -2046,8 +2102,37 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__pow__, 3.375, 1.5, 3.0)
         self.binary_op(operator.__pow__, Number('0qFE_80'), Number(2), Number(999))
 
+    def test_pow_lander_and_parkin(self):
+        """
+        Test formula from 1966 counterexample paper by Lander & Parkin.
+
+        THANKS:  Numberphile, https://youtu.be/QvvkJT8myeI
+        """
+        self.assertEqual(27**5 + 84**5 + 110**5 + 133**5, 144**5)
+        self.assertEqual(
+            Number(27)**Number(5) +
+            Number(84)**Number(5) +
+            Number(110)**Number(5) +
+            Number(133)**Number(5),
+
+            Number(144)**Number(5)
+        )
+
+        # A slight digression...
+        self.assertEqual(27.0**5.0 + 84.0**5.0 + 110.0**5.0 + 133.0**5.0, 144.0**5.0)
+        # NOTE:  No round-off errors in floating point.
+        self.assertEqual(144**5, 61917364224)
+        self.assertEqual(144**5, 0xE6A900000)
+        self.assertEqual(2**36, 0x1000000000)
+        # NOTE:  The biggest value in the formula fits in 36 bits.
+        self.assertEqual('0q86_0E6A90', Number(144**5).qstring())
+
     def test_add_assign(self):
-        # So apparently implementing __add__ means you get __iadd__ for free.
+        """
+        Test the __iadd__ operator.
+
+        So apparently implementing __add__ means you get __iadd__ for free.
+        """
         n = 2
         n += Number(2)
         self.assertEqual(Number(4), n)
@@ -2073,6 +2158,8 @@ class NumberMathTests(NumberTests):
         n /= 6
         self.assertEqual(Number(7), n)
 
+    # TODO:  Other assignment operators -= *= //= %= **= |= &= ^= >>= <<=
+
     def assert_inc_works_on(self, integer):
         n = Number(integer)
         n_plus_one = Number(integer)
@@ -2090,8 +2177,8 @@ class NumberMathTests(NumberTests):
         googol = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         self.assert_inc_works_on(googol)
 
-    if TEST_INC_ON_ALL_POWERS_OF_TWO:
-        def test_inc_powers_of_2(self):   # This takes take a long time, about 2 seconds
+    if TEST_INC_ON_THOUSAND_POWERS_OF_TWO:
+        def test_inc_powers_of_2(self):   # Takes take a long time, 2-12 seconds.
             power_of_two = 1
             for binary_exponent in range(0,1000):
                 self.assert_inc_works_on(power_of_two-2)
@@ -2114,7 +2201,7 @@ class NumberComplex(NumberTests):
         self.assertIsInstance(n.real, Number)
 
     def test_01b_real(self):
-        """Number.real should never return self."""
+        """Number.real should never return self, even if it's the same value."""
         n = Number(1)
         nreal = n.real
         self.assertIsNot(nreal, n)
@@ -2278,7 +2365,11 @@ class NumberComplex(NumberTests):
             float(complex_number)
 
     def test_09_imag_first(self):
-        """Number.imag only gets the first imaginary suffix, ignoring others."""
+        """
+        Number.imag only gets the first imaginary suffix, ignoring others.
+
+        This may pave the way for quaternions.
+        """
         n = Number('0q82_07__8209_690300__8205_690300')
         self.assertEqual(7.0, float(n.real))
         self.assertEqual(9.0, float(n.imag))
@@ -2376,23 +2467,23 @@ class NumberPickleTests(NumberTests):
 # noinspection SpellCheckingInspection
 class NumberSuffixTests(NumberTests):
 
-    # TODO:  Replace the indiscriminate use of suffix types here with a single
+    # TODO:  Replace the indiscriminate use of suffix types here with TYPE_TEST.
     # suffix type, e.g. Number.Suffix.TYPE_NOP,
     # that's reserved for testing, and has no value implications.
     # (So, for example, a suffix someday for rational numbers might modify
     # the value returned by float(), and not break tests here when it's implemented.)
 
-    def test_add_suffix_type(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).add_suffix(Number.Suffix.TYPE_TEST))
+    def test_plus_suffix_type(self):
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Number.Suffix.TYPE_TEST))
 
-    def test_add_suffix_type_by_class(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
+    def test_plus_suffix_type_by_class(self):
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
 
-    def test_add_suffix_type_and_payload(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).add_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
+    def test_plus_suffix_type_and_payload(self):
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
 
-    def test_add_suffix_type_and_payload_by_class(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).add_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
+    def test_plus_suffix_type_and_payload_by_class(self):
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2400,28 +2491,27 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82010000', Number('0q82_01__0000').qstring(underscore=0))
         self.assertEqual('0q82012233110300', Number('0q82_01__2233_110300').qstring(underscore=0))
 
-    def test_add_suffix_empty(self):
-        self.assertEqual(Number('0q82_01__0000'), Number(1).add_suffix())
+    def test_plus_suffix_empty(self):
+        self.assertEqual(Number('0q82_01__0000'), Number(1).plus_suffix())
 
-    def test_add_suffix_payload(self):
-        self.assertEqual(Number('0q82_01__3456_120300'), Number(1).add_suffix(0x12, b'\x34\x56'))
+    def test_plus_suffix_payload(self):
+        self.assertEqual(Number('0q82_01__3456_120300'), Number(1).plus_suffix(0x12, b'\x34\x56'))
 
-    def test_add_suffix_qstring(self):
-        self.assertEqual('0q8201030100', Number(1).add_suffix(0x03).qstring(underscore=0))
-        self.assertEqual('0q82_01__030100', Number(1).add_suffix(0x03).qstring())
+    def test_plus_suffix_qstring(self):
+        self.assertEqual('0q8201030100', Number(1).plus_suffix(0x03).qstring(underscore=0))
+        self.assertEqual('0q82_01__030100', Number(1).plus_suffix(0x03).qstring())
 
-    def test_add_suffix_qstring_empty(self):
-        self.assertEqual('0q82010000', Number(1).add_suffix().qstring(underscore=0))
-        self.assertEqual('0q82_01__0000', Number(1).add_suffix().qstring())
+    def test_plus_suffix_qstring_empty(self):
+        self.assertEqual('0q82010000', Number(1).plus_suffix().qstring(underscore=0))
+        self.assertEqual('0q82_01__0000', Number(1).plus_suffix().qstring())
 
-    def test_add_suffix_qstring_payload(self):
-        self.assertEqual('0q82014455330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring(underscore=0))
-        self.assertEqual('0q82_01__4455_330300', Number(1).add_suffix(0x33, b'\x44\x55').qstring())
+    def test_plus_suffix_qstring_payload(self):
+        self.assertEqual('0q82014455330300', Number(1).plus_suffix(0x33, b'\x44\x55').qstring(underscore=0))
+        self.assertEqual('0q82_01__4455_330300', Number(1).plus_suffix(0x33, b'\x44\x55').qstring())
 
-    def test_delete_suffix(self):
+    def test_minus_suffix(self):
         n = Number('0q82_01__{:02X}0100'.format(Number.Suffix.TYPE_TEST))
-        n_deleted = Number(n)
-        n_deleted.delete_suffix(Number.Suffix.TYPE_TEST)
+        n_deleted = n.minus_suffix(Number.Suffix.TYPE_TEST)
         self.assertEqual('0q82_01', n_deleted.qstring())
 
     def test_suffix_equality_impact(self):
@@ -2447,29 +2537,36 @@ class NumberSuffixTests(NumberTests):
         self.assertFalse(n_another_suffixed == n_suffixed)
         self.assertTrue(n_another_suffixed == n_another_suffixed)
 
-    def test_delete_suffix_among_many(self):
-        n = Number('0q82_01__990100__880100__770100')
-        n77 = Number(n)
-        n77.delete_suffix(0x77)
-        n88 = Number(n)
-        n88.delete_suffix(0x88)
-        n99 = Number(n)
-        n99.delete_suffix(0x99)
-        self.assertEqual('0q82_01__990100__880100', n77.qstring())
-        self.assertEqual('0q82_01__990100__770100', n88.qstring())
-        self.assertEqual('0q82_01__880100__770100', n99.qstring())
-
-    def test_delete_suffix_multiple(self):
-        n = Number('0q82_01__990100__880100__880100__110100__880100__880100__770100')
-        n88 = Number(n)
-        n88.delete_suffix(0x88)
-        self.assertEqual('0q82_01__990100__110100__770100', n88.qstring())
-
-    def test_delete_missing_suffix(self):
-        n = Number('0q82_01__8201_7F0300')
+    def test_minus_missing_suffix(self):
+        no_imaginary_suffix = Number('0q82_01__8201_7F0300')
         with self.assertRaises(Number.Suffix.NoSuchType):
-            n.delete_suffix(Number.Suffix.TYPE_IMAGINARY)
+            no_imaginary_suffix.minus_suffix(Number.Suffix.TYPE_IMAGINARY)
 
+    def test_minus_suffix_among_many(self):
+        n = Number(      '0q82_01__990100__880100__770100')
+        self.assertEqual('0q82_01__990100__880100', n.minus_suffix(0x77).qstring())
+        self.assertEqual('0q82_01__990100__770100', n.minus_suffix(0x88).qstring())
+        self.assertEqual('0q82_01__880100__770100', n.minus_suffix(0x99).qstring())
+
+    def test_minus_multiple_suffixes(self):
+        """One call to minus_suffix() removes all suffixes of the given type."""
+        n = Number(      '0q82_01__990100__880100__880100__110100__880100__880100__770100')
+        self.assertEqual('0q82_01__990100__110100__770100', n.minus_suffix(0x88).qstring())
+
+    def test_minus_suffix_multiple_tries(self):
+        """Trying to remove the same suffix twice raises NoSuchType."""
+        n = Number('0q82_01__990100__880100__880100__110100__880100__880100__770100')
+        with self.assertRaises(Number.Suffix.NoSuchType):
+            n.minus_suffix(0x88).minus_suffix(0x88)
+
+    def test_chain_minus_suffix(self):
+        n = Number(1).plus_suffix(0x99).plus_suffix(0x88).plus_suffix(0x77)
+        self.assertEqual('0q82_01__990100__880100__770100', n.qstring())
+        self.assertEqual('0q82_01__770100', n.minus_suffix(0x88).minus_suffix(0x99))
+        self.assertEqual('0q82_01__770100', n.minus_suffix(0x99).minus_suffix(0x88))
+        self.assertEqual('0q82_01', n.minus_suffix(0x99).minus_suffix(0x88).minus_suffix(0x77))
+        self.assertEqual('0q82_01', n.minus_suffix(0x77).minus_suffix(0x88).minus_suffix(0x99))
+        self.assertEqual('0q82_01', n.minus_suffix(0x88).minus_suffix(0x77).minus_suffix(0x99))
     def test_suffix_weird_type(self):
         class WeirdType(object):
             pass
@@ -2524,42 +2621,42 @@ class NumberSuffixTests(NumberTests):
 
     def test_parse_suffixes(self):
         self.assertEqual((Number(1), ), Number(1).parse_suffixes())
-        self.assertEqual((Number(1), Number.Suffix()), Number(1).add_suffix().parse_suffixes())
-        self.assertEqual((Number(1), Number.Suffix(3)), Number(1).add_suffix(3).parse_suffixes())
+        self.assertEqual((Number(1), Number.Suffix()), Number(1).plus_suffix().parse_suffixes())
+        self.assertEqual((Number(1), Number.Suffix(3)), Number(1).plus_suffix(3).parse_suffixes())
         self.assertEqual(
             (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
-            Number( 1.75).add_suffix(    111).add_suffix(    222).parse_suffixes()
+             Number(1.75)   .plus_suffix(111)   .plus_suffix(222).parse_suffixes()
         )
 
     def test_parse_suffixes_example_in_docstring(self):
         self.assertEqual(
             (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')),
-             Number(1)    .add_suffix(2)    .add_suffix(3, b'\x4567').parse_suffixes()
+             Number(1)   .plus_suffix(2)   .plus_suffix(3, b'\x4567').parse_suffixes()
         )
 
     def test_parse_multiple_suffixes(self):
         self.assertEqual(
             (Number(1), Number.Suffix(2), Number.Suffix(3)),
-             Number(1)    .add_suffix(2)    .add_suffix(3).parse_suffixes()
+             Number(1)   .plus_suffix(2)   .plus_suffix(3).parse_suffixes()
         )
 
     def test_parse_suffixes_payload(self):
         self.assertEqual(
             (Number(22.25), Number.Suffix(123, b'')),
-            Number( 22.25).add_suffix(    123, b'').parse_suffixes()
+             Number(22.25)   .plus_suffix(123, b'').parse_suffixes()
         )
         self.assertEqual(
             (Number(22.25), Number.Suffix(123, b' ')),
-            Number( 22.25).add_suffix(    123, b' ').parse_suffixes()
+            Number( 22.25)   .plus_suffix(123, b' ').parse_suffixes()
         )
         self.assertEqual(
             (Number(22.25), Number.Suffix(123, b'\xAA\xBB\xCC')),
-            Number( 22.25).add_suffix(    123, b'\xAA\xBB\xCC').parse_suffixes()
+             Number(22.25)   .plus_suffix(123, b'\xAA\xBB\xCC').parse_suffixes()
         )
 
     def test_parse_suffixes_is_passive(self):
         """Make sure x.parse_suffixes() does not modify x."""
-        n_original = Number(1.75).add_suffix(111).add_suffix(222)
+        n_original = Number(1.75).plus_suffix(111).plus_suffix(222)
         nbytes_original = len(n_original.raw)
         n = Number(n_original)
 
@@ -2597,49 +2694,49 @@ class NumberSuffixTests(NumberTests):
             Number.Suffix(8, b'\x11' * 252)
 
     def test_suffix_number(self):
-        self.assertEqual('0q83_01FF__823F_FF0300', Number(511).add_suffix(255, Number(63)))
+        self.assertEqual('0q83_01FF__823F_FF0300', Number(511).plus_suffix(255, Number(63)))
         # TODO:  Should '0q83_01FF__82_3F_FF0300' have an underscore in its payload Number?
 
     def test_suffix_extract_raw(self):
-        self.assertEqual(b'\x33\x44', Number(1).add_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
+        self.assertEqual(b'\x33\x44', Number(1).plus_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
 
     def test_suffix_extract_raw_wrong(self):
-        number_with_test_suffix = Number(1).add_suffix(Number.Suffix.TYPE_TEST, b'\x33\x44')
+        number_with_test_suffix = Number(1).plus_suffix(Number.Suffix.TYPE_TEST, b'\x33\x44')
         with self.assertRaises(Number.Suffix.NoSuchType):
             number_with_test_suffix.get_suffix_payload(Number.Suffix.TYPE_IMAGINARY)
 
     def test_suffix_extract_raw_among_multiple(self):
         self.assertEqual(
             b'\x33\x44',
-            Number(1).add_suffix(0x11, b'\x33\x44').add_suffix(0x22, b'\x88\x99').get_suffix_payload(0x11)
+            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').get_suffix_payload(0x11)
         )
         self.assertEqual(
             b'\x88\x99',
-            Number(1).add_suffix(0x11, b'\x33\x44').add_suffix(0x22, b'\x88\x99').get_suffix_payload(0x22)
+            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').get_suffix_payload(0x22)
         )
 
     def test_suffix_extract_number(self):
-        self.assertEqual(Number(88), Number(1).add_suffix(0x11, Number(88)).get_suffix_number(0x11))
-        self.assertEqual(Number(-123.75), Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
-        self.assertEqual(       -123.75 , Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
-        self.assertIs(       Number, type(Number(1).add_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
+        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).get_suffix_number(0x11))
+        self.assertEqual(Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
+        self.assertEqual(       -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
+        self.assertIs(       Number, type(Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
 
     def test_suffix_extract_number_missing(self):
-        self.assertEqual(Number(88), Number(1).add_suffix(0x11, Number(88)).get_suffix_number(0x11))
+        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).get_suffix_number(0x11))
         with self.assertRaises(Number.Suffix.NoSuchType):
-            Number(1).add_suffix(0x99, Number(88)).get_suffix_number(0x11)
+            Number(1).plus_suffix(0x99, Number(88)).get_suffix_number(0x11)
         with self.assertRaises(Number.Suffix.NoSuchType):
             Number(1).get_suffix_number(0x11)
 
     def test_suffix_number_parse(self):
-        n = Number(99).add_suffix(0x11, Number(356))
+        n = Number(99).plus_suffix(0x11, Number(356))
         (idn, suffix) = n.parse_suffixes()
         self.assertIs(type(idn), Number)
         self.assertIs(type(suffix), Number.Suffix)
         self.assertEqual(Number(356), suffix.payload_number())
 
     def test_get_suffix(self):
-        n = Number(99).add_suffix(0x11).add_suffix(0x22)
+        n = Number(99).plus_suffix(0x11).plus_suffix(0x22)
         s11 = n.get_suffix(0x11)
         s22 = n.get_suffix(0x22)
         self.assertEqual(s11, Number.Suffix(0x11))
@@ -2650,23 +2747,23 @@ class NumberSuffixTests(NumberTests):
     def test_nan_suffix_empty(self):
         nan = Number(float('nan'))
         with self.assertRaises(Number.SuffixValueError):
-            nan.add_suffix()
+            nan.plus_suffix()
 
     def test_nan_suffix_type(self):
         nan = Number(float('nan'))
         with self.assertRaises(Number.SuffixValueError):
-            nan.add_suffix(0x11)
+            nan.plus_suffix(0x11)
 
     def test_nan_suffix_payload(self):
         nan = Number(float('nan'))
         with self.assertRaises(Number.SuffixValueError):
-            nan.add_suffix(0x11, b'abcd')
+            nan.plus_suffix(0x11, b'abcd')
 
     def test_is_suffixed(self):
-        self.assertTrue(Number(22).add_suffix().is_suffixed())
-        self.assertTrue(Number(22).add_suffix(0x11).is_suffixed())
-        self.assertTrue(Number(22).add_suffix(0x11, b'abcd').is_suffixed())
-        self.assertTrue(Number(22).add_suffix(0x11, Number(42)).is_suffixed())
+        self.assertTrue(Number(22).plus_suffix().is_suffixed())
+        self.assertTrue(Number(22).plus_suffix(0x11).is_suffixed())
+        self.assertTrue(Number(22).plus_suffix(0x11, b'abcd').is_suffixed())
+        self.assertTrue(Number(22).plus_suffix(0x11, Number(42)).is_suffixed())
         self.assertFalse(Number(22).is_suffixed())
         # noinspection PyUnresolvedReferences
         self.assertFalse(Number.NAN.is_suffixed())
@@ -2680,7 +2777,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
     def test_root(self):
-        suffixed_word = Number(42).add_suffix(Number.Suffix.TYPE_TEST)
+        suffixed_word = Number(42).plus_suffix(Number.Suffix.TYPE_TEST)
         self.assertEqual(Number(42), suffixed_word.root())
 
 

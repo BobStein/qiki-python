@@ -333,13 +333,17 @@ class Number(numbers.Complex):
         Eliminate imaginary suffix if it's zero.
 
         So e.g. 1+0j == 1
+
+        We don't check self.imag == self.ZERO because that may try to subtract a missing suffix.
         """
+        # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
         try:
-            if self.get_suffix_number(self.Suffix.TYPE_IMAGINARY) == self.ZERO:
-                # We don't check self.imag == self.ZERO because that would try to delete a missing suffix.
-                self.delete_suffix(self.Suffix.TYPE_IMAGINARY)
+            imaginary_part = self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
         except self.Suffix.NoSuchType:
             pass
+        else:
+            if imaginary_part == self.ZERO:
+                self.raw = self.minus_suffix(self.Suffix.TYPE_IMAGINARY).raw
 
     def _normalize_plateau(self):
         """
@@ -372,7 +376,7 @@ class Number(numbers.Complex):
                         self.raw = raw_qexponent + b'\xFF'
             if is_plateau:
                 for piece in pieces[1:]:
-                    self.raw = self.add_suffix(piece).raw
+                    self.raw = self.plus_suffix(piece).raw
                     # TODO:  Test this branch (on a number with suffixes)
 
     def normalized(self):
@@ -417,7 +421,7 @@ class Number(numbers.Complex):
         pass
 
     def is_nan(self):
-        return self == self.NAN
+        return self.raw == self.RAW_NAN
 
     def is_real(self):
         return not self.is_complex()
@@ -451,7 +455,7 @@ class Number(numbers.Complex):
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
-            return_value = return_value.add_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
+            return_value = return_value.plus_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
         return return_value
 
     # "from" conversions:  Number <-- other type
@@ -545,8 +549,8 @@ class Number(numbers.Complex):
         elif i == 0:   self.raw = self.RAW_ZERO
         else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
 
-    @staticmethod
-    def _raw_from_int(i, qex_encoder):
+    @classmethod
+    def _raw_from_int(cls, i, qex_encoder):
         """Convert nonzero integer to internal raw format.
 
         qex_encoder() converts a base-256 exponent to internal qex format
@@ -556,18 +560,18 @@ class Number(numbers.Complex):
 
         exponent_base_256 = len(qan00)
         qex_integer = qex_encoder(exponent_base_256)
-        qex = Number._qex_int_byte(qex_integer)
+        qex = cls._qex_int_byte(qex_integer)
 
         return qex + qan
 
-    @staticmethod
-    def _qex_int_byte(qex_integer):
+    @classmethod
+    def _qex_int_byte(cls, qex_integer):
         """Store encoded qex in a single byte, in the raw."""
         if 0x01 <= qex_integer <= 0xFE:
             # NOTE:  0x00 and 0xFF are for unreasonable numbers (ludicrous or transfinite).
             return six.int2byte(qex_integer)
         else:
-            raise Number.LudicrousNotImplemented(
+            raise cls.LudicrousNotImplemented(
                 "Ludicrous Numbers are not yet implemented:  " + str(qex_integer)
             )
 
@@ -583,7 +587,7 @@ class Number(numbers.Complex):
     # Example, 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits.
     QIGITS_PRECISION_DEFAULT = 8
 
-    SMALLEST_UNREASONABLE_FLOAT = 2.0 ** 1000   # 1.0715086071862673e+301
+    SMALLEST_UNREASONABLE_FLOAT = 2.0 ** 1000   # == 256.0**125 == 1.0715086071862673e+301
 
     def _from_float(self, x, qigits=None):
         """Construct a Number from a Python IEEE 754 double-precision floating point number
@@ -655,7 +659,7 @@ class Number(numbers.Complex):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.raw = self.add_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
+        self.raw = self.plus_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
         # THANKS:  http://stackoverflow.com/a/14209708/673991 (how to call the constructor of whatever class we're in)
 
     # "to" conversions:  Number --> other type
@@ -1021,6 +1025,8 @@ class Number(numbers.Complex):
         Example:
             assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
         """
+        # TODO:  Should Suffix be a sister class of Number instead of a contained class?
+        # Because Suffix knows about Number (Suffix.number_class == Number) and vice versa.
 
         MAX_PAYLOAD_LENGTH = 250
 
@@ -1033,7 +1039,7 @@ class Number(numbers.Complex):
             self.type_ = type_
             if payload is None:
                 self.payload = b''
-            elif isinstance(payload, self.Number):
+            elif isinstance(payload, self.number_class):
                 self.payload = payload.raw
             elif isinstance(payload, six.binary_type):
                 self.payload = payload
@@ -1053,8 +1059,8 @@ class Number(numbers.Complex):
                         0x00
                     )))
                 else:
-                    raise self.Number.SuffixValueError("Payload is {} bytes too long.".format(
-                        len(self.payload) - self.MAX_PAYLOAD_LENGTH)
+                    raise self.number_class.SuffixValueError("Payload is {} bytes too long.".format(
+                        str(len(self.payload) - self.MAX_PAYLOAD_LENGTH))
                     )
 
         def __eq__(self, other):
@@ -1082,12 +1088,12 @@ class Number(numbers.Complex):
                 return whole_suffix_in_hex
 
         def payload_number(self):
-            return self.Number.from_raw(self.payload)
+            return self.number_class.from_raw(self.payload)
 
         @classmethod
         def internal_setup(cls, number_class):
             """Initialize some Suffix class properties after the class is defined."""
-            cls.Number = number_class
+            cls.number_class = number_class
             # So Suffix can refer to Number:  qiki.Number.Suffix.Number === qiki.Number
 
         class NoSuchType(Exception):
@@ -1101,24 +1107,23 @@ class Number(numbers.Complex):
         # XXX:  This could be much less sneaky if raw were not the primary internal representation.
         # TODO:  is_suffixed(type)?
 
-    def add_suffix(self, suffix_or_type=None, payload=None):
+    def plus_suffix(self, suffix_or_type=None, payload=None):
         """
         Add a suffix to this Number.  Does not mutate self, but returns a new suffixed number.
 
         Forms:
-            m = n.add_suffix(Number.Suffix.TYPE_TEST, b'byte string')
-            m = n.add_suffix(Number.Suffix.TYPE_TEST, Number(x))
-            m = n.add_suffix(Number.Suffix(...))
-            m = n.add_suffix()
+            m = n.plus_suffix(Number.Suffix.TYPE_TEST, b'byte string')
+            m = n.plus_suffix(Number.Suffix.TYPE_TEST, Number(x))
+            m = n.plus_suffix(Number.Suffix(...))
+            m = n.plus_suffix()
         """
-        # TODO:  Rename to with_suffix()?  Avoids confusion that this does not modify in-place.
         assert (
             isinstance(suffix_or_type, int) and isinstance(payload, six.binary_type) or
             isinstance(suffix_or_type, int) and payload is None or
             isinstance(suffix_or_type, int) and isinstance(payload, Number) or
             isinstance(suffix_or_type, self.Suffix) and payload is None or
             suffix_or_type is None and payload is None
-        ), "Bad call to add_suffix({suffix_or_type}, {payload})".format(
+        ), "Bad call to plus_suffix({suffix_or_type}, {payload})".format(
             suffix_or_type=repr(suffix_or_type),
             payload=repr(payload),
         )
@@ -1131,23 +1136,22 @@ class Number(numbers.Complex):
         else:
             the_type = suffix_or_type
             suffix = self.Suffix(the_type, payload)
-            return self.add_suffix(suffix)
+            return self.plus_suffix(suffix)
 
-    def delete_suffix(self, old_type=None):
-        """Remove a suffix.  This DOES mutate self."""
-        # TODO:  Do NOT modify in place, return it instead, and rename it without_suffix()?
+    def minus_suffix(self, old_type=None):
+        """Make a version of a number without any suffixes of the given type.  This does NOT mutate self."""
+        # TODO:  A way to remove just ONE suffix of the given type?
         pieces = self.parse_suffixes()
-        new_self = pieces[0]
+        new_number = pieces[0]
         any_deleted = False
         for piece in pieces[1:]:
             if piece.type_ == old_type:
                 any_deleted = True
             else:
-                new_self = new_self.add_suffix(piece.type_, piece.payload)
+                new_number = new_number.plus_suffix(piece.type_, piece.payload)
         if not any_deleted:
             raise self.Suffix.NoSuchType
-        self.raw = new_self.raw
-        return self
+        return new_number
 
     def get_suffix(self, sought_type):
         suffixes = self.parse_suffixes()
@@ -1172,10 +1176,8 @@ class Number(numbers.Complex):
 
         assert \
             (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')) == \
-             Number(1)    .add_suffix(2)    .add_suffix(3, b'\x4567').parse_suffixes()
+             Number(1)   .plus_suffix(2)   .plus_suffix(3, b'\x4567').parse_suffixes()
         """
-        # FIXME:  Crap, resurrect mutating form of add_suffix, so we can chain them like the above example??
-        # But what, the above chaining works without self-mutating??
         return_array = []
         n = Number(self)   # Is this really necessary? self.raw is immutable is it not?
         while True:
@@ -1189,15 +1191,15 @@ class Number(numbers.Complex):
                     # Suffix may neither be larger than raw, nor consume all of it.
                     raise self.SuffixValueError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type == 0x00:
-                    return_array.append(Number.Suffix())
+                    return_array.append(self.Suffix())
                 else:
                     try:
                         type_ = six.indexbytes(n.raw, -3)
                     except IndexError:
                         raise ValueError("Invalid suffix, or unstripped 00s.")
                     payload = n.raw[-length_of_payload_plus_type-2:-3]
-                    return_array.append(Number.Suffix(type_, payload))
-                n = Number.from_raw(n.raw[0:-length_of_payload_plus_type-2])
+                    return_array.append(self.Suffix(type_, payload))
+                n = self.from_raw(n.raw[0:-length_of_payload_plus_type-2])
             else:
                 break
         return_array.append(n)
@@ -1483,7 +1485,7 @@ def floats_really_same(f1,f2):
     """Compare floating point numbers, a little differently.
 
     Similar to == except:
-     1. They are the same if both are NAN.
+     1. They ARE the same if both are NAN.
      2. They are NOT the same if one is +0.0 and the other -0.0.
 
     This is useful for precise unit testing.
@@ -1665,6 +1667,13 @@ Number.Suffix.internal_setup(Number)
 # TODO:  mpmath support, http://mpmath.org/
 # >>> mpmath.frexp(mpmath.power(mpmath.mpf(2), 65536))
 # (mpf('0.5'), 65537)
+
+# TODO:  is_valid() detects (at different severity levels?)  Or validate() raising a family tree of exceptions:
+# 0q82_00FF - as 1 but inside the plateau
+# 0q82 as - compact but nonstandard
+# 0q8183_01 - sensible as 2**-1000 but really should be ludicrous small encoding (longer qex)
+# 0q__7E0100 - suffixed NAN
+# 0q80__00 - 00-terminated means it should be suffixed but clearly it isn't
 
 # TODO:  Lengthed-export.
 # The raw attribute is an unlengthed representation of the number.
