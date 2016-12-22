@@ -59,9 +59,7 @@ class NumberTests(unittest.TestCase):
         self.assertTrue(n.is_negative())
 
 
-# TODO:  Why does PyCharm warn Number.ZERO "Unresolved attribute reference 'ZERO' for class 'Number'"?
-# It worked once, why not now?
-# noinspection SpellCheckingInspection,PyUnresolvedReferences
+# noinspection SpellCheckingInspection
 class NumberBasicTests(NumberTests):
 
     def test_raw(self):
@@ -436,6 +434,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FFC0')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FFF0')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E00_FFFF')))
+        self.assertEqual(-1.0/256.0, float(Number('0q7E01_0000')))
         self.assertEqual(-1.0/256.0, float(Number('0q7E01')))
 
         self.assertEqual(-1.0/65536.0, float(Number('0q7E01_FF')))
@@ -952,14 +951,15 @@ class NumberBasicTests(NumberTests):
             try:
                 x_new = float(Number(s_in))
             except Exception as e:
-                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, e.qstring(), s_in))
+                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, str(e), s_in))
                 raise
             match_x = floats_really_same(x_new, x_out)
 
             try:
                 s_new = Number(x_in).qstring()
             except Exception as e:
-                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, e.qstring()))
+                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, str(e)))
+
                 raise
             match_s = s_new == s_out
 
@@ -1016,6 +1016,7 @@ class NumberBasicTests(NumberTests):
         f__s(float('+inf'),               '0qFF_81')
         zone_boundary()
         if LUDICROUS_NUMBER_SUPPORT:
+            # noinspection PyUnresolvedReferences
             m__s(mpmath.power(2,1024),    '0qFF000080_01')   # A smidgen too big for floating point
             f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
             f__s(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
@@ -1952,6 +1953,25 @@ class NumberIsTests(NumberTests):
         self.assertNegative(Number(-1))
         self.assertNegative(Number(-math.pow(10,100)))
         self.assertNegative(Number(float('-inf')))
+
+    def test_is_pos_zer_neg_boundary(self):
+        self.assertPositive(Number('0q81FF_01'))
+        self.assertPositive(Number('0q81FF_0000'))   # Normalizes to 0q81FF_01
+        self.assertPositive(Number('0q810000'))   # TODO:  Normalize to 0q807F?
+        self.assertPositive(Number('0q80FF_0000'))   # TODO:  Normalize to 0q807F?
+        self.assertPositive(Number('0q80DEADBEEF'))
+        self.assertPositive(Number('0q807F'))
+        self.assertPositive(Number('0q8001'))
+        self.assertPositive(Number('0q80_0000'))
+        self.assertZero(Number('0q80'))
+        self.assertNegative(Number('0q7FFFFF'))
+        self.assertNegative(Number('0q7F81'))
+        self.assertNegative(Number('0q7F76543210'))
+        self.assertNegative(Number('0q7F01_0000'))   # TODO:  Normalize to 0q7F81?
+        self.assertNegative(Number('0q7FFFFF'))   # TODO:  Normalize to 0q7F81?
+        self.assertNegative(Number('0q7E01_0000'))   # Normalizes to 7E00_FF
+        self.assertNegative(Number('0q7E00_FF'))
+
 
     # noinspection PyUnusedLocal
     def someday_assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):

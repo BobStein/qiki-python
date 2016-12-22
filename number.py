@@ -21,9 +21,30 @@ import struct
 import six
 
 
+
+
+# Sets
+# ----
+def sets_exclusive(*sets):
+    for i in range(len(sets)):
+        for j in range(i):
+            if set(sets[i]).intersection(sets[j]):
+                return False
+    return True
+assert True == sets_exclusive({1,2,3}, {4,5,6})
+assert False == sets_exclusive({1,2,3}, {3,4,5})
+
+def union_of_distinct_sets(*sets):
+    assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
+    return_value = set()
+    for each_set in sets:
+        return_value |= each_set
+    return return_value
+assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
+
+
 # noinspection PyUnresolvedReferences
 # (Otherwise there are warnings about the raw @property violating __slots__.)
-# DONE:  Got rid of this unsightly decorator:  @six.python_2_unicode_compatible
 class Number(numbers.Complex):
     # __slots__ = ('__raw', )   # ALTERNATIVE 1:  less memory
     __slots__ = ('__raw', '_zone')   # ALTERNATIVE 2:  faster
@@ -125,7 +146,7 @@ class Number(numbers.Complex):
 
     # Zone
     # ----
-    # qiki Numbers fall into zones.
+    # Each qiki Number is in one of 14 distinct zones.
     # This internal Number.Zone class serves as an enumeration of those zones.
     # Raw, internal binary strings represent the value of each zone.
     # The members of Number.Zone have values that are either:
@@ -161,14 +182,18 @@ class Number(numbers.Complex):
     # A minor, hair-splitting point.
     # Most values of Zone are the minimum of their zone.
     # Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
-    # That's never a legal raw value for a number because it ends in a 00 (that's not part of a suffix).
-    # The valid minimum value for this zone cannot be represented in finite storage.
-    # The real minimum of that zone would be an impossible hypothetical
+    # That's never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
+    # The valid minimum value for this zone cannot be represented in finite storage,
+    # because the real minimum of that zone would be an impossible hypothetical
     # b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
     # Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
     # So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
     # And all legal raw values in Zone FRACTIONAL_NEG are above it.
     # And all legal raw values in Zone NEGATIVE are below it.
+
+    # So are there or aren't there inter-zone Numbers?
+    # In other words, are the zones comprehensive?
+    # Even illegal and invalid values should normalize to valid values.
 
 
     # Comparison
@@ -1205,208 +1230,188 @@ class Number(numbers.Complex):
         return_array.append(n)
         return tuple(reversed(return_array))
 
+    # Sets of Zones   TODO:  Venn Diagram or table or something.
+    # -------------   TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
+    ZONE_REASONABLE = {
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.ZERO,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+    }
+    ZONE_LUDICROUS = {
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_SMALL,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.LUDICROUS_LARGE_NEG,
+    }
+    ZONE_NONFINITE = {
+        Zone.TRANSFINITE,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+    ZONE_FINITE = union_of_distinct_sets(
+        ZONE_LUDICROUS,
+        ZONE_REASONABLE,
+    )
+    ZONE_UNREASONABLE = union_of_distinct_sets(
+        ZONE_LUDICROUS,
+        ZONE_NONFINITE,
+    )
 
-    # Setup
-    # -----
-    name_of_zone = None
-    _sorted_zone_codes = None
+    ZONE_POSITIVE = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+    }
+    ZONE_NEGATIVE = {
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+    ZONE_NONZERO = union_of_distinct_sets(
+        ZONE_POSITIVE,
+        ZONE_NEGATIVE,
+    )
+    ZONE_ZERO = {
+        Zone.ZERO
+    }
+
+    ZONE_ESSENTIALLY_POSITIVE_ZERO = {
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+    }
+    ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+    }
+    ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
+        ZONE_ESSENTIALLY_POSITIVE_ZERO,
+        ZONE_ZERO,
+    )
+    ZONE_ESSENTIALLY_ZERO = union_of_distinct_sets(
+        ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
+        ZONE_ESSENTIALLY_NEGATIVE_ZERO,
+    )
+    ZONE_REASONABLY_POSITIVE = {
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+    }
+    ZONE_REASONABLY_NEGATIVE = {
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+    }
+    ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
+        ZONE_REASONABLY_POSITIVE,
+        ZONE_REASONABLY_NEGATIVE,
+    )
+    ZONE_UNREASONABLY_BIG = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+
+    # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
+    #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
+    # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
+    # Confusing?  Because then epsilon is both reasonable and unreasonable?
+    # If not sufficiently confusing, we could also define
+    # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
+
+    ZONE_WHOLE_NO = {
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
+    }
+    ZONE_WHOLE_YES = {
+        Zone.ZERO,
+    }
+    ZONE_WHOLE_MAYBE = {
+        Zone.POSITIVE,
+        Zone.NEGATIVE,
+    }
+    ZONE_WHOLE_INDETERMINATE = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+
+    ZONE_MAYBE_PLATEAU = ZONE_REASONABLY_NONZERO
+
+    ZONE_NAN = {
+        Zone.NAN
+    }
+    _ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
+        ZONE_REASONABLE,
+        ZONE_UNREASONABLE,
+        ZONE_NAN,
+    )
+    _ZONE_ALL_BY_FINITENESS = union_of_distinct_sets(
+        ZONE_FINITE,
+        ZONE_NONFINITE,
+        ZONE_NAN,
+    )
+    _ZONE_ALL_BY_ZERONESS = union_of_distinct_sets(
+        ZONE_NONZERO,
+        ZONE_ZERO,
+        ZONE_NAN,
+    )
+    _ZONE_ALL_BY_BIGNESS = union_of_distinct_sets(
+        ZONE_ESSENTIALLY_ZERO,
+        ZONE_REASONABLY_NONZERO,
+        ZONE_UNREASONABLY_BIG,
+        ZONE_NAN,
+    )
+    _ZONE_ALL_BY_WHOLENESS = union_of_distinct_sets(
+        ZONE_WHOLE_NO,
+        ZONE_WHOLE_YES,
+        ZONE_WHOLE_MAYBE,
+        ZONE_WHOLE_INDETERMINATE,
+        ZONE_NAN,
+    )
+
+    name_of_zone = (lambda zone_class=Zone: {   # Translate zone code to zone name.
+        getattr(zone_class, attr): attr
+            for attr in dir(zone_class)
+            if not callable(attr) and not attr.startswith("__")
+    })()
+    # THANKS:  Iterate members of Number.Zone, http://stackoverflow.com/a/11637457/673991
+    # THANKS:  Comprehension on class member, http://stackoverflow.com/a/28130950/673991
+    assert name_of_zone[Zone.ZERO] == 'ZERO'
+
+    _sorted_zone_codes = sorted(name_of_zone.keys(), reverse=True)
+    ZONE_ALL = {zone for zone in _sorted_zone_codes}
+
+    # Constants
+    # ---------
+    NAN = None
+    ZERO = None
+    POSITIVE_INFINITY = None
+    POSITIVE_INFINITESIMAL = None
+    NEGATIVE_INFINITESIMAL = None
+    NEGATIVE_INFINITY = None
 
     @classmethod
     def internal_setup(cls):
-        """Initialize some Number class properties after the class is defined."""
-
-        cls.name_of_zone = {   # Translate zone code to zone name.
-            getattr(cls.Zone, attr):attr for attr in dir(cls.Zone)
-                               if not callable(attr) and not attr.startswith("__")
-        }
-        assert cls.name_of_zone[cls.Zone.ZERO] == 'ZERO'
-
-        cls._sorted_zone_codes = sorted(cls.name_of_zone.keys(), reverse=True)
-        # Zone codes, in descending order, the same as defined order.
-
-        # Constants
-        # ---------
+        """Initialize Number constants after the class is defined."""
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
         cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)        # Aleph-naught
         cls.POSITIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL)   # Epsilon
         cls.NEGATIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL_NEG)
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
-
-        # Sets of Zones   TODO:  Draw a Venn Diagram or table or something.
-        # -------------   TODO:  Automatically spawn is_xxx() routines named the same as all these zone sets??
-        cls.ZONE_REASONABLE = {
-            cls.Zone.POSITIVE,
-            cls.Zone.FRACTIONAL,
-            cls.Zone.ZERO,
-            cls.Zone.FRACTIONAL_NEG,
-            cls.Zone.NEGATIVE,
-        }
-        cls.ZONE_LUDICROUS = {
-            cls.Zone.LUDICROUS_LARGE,
-            cls.Zone.LUDICROUS_SMALL,
-            cls.Zone.LUDICROUS_SMALL_NEG,
-            cls.Zone.LUDICROUS_LARGE_NEG,
-        }
-        cls.ZONE_NONFINITE = {
-            cls.Zone.TRANSFINITE,
-            cls.Zone.INFINITESIMAL,
-            cls.Zone.INFINITESIMAL_NEG,
-            cls.Zone.TRANSFINITE_NEG,
-        }
-        cls.ZONE_FINITE = union_of_distinct_sets(
-            cls.ZONE_LUDICROUS,
-            cls.ZONE_REASONABLE,
-        )
-        cls.ZONE_UNREASONABLE = union_of_distinct_sets(
-            cls.ZONE_LUDICROUS,
-            cls.ZONE_NONFINITE,
-        )
-
-        cls.ZONE_POSITIVE = {
-            cls.Zone.TRANSFINITE,
-            cls.Zone.LUDICROUS_LARGE,
-            cls.Zone.POSITIVE,
-            cls.Zone.FRACTIONAL,
-            cls.Zone.LUDICROUS_SMALL,
-            cls.Zone.INFINITESIMAL,
-        }
-        cls.ZONE_NEGATIVE = {
-            cls.Zone.INFINITESIMAL_NEG,
-            cls.Zone.LUDICROUS_SMALL_NEG,
-            cls.Zone.FRACTIONAL_NEG,
-            cls.Zone.NEGATIVE,
-            cls.Zone.LUDICROUS_LARGE_NEG,
-            cls.Zone.TRANSFINITE_NEG,
-        }
-        cls.ZONE_NONZERO = union_of_distinct_sets(
-            cls.ZONE_POSITIVE,
-            cls.ZONE_NEGATIVE,
-        )
-        cls.ZONE_ZERO = {
-            cls.Zone.ZERO
-        }
-
-        cls.ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-            cls.Zone.LUDICROUS_SMALL,
-            cls.Zone.INFINITESIMAL,
-        }
-        cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
-            cls.Zone.INFINITESIMAL_NEG,
-            cls.Zone.LUDICROUS_SMALL_NEG,
-        }
-        cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
-            cls.ZONE_ESSENTIALLY_POSITIVE_ZERO,
-            cls.ZONE_ZERO,
-        )
-        cls.ZONE_ESSENTIALLY_ZERO = union_of_distinct_sets(
-            cls.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
-            cls.ZONE_ESSENTIALLY_NEGATIVE_ZERO,
-        )
-        cls.ZONE_REASONABLY_POSITIVE = {
-            cls.Zone.POSITIVE,
-            cls.Zone.FRACTIONAL,
-        }
-        cls.ZONE_REASONABLY_NEGATIVE = {
-            cls.Zone.FRACTIONAL_NEG,
-            cls.Zone.NEGATIVE,
-        }
-        cls.ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
-            cls.ZONE_REASONABLY_POSITIVE,
-            cls.ZONE_REASONABLY_NEGATIVE,
-        )
-        cls.ZONE_UNREASONABLY_BIG = {
-            cls.Zone.TRANSFINITE,
-            cls.Zone.LUDICROUS_LARGE,
-            cls.Zone.LUDICROUS_LARGE_NEG,
-            cls.Zone.TRANSFINITE_NEG,
-        }
-
-        # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
-        #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
-        # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
-        # Confusing?  Because then epsilon is both reasonable and unreasonable?
-        # If not (sufficiently, haha) confusing, we could also define
-        # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
-
-        cls.ZONE_WHOLE_NO = {
-            cls.Zone.FRACTIONAL,
-            cls.Zone.LUDICROUS_SMALL,
-            cls.Zone.INFINITESIMAL,
-            cls.Zone.INFINITESIMAL_NEG,
-            cls.Zone.LUDICROUS_SMALL_NEG,
-            cls.Zone.FRACTIONAL_NEG,
-        }
-        cls.ZONE_WHOLE_YES = {
-            cls.Zone.ZERO,
-        }
-        cls.ZONE_WHOLE_MAYBE = {
-            cls.Zone.POSITIVE,
-            cls.Zone.NEGATIVE,
-        }
-        cls.ZONE_WHOLE_INDETERMINATE = {
-            cls.Zone.TRANSFINITE,
-            cls.Zone.LUDICROUS_LARGE,
-            cls.Zone.LUDICROUS_LARGE_NEG,
-            cls.Zone.TRANSFINITE_NEG,
-        }
-
-        cls.ZONE_MAYBE_PLATEAU = cls.ZONE_REASONABLY_NONZERO
-
-        cls.ZONE_NAN = {
-            cls.Zone.NAN
-        }
-        cls._ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
-            cls.ZONE_REASONABLE,
-            cls.ZONE_UNREASONABLE,
-            cls.ZONE_NAN,
-        )
-        cls._ZONE_ALL_BY_FINITENESS = union_of_distinct_sets(
-            cls.ZONE_FINITE,
-            cls.ZONE_NONFINITE,
-            cls.ZONE_NAN,
-        )
-        cls._ZONE_ALL_BY_ZERONESS = union_of_distinct_sets(
-            cls.ZONE_NONZERO,
-            cls.ZONE_ZERO,
-            cls.ZONE_NAN,
-        )
-        cls._ZONE_ALL_BY_BIGNESS = union_of_distinct_sets(
-            cls.ZONE_ESSENTIALLY_ZERO,
-            cls.ZONE_REASONABLY_NONZERO,
-            cls.ZONE_UNREASONABLY_BIG,
-            cls.ZONE_NAN,
-        )
-        cls._ZONE_ALL_BY_WHOLENESS = union_of_distinct_sets(
-            cls.ZONE_WHOLE_NO,
-            cls.ZONE_WHOLE_YES,
-            cls.ZONE_WHOLE_MAYBE,
-            cls.ZONE_WHOLE_INDETERMINATE,
-            cls.ZONE_NAN,
-        )
-
-        cls.ZONE_ALL = {zone for zone in cls._sorted_zone_codes}
-
-
-# Sets
-# ----
-def sets_exclusive(*sets):
-    for i in range(len(sets)):
-        for j in range(i):
-            if set(sets[i]).intersection(sets[j]):
-                return False
-    return True
-assert True == sets_exclusive({1,2,3}, {4,5,6})
-assert False == sets_exclusive({1,2,3}, {3,4,5})
-
-
-def union_of_distinct_sets(*sets):
-    assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
-    return_value = set()
-    for each_set in sets:
-        return_value |= each_set
-    return return_value
-assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 
 
 # Hex
