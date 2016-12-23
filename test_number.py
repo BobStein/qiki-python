@@ -83,10 +83,17 @@ class NumberBasicTests(NumberTests):
     def test_unsupported_type(self):
         class SomeType(object):
             pass
+        some_type = SomeType()
+
         with self.assertRaises(TypeError):
-            Number(SomeType)
+            Number(some_type)
         with self.assertRaises(Number.ConstructorTypeError):
-            Number(SomeType)
+            Number(some_type)
+        try:
+            Number(some_type)
+        except Number.ConstructorTypeError as e:
+            self.assertIn('SomeType', str(e))
+
 
     def test_hex(self):
         n = Number('0q82')
@@ -1401,9 +1408,11 @@ class NumberBasicTests(NumberTests):
         # NOTE:  Significand is 1 1-bit, 51 0-bits, 1 1-bit.
         if not LUDICROUS_NUMBER_SUPPORT:
             self.assertEqual('0q8183_01', Number(gentlest_ludicrous).qstring())
+            # TODO:
             # with self.assertRaises(NotImplementedError):
             #     Number(gentlest_ludicrous)
             self.assertEqual('0q8180_04', Number(sys.float_info.min).qstring())   # boldest ludicrously small float
+            # TODO:
             # with self.assertRaises(NotImplementedError):
             #     Number(sys.float_info.min)
 
@@ -1935,6 +1944,21 @@ class NumberIsTests(NumberTests):
         with self.assertRaises(Number.WholeIndeterminate):
             Number(float('+inf')).is_whole()
 
+    def test_is_integer(self):
+        """
+        Number.is_integer() alias for Number.is_whole()
+
+        NOTE:  Python builtin is_integer() does not check type, it checks value.
+        """
+        self.assertFalse(Number(-2.5).is_integer())
+        self.assertTrue (Number(-1  ).is_integer())
+        self.assertTrue (Number( 0  ).is_integer())
+        self.assertFalse(Number( 0.5).is_integer())
+        self.assertTrue (Number('0q8A_0100000000000000010000').is_integer())
+        self.assertFalse(Number('0q8A_0100000000000000010001').is_integer())
+
+        self.assertTrue(4321.0.is_integer())
+
     def test_is_nan(self):
         self.assertFalse(Number(0).is_nan())
         self.assertFalse(Number(1).is_nan())
@@ -2015,7 +2039,7 @@ class NumberMathTests(NumberTests):
         """
         Test case for a binary operator.
 
-        Make sure the operation works, as well as it's 'r' (right) alternate.
+        Make sure the operation works, as well as its 'r' (right) alternate.
         Equality is tested primarily in the native type of the output
         so as not to rely so much on Number.__eq__().
         For a similar reason, if output is a Number, qstrings are compared.
@@ -2690,18 +2714,18 @@ class NumberSuffixTests(NumberTests):
         with self.assertRaises(Number.SuffixValueError):
             Number('0q00').parse_suffixes()   # Where's the length byte?
         with self.assertRaises(Number.SuffixValueError):
-            Number('0q0000').parse_suffixes()   # Can't suffix Number.NAN
+            Number('0q__0000').parse_suffixes()   # Can't suffix Number.NAN
         with self.assertRaises(Number.SuffixValueError):
-            Number('0q220100').parse_suffixes()   # Can't suffix Number.NAN
+            Number('0q__220100').parse_suffixes()   # Can't suffix Number.NAN
         with self.assertRaises(Number.SuffixValueError):
-            Number('0q334455_220400').parse_suffixes()   # Can't suffix Number.NAN
+            Number('0q__334455220400').parse_suffixes()   # Can't suffix Number.NAN
         with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__9900').parse_suffixes()
         with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__000400').parse_suffixes()
         with self.assertRaises(Number.SuffixValueError):
             Number('0q82_01__000300').parse_suffixes()   # Looks like suffixed Number.NAN.
-        Number('0q82_01__000200').parse_suffixes()   # Yucky, but indistinguishable from valid
+        Number('0q82_01__000200').parse_suffixes()   # Yuck!  Really 0q82__01000200
         Number('0q82_01__000100').parse_suffixes()
         Number('0q82_01__0000').parse_suffixes()
 
@@ -3092,6 +3116,35 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual('NAN', Number.name_of_zone[Number().zone])
         self.assertEqual('ZERO', Number.name_of_zone[Number.Zone.ZERO])
         self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
+
+    def test_02_type_name(self):
+        self.assertEqual(     'int',             type_name(3))
+        self.assertEqual(py23('unicode', 'str'), type_name(u'string'))
+        self.assertEqual(     'complex',         type_name(3+33j))
+
+        # noinspection PyClassHasNoInit
+        class OldStyleClass:
+            pass
+        class NewStyleClass(object):
+            pass
+        old_style_instance = OldStyleClass()
+        new_style_instance = NewStyleClass()
+        self.assertEqual('OldStyleClass', type_name(old_style_instance))
+        self.assertEqual('NewStyleClass', type_name(new_style_instance))
+        self.assertEqual(py23('classobj', 'type'), type_name(OldStyleClass))
+        self.assertEqual('type', type_name(NewStyleClass))
+
+        # noinspection PyClassHasNoInit,PyPep8Naming
+        class instance:
+            pass
+        instance_instance = instance()
+        self.assertEqual('instance', type_name(instance_instance))
+
+        # noinspection PyPep8Naming
+        class instance(object):
+            pass
+        instance_instance = instance()
+        self.assertEqual('instance', type_name(instance_instance))
 
 
 class PythonTests(NumberTests):

@@ -1,7 +1,7 @@
 """
 Qiki Numbers
 
-Both integers and floating point are seamlessly represented, plus much more.
+Integers, floating point, complex, and more, are seamlessly represented.
 Features:
  - arbitrary precision
  - arbitrary range
@@ -21,10 +21,6 @@ import struct
 import six
 
 
-
-
-# Sets
-# ----
 def sets_exclusive(*sets):
     for i in range(len(sets)):
         for j in range(i):
@@ -41,6 +37,9 @@ def union_of_distinct_sets(*sets):
         return_value |= each_set
     return return_value
 assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
+
+
+# TODO:  Docstring every class
 
 
 # noinspection PyUnresolvedReferences
@@ -66,12 +65,9 @@ class Number(numbers.Complex):
         elif content is None:
             self.raw = self.RAW_NAN
         else:
-            typename = type(content).__name__
-            if typename == 'instance':
-                typename = content.__class__.__name__
             raise self.ConstructorTypeError("{outer}({inner}) is not supported".format(
-                outer=type(self).__name__,
-                inner=typename,
+                outer=type_name(self),
+                inner=type_name(content),
             ))
 
         assert(isinstance(self.__raw, six.binary_type))
@@ -79,10 +75,10 @@ class Number(numbers.Complex):
             self._normalize_all()
 
     class ConstructorTypeError(TypeError):
-        pass
+        """e.g. Number(object) or Number([])"""
 
     class ConstructorValueError(ValueError):
-        pass
+        """e.g. Number('alpha string') or Number.from_raw(0) or Number.from_qstring('0x80')"""
 
     # Raw internal format
     # -------------------
@@ -91,7 +87,7 @@ class Number(numbers.Complex):
     # E.g. b"\x82\x01" in Python version 2 or 3.
     # Any storage mechanism for the raw format (such as a database)
     # should expect any of the 256 values for any of the bytes.
-    # So for example they couldn't be stored in a C-language string with NUL terminators.
+    # So for example they could not be stored in a C-language string with NUL terminators.
     # The length must be stored extrinsic to the raw string
     # though it can be limited, such as to 255 bytes max.
     # It is represented textually by a "qstring" which is hexadecimal digits,
@@ -182,7 +178,7 @@ class Number(numbers.Complex):
     # A minor, hair-splitting point.
     # Most values of Zone are the minimum of their zone.
     # Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
-    # That's never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
+    # That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
     # The valid minimum value for this zone cannot be represented in finite storage,
     # because the real minimum of that zone would be an impossible hypothetical
     # b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
@@ -191,9 +187,11 @@ class Number(numbers.Complex):
     # And all legal raw values in Zone FRACTIONAL_NEG are above it.
     # And all legal raw values in Zone NEGATIVE are below it.
 
-    # So are there or aren't there inter-zone Numbers?
+    # So are there or are not there inter-zone Numbers?
     # In other words, are the zones comprehensive?
     # Even illegal and invalid values should normalize to valid values.
+    # TODO:  Test that invalid and illegal values normalize to valid values.
+    # TODO:  Formally define all invalid and illegal raw-strings.
 
 
     # Comparison
@@ -222,11 +220,10 @@ class Number(numbers.Complex):
         try:
             normalized_number = cls(x, normalize=True)
         except cls.ConstructorTypeError:
-
-            # DEBATE:  Not pythonic to raise an exception here.
+            # DEBATE:  Not pythonic to raise an exception here (or in _both_real())
             # 0 < object should always be True, 0 > object always False.
-            # With this exception we can't sort a list of Numbers and other objects
-            # (Order would be arbitrary, but it shouldn't raise an exception.)
+            # With this exception we cannot sort a list of Numbers and other objects
+            # (Order would be arbitrary, but it shouldn not raise an exception.)
             # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
             # SEE:  about arbitrary ordering, http://docs.python.org/reference/expressions.html#not-in
             # "...objects of different types ... are ordered consistently but arbitrarily."
@@ -239,6 +236,8 @@ class Number(numbers.Complex):
             # SEE:  http://stackoverflow.com/a/879005/673991
 
             raise cls.Incomparable("A Number cannot be compared with a " + type(x).__name__)
+            # NOTE:  This exception message never makes it out of code in this source file.
+            # The only time it is raised, it is also caught, e.g. Number(0) == object
         else:
             return normalized_number.raw
 
@@ -272,20 +271,20 @@ class Number(numbers.Complex):
     #                                          e.g.  0q82_00anything --> 0q82_01
     #     Oh wow, a regular expression might be devised to take care of normalization.
     #     A very binary-intensive and bytearray-using regular expression.
-    #     Let's call these "raw plateaus".
+    #     Let us call these "raw plateaus".
     #     Each raw plateau has a canonical raw value, and a multitude of illegal raw values.
     #     All values at a raw plateau should be "equal".
     #     This approach would vindicate making raw a @property
     # Option three:  give up on Number('0q82') == Number('0q82_01')
     # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
-    # By the way, zero has no plateau, only 0q80 with no suffix is zero.
-    # TODO:  What about numbers embedded in suffixes, should 0q80__82_7F0200 == 0q80__8201_7F0200 ?
+    # By the way, zero has no plateau, only 0q80 with no suffix is zero.  (except empty suffix?)
+    # TODO:  What about numbers embedded in suffixes, should 0q80__82_7F0200 == 0q80__8201_7F0300 ?
     # TODO:  Number.compacted() that fights against normalize
     # Compacted forms are desirable in suffix numbers
     # TODO:  Should normalization strip empty suffixes?  (__0000)
 
     class Incomparable(TypeError):
-        pass
+        """e.g. Number(1+2j) < Number(1+3j)"""
 
     def _both_real(self, other):
         """Make sure both operands are real (not complex) before comparison."""
@@ -355,17 +354,17 @@ class Number(numbers.Complex):
 
     def _normalize_imaginary(self):
         """
-        Eliminate imaginary suffix if it's zero.
+        Eliminate imaginary suffix if it is zero.
 
         So e.g. 1+0j == 1
 
-        We don't check self.imag == self.ZERO because that may try to subtract a missing suffix.
+        We do not check self.imag == self.ZERO because that may try to subtract a missing suffix.
         """
         # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
         try:
             imaginary_part = self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
         except self.Suffix.NoSuchType:
-            pass
+            """No imaginary suffix already; nothing to normalize away."""
         else:
             if imaginary_part == self.ZERO:
                 self.raw = self.minus_suffix(self.Suffix.TYPE_IMAGINARY).raw
@@ -442,8 +441,10 @@ class Number(numbers.Complex):
         else:   #              ZONE_WHOLE_INDETERMINATE
             raise self.WholeIndeterminate("Cannot process " + repr(self))   # e.g. ludicrously large numbers
 
+    is_integer = is_whole
+
     class WholeIndeterminate(OverflowError):
-        pass
+        """When the whole part of a number does not make sense, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
         return self.raw == self.RAW_NAN
@@ -553,7 +554,7 @@ class Number(numbers.Complex):
             return return_value
         else:
             raise cls.ConstructorValueError(
-                "A q-string must begin with '0q'.  This doesn't: " + repr(s)
+                "A q-string must begin with '0q'.  This does not: " + repr(s)
             )
 
     def _from_qstring(self, s):
@@ -607,7 +608,7 @@ class Number(numbers.Complex):
     # IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
     # SEE:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
     # Why are 8 qigits needed to store 53 bits, not 7?
-    # That's because the most significant qigit may not store a full 8 bits, it may store as few as 1.
+    # That is because the most significant qigit may not store a full 8 bits, it may store as few as 1.
     # So 8 qigits can store 57-64 bits, the minimum needed to store 53.
     # Example, 1.2 == 0q82_0133333333333330 stores 1+8+8+8+8+8+8+4 = 53 bits in 8 qigits.
     QIGITS_PRECISION_DEFAULT = 8
@@ -621,9 +622,8 @@ class Number(numbers.Complex):
             qex <-- base 256 exponent
 
         Contrast __qexponent_encode_dict().
-        Example:  assert Number(1) == Number(1.0)
         Example:  assert '0q82_01' == Number(1.0).qstring()
-        Example:  assert '0q82_03243F6A8885A3' = Number(math.pi).qstring()
+        Example:  assert '0q82_03243F6A8885A3' == Number(math.pi).qstring()
         """
         if qigits is None or qigits <= 0:
             qigits = self.QIGITS_PRECISION_DEFAULT
@@ -680,12 +680,17 @@ class Number(numbers.Complex):
         return qex + qan
 
     class LudicrousNotImplemented(NotImplementedError):
-        pass
+        """
+        Until Ludicrous Numbers are implemented, they should raise this.
+
+        e.g. Number(2**1000)
+        e.g. Number(-2.0 ** -1000.0)
+        """
 
     def _from_complex(self, c):
         self._from_float(c.real)
         self.raw = self.plus_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
-        # THANKS:  http://stackoverflow.com/a/14209708/673991 (how to call the constructor of whatever class we're in)
+        # THANKS:  Call constructor if subclassed, http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
     # ----------------------------------------
@@ -712,7 +717,7 @@ class Number(numbers.Complex):
             elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
-                offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it's 64)
+                offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it is 64)
             h = hex_from_string(root_raw)
             if length <= offset:
                 return_value = '0q' + h
@@ -889,7 +894,7 @@ class Number(numbers.Complex):
         return qan_offset
 
     class QanValueError(ValueError):
-        pass
+        """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qantissa()"""
 
     __qan_offset_dict ={
         Zone.POSITIVE:       1,
@@ -911,7 +916,7 @@ class Number(numbers.Complex):
         return qex
 
     class QexValueError(ValueError):
-        pass
+        """There is no qex for some zones, e.g. Number.ZERO.qexponent()"""
 
     # The following dictionary reveals this conversion in its lambdas:
     #     base 256 exponent <-- qex
@@ -957,8 +962,8 @@ class Number(numbers.Complex):
     def _zone_refresh(self):
         try:
             self._zone = self._zone_from_scratch()
-        except AttributeError:   # (benign, this happens if _zone is missing from __slots__)
-            pass
+        except AttributeError:
+            """Benign, this happens if _zone is missing from __slots__"""
 
     def _zone_from_scratch(self):
         zone_by_tree = self._find_zone_by_if_else_tree()
@@ -1027,12 +1032,13 @@ class Number(numbers.Complex):
              _ - underscore is a conventional qstring delimiter between payload and type-length-NUL
             TT - type code of the suffix, 0x00 to 0xFF or absent
             LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
+                 but not including the length itself nor the NUL (see empty suffix)
             00 - NUL byte
 
         The "empty suffix" is two NUL bytes:
             0000
 
-            That's like saying LL is 00 and there are no type or payload parts.
+            That ia like saying LL is 00 means there are no type or payload parts.
             (It is not the same as type 00, which is otherwise available.)
 
         The NUL byte is what indicates there is a suffix.
@@ -1055,9 +1061,12 @@ class Number(numbers.Complex):
 
         MAX_PAYLOAD_LENGTH = 250
 
+        # TODO:  Formally define valid payload contents for each type
+        # TODO:  Number.Suffix.Type class?
         TYPE_LISTING   = 0x1D   # 'ID' in 1337
         TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
         TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
+        # TODO:  stack-exchange question:  are quaternions a superset of complex numbers?  Does i===i?
 
         def __init__(self, type_=None, payload=None):
             assert isinstance(type_, (int, type(None)))
@@ -1122,10 +1131,10 @@ class Number(numbers.Complex):
             # So Suffix can refer to Number:  qiki.Number.Suffix.Number === qiki.Number
 
         class NoSuchType(Exception):
-            pass
+            """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).get_suffix(0x33)"""
 
     class SuffixValueError(ValueError):
-        pass
+        """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
@@ -1414,6 +1423,10 @@ class Number(numbers.Complex):
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
 
+Number.internal_setup()
+Number.Suffix.internal_setup(Number)
+
+
 # Hex
 # ---
 def hex_from_integer(the_integer):
@@ -1437,7 +1450,7 @@ def string_from_hex(s):
     assert(isinstance(s, six.string_types))
     try:
         return binascii.unhexlify(s)
-    except binascii.Error as e:   # This happens on '8X' in Python 3.  It's already a TypeError in Python 2.
+    except binascii.Error as e:   # This happens on '8X' in Python 3.  It is already a TypeError in Python 2.
         raise TypeError("aka binascii.Error: " + str(e))
 
 assert b'\xBE\xEF' == string_from_hex('BEEF')
@@ -1604,8 +1617,22 @@ def unpack_big_integer(binary_string):
 assert 170 == unpack_big_integer(b'\x00\xAA')
 
 
-Number.internal_setup()
-Number.Suffix.internal_setup(Number)
+# Inspection
+# ----------
+def type_name(x):
+    """
+    Describe (very briefly) what type of object this is.
+
+    THANKS:  http://stackoverflow.com/a/5008854/673991
+    """
+    the_type_name = type(x).__name__
+    if the_type_name == 'instance':
+        return x.__class__.__name__
+    return the_type_name
+assert 'int' == type_name(3)
+assert 'list' == type_name([])
+assert 'Number' == type_name(Number.ZERO)
+assert 'function' == type_name(type_name)
 
 
 # TODO:  Ludicrous Numbers
@@ -1654,12 +1681,12 @@ Number.Suffix.internal_setup(Number)
 # DONE:  (littlest deal) subclass numbers.Number.
 # DONE:  (little deal) subclass numbers.Complex.
 # First made unit tests for each of the operations named in the following TypeError:
-#     "Can't instantiate abstract class Number with abstract methods ..."
+#     "Cannot instantiate abstract class Number with abstract methods ..."
 # DONE:  __abs__, __complex__, conjugate, __div__, imag,  __mul__, __pos__, __pow____, __rdiv__, real,
 # __rmul__, __rpow, __rtruediv__, __truediv__
 
 # TODO:  (big deal) subclass numbers.Integral.  (Includes numbers.Rational and numbers.Real.)
-# TypeError: Can't instantiate abstract class Number with abstract methods __and__, __floordiv__,
+# TypeError: Cannot instantiate abstract class Number with abstract methods __and__, __floordiv__,
 # __invert__, __lshift__, __mod__, __or__, __rand__, __rfloordiv__, __rlshift__, __rmod__, __ror__,
 # __rrshift__, __rshift__, __rxor__, __trunc__, __xor__
 
@@ -1678,7 +1705,7 @@ Number.Suffix.internal_setup(Number)
 # 0q82 as - compact but nonstandard
 # 0q8183_01 - sensible as 2**-1000 but really should be ludicrous small encoding (longer qex)
 # 0q__7E0100 - suffixed NAN
-# 0q80__00 - 00-terminated means it should be suffixed but clearly it isn't
+# 0q80__00 - 00-terminated means it should be suffixed but clearly it is not
 
 # TODO:  Lengthed-export.
 # The raw attribute is an unlengthed representation of the number.
@@ -1730,7 +1757,7 @@ Number.Suffix.internal_setup(Number)
 # theoretically as 7E7E00028202 to 7E7E007DFD...(124 FFs), etc.
 
 # This here indented part is bogus, I think, leaving it around until sure:
-#     Notice there's no shorthand for the sliver of integers at the top of the reasonable numbers:
+#     Notice there is no shorthand for the sliver of integers at the top of the reasonable numbers:
 #     0qFE_01 == 2**992 to 0qFE_FF...(124 more FFs) == 2**1000-1
 #     The lengthed exports of those would be:
 #     7E02FE01 to 7E7E007EFEFF...(124 more FFs)
@@ -1747,9 +1774,9 @@ Number.Suffix.internal_setup(Number)
 #     p-string
 #         "packed"
 #         "packet"
-#         but it's not a string
+#         but it is not a string
 #         but p has some symmetry with q
-#         but it shouldn't)
+#         but it should not)
 #     b or d string would also be symmetrical with q, but it should rather be symmetrical with raw
 #     ink
 #     What real-world analogy for packaging a word for transport down a stream?
@@ -1757,5 +1784,5 @@ Number.Suffix.internal_setup(Number)
 #     morse code
 #     packet
 #     Think of a tardigrade, dessicated.  And reconstituted back to life.
-#         but this is not condensing, in fact it's expanding.
+#         but this is not condensing, in fact it is expanding.
 #         really is more like a packetized number
