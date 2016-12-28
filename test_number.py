@@ -837,24 +837,24 @@ class NumberBasicTests(NumberTests):
 
     def test_zone(self):
         """Test an example number in each zone."""
-        self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_2A').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_01').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82').zone)
-        self.assertEqual(Number.Zone.FRACTIONAL,          Number('0q81FF_80').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_SMALL,     Number('0q80FF0000_FA0A1F01').zone)
-        self.assertEqual(Number.Zone.INFINITESIMAL,       Number('0q807F').zone)
-        self.assertEqual(Number.Zone.ZERO,                Number('0q80').zone)
-        self.assertEqual(Number.Zone.INFINITESIMAL_NEG,   Number('0q7F81').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_SMALL_NEG, Number('0q7F00FFFF_5F5E00FF').zone)
-        self.assertEqual(Number.Zone.FRACTIONAL_NEG,      Number('0q7E00_80').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7E').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_FF').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_D6').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
-        self.assertEqual(Number.Zone.TRANSFINITE_NEG,     Number('0q007F').zone)
-        self.assertEqual(Number.Zone.NAN,                 Number('0q').zone)
+        self.assertEqual(Number.ZONE.TRANSFINITE,         Number('0qFF81').zone)
+        self.assertEqual(Number.ZONE.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
+        self.assertEqual(Number.ZONE.POSITIVE,            Number('0q82_2A').zone)
+        self.assertEqual(Number.ZONE.POSITIVE,            Number('0q82_01').zone)
+        self.assertEqual(Number.ZONE.POSITIVE,            Number('0q82').zone)
+        self.assertEqual(Number.ZONE.FRACTIONAL,          Number('0q81FF_80').zone)
+        self.assertEqual(Number.ZONE.LUDICROUS_SMALL,     Number('0q80FF0000_FA0A1F01').zone)
+        self.assertEqual(Number.ZONE.INFINITESIMAL,       Number('0q807F').zone)
+        self.assertEqual(Number.ZONE.ZERO,                Number('0q80').zone)
+        self.assertEqual(Number.ZONE.INFINITESIMAL_NEG,   Number('0q7F81').zone)
+        self.assertEqual(Number.ZONE.LUDICROUS_SMALL_NEG, Number('0q7F00FFFF_5F5E00FF').zone)
+        self.assertEqual(Number.ZONE.FRACTIONAL_NEG,      Number('0q7E00_80').zone)
+        self.assertEqual(Number.ZONE.NEGATIVE,            Number('0q7E').zone)
+        self.assertEqual(Number.ZONE.NEGATIVE,            Number('0q7D_FF').zone)
+        self.assertEqual(Number.ZONE.NEGATIVE,            Number('0q7D_D6').zone)
+        self.assertEqual(Number.ZONE.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
+        self.assertEqual(Number.ZONE.TRANSFINITE_NEG,     Number('0q007F').zone)
+        self.assertEqual(Number.ZONE.NAN,                 Number('0q').zone)
 
     def test_float_qigits(self):
         self.assertEqual('0q82_01', Number(1.1, qigits=1).qstring())
@@ -1025,7 +1025,7 @@ class NumberBasicTests(NumberTests):
         if LUDICROUS_NUMBER_SUPPORT:
             # noinspection PyUnresolvedReferences
             m__s(mpmath.power(2,1024),    '0qFF000080_01')   # A smidgen too big for floating point
-            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
+            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.ZONE.LUDICROUS_LARGE
             f__s(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
         else:
             f__s(float('+inf'),           '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
@@ -1501,7 +1501,7 @@ class NumberBasicTests(NumberTests):
             28,   # Windows 7, 64-bit desktop, Python 2.7.9-12
             32,   # Windows 7, 64-bit desktop, Python 3.5.1-2
             56,   # Windows 7, 64-bit laptop, Python 2.7.12, 3.5.2
-        ))  # depends on Zone.__slots__ containing _zone or not
+        ))  # depends on Number.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q80')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32, 56))
         self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
@@ -3109,12 +3109,12 @@ class NumberUtilitiesTests(NumberTests):
 
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
-        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.ZONE.TRANSFINITE])
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
-        self.assertEqual('NAN', Number.name_of_zone[Number.Zone.NAN])
+        self.assertEqual('NAN', Number.name_of_zone[Number.ZONE.NAN])
         self.assertEqual('NAN', Number.name_of_zone[Number.NAN.zone])
         self.assertEqual('NAN', Number.name_of_zone[Number().zone])
-        self.assertEqual('ZERO', Number.name_of_zone[Number.Zone.ZERO])
+        self.assertEqual('ZERO', Number.name_of_zone[Number.ZONE.ZERO])
         self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
 
     def test_02_type_name(self):

@@ -40,6 +40,7 @@ assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 
 
 # TODO:  Docstring every class
+# TODO:  Docstring every function
 
 
 # noinspection PyUnresolvedReferences
@@ -50,7 +51,11 @@ class Number(numbers.Complex):
 
     def __init__(self, content=None, qigits=None, normalize=False):
         """
-        :type ZERO: Number
+        Number constructor.
+
+        content - int, float, '0q'-string, 'numeric'-string, complex, another Number, or None
+        qigits - number of bytes for the qantissa, see _raw_from_float()
+        normalize=True - collapse equal values e.g. 0q82 to 0q82_01, see _normalize_all()
         """
         if isinstance(content, six.integer_types):
             self._from_int(content)
@@ -110,6 +115,7 @@ class Number(numbers.Complex):
     # Two underscores conventionally precede each suffix.
     # See the Number.Suffix class for underscore conventions within a suffix.
 
+    # TODO:  Make class Raw?
     RAW_INFINITY          = b'\xFF\x81'
     RAW_INFINITESIMAL     = b'\x80\x7F'
     RAW_ZERO              = b'\x80'
@@ -119,16 +125,24 @@ class Number(numbers.Complex):
 
     @property
     def raw(self):
+        """
+        Internal byte-string representation of the Number.
+
+        assert '\x82\x01' == Number(1).raw
+        """
         return self.__raw
 
     @raw.setter
     def raw(self, value):
+        """Set the raw byte-string.  Rare."""
+        #TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
         assert(isinstance(value, six.binary_type))
         # noinspection PyAttributeOutsideInit
         self.__raw = value
         self._zone_refresh()
 
     def __getstate__(self):
+        """For the 'pickle' package, object serialization."""
         return self.raw
 
     def __setstate__(self, d):
@@ -140,24 +154,47 @@ class Number(numbers.Complex):
     def __str__(self):
         return self.qstring()
 
-    # Zone
-    # ----
-    # Each qiki Number is in one of 14 distinct zones.
-    # This internal Number.Zone class serves as an enumeration of those zones.
-    # Raw, internal binary strings represent the value of each zone.
-    # The members of Number.Zone have values that are either:
-    #     minimum value for the zone
-    #     between the zone and the one below it
-    # Each value is less than or equal to all raw values of numbers in the zone it represents.
-    # and greater than all *valid* raw values in the numbers in the zones below.
-    # (So actually, some zone values are valid raw values for numbers in that zone,
-    # others are among the inter-zone values.  More on this below.)
-    # For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
-    # the positive zone.  But Number.Zone.POSITIVE is less than that, b'x82'.
-    # Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
-    # But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
+    class ZONE(object):
+        # TODO:  class ZONE?  For a buncha constants?
+        """
+        Each qiki Number is in one of 14 distinct zones.
 
-    class Zone(object):
+        This internal Number.Zone class serves as an enumeration of those zones.
+        Raw, internal binary strings represent the value of each zone.
+        The members of Number.Zone have values that are either:
+            minimum value for the zone
+            between the zone and the one below it
+        Each value is less than or equal to all raw values of numbers in the zone it represents.
+        and greater than all *valid* raw values in the numbers in the zones below.
+        (So actually, some zone values are valid raw values for numbers in that zone,
+        others are among the inter-zone values.  More on this below.)
+        For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
+        the positive zone.  But Number.ZONE.POSITIVE is less than that, b'x82'.
+        Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
+        But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
+
+
+        Between versus Minimum
+        ----------------------
+        A minor, hair-splitting point.
+        Most values of Zone are the minimum of their zone.
+        ZONE.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
+        That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
+        The valid minimum value for this zone cannot be represented in finite storage,
+        because the real minimum of that zone would be an impossible hypothetical
+        b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
+        Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
+        So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
+        And all legal raw values in Zone FRACTIONAL_NEG are above it.
+        And all legal raw values in Zone NEGATIVE are below it.
+
+        So are there or are not there inter-zone Numbers?
+        In other words, are the zones comprehensive?
+        Even illegal and invalid values should normalize to valid values.
+        """
+        # TODO:  Test that invalid and illegal values normalize to valid values.
+        # TODO:  Formally define all invalid and illegal raw-strings.
+
         TRANSFINITE         = b'\xFF\x80'
         LUDICROUS_LARGE     = b'\xFF'
         POSITIVE            = b'\x82'
@@ -171,27 +208,7 @@ class Number(numbers.Complex):
         NEGATIVE            = b'\x01'
         LUDICROUS_LARGE_NEG = b'\x00\x80'
         TRANSFINITE_NEG     = b'\x00'
-        NAN                 = b''   # NAN means Not-a-number, Ass-is-out-of-range, or Nullificationalized.
-
-    # Between versus Minimum
-    # ----------------------
-    # A minor, hair-splitting point.
-    # Most values of Zone are the minimum of their zone.
-    # Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
-    # That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
-    # The valid minimum value for this zone cannot be represented in finite storage,
-    # because the real minimum of that zone would be an impossible hypothetical
-    # b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
-    # Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
-    # So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
-    # And all legal raw values in Zone FRACTIONAL_NEG are above it.
-    # And all legal raw values in Zone NEGATIVE are below it.
-
-    # So are there or are not there inter-zone Numbers?
-    # In other words, are the zones comprehensive?
-    # Even illegal and invalid values should normalize to valid values.
-    # TODO:  Test that invalid and illegal values normalize to valid values.
-    # TODO:  Formally define all invalid and illegal raw-strings.
+        NAN                 = b''
 
 
     # Comparison
@@ -223,7 +240,7 @@ class Number(numbers.Complex):
             # DEBATE:  Not pythonic to raise an exception here (or in _both_real())
             # 0 < object should always be True, 0 > object always False.
             # With this exception we cannot sort a list of Numbers and other objects
-            # (Order would be arbitrary, but it shouldn not raise an exception.)
+            # (Order would be arbitrary, but it should not raise an exception.)
             # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
             # SEE:  about arbitrary ordering, http://docs.python.org/reference/expressions.html#not-in
             # "...objects of different types ... are ordered consistently but arbitrarily."
@@ -749,28 +766,28 @@ class Number(numbers.Complex):
         return self.__int__zone_dict[self.zone](self)
 
     __int__zone_dict =  {
-        Zone.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
-        Zone.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
-        Zone.POSITIVE:            lambda self: self._to_int_positive(),
-        Zone.FRACTIONAL:          lambda self: 0,
-        Zone.LUDICROUS_SMALL:     lambda self: 0,
-        Zone.INFINITESIMAL:       lambda self: 0,
-        Zone.ZERO:                lambda self: 0,
-        Zone.INFINITESIMAL_NEG:   lambda self: 0,
-        Zone.LUDICROUS_SMALL_NEG: lambda self: 0,
-        Zone.FRACTIONAL_NEG:      lambda self: 0,
-        Zone.NEGATIVE:            lambda self: self._to_int_negative(),
-        Zone.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
-        Zone.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
-        Zone.NAN:                 lambda self: self._int_cant_be_nan(),
+        ZONE.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
+        ZONE.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
+        ZONE.POSITIVE:            lambda self: self._to_int_positive(),
+        ZONE.FRACTIONAL:          lambda self: 0,
+        ZONE.LUDICROUS_SMALL:     lambda self: 0,
+        ZONE.INFINITESIMAL:       lambda self: 0,
+        ZONE.ZERO:                lambda self: 0,
+        ZONE.INFINITESIMAL_NEG:   lambda self: 0,
+        ZONE.LUDICROUS_SMALL_NEG: lambda self: 0,
+        ZONE.FRACTIONAL_NEG:      lambda self: 0,
+        ZONE.NEGATIVE:            lambda self: self._to_int_negative(),
+        ZONE.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
+        ZONE.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
+        ZONE.NAN:                 lambda self: self._int_cant_be_nan(),
     }
 
     def __int__by_zone_ifs(self):
-        if   self.Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
-        elif self.Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
-        elif self.Zone.FRACTIONAL_NEG       <= self.raw:  return 0
-        elif self.Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
-        elif self.Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
+        if   self.ZONE.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
+        elif self.ZONE.POSITIVE             <= self.raw:  return self._to_int_positive()
+        elif self.ZONE.FRACTIONAL_NEG       <= self.raw:  return 0
+        elif self.ZONE.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
+        elif self.ZONE.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
         else:                                             return self._int_cant_be_nan()
 
     @staticmethod
@@ -819,20 +836,20 @@ class Number(numbers.Complex):
         return self.__float__zone_dict[self.zone](self)
 
     __float__zone_dict =  {
-        Zone.TRANSFINITE:         lambda self: float('+inf'),
-        Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
-        Zone.POSITIVE:            lambda self: self._to_float(),
-        Zone.FRACTIONAL:          lambda self: self._to_float(),
-        Zone.LUDICROUS_SMALL:     lambda self: 0.0,
-        Zone.INFINITESIMAL:       lambda self: 0.0,
-        Zone.ZERO:                lambda self: 0.0,
-        Zone.INFINITESIMAL_NEG:   lambda self: -0.0,
-        Zone.LUDICROUS_SMALL_NEG: lambda self: -0.0,
-        Zone.FRACTIONAL_NEG:      lambda self: self._to_float(),
-        Zone.NEGATIVE:            lambda self: self._to_float(),
-        Zone.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
-        Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
-        Zone.NAN:                 lambda self: float('nan')
+        ZONE.TRANSFINITE:         lambda self: float('+inf'),
+        ZONE.LUDICROUS_LARGE:     lambda self: float('+inf'),
+        ZONE.POSITIVE:            lambda self: self._to_float(),
+        ZONE.FRACTIONAL:          lambda self: self._to_float(),
+        ZONE.LUDICROUS_SMALL:     lambda self: 0.0,
+        ZONE.INFINITESIMAL:       lambda self: 0.0,
+        ZONE.ZERO:                lambda self: 0.0,
+        ZONE.INFINITESIMAL_NEG:   lambda self: -0.0,
+        ZONE.LUDICROUS_SMALL_NEG: lambda self: -0.0,
+        ZONE.FRACTIONAL_NEG:      lambda self: self._to_float(),
+        ZONE.NEGATIVE:            lambda self: self._to_float(),
+        ZONE.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
+        ZONE.TRANSFINITE_NEG:     lambda self: float('-inf'),
+        ZONE.NAN:                 lambda self: float('nan')
     }
 
     def __float__by_zone_ifs(self):
@@ -843,9 +860,9 @@ class Number(numbers.Complex):
             return 0.0
         elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
-        elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
+        elif _zone in (self.ZONE.TRANSFINITE, self.ZONE.LUDICROUS_LARGE):
             return float('+inf')
-        elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
+        elif _zone in (self.ZONE.TRANSFINITE_NEG, self.ZONE.LUDICROUS_LARGE_NEG):
             return float('-inf')
         else:
             return float('nan')
@@ -897,10 +914,10 @@ class Number(numbers.Complex):
         """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qantissa()"""
 
     __qan_offset_dict ={
-        Zone.POSITIVE:       1,
-        Zone.FRACTIONAL:     2,
-        Zone.FRACTIONAL_NEG: 2,
-        Zone.NEGATIVE:       1,
+        ZONE.POSITIVE:       1,
+        ZONE.FRACTIONAL:     2,
+        ZONE.FRACTIONAL_NEG: 2,
+        ZONE.NEGATIVE:       1,
     }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
 
     def qexponent(self):
@@ -923,10 +940,10 @@ class Number(numbers.Complex):
     #
     # Contrast _from_float().
     __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
-        Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
-        Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
-        Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
+        ZONE.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
+        ZONE.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
+        ZONE.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
+        ZONE.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
     }   # TODO: ludicrous numbers
 
     def hex(self):
@@ -979,45 +996,45 @@ class Number(numbers.Complex):
         for z in self._sorted_zone_codes:
             if z <= self.raw:
                 return z
-        raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
+        raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < ZONE.NAN!" % repr(self))
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
         if self.raw > self.RAW_ZERO:
-            if self.raw >= self.Zone.POSITIVE:
-                if self.raw >= self.Zone.LUDICROUS_LARGE:
-                    if self.raw >= self.Zone.TRANSFINITE:
-                        return                  self.Zone.TRANSFINITE
+            if self.raw >= self.ZONE.POSITIVE:
+                if self.raw >= self.ZONE.LUDICROUS_LARGE:
+                    if self.raw >= self.ZONE.TRANSFINITE:
+                        return                  self.ZONE.TRANSFINITE
                     else:
-                        return                  self.Zone.LUDICROUS_LARGE
+                        return                  self.ZONE.LUDICROUS_LARGE
                 else:
-                    return                      self.Zone.POSITIVE
+                    return                      self.ZONE.POSITIVE
             else:
-                if self.raw >= self.Zone.FRACTIONAL:
-                    return                      self.Zone.FRACTIONAL
-                elif self.raw >= self.Zone.LUDICROUS_SMALL:
-                    return                      self.Zone.LUDICROUS_SMALL
+                if self.raw >= self.ZONE.FRACTIONAL:
+                    return                      self.ZONE.FRACTIONAL
+                elif self.raw >= self.ZONE.LUDICROUS_SMALL:
+                    return                      self.ZONE.LUDICROUS_SMALL
                 else:
-                    return                      self.Zone.INFINITESIMAL
+                    return                      self.ZONE.INFINITESIMAL
         elif self.raw == self.RAW_ZERO:
-            return                              self.Zone.ZERO
+            return                              self.ZONE.ZERO
         else:
-            if self.raw > self.Zone.FRACTIONAL_NEG:
-                if self.raw >= self.Zone.LUDICROUS_SMALL_NEG:
-                    if self.raw >= self.Zone.INFINITESIMAL_NEG:
-                        return                  self.Zone.INFINITESIMAL_NEG
+            if self.raw > self.ZONE.FRACTIONAL_NEG:
+                if self.raw >= self.ZONE.LUDICROUS_SMALL_NEG:
+                    if self.raw >= self.ZONE.INFINITESIMAL_NEG:
+                        return                  self.ZONE.INFINITESIMAL_NEG
                     else:
-                        return                  self.Zone.LUDICROUS_SMALL_NEG
+                        return                  self.ZONE.LUDICROUS_SMALL_NEG
                 else:
-                    return                      self.Zone.FRACTIONAL_NEG
+                    return                      self.ZONE.FRACTIONAL_NEG
             else:
-                if self.raw >= self.Zone.NEGATIVE:
-                    return                      self.Zone.NEGATIVE
-                elif self.raw >= self.Zone.LUDICROUS_LARGE_NEG:
-                    return                      self.Zone.LUDICROUS_LARGE_NEG
-                elif self.raw >= self.Zone.TRANSFINITE_NEG:
-                    return                      self.Zone.TRANSFINITE_NEG
+                if self.raw >= self.ZONE.NEGATIVE:
+                    return                      self.ZONE.NEGATIVE
+                elif self.raw >= self.ZONE.LUDICROUS_LARGE_NEG:
+                    return                      self.ZONE.LUDICROUS_LARGE_NEG
+                elif self.raw >= self.ZONE.TRANSFINITE_NEG:
+                    return                      self.ZONE.TRANSFINITE_NEG
                 else:
-                    return                      self.Zone.NAN
+                    return                      self.ZONE.NAN
 
     # Suffixes
     # --------
@@ -1241,24 +1258,25 @@ class Number(numbers.Complex):
 
     # Sets of Zones   TODO:  Venn Diagram or table or something.
     # -------------   TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
+    # TODO:  class ZONE_SET?  And put union_of_distinct_sets() in it too, instead of at the frikking top of this file.
     ZONE_REASONABLE = {
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
-        Zone.ZERO,
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
+        ZONE.POSITIVE,
+        ZONE.FRACTIONAL,
+        ZONE.ZERO,
+        ZONE.FRACTIONAL_NEG,
+        ZONE.NEGATIVE,
     }
     ZONE_LUDICROUS = {
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_SMALL,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.LUDICROUS_LARGE_NEG,
+        ZONE.LUDICROUS_LARGE,
+        ZONE.LUDICROUS_SMALL,
+        ZONE.LUDICROUS_SMALL_NEG,
+        ZONE.LUDICROUS_LARGE_NEG,
     }
     ZONE_NONFINITE = {
-        Zone.TRANSFINITE,
-        Zone.INFINITESIMAL,
-        Zone.INFINITESIMAL_NEG,
-        Zone.TRANSFINITE_NEG,
+        ZONE.TRANSFINITE,
+        ZONE.INFINITESIMAL,
+        ZONE.INFINITESIMAL_NEG,
+        ZONE.TRANSFINITE_NEG,
     }
     ZONE_FINITE = union_of_distinct_sets(
         ZONE_LUDICROUS,
@@ -1270,36 +1288,36 @@ class Number(numbers.Complex):
     )
 
     ZONE_POSITIVE = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
+        ZONE.TRANSFINITE,
+        ZONE.LUDICROUS_LARGE,
+        ZONE.POSITIVE,
+        ZONE.FRACTIONAL,
+        ZONE.LUDICROUS_SMALL,
+        ZONE.INFINITESIMAL,
     }
     ZONE_NEGATIVE = {
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
+        ZONE.INFINITESIMAL_NEG,
+        ZONE.LUDICROUS_SMALL_NEG,
+        ZONE.FRACTIONAL_NEG,
+        ZONE.NEGATIVE,
+        ZONE.LUDICROUS_LARGE_NEG,
+        ZONE.TRANSFINITE_NEG,
     }
     ZONE_NONZERO = union_of_distinct_sets(
         ZONE_POSITIVE,
         ZONE_NEGATIVE,
     )
     ZONE_ZERO = {
-        Zone.ZERO
+        ZONE.ZERO
     }
 
     ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
+        ZONE.LUDICROUS_SMALL,
+        ZONE.INFINITESIMAL,
     }
     ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
+        ZONE.INFINITESIMAL_NEG,
+        ZONE.LUDICROUS_SMALL_NEG,
     }
     ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
         ZONE_ESSENTIALLY_POSITIVE_ZERO,
@@ -1310,22 +1328,22 @@ class Number(numbers.Complex):
         ZONE_ESSENTIALLY_NEGATIVE_ZERO,
     )
     ZONE_REASONABLY_POSITIVE = {
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
+        ZONE.POSITIVE,
+        ZONE.FRACTIONAL,
     }
     ZONE_REASONABLY_NEGATIVE = {
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
+        ZONE.FRACTIONAL_NEG,
+        ZONE.NEGATIVE,
     }
     ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
         ZONE_REASONABLY_POSITIVE,
         ZONE_REASONABLY_NEGATIVE,
     )
     ZONE_UNREASONABLY_BIG = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
+        ZONE.TRANSFINITE,
+        ZONE.LUDICROUS_LARGE,
+        ZONE.LUDICROUS_LARGE_NEG,
+        ZONE.TRANSFINITE_NEG,
     }
 
     # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
@@ -1336,31 +1354,31 @@ class Number(numbers.Complex):
     # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
 
     ZONE_WHOLE_NO = {
-        Zone.FRACTIONAL,
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.FRACTIONAL_NEG,
+        ZONE.FRACTIONAL,
+        ZONE.LUDICROUS_SMALL,
+        ZONE.INFINITESIMAL,
+        ZONE.INFINITESIMAL_NEG,
+        ZONE.LUDICROUS_SMALL_NEG,
+        ZONE.FRACTIONAL_NEG,
     }
     ZONE_WHOLE_YES = {
-        Zone.ZERO,
+        ZONE.ZERO,
     }
     ZONE_WHOLE_MAYBE = {
-        Zone.POSITIVE,
-        Zone.NEGATIVE,
+        ZONE.POSITIVE,
+        ZONE.NEGATIVE,
     }
     ZONE_WHOLE_INDETERMINATE = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
+        ZONE.TRANSFINITE,
+        ZONE.LUDICROUS_LARGE,
+        ZONE.LUDICROUS_LARGE_NEG,
+        ZONE.TRANSFINITE_NEG,
     }
 
     ZONE_MAYBE_PLATEAU = ZONE_REASONABLY_NONZERO
 
     ZONE_NAN = {
-        Zone.NAN
+        ZONE.NAN
     }
     _ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
         ZONE_REASONABLE,
@@ -1391,24 +1409,24 @@ class Number(numbers.Complex):
         ZONE_NAN,
     )
 
-    name_of_zone = (lambda zone_class=Zone: {   # Translate zone code to zone name.
+    name_of_zone = (lambda zone_class=ZONE: {   # Translate zone code to zone name.
         getattr(zone_class, attr): attr
             for attr in dir(zone_class)
-            if not callable(attr) and not attr.startswith("__")
+            if not callable(attr) and not attr.startswith("_")
     })()
     # THANKS:  Iterate members of Number.Zone, http://stackoverflow.com/a/11637457/673991
     # THANKS:  Comprehension on class member, http://stackoverflow.com/a/28130950/673991
-    assert name_of_zone[Zone.ZERO] == 'ZERO'
+    assert name_of_zone[ZONE.ZERO] == 'ZERO'
 
     _sorted_zone_codes = sorted(name_of_zone.keys(), reverse=True)
     ZONE_ALL = {zone for zone in _sorted_zone_codes}
 
-    # Constants
+    # Constants (see internal_setup())
     # ---------
-    NAN = None
+    NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
     ZERO = None
-    POSITIVE_INFINITY = None
-    POSITIVE_INFINITESIMAL = None
+    POSITIVE_INFINITY = None        # Aleph-null aka aleph-naught
+    POSITIVE_INFINITESIMAL = None   # Epsilon-nought aka epsilon-zero
     NEGATIVE_INFINITESIMAL = None
     NEGATIVE_INFINITY = None
 
@@ -1417,8 +1435,8 @@ class Number(numbers.Complex):
         """Initialize Number constants after the class is defined."""
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
-        cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)        # Aleph-naught
-        cls.POSITIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL)   # Epsilon
+        cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)
+        cls.POSITIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL)
         cls.NEGATIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL_NEG)
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
@@ -1721,12 +1739,13 @@ assert 'function' == type_name(type_name)
 # 8201 8202 8203 ... 82FF 830100 830101 830102 ... FE01(124 00s) ... FEFF(124 FFs)
 #    1    2    3      255    256    257    258     2**992            2**1000-1
 # In these cases the lengthed-export has the same bytes as the unlengthed export
-# except for multiples of 256, e.g. 830100 versus 8301 (for 0q83_01 == 256).
-# (Because of the no-trailing-00 rule for raw.  That would not apply to lengthed export.)
+# except for multiples of 256, e.g. it's 830100 not 8301 (for 0q83_01 == 256).
+# (Because of the no-trailing-00 rule for raw.  That rule would not apply to lengthed exported integers.)
 # (So conversion when importing must strip those 00s.)
+# (And so suffixed integers cannot be encoded this way, and must have the length prefix(es).)
 
 # Any number other than nonnegative integers would be lengthed-exported as:  N + raw
-# Where N (00 to 7F) is the length of the raw part.  So:
+# Where N (00 to 7D) is the length of the raw part.  So:
 # -1   is 027DFF
 # -2   is 027DFE
 # -2.5 is 037DFD80
@@ -1734,29 +1753,61 @@ assert 'function' == type_name(type_name)
 
 # The lengthed export might be used for exporting a word,
 # taking the form of 6 numbers and a (somehow lengthed) utf-8 string.
-# Special case 80 might represent 0.
-# And 81 might be shorthand for 1, aka 8201?
-# The sequence might then be 80 81 8202 8203 8204 ...
-# Or 81 could be zero, that fits the pattern (1 byte long, the length byte itself).
-# Or 80 or 81 could be special for other purposes.
-# So Number.NAN would be length-exported as 00.
+
+# Special case 7F represents -1, aka 0q7D_FF aka 0q7E
+# Special case 80 represents 0, aka 0q80
+# Special case 81 represents 1, aka 0q82_01.
+# So the sequence 7F 80 81 8202 8203 8204 ...
+#     represents  -1  0  1    2    3    4 ...
 
 # Negative one might be handy as a brief value.
 # Though 017D could encode it, as could 027DFF But maybe plain 7F would be great.
 # Then 00-7E would encode "other" (nonnegative, not-minus-one numbers)
-# 00-7D could be lengthed prefixes that are straightforward, and
+# Or 00-7D could be lengthed prefixes that are straightforward, and
 # 7E could be a special extender value,
 # similar to the FF00FFFF... extended (2^n byte) lex in ludicrous numbers.
 # There would be 2^n 7E bytes followed by 2^n (the same n) bytes encoding (MSB first) the real length.
 # So e.g. a 256 byte raw value would be lengthed as 7E7E0100...(and then 256 bytes same as raw)
 # A 65536-byte raw would have a lengthed-prefix of 7E7E7E7E00010000
+# But the number of 7E bytes don't have to be a power of 2, they way they do with the qex
+#     (Wait, why do the qex extenders have to be 2^n bytes?)
+
 # So in a way, length bytes 00-7D would be shorthand for 7E00 to 7E7D.
 # And                      8202 to FD...(124 FFs) representing integers 2 to 2**992-1
 # would be shorthand for 028202 to 7DFD...(124 FFs),
 # itself shorthand for 7E028202 to 7E7DFD...(124 FFs)
 # theoretically as 7E7E00028202 to 7E7E007DFD...(124 FFs), etc.
 
-# This here indented part is bogus, I think, leaving it around until sure:
+# FORMAL DEFINITION:
+# The way to look at the lengthed-export version of a Number is that it always conceptually consists of:
+#     7E-part, length-part, raw-part, 00-part
+# 7E-part is Np bytes of literal 7E.
+#     the 7E-part may be omitted if length-part (N) is 0 to 7D.
+# length-part (call it N) is Np bytes representing a (big-endian) length N (so N < 256**Np)
+#     both 7E-part and length-part may be omitted for an unsuffixed integer 0 to 2**992-1
+# raw-part is N bytes, identical to the bytes of Number.raw
+# 00-part consists of 00 bytes.
+#     It only exists if 7E-part and length-part are omitted.
+#     It serves to make the total length (of the entire lengthed-export)
+#         equal to the first raw byte minus 81.
+#         Except for Number(0) where the raw-part is 80.
+#             Then the 00-part is not -1 bytes, it's just empty.
+#     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256.
+#     And it's 2 or more bytes for unsuffixed integer multiples of 256**2, etc.
+# 7F is an alias for 027DFF representing 0q7D_FF aka -1.
+# 81 is an alias for 8201 representing 0q82_01 aka 1.
+#     These two weirdo exceptions are the only cases without a raw-part.
+#     For every other Number, there is a raw-part in its lengthed-export and it's identical to Number.raw.
+
+# Number.NAN would be seamlessly length-exported as 00.  (Length-part=00, other parts omitted.)
+#     The other weirdo case where Number.raw is empty.  So the raw-part is in there, it's just empty.
+
+# Cases with a nonempty 7E-part, i.e. Np > 0:
+#     Say the raw-part is 128 bytes (e.g. lots of suffixes, e.g. googolplex approximations)
+#         then N is 128 and Np is 1
+#         7E 80 (128-byte raw-part)
+
+# The following indented part is bogus.  I think.  Leaving it around until sure:
 #     Notice there is no shorthand for the sliver of integers at the top of the reasonable numbers:
 #     0qFE_01 == 2**992 to 0qFE_FF...(124 more FFs) == 2**1000-1
 #     The lengthed exports of those would be:
@@ -1786,3 +1837,11 @@ assert 'function' == type_name(type_name)
 #     Think of a tardigrade, dessicated.  And reconstituted back to life.
 #         but this is not condensing, in fact it is expanding.
 #         really is more like a packetized number
+
+# The lengthed-export version of a Number might be useful for embedding multiple numbers in a suffix.
+# An example of multiple numbers in a suffix might be a "user-defined" type for a suffix
+#     where one number identifies the user, and the other has user-defined meaning.
+# This seems complicated and intricate (complicantricate?) but so are consecutive or nested suffixes.
+# Particularly in the case of user-defined suffix types, we want the syntax to be simple
+# so it's easy to use, and economical with bytes, so the 250 or so 1-byte suffix types are greedily sought
+# and we can be extremely parsimonious with them.
