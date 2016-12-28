@@ -154,8 +154,7 @@ class Number(numbers.Complex):
     def __str__(self):
         return self.qstring()
 
-    class ZONE(object):
-        # TODO:  class ZONE?  For a buncha constants?
+    class Zone(object):
         """
         Each qiki Number is in one of 14 distinct zones.
 
@@ -169,7 +168,7 @@ class Number(numbers.Complex):
         (So actually, some zone values are valid raw values for numbers in that zone,
         others are among the inter-zone values.  More on this below.)
         For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
-        the positive zone.  But Number.ZONE.POSITIVE is less than that, b'x82'.
+        the positive zone.  But Number.Zone.POSITIVE is less than that, b'x82'.
         Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
         But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
 
@@ -178,7 +177,7 @@ class Number(numbers.Complex):
         ----------------------
         A minor, hair-splitting point.
         Most values of Zone are the minimum of their zone.
-        ZONE.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
+        Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
         That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
         The valid minimum value for this zone cannot be represented in finite storage,
         because the real minimum of that zone would be an impossible hypothetical
@@ -766,28 +765,28 @@ class Number(numbers.Complex):
         return self.__int__zone_dict[self.zone](self)
 
     __int__zone_dict =  {
-        ZONE.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
-        ZONE.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
-        ZONE.POSITIVE:            lambda self: self._to_int_positive(),
-        ZONE.FRACTIONAL:          lambda self: 0,
-        ZONE.LUDICROUS_SMALL:     lambda self: 0,
-        ZONE.INFINITESIMAL:       lambda self: 0,
-        ZONE.ZERO:                lambda self: 0,
-        ZONE.INFINITESIMAL_NEG:   lambda self: 0,
-        ZONE.LUDICROUS_SMALL_NEG: lambda self: 0,
-        ZONE.FRACTIONAL_NEG:      lambda self: 0,
-        ZONE.NEGATIVE:            lambda self: self._to_int_negative(),
-        ZONE.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
-        ZONE.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
-        ZONE.NAN:                 lambda self: self._int_cant_be_nan(),
+        Zone.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
+        Zone.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
+        Zone.POSITIVE:            lambda self: self._to_int_positive(),
+        Zone.FRACTIONAL:          lambda self: 0,
+        Zone.LUDICROUS_SMALL:     lambda self: 0,
+        Zone.INFINITESIMAL:       lambda self: 0,
+        Zone.ZERO:                lambda self: 0,
+        Zone.INFINITESIMAL_NEG:   lambda self: 0,
+        Zone.LUDICROUS_SMALL_NEG: lambda self: 0,
+        Zone.FRACTIONAL_NEG:      lambda self: 0,
+        Zone.NEGATIVE:            lambda self: self._to_int_negative(),
+        Zone.LUDICROUS_LARGE_NEG: lambda self: self._to_int_negative(),
+        Zone.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
+        Zone.NAN:                 lambda self: self._int_cant_be_nan(),
     }
 
     def __int__by_zone_ifs(self):
-        if   self.ZONE.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
-        elif self.ZONE.POSITIVE             <= self.raw:  return self._to_int_positive()
-        elif self.ZONE.FRACTIONAL_NEG       <= self.raw:  return 0
-        elif self.ZONE.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
-        elif self.ZONE.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
+        if   self.Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
+        elif self.Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
+        elif self.Zone.FRACTIONAL_NEG       <= self.raw:  return 0
+        elif self.Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
+        elif self.Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
         else:                                             return self._int_cant_be_nan()
 
     @staticmethod
@@ -836,20 +835,20 @@ class Number(numbers.Complex):
         return self.__float__zone_dict[self.zone](self)
 
     __float__zone_dict =  {
-        ZONE.TRANSFINITE:         lambda self: float('+inf'),
-        ZONE.LUDICROUS_LARGE:     lambda self: float('+inf'),
-        ZONE.POSITIVE:            lambda self: self._to_float(),
-        ZONE.FRACTIONAL:          lambda self: self._to_float(),
-        ZONE.LUDICROUS_SMALL:     lambda self: 0.0,
-        ZONE.INFINITESIMAL:       lambda self: 0.0,
-        ZONE.ZERO:                lambda self: 0.0,
-        ZONE.INFINITESIMAL_NEG:   lambda self: -0.0,
-        ZONE.LUDICROUS_SMALL_NEG: lambda self: -0.0,
-        ZONE.FRACTIONAL_NEG:      lambda self: self._to_float(),
-        ZONE.NEGATIVE:            lambda self: self._to_float(),
-        ZONE.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
-        ZONE.TRANSFINITE_NEG:     lambda self: float('-inf'),
-        ZONE.NAN:                 lambda self: float('nan')
+        Zone.TRANSFINITE:         lambda self: float('+inf'),
+        Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
+        Zone.POSITIVE:            lambda self: self._to_float(),
+        Zone.FRACTIONAL:          lambda self: self._to_float(),
+        Zone.LUDICROUS_SMALL:     lambda self: 0.0,
+        Zone.INFINITESIMAL:       lambda self: 0.0,
+        Zone.ZERO:                lambda self: 0.0,
+        Zone.INFINITESIMAL_NEG:   lambda self: -0.0,
+        Zone.LUDICROUS_SMALL_NEG: lambda self: -0.0,
+        Zone.FRACTIONAL_NEG:      lambda self: self._to_float(),
+        Zone.NEGATIVE:            lambda self: self._to_float(),
+        Zone.LUDICROUS_LARGE_NEG: lambda self: float('-inf'),
+        Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
+        Zone.NAN:                 lambda self: float('nan')
     }
 
     def __float__by_zone_ifs(self):
@@ -860,9 +859,9 @@ class Number(numbers.Complex):
             return 0.0
         elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
-        elif _zone in (self.ZONE.TRANSFINITE, self.ZONE.LUDICROUS_LARGE):
+        elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
             return float('+inf')
-        elif _zone in (self.ZONE.TRANSFINITE_NEG, self.ZONE.LUDICROUS_LARGE_NEG):
+        elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
             return float('-inf')
         else:
             return float('nan')
@@ -914,10 +913,10 @@ class Number(numbers.Complex):
         """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qantissa()"""
 
     __qan_offset_dict ={
-        ZONE.POSITIVE:       1,
-        ZONE.FRACTIONAL:     2,
-        ZONE.FRACTIONAL_NEG: 2,
-        ZONE.NEGATIVE:       1,
+        Zone.POSITIVE:       1,
+        Zone.FRACTIONAL:     2,
+        Zone.FRACTIONAL_NEG: 2,
+        Zone.NEGATIVE:       1,
     }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
 
     def qexponent(self):
@@ -940,10 +939,10 @@ class Number(numbers.Complex):
     #
     # Contrast _from_float().
     __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
-        ZONE.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
-        ZONE.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
-        ZONE.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
-        ZONE.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
+        Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
+        Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
+        Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
+        Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
     }   # TODO: ludicrous numbers
 
     def hex(self):
@@ -996,45 +995,45 @@ class Number(numbers.Complex):
         for z in self._sorted_zone_codes:
             if z <= self.raw:
                 return z
-        raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < ZONE.NAN!" % repr(self))
+        raise ValueError("Number._find_zone_by_for_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
         if self.raw > self.RAW_ZERO:
-            if self.raw >= self.ZONE.POSITIVE:
-                if self.raw >= self.ZONE.LUDICROUS_LARGE:
-                    if self.raw >= self.ZONE.TRANSFINITE:
-                        return                  self.ZONE.TRANSFINITE
+            if self.raw >= self.Zone.POSITIVE:
+                if self.raw >= self.Zone.LUDICROUS_LARGE:
+                    if self.raw >= self.Zone.TRANSFINITE:
+                        return                  self.Zone.TRANSFINITE
                     else:
-                        return                  self.ZONE.LUDICROUS_LARGE
+                        return                  self.Zone.LUDICROUS_LARGE
                 else:
-                    return                      self.ZONE.POSITIVE
+                    return                      self.Zone.POSITIVE
             else:
-                if self.raw >= self.ZONE.FRACTIONAL:
-                    return                      self.ZONE.FRACTIONAL
-                elif self.raw >= self.ZONE.LUDICROUS_SMALL:
-                    return                      self.ZONE.LUDICROUS_SMALL
+                if self.raw >= self.Zone.FRACTIONAL:
+                    return                      self.Zone.FRACTIONAL
+                elif self.raw >= self.Zone.LUDICROUS_SMALL:
+                    return                      self.Zone.LUDICROUS_SMALL
                 else:
-                    return                      self.ZONE.INFINITESIMAL
+                    return                      self.Zone.INFINITESIMAL
         elif self.raw == self.RAW_ZERO:
-            return                              self.ZONE.ZERO
+            return                              self.Zone.ZERO
         else:
-            if self.raw > self.ZONE.FRACTIONAL_NEG:
-                if self.raw >= self.ZONE.LUDICROUS_SMALL_NEG:
-                    if self.raw >= self.ZONE.INFINITESIMAL_NEG:
-                        return                  self.ZONE.INFINITESIMAL_NEG
+            if self.raw > self.Zone.FRACTIONAL_NEG:
+                if self.raw >= self.Zone.LUDICROUS_SMALL_NEG:
+                    if self.raw >= self.Zone.INFINITESIMAL_NEG:
+                        return                  self.Zone.INFINITESIMAL_NEG
                     else:
-                        return                  self.ZONE.LUDICROUS_SMALL_NEG
+                        return                  self.Zone.LUDICROUS_SMALL_NEG
                 else:
-                    return                      self.ZONE.FRACTIONAL_NEG
+                    return                      self.Zone.FRACTIONAL_NEG
             else:
-                if self.raw >= self.ZONE.NEGATIVE:
-                    return                      self.ZONE.NEGATIVE
-                elif self.raw >= self.ZONE.LUDICROUS_LARGE_NEG:
-                    return                      self.ZONE.LUDICROUS_LARGE_NEG
-                elif self.raw >= self.ZONE.TRANSFINITE_NEG:
-                    return                      self.ZONE.TRANSFINITE_NEG
+                if self.raw >= self.Zone.NEGATIVE:
+                    return                      self.Zone.NEGATIVE
+                elif self.raw >= self.Zone.LUDICROUS_LARGE_NEG:
+                    return                      self.Zone.LUDICROUS_LARGE_NEG
+                elif self.raw >= self.Zone.TRANSFINITE_NEG:
+                    return                      self.Zone.TRANSFINITE_NEG
                 else:
-                    return                      self.ZONE.NAN
+                    return                      self.Zone.NAN
 
     # Suffixes
     # --------
@@ -1260,23 +1259,23 @@ class Number(numbers.Complex):
     # -------------   TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
     # TODO:  class ZONE_SET?  And put union_of_distinct_sets() in it too, instead of at the frikking top of this file.
     ZONE_REASONABLE = {
-        ZONE.POSITIVE,
-        ZONE.FRACTIONAL,
-        ZONE.ZERO,
-        ZONE.FRACTIONAL_NEG,
-        ZONE.NEGATIVE,
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.ZERO,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
     }
     ZONE_LUDICROUS = {
-        ZONE.LUDICROUS_LARGE,
-        ZONE.LUDICROUS_SMALL,
-        ZONE.LUDICROUS_SMALL_NEG,
-        ZONE.LUDICROUS_LARGE_NEG,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_SMALL,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.LUDICROUS_LARGE_NEG,
     }
     ZONE_NONFINITE = {
-        ZONE.TRANSFINITE,
-        ZONE.INFINITESIMAL,
-        ZONE.INFINITESIMAL_NEG,
-        ZONE.TRANSFINITE_NEG,
+        Zone.TRANSFINITE,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.TRANSFINITE_NEG,
     }
     ZONE_FINITE = union_of_distinct_sets(
         ZONE_LUDICROUS,
@@ -1288,36 +1287,36 @@ class Number(numbers.Complex):
     )
 
     ZONE_POSITIVE = {
-        ZONE.TRANSFINITE,
-        ZONE.LUDICROUS_LARGE,
-        ZONE.POSITIVE,
-        ZONE.FRACTIONAL,
-        ZONE.LUDICROUS_SMALL,
-        ZONE.INFINITESIMAL,
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
     }
     ZONE_NEGATIVE = {
-        ZONE.INFINITESIMAL_NEG,
-        ZONE.LUDICROUS_SMALL_NEG,
-        ZONE.FRACTIONAL_NEG,
-        ZONE.NEGATIVE,
-        ZONE.LUDICROUS_LARGE_NEG,
-        ZONE.TRANSFINITE_NEG,
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
     }
     ZONE_NONZERO = union_of_distinct_sets(
         ZONE_POSITIVE,
         ZONE_NEGATIVE,
     )
     ZONE_ZERO = {
-        ZONE.ZERO
+        Zone.ZERO
     }
 
     ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-        ZONE.LUDICROUS_SMALL,
-        ZONE.INFINITESIMAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
     }
     ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
-        ZONE.INFINITESIMAL_NEG,
-        ZONE.LUDICROUS_SMALL_NEG,
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
     }
     ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
         ZONE_ESSENTIALLY_POSITIVE_ZERO,
@@ -1328,22 +1327,22 @@ class Number(numbers.Complex):
         ZONE_ESSENTIALLY_NEGATIVE_ZERO,
     )
     ZONE_REASONABLY_POSITIVE = {
-        ZONE.POSITIVE,
-        ZONE.FRACTIONAL,
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
     }
     ZONE_REASONABLY_NEGATIVE = {
-        ZONE.FRACTIONAL_NEG,
-        ZONE.NEGATIVE,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
     }
     ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
         ZONE_REASONABLY_POSITIVE,
         ZONE_REASONABLY_NEGATIVE,
     )
     ZONE_UNREASONABLY_BIG = {
-        ZONE.TRANSFINITE,
-        ZONE.LUDICROUS_LARGE,
-        ZONE.LUDICROUS_LARGE_NEG,
-        ZONE.TRANSFINITE_NEG,
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
     }
 
     # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
@@ -1354,31 +1353,31 @@ class Number(numbers.Complex):
     # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
 
     ZONE_WHOLE_NO = {
-        ZONE.FRACTIONAL,
-        ZONE.LUDICROUS_SMALL,
-        ZONE.INFINITESIMAL,
-        ZONE.INFINITESIMAL_NEG,
-        ZONE.LUDICROUS_SMALL_NEG,
-        ZONE.FRACTIONAL_NEG,
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
     }
     ZONE_WHOLE_YES = {
-        ZONE.ZERO,
+        Zone.ZERO,
     }
     ZONE_WHOLE_MAYBE = {
-        ZONE.POSITIVE,
-        ZONE.NEGATIVE,
+        Zone.POSITIVE,
+        Zone.NEGATIVE,
     }
     ZONE_WHOLE_INDETERMINATE = {
-        ZONE.TRANSFINITE,
-        ZONE.LUDICROUS_LARGE,
-        ZONE.LUDICROUS_LARGE_NEG,
-        ZONE.TRANSFINITE_NEG,
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
     }
 
     ZONE_MAYBE_PLATEAU = ZONE_REASONABLY_NONZERO
 
     ZONE_NAN = {
-        ZONE.NAN
+        Zone.NAN
     }
     _ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
         ZONE_REASONABLE,
@@ -1409,14 +1408,35 @@ class Number(numbers.Complex):
         ZONE_NAN,
     )
 
-    name_of_zone = (lambda zone_class=ZONE: {   # Translate zone code to zone name.
+    name_of_zone = (lambda zone_class=Zone: {   # Translate zone code to zone name.
         getattr(zone_class, attr): attr
             for attr in dir(zone_class)
-            if not callable(attr) and not attr.startswith("_")
+            if not callable(attr)
+            and not attr.startswith("_")
+            and attr.isupper()   # Allow ZONE to have member_functions()
     })()
-    # THANKS:  Iterate members of Number.Zone, http://stackoverflow.com/a/11637457/673991
+    # THANKS:  Iterate class members, http://stackoverflow.com/a/11637457/673991
     # THANKS:  Comprehension on class member, http://stackoverflow.com/a/28130950/673991
-    assert name_of_zone[ZONE.ZERO] == 'ZERO'
+    assert name_of_zone[Zone.ZERO] == 'ZERO'
+    # TODO:  Test that name_of_zone['member_function'] raises IndexError.  Also may test:
+    #     "__class__",
+    #     "__delattr__",
+    #     "__dict__",
+    #     "__doc__",
+    #     "__format__",
+    #     "__getattribute__",
+    #     "__hash__",
+    #     "__init__",
+    #     "__module__",
+    #     "__new__",
+    #     "__reduce__",
+    #     "__reduce_ex__",
+    #     "__repr__",
+    #     "__setattr__",
+    #     "__sizeof__",
+    #     "__str__",
+    #     "__subclasshook__",
+    #     "__weakref__"
 
     _sorted_zone_codes = sorted(name_of_zone.keys(), reverse=True)
     ZONE_ALL = {zone for zone in _sorted_zone_codes}
