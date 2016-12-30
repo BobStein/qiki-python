@@ -1094,7 +1094,8 @@ class Number(numbers.Complex):
             elif isinstance(payload, six.binary_type):
                 self.payload = payload
             else:
-                raise TypeError
+                # TODO:  Support Number.Suffix(suffix)?  As a copy constructor, ala Number(number)
+                raise self.PayloadError("Suffix payload cannot be a {}".format(type_name(payload)))
             if self.type_ is None:
                 assert self.payload == b''
                 # TODO:  Unit test this case?  Suffix(type None, payload not empty)
@@ -1109,7 +1110,7 @@ class Number(numbers.Complex):
                         0x00
                     )))
                 else:
-                    raise self.number_class.SuffixValueError("Payload is {} bytes too long.".format(
+                    raise self.PayloadError("Suffix payload is {} bytes too long.".format(
                         str(len(self.payload) - self.MAX_PAYLOAD_LENGTH))
                     )
 
@@ -1148,6 +1149,9 @@ class Number(numbers.Complex):
 
         class NoSuchType(Exception):
             """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).get_suffix(0x33)"""
+
+        class PayloadError(TypeError):
+            """Suffix(payload=unexpected_type)"""
 
     class SuffixValueError(ValueError):
         """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""

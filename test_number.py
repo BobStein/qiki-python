@@ -2732,10 +2732,17 @@ class NumberSuffixTests(NumberTests):
     def test_suffix_payload_too_long(self):
         self.assertEqual('11'*249 + '_08FA00', Number.Suffix(8, b'\x11' * 249).qstring())
         self.assertEqual('11'*250 + '_08FB00', Number.Suffix(8, b'\x11' * 250).qstring())
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Number.Suffix.PayloadError):
             Number.Suffix(8, b'\x11' * 251)
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Number.Suffix.PayloadError):
             Number.Suffix(8, b'\x11' * 252)
+
+    def test_suffix_payload_type_error(self):
+        class SomeType(object):
+            pass
+        some_type = SomeType()
+        with self.assertRaises(Number.Suffix.PayloadError):
+            Number.Suffix(Number.Suffix.TYPE_TEST, some_type)
 
     def test_suffix_number(self):
         self.assertEqual('0q83_01FF__823F_FF0300', Number(511).plus_suffix(255, Number(63)))
