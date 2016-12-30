@@ -21,6 +21,11 @@ import struct
 import six
 
 
+class _OptimizeSlots(object):
+    FOR_MEMORY = False
+    FOR_SPEED = True
+
+
 def sets_exclusive(*sets):
     for i in range(len(sets)):
         for j in range(i):
@@ -43,11 +48,11 @@ assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 # TODO:  Docstring every function
 
 
-# noinspection PyUnresolvedReferences
-# (Otherwise there are warnings about the raw @property violating __slots__.)
 class Number(numbers.Complex):
-    # __slots__ = ('__raw', )   # ALTERNATIVE 1:  less memory
-    __slots__ = ('__raw', '_zone')   # ALTERNATIVE 2:  faster
+    if _OptimizeSlots.FOR_MEMORY:
+        __slots__ = ('__raw', )
+    elif _OptimizeSlots.FOR_SPEED:
+        __slots__ = ('__raw', '_zone')
 
     def __init__(self, content=None, qigits=None, normalize=False):
         """
@@ -129,13 +134,15 @@ class Number(numbers.Complex):
         Internal byte-string representation of the Number.
 
         assert '\x82\x01' == Number(1).raw
+
+        Implemented as a property so that Number._zone (if there's a slot for it) can be computed in tandem.
         """
         return self.__raw
 
     @raw.setter
     def raw(self, value):
         """Set the raw byte-string.  Rare."""
-        #TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
+        # TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
         assert(isinstance(value, six.binary_type))
         # noinspection PyAttributeOutsideInit
         self.__raw = value
@@ -977,6 +984,7 @@ class Number(numbers.Complex):
 
     def _zone_refresh(self):
         try:
+            # noinspection PyDunderSlots,PyUnresolvedReferences
             self._zone = self._zone_from_scratch()
         except AttributeError:
             """Benign, this happens if _zone is missing from __slots__"""

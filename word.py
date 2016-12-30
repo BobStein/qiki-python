@@ -682,6 +682,7 @@ class Word(object):
 
 
 class SubjectedVerb(object):
+    # TODO:  Move this to inside Word?
     """
     This is the currying intermediary, the "x" in x = s(v) and x[o].  Thus allowing:  s(v)[o].
 
@@ -1704,6 +1705,7 @@ assert not is_iterable('a string is not')
 
 
 class Text(six.text_type):
+    # TODO:  Move this to inside Word?
     """
     The class for the Word txt field.
 
