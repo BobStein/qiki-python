@@ -21,37 +21,77 @@ import struct
 import six
 
 
-class _OptimizeSlots(object):
+class SlotsOptimized(object):
     FOR_MEMORY = False
     FOR_SPEED = True
-
-
-def sets_exclusive(*sets):
-    for i in range(len(sets)):
-        for j in range(i):
-            if set(sets[i]).intersection(sets[j]):
-                return False
-    return True
-assert True == sets_exclusive({1,2,3}, {4,5,6})
-assert False == sets_exclusive({1,2,3}, {3,4,5})
-
-def union_of_distinct_sets(*sets):
-    assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
-    return_value = set()
-    for each_set in sets:
-        return_value |= each_set
-    return return_value
-assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
+assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 
 
 # TODO:  Docstring every class
 # TODO:  Docstring every function
+# TODO:  Custom Exceptions should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
+
+
+class Zone(object):
+    """
+    Each qiki Number is in one of 14 distinct zones.
+
+    This internal Number.Zone class serves as an enumeration of those zones.
+    Raw, internal binary strings represent the value of each zone.
+    The members of Number.Zone have values that are either:
+        minimum value for the zone
+        between the zone and the one below it
+    Each value is less than or equal to all raw values of numbers in the zone it represents.
+    and greater than all *valid* raw values in the numbers in the zones below.
+    (So actually, some zone values are valid raw values for numbers in that zone,
+    others are among the inter-zone values.  More on this below.)
+    For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
+    the positive zone.  But Number.Zone.POSITIVE is less than that, b'x82'.
+    Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
+    But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
+
+
+    Between versus Minimum
+    ----------------------
+    A minor, hair-splitting point.
+    Most values of Zone are the minimum of their zone.
+    Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
+    That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
+    The valid minimum value for this zone cannot be represented in finite storage,
+    because the real minimum of that zone would be an impossible hypothetical
+    b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
+    Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
+    So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
+    And all legal raw values in Zone FRACTIONAL_NEG are above it.
+    And all legal raw values in Zone NEGATIVE are below it.
+
+    So are there or are not there inter-zone Numbers?
+    In other words, are the zones comprehensive?
+    Even illegal and invalid values should normalize to valid values.
+    """
+    # TODO:  Test that invalid and illegal values normalize to valid values.
+    # TODO:  Formally define all invalid and illegal raw-strings.
+
+    TRANSFINITE         = b'\xFF\x80'
+    LUDICROUS_LARGE     = b'\xFF'
+    POSITIVE            = b'\x82'
+    FRACTIONAL          = b'\x81'
+    LUDICROUS_SMALL     = b'\x80\x80'
+    INFINITESIMAL       = b'\x80\x00'
+    ZERO                = b'\x80'
+    INFINITESIMAL_NEG   = b'\x7F\x80'
+    LUDICROUS_SMALL_NEG = b'\x7F\x00'
+    FRACTIONAL_NEG      = b'\x7E\x00'
+    NEGATIVE            = b'\x01'
+    LUDICROUS_LARGE_NEG = b'\x00\x80'
+    TRANSFINITE_NEG     = b'\x00'
+    NAN                 = b''
 
 
 class Number(numbers.Complex):
-    if _OptimizeSlots.FOR_MEMORY:
+    if SlotsOptimized.FOR_MEMORY:
         __slots__ = ('__raw', )
-    elif _OptimizeSlots.FOR_SPEED:
+    elif SlotsOptimized.FOR_SPEED:
         __slots__ = ('__raw', '_zone')
 
     def __init__(self, content=None, qigits=None, normalize=False):
@@ -120,7 +160,7 @@ class Number(numbers.Complex):
     # Two underscores conventionally precede each suffix.
     # See the Number.Suffix class for underscore conventions within a suffix.
 
-    # TODO:  Make class Raw?
+    # TODO:  Make class Raw?  Then both Number and Suffix contain it?!?
     RAW_INFINITY          = b'\xFF\x81'
     RAW_INFINITESIMAL     = b'\x80\x7F'
     RAW_ZERO              = b'\x80'
@@ -160,61 +200,6 @@ class Number(numbers.Complex):
 
     def __str__(self):
         return self.qstring()
-
-    class Zone(object):
-        """
-        Each qiki Number is in one of 14 distinct zones.
-
-        This internal Number.Zone class serves as an enumeration of those zones.
-        Raw, internal binary strings represent the value of each zone.
-        The members of Number.Zone have values that are either:
-            minimum value for the zone
-            between the zone and the one below it
-        Each value is less than or equal to all raw values of numbers in the zone it represents.
-        and greater than all *valid* raw values in the numbers in the zones below.
-        (So actually, some zone values are valid raw values for numbers in that zone,
-        others are among the inter-zone values.  More on this below.)
-        For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
-        the positive zone.  But Number.Zone.POSITIVE is less than that, b'x82'.
-        Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
-        But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
-
-
-        Between versus Minimum
-        ----------------------
-        A minor, hair-splitting point.
-        Most values of Zone are the minimum of their zone.
-        Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
-        That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
-        The valid minimum value for this zone cannot be represented in finite storage,
-        because the real minimum of that zone would be an impossible hypothetical
-        b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
-        Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
-        So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
-        And all legal raw values in Zone FRACTIONAL_NEG are above it.
-        And all legal raw values in Zone NEGATIVE are below it.
-
-        So are there or are not there inter-zone Numbers?
-        In other words, are the zones comprehensive?
-        Even illegal and invalid values should normalize to valid values.
-        """
-        # TODO:  Test that invalid and illegal values normalize to valid values.
-        # TODO:  Formally define all invalid and illegal raw-strings.
-
-        TRANSFINITE         = b'\xFF\x80'
-        LUDICROUS_LARGE     = b'\xFF'
-        POSITIVE            = b'\x82'
-        FRACTIONAL          = b'\x81'
-        LUDICROUS_SMALL     = b'\x80\x80'
-        INFINITESIMAL       = b'\x80\x00'
-        ZERO                = b'\x80'
-        INFINITESIMAL_NEG   = b'\x7F\x80'
-        LUDICROUS_SMALL_NEG = b'\x7F\x00'
-        FRACTIONAL_NEG      = b'\x7E\x00'
-        NEGATIVE            = b'\x01'
-        LUDICROUS_LARGE_NEG = b'\x00\x80'
-        TRANSFINITE_NEG     = b'\x00'
-        NAN                 = b''
 
 
     # Comparison
@@ -385,12 +370,12 @@ class Number(numbers.Complex):
         """
         # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
         try:
-            imaginary_part = self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
-        except self.Suffix.NoSuchType:
+            imaginary_part = self.get_suffix_number(Suffix.TYPE_IMAGINARY)
+        except Suffix.NoSuchType:
             """No imaginary suffix already; nothing to normalize away."""
         else:
             if imaginary_part == self.ZERO:
-                self.raw = self.minus_suffix(self.Suffix.TYPE_IMAGINARY).raw
+                self.raw = self.minus_suffix(Suffix.TYPE_IMAGINARY).raw
 
     def _normalize_plateau(self):
         """
@@ -399,7 +384,7 @@ class Number(numbers.Complex):
         E.g.  0q82 becomes 0q82_01 for +1.
         E.g.  0q7E01 becomes 0q7E00_FF for -1/256.
         """
-        if self.zone in self.ZONE_MAYBE_PLATEAU:
+        if self.zone in ZoneSet.MAYBE_PLATEAU:
             pieces = self.parse_suffixes()
             raw_qexponent = pieces[0].qex_raw()
             raw_qantissa = pieces[0].qan_raw()
@@ -431,23 +416,23 @@ class Number(numbers.Complex):
 
     def is_negative(self):
         return_value = ((six.indexbytes(self.raw, 0) & 0x80) == 0)
-        assert return_value == (self.zone in self.ZONE_NEGATIVE)
+        assert return_value == (self.zone in ZoneSet.NEGATIVE)
         assert return_value == (self.raw < self.RAW_ZERO)
         return return_value
 
     def is_positive(self):
         return_value = (not self.is_negative() and not self.is_zero())
-        assert return_value == (self.zone in self.ZONE_POSITIVE)
+        assert return_value == (self.zone in ZoneSet.POSITIVE)
         assert return_value == (self.raw > self.RAW_ZERO)
         return return_value
 
     def is_zero(self):
         return_value = (self.raw == self.RAW_ZERO)
-        assert return_value == (self.zone in self.ZONE_ZERO)
+        assert return_value == (self.zone in ZoneSet.ZERO)
         return return_value
 
     def is_whole(self):
-        if self.zone in self.ZONE_WHOLE_MAYBE:
+        if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan, qanlength) = self.qantissa()
             qexp = self.qexponent() - qanlength
             if qexp >= 0:
@@ -457,9 +442,9 @@ class Number(numbers.Complex):
                     return True
                 else:
                     return False
-        elif self.zone in self.ZONE_WHOLE_YES:
+        elif self.zone in ZoneSet.WHOLE_YES:
             return True
-        elif self.zone in self.ZONE_WHOLE_NO:
+        elif self.zone in ZoneSet.WHOLE_NO:
             return False
         else:   #              ZONE_WHOLE_INDETERMINATE
             raise self.WholeIndeterminate("Cannot process " + repr(self))   # e.g. ludicrously large numbers
@@ -496,15 +481,15 @@ class Number(numbers.Complex):
     @property
     def imag(self):
         try:
-            return self.get_suffix_number(self.Suffix.TYPE_IMAGINARY)
-        except self.Suffix.NoSuchType:
+            return self.get_suffix_number(Suffix.TYPE_IMAGINARY)
+        except Suffix.NoSuchType:
             return self.ZERO
 
     def conjugate(self):
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
-            return_value = return_value.plus_suffix(self.Suffix.TYPE_IMAGINARY, (-imag).raw)
+            return_value = return_value.plus_suffix(Suffix.TYPE_IMAGINARY, (-imag).raw)
         return return_value
 
     # "from" conversions:  Number <-- other type
@@ -712,7 +697,7 @@ class Number(numbers.Complex):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.raw = self.plus_suffix(self.Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
+        self.raw = self.plus_suffix(Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
         # THANKS:  Call constructor if subclassed, http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
@@ -789,11 +774,11 @@ class Number(numbers.Complex):
     }
 
     def __int__by_zone_ifs(self):
-        if   self.Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
-        elif self.Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
-        elif self.Zone.FRACTIONAL_NEG       <= self.raw:  return 0
-        elif self.Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
-        elif self.Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
+        if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
+        elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
+        elif Zone.FRACTIONAL_NEG       <= self.raw:  return 0
+        elif Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
+        elif Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
         else:                                             return self._int_cant_be_nan()
 
     @staticmethod
@@ -860,15 +845,15 @@ class Number(numbers.Complex):
 
     def __float__by_zone_ifs(self):
         _zone = self.zone
-        if _zone in self.ZONE_REASONABLY_NONZERO:
+        if _zone in ZoneSet.REASONABLY_NONZERO:
             return self._to_float()
-        elif _zone in self.ZONE_ESSENTIALLY_NONNEGATIVE_ZERO:
+        elif _zone in ZoneSet.ESSENTIALLY_NONNEGATIVE_ZERO:
             return 0.0
-        elif _zone in self.ZONE_ESSENTIALLY_NEGATIVE_ZERO:
+        elif _zone in ZoneSet.ESSENTIALLY_NEGATIVE_ZERO:
             return -0.0
-        elif _zone in (self.Zone.TRANSFINITE, self.Zone.LUDICROUS_LARGE):
+        elif _zone in (Zone.TRANSFINITE, Zone.LUDICROUS_LARGE):
             return float('+inf')
-        elif _zone in (self.Zone.TRANSFINITE_NEG, self.Zone.LUDICROUS_LARGE_NEG):
+        elif _zone in (Zone.TRANSFINITE_NEG, Zone.LUDICROUS_LARGE_NEG):
             return float('-inf')
         else:
             return float('nan')
@@ -1007,162 +992,41 @@ class Number(numbers.Complex):
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
         if self.raw > self.RAW_ZERO:
-            if self.raw >= self.Zone.POSITIVE:
-                if self.raw >= self.Zone.LUDICROUS_LARGE:
-                    if self.raw >= self.Zone.TRANSFINITE:
-                        return                  self.Zone.TRANSFINITE
+            if self.raw >= Zone.POSITIVE:
+                if self.raw >= Zone.LUDICROUS_LARGE:
+                    if self.raw >= Zone.TRANSFINITE:
+                        return                  Zone.TRANSFINITE
                     else:
-                        return                  self.Zone.LUDICROUS_LARGE
+                        return                  Zone.LUDICROUS_LARGE
                 else:
-                    return                      self.Zone.POSITIVE
+                    return                      Zone.POSITIVE
             else:
-                if self.raw >= self.Zone.FRACTIONAL:
-                    return                      self.Zone.FRACTIONAL
-                elif self.raw >= self.Zone.LUDICROUS_SMALL:
-                    return                      self.Zone.LUDICROUS_SMALL
+                if self.raw >= Zone.FRACTIONAL:
+                    return                      Zone.FRACTIONAL
+                elif self.raw >= Zone.LUDICROUS_SMALL:
+                    return                      Zone.LUDICROUS_SMALL
                 else:
-                    return                      self.Zone.INFINITESIMAL
+                    return                      Zone.INFINITESIMAL
         elif self.raw == self.RAW_ZERO:
-            return                              self.Zone.ZERO
+            return                              Zone.ZERO
         else:
-            if self.raw > self.Zone.FRACTIONAL_NEG:
-                if self.raw >= self.Zone.LUDICROUS_SMALL_NEG:
-                    if self.raw >= self.Zone.INFINITESIMAL_NEG:
-                        return                  self.Zone.INFINITESIMAL_NEG
+            if self.raw > Zone.FRACTIONAL_NEG:
+                if self.raw >= Zone.LUDICROUS_SMALL_NEG:
+                    if self.raw >= Zone.INFINITESIMAL_NEG:
+                        return                  Zone.INFINITESIMAL_NEG
                     else:
-                        return                  self.Zone.LUDICROUS_SMALL_NEG
+                        return                  Zone.LUDICROUS_SMALL_NEG
                 else:
-                    return                      self.Zone.FRACTIONAL_NEG
+                    return                      Zone.FRACTIONAL_NEG
             else:
-                if self.raw >= self.Zone.NEGATIVE:
-                    return                      self.Zone.NEGATIVE
-                elif self.raw >= self.Zone.LUDICROUS_LARGE_NEG:
-                    return                      self.Zone.LUDICROUS_LARGE_NEG
-                elif self.raw >= self.Zone.TRANSFINITE_NEG:
-                    return                      self.Zone.TRANSFINITE_NEG
+                if self.raw >= Zone.NEGATIVE:
+                    return                      Zone.NEGATIVE
+                elif self.raw >= Zone.LUDICROUS_LARGE_NEG:
+                    return                      Zone.LUDICROUS_LARGE_NEG
+                elif self.raw >= Zone.TRANSFINITE_NEG:
+                    return                      Zone.TRANSFINITE_NEG
                 else:
-                    return                      self.Zone.NAN
-
-    # Suffixes
-    # --------
-    class Suffix(object):
-        """
-        A Number can have suffixes.  Suffixed numbers include, complex, alternate ID spaces, etc.
-
-        Format of a nonempty suffix (uppercase letters represent hexadecimal digits):
-            PP _ TT LL 00
-        where:
-            PP - 0-byte to 250-byte payload
-             _ - underscore is a conventional qstring delimiter between payload and type-length-NUL
-            TT - type code of the suffix, 0x00 to 0xFF or absent
-            LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
-                 but not including the length itself nor the NUL (see empty suffix)
-            00 - NUL byte
-
-        The "empty suffix" is two NUL bytes:
-            0000
-
-            That ia like saying LL is 00 means there are no type or payload parts.
-            (It is not the same as type 00, which is otherwise available.)
-
-        The NUL byte is what indicates there is a suffix.
-        This is why an unsuffixed number has all its right-end 00-bytes stripped.
-
-        A number can have multiple suffixes.
-        If the payload of a suffix is itself a number, suffixes could be nested.
-
-        Instance properties:
-            payload - byte string
-            type_ - integer 0x00 to 0xFF type code of suffix, or None for the empty suffix
-            length_of_payload_plus_type - integer value of length byte, 0 to MAX_PAYLOAD_LENGTH
-            raw - the encoded byte string suffix, including payload, type, length, and NUL
-
-        Example:
-            assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
-        """
-        # TODO:  Should Suffix be a sister class of Number instead of a contained class?
-        # Because Suffix knows about Number (Suffix.number_class == Number) and vice versa.
-
-        MAX_PAYLOAD_LENGTH = 250
-
-        # TODO:  Formally define valid payload contents for each type
-        # TODO:  Number.Suffix.Type class?
-        TYPE_LISTING   = 0x1D   # 'ID' in 1337
-        TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
-        TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
-        # TODO:  stack-exchange question:  are quaternions a superset of complex numbers?  Does i===i?
-
-        def __init__(self, type_=None, payload=None):
-            assert isinstance(type_, (int, type(None)))
-            self.type_ = type_
-            if payload is None:
-                self.payload = b''
-            elif isinstance(payload, self.number_class):
-                self.payload = payload.raw
-            elif isinstance(payload, six.binary_type):
-                self.payload = payload
-            else:
-                # TODO:  Support Number.Suffix(suffix)?  As a copy constructor, ala Number(number)
-                raise self.PayloadError("Suffix payload cannot be a {}".format(type_name(payload)))
-            if self.type_ is None:
-                assert self.payload == b''
-                # TODO:  Unit test this case?  Suffix(type None, payload not empty)
-                self.length_of_payload_plus_type = 0
-                self.raw = b'\x00\x00'
-            else:
-                self.length_of_payload_plus_type = len(self.payload) + 1
-                if 0x00 <= self.length_of_payload_plus_type <= self.MAX_PAYLOAD_LENGTH+1:
-                    self.raw = self.payload + six.binary_type(bytearray((
-                        self.type_,
-                        self.length_of_payload_plus_type,
-                        0x00
-                    )))
-                else:
-                    raise self.PayloadError("Suffix payload is {} bytes too long.".format(
-                        str(len(self.payload) - self.MAX_PAYLOAD_LENGTH))
-                    )
-
-        def __eq__(self, other):
-            return self.type_ == other.type_ and self.payload == other.payload
-
-        def __repr__(self):
-            if self.type_ is None:
-                return "Number.Suffix()"
-            else:
-                return "Number.Suffix({type_}, b'{payload}')".format(
-                    type_=self.type_,
-                    payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
-                )
-
-        def __hash__(self):
-            return hash(self.raw)
-
-        def qstring(self, underscore=1):
-            whole_suffix_in_hex = hex_from_string(self.raw)
-            if underscore > 0 and self.payload:
-                payload_hex = whole_suffix_in_hex[:-6]
-                type_length_00_hex = whole_suffix_in_hex[-6:]
-                return payload_hex + '_' + type_length_00_hex
-            else:
-                return whole_suffix_in_hex
-
-        def payload_number(self):
-            return self.number_class.from_raw(self.payload)
-
-        @classmethod
-        def internal_setup(cls, number_class):
-            """Initialize some Suffix class properties after the class is defined."""
-            cls.number_class = number_class
-            # So Suffix can refer to Number:  qiki.Number.Suffix.Number === qiki.Number
-
-        class NoSuchType(Exception):
-            """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).get_suffix(0x33)"""
-
-        class PayloadError(TypeError):
-            """Suffix(payload=unexpected_type)"""
-
-    class SuffixValueError(ValueError):
-        """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
+                    return                      Zone.NAN
 
     def is_suffixed(self):
         return self.raw[-1:] == b'\x00'
@@ -1183,7 +1047,7 @@ class Number(numbers.Complex):
             isinstance(suffix_or_type, int) and isinstance(payload, six.binary_type) or
             isinstance(suffix_or_type, int) and payload is None or
             isinstance(suffix_or_type, int) and isinstance(payload, Number) or
-            isinstance(suffix_or_type, self.Suffix) and payload is None or
+            isinstance(suffix_or_type, Suffix) and payload is None or
             suffix_or_type is None and payload is None
         ), "Bad call to plus_suffix({suffix_or_type}, {payload})".format(
             suffix_or_type=repr(suffix_or_type),
@@ -1191,13 +1055,13 @@ class Number(numbers.Complex):
         )
         if self.is_nan():
             # TODO:  Is this really so horrible?  A suffixed NAN?  e.g. 0q__7F0100
-            raise self.SuffixValueError
-        if isinstance(suffix_or_type, self.Suffix):
+            raise Suffix.RawError
+        if isinstance(suffix_or_type, Suffix):
             the_suffix = suffix_or_type
             return self.from_raw(self.raw + the_suffix.raw)
         else:
             the_type = suffix_or_type
-            suffix = self.Suffix(the_type, payload)
+            suffix = Suffix(the_type, payload)
             return self.plus_suffix(suffix)
 
     def minus_suffix(self, old_type=None):
@@ -1212,7 +1076,7 @@ class Number(numbers.Complex):
             else:
                 new_number = new_number.plus_suffix(piece.type_, piece.payload)
         if not any_deleted:
-            raise self.Suffix.NoSuchType
+            raise Suffix.NoSuchType
         return new_number
 
     def get_suffix(self, sought_type):
@@ -1220,7 +1084,7 @@ class Number(numbers.Complex):
         for suffix in suffixes[1:]:
             if suffix.type_ == sought_type:
                 return suffix
-        raise self.Suffix.NoSuchType
+        raise Suffix.NoSuchType
 
     def get_suffix_payload(self, sought_type):
         # TODO:  Default value instead of NoSuchType?
@@ -1248,177 +1112,25 @@ class Number(numbers.Complex):
                 try:
                     length_of_payload_plus_type = six.indexbytes(n.raw, -2)
                 except IndexError:
-                    raise self.SuffixValueError("Invalid suffix, or unstripped 00s.")
+                    raise Suffix.RawError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type >= len(n.raw)-2:
                     # Suffix may neither be larger than raw, nor consume all of it.
-                    raise self.SuffixValueError("Invalid suffix, or unstripped 00s.")
+                    raise Suffix.RawError("Invalid suffix, or unstripped 00s.")
                 if length_of_payload_plus_type == 0x00:
-                    return_array.append(self.Suffix())
+                    return_array.append(Suffix())
                 else:
                     try:
                         type_ = six.indexbytes(n.raw, -3)
                     except IndexError:
                         raise ValueError("Invalid suffix, or unstripped 00s.")
                     payload = n.raw[-length_of_payload_plus_type-2:-3]
-                    return_array.append(self.Suffix(type_, payload))
+                    return_array.append(Suffix(type_, payload))
                 n = self.from_raw(n.raw[0:-length_of_payload_plus_type-2])
             else:
                 break
         return_array.append(n)
         return tuple(reversed(return_array))
 
-    # Sets of Zones   TODO:  Venn Diagram or table or something.
-    # -------------   TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
-    # TODO:  class ZONE_SET?  And put union_of_distinct_sets() in it too, instead of at the frikking top of this file.
-    ZONE_REASONABLE = {
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
-        Zone.ZERO,
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
-    }
-    ZONE_LUDICROUS = {
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_SMALL,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.LUDICROUS_LARGE_NEG,
-    }
-    ZONE_NONFINITE = {
-        Zone.TRANSFINITE,
-        Zone.INFINITESIMAL,
-        Zone.INFINITESIMAL_NEG,
-        Zone.TRANSFINITE_NEG,
-    }
-    ZONE_FINITE = union_of_distinct_sets(
-        ZONE_LUDICROUS,
-        ZONE_REASONABLE,
-    )
-    ZONE_UNREASONABLE = union_of_distinct_sets(
-        ZONE_LUDICROUS,
-        ZONE_NONFINITE,
-    )
-
-    ZONE_POSITIVE = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
-    }
-    ZONE_NEGATIVE = {
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
-    }
-    ZONE_NONZERO = union_of_distinct_sets(
-        ZONE_POSITIVE,
-        ZONE_NEGATIVE,
-    )
-    ZONE_ZERO = {
-        Zone.ZERO
-    }
-
-    ZONE_ESSENTIALLY_POSITIVE_ZERO = {
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
-    }
-    ZONE_ESSENTIALLY_NEGATIVE_ZERO = {
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
-    }
-    ZONE_ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
-        ZONE_ESSENTIALLY_POSITIVE_ZERO,
-        ZONE_ZERO,
-    )
-    ZONE_ESSENTIALLY_ZERO = union_of_distinct_sets(
-        ZONE_ESSENTIALLY_NONNEGATIVE_ZERO,
-        ZONE_ESSENTIALLY_NEGATIVE_ZERO,
-    )
-    ZONE_REASONABLY_POSITIVE = {
-        Zone.POSITIVE,
-        Zone.FRACTIONAL,
-    }
-    ZONE_REASONABLY_NEGATIVE = {
-        Zone.FRACTIONAL_NEG,
-        Zone.NEGATIVE,
-    }
-    ZONE_REASONABLY_NONZERO = union_of_distinct_sets(
-        ZONE_REASONABLY_POSITIVE,
-        ZONE_REASONABLY_NEGATIVE,
-    )
-    ZONE_UNREASONABLY_BIG = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
-    }
-
-    # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
-    #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
-    # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
-    # Confusing?  Because then epsilon is both reasonable and unreasonable?
-    # If not sufficiently confusing, we could also define
-    # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
-
-    ZONE_WHOLE_NO = {
-        Zone.FRACTIONAL,
-        Zone.LUDICROUS_SMALL,
-        Zone.INFINITESIMAL,
-        Zone.INFINITESIMAL_NEG,
-        Zone.LUDICROUS_SMALL_NEG,
-        Zone.FRACTIONAL_NEG,
-    }
-    ZONE_WHOLE_YES = {
-        Zone.ZERO,
-    }
-    ZONE_WHOLE_MAYBE = {
-        Zone.POSITIVE,
-        Zone.NEGATIVE,
-    }
-    ZONE_WHOLE_INDETERMINATE = {
-        Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_LARGE_NEG,
-        Zone.TRANSFINITE_NEG,
-    }
-
-    ZONE_MAYBE_PLATEAU = ZONE_REASONABLY_NONZERO
-
-    ZONE_NAN = {
-        Zone.NAN
-    }
-    _ZONE_ALL_BY_REASONABLENESS = union_of_distinct_sets(
-        ZONE_REASONABLE,
-        ZONE_UNREASONABLE,
-        ZONE_NAN,
-    )
-    _ZONE_ALL_BY_FINITENESS = union_of_distinct_sets(
-        ZONE_FINITE,
-        ZONE_NONFINITE,
-        ZONE_NAN,
-    )
-    _ZONE_ALL_BY_ZERONESS = union_of_distinct_sets(
-        ZONE_NONZERO,
-        ZONE_ZERO,
-        ZONE_NAN,
-    )
-    _ZONE_ALL_BY_BIGNESS = union_of_distinct_sets(
-        ZONE_ESSENTIALLY_ZERO,
-        ZONE_REASONABLY_NONZERO,
-        ZONE_UNREASONABLY_BIG,
-        ZONE_NAN,
-    )
-    _ZONE_ALL_BY_WHOLENESS = union_of_distinct_sets(
-        ZONE_WHOLE_NO,
-        ZONE_WHOLE_YES,
-        ZONE_WHOLE_MAYBE,
-        ZONE_WHOLE_INDETERMINATE,
-        ZONE_NAN,
-    )
 
     name_of_zone = (lambda zone_class=Zone: {   # Translate zone code to zone name.
         getattr(zone_class, attr): attr
@@ -1473,9 +1185,305 @@ class Number(numbers.Complex):
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
 
-Number.internal_setup()
-Number.Suffix.internal_setup(Number)
+class Suffix(object):
+    """
+    A Number can have suffixes.  Suffixed numbers include, complex, alternate ID spaces, etc.
 
+    Format of a nonempty suffix (uppercase letters represent hexadecimal digits):
+        PP _ TT LL 00
+    where:
+        PP - 0-byte to 250-byte payload
+         _ - underscore is a conventional qstring delimiter between payload and type-length-NUL
+        TT - type code of the suffix, 0x00 to 0xFF or absent
+        LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
+             but not including the length itself nor the NUL (see empty suffix)
+        00 - NUL byte
+
+    The "empty suffix" is two NUL bytes:
+        0000
+
+        That ia like saying LL is 00 means there are no type or payload parts.
+        (It is not the same as type 00, which is otherwise available.)
+
+    The NUL byte is what indicates there is a suffix.
+    This is why an unsuffixed number has all its right-end 00-bytes stripped.
+
+    A number can have multiple suffixes.
+    If the payload of a suffix is itself a number, suffixes could be nested.
+
+    Instance properties:
+        payload - byte string
+        type_ - integer 0x00 to 0xFF type code of suffix, or None for the empty suffix
+        length_of_payload_plus_type - integer value of length byte, 0 to MAX_PAYLOAD_LENGTH
+        raw - the encoded byte string suffix, including payload, type, length, and NUL
+
+    Example:
+        assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
+    """
+    # TODO:  Should Suffix be a sister class of Number instead of a contained class?
+    # Because Suffix knows about Number (Suffix.number_class == Number) and vice versa.
+
+    MAX_PAYLOAD_LENGTH = 250
+
+    # TODO:  Formally define valid payload contents for each type
+    # TODO:  Number.Suffix.Type class?
+    TYPE_LISTING   = 0x1D   # 'ID' in 1337
+    TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
+    TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
+    # TODO:  stack-exchange question:  are quaternions a superset of complex numbers?  Does i===i?
+
+    def __init__(self, type_=None, payload=None):
+        assert isinstance(type_, (int, type(None)))
+        self.type_ = type_
+        if payload is None:
+            self.payload = b''
+        elif isinstance(payload, self.number_class):
+            self.payload = payload.raw
+        elif isinstance(payload, six.binary_type):
+            self.payload = payload
+        else:
+            # TODO:  Support Number.Suffix(suffix)?  As a copy constructor, ala Number(number)
+            raise self.PayloadError("Suffix payload cannot be a {}".format(type_name(payload)))
+        if self.type_ is None:
+            assert self.payload == b''
+            # TODO:  Unit test this case?  Suffix(type None, payload not empty)
+            self.length_of_payload_plus_type = 0
+            self.raw = b'\x00\x00'
+        else:
+            self.length_of_payload_plus_type = len(self.payload) + 1
+            if 0x00 <= self.length_of_payload_plus_type <= self.MAX_PAYLOAD_LENGTH+1:
+                self.raw = self.payload + six.binary_type(bytearray((
+                    self.type_,
+                    self.length_of_payload_plus_type,
+                    0x00
+                )))
+            else:
+                raise self.PayloadError("Suffix payload is {} bytes too long.".format(
+                    str(len(self.payload) - self.MAX_PAYLOAD_LENGTH))
+                )
+
+    def __eq__(self, other):
+        return self.type_ == other.type_ and self.payload == other.payload
+
+    def __repr__(self):
+        if self.type_ is None:
+            return "Number.Suffix()"
+        else:
+            return "Number.Suffix({type_}, b'{payload}')".format(
+                type_=self.type_,
+                payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
+            )
+
+    def __hash__(self):
+        return hash(self.raw)
+
+    def qstring(self, underscore=1):
+        whole_suffix_in_hex = hex_from_string(self.raw)
+        if underscore > 0 and self.payload:
+            payload_hex = whole_suffix_in_hex[:-6]
+            type_length_00_hex = whole_suffix_in_hex[-6:]
+            return payload_hex + '_' + type_length_00_hex
+        else:
+            return whole_suffix_in_hex
+
+    def payload_number(self):
+        return self.number_class.from_raw(self.payload)
+
+    @classmethod
+    def internal_setup(cls, number_class):
+        """Initialize some Suffix class properties after the class is defined."""
+        cls.number_class = number_class
+        # So Suffix can refer to Number:  qiki.Number.Suffix.Number === qiki.Number
+
+    class NoSuchType(Exception):
+        """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).get_suffix(0x33)"""
+
+    class PayloadError(TypeError):
+        """Suffix(payload=unexpected_type)"""
+
+    class RawError(ValueError):
+        """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
+
+
+Number.internal_setup()
+Suffix.internal_setup(Number)
+
+
+def _sets_exclusive(*the_sets):
+    for i in range(len(the_sets)):
+        for j in range(i):
+            if set(the_sets[i]).intersection(the_sets[j]):
+                return False
+    return True
+sets_exclusive = _sets_exclusive
+assert True == sets_exclusive({1,2,3}, {4,5,6})
+assert False == sets_exclusive({1,2,3}, {3,4,5})
+
+
+def union_of_distinct_sets(*sets):
+    assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
+    return_value = set()
+    for each_set in sets:
+        return_value |= each_set
+    return return_value
+assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
+
+
+class ZoneSet(object):
+    # Sets of Zones   TODO:  Venn Diagram or table or something.
+    # -------------   TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
+    # TODO:  class ZONE_SET?  And put union_of_distinct_sets() in it too, instead of at the frikking top of this file.
+
+
+    REASONABLE = {
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.ZERO,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+    }
+    LUDICROUS = {
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_SMALL,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.LUDICROUS_LARGE_NEG,
+    }
+    NONFINITE = {
+        Zone.TRANSFINITE,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+    FINITE = union_of_distinct_sets(
+        LUDICROUS,
+        REASONABLE,
+    )
+    UNREASONABLE = union_of_distinct_sets(
+        LUDICROUS,
+        NONFINITE,
+    )
+
+    POSITIVE = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+    }
+    NEGATIVE = {
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+    NONZERO = union_of_distinct_sets(
+        POSITIVE,
+        NEGATIVE,
+    )
+    ZERO = {
+        Zone.ZERO
+    }
+
+    ESSENTIALLY_POSITIVE_ZERO = {
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+    }
+    ESSENTIALLY_NEGATIVE_ZERO = {
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+    }
+    ESSENTIALLY_NONNEGATIVE_ZERO = union_of_distinct_sets(
+        ESSENTIALLY_POSITIVE_ZERO,
+        ZERO,
+    )
+    ESSENTIALLY_ZERO = union_of_distinct_sets(
+        ESSENTIALLY_NONNEGATIVE_ZERO,
+        ESSENTIALLY_NEGATIVE_ZERO,
+    )
+    REASONABLY_POSITIVE = {
+        Zone.POSITIVE,
+        Zone.FRACTIONAL,
+    }
+    REASONABLY_NEGATIVE = {
+        Zone.FRACTIONAL_NEG,
+        Zone.NEGATIVE,
+    }
+    REASONABLY_NONZERO = union_of_distinct_sets(
+        REASONABLY_POSITIVE,
+        REASONABLY_NEGATIVE,
+    )
+    UNREASONABLY_BIG = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+
+    # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
+    #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
+    # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
+    # Confusing?  Because then epsilon is both reasonable and unreasonable?
+    # If not sufficiently confusing, we could also define
+    # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
+
+    WHOLE_NO = {
+        Zone.FRACTIONAL,
+        Zone.LUDICROUS_SMALL,
+        Zone.INFINITESIMAL,
+        Zone.INFINITESIMAL_NEG,
+        Zone.LUDICROUS_SMALL_NEG,
+        Zone.FRACTIONAL_NEG,
+    }
+    WHOLE_YES = {
+        Zone.ZERO,
+    }
+    WHOLE_MAYBE = {
+        Zone.POSITIVE,
+        Zone.NEGATIVE,
+    }
+    WHOLE_INDETERMINATE = {
+        Zone.TRANSFINITE,
+        Zone.LUDICROUS_LARGE,
+        Zone.LUDICROUS_LARGE_NEG,
+        Zone.TRANSFINITE_NEG,
+    }
+
+    MAYBE_PLATEAU = REASONABLY_NONZERO
+
+    NAN = {
+        Zone.NAN
+    }
+    _ALL_BY_REASONABLENESS = union_of_distinct_sets(
+        REASONABLE,
+        UNREASONABLE,
+        NAN,
+    )
+    _ALL_BY_FINITENESS = union_of_distinct_sets(
+        FINITE,
+        NONFINITE,
+        NAN,
+    )
+    _ALL_BY_ZERONESS = union_of_distinct_sets(
+        NONZERO,
+        ZERO,
+        NAN,
+    )
+    _ALL_BY_BIGNESS = union_of_distinct_sets(
+        ESSENTIALLY_ZERO,
+        REASONABLY_NONZERO,
+        UNREASONABLY_BIG,
+        NAN,
+    )
+    _ALL_BY_WHOLENESS = union_of_distinct_sets(
+        WHOLE_NO,
+        WHOLE_YES,
+        WHOLE_MAYBE,
+        WHOLE_INDETERMINATE,
+        NAN,
+    )
 
 # Hex
 # ---

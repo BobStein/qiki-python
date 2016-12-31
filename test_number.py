@@ -829,32 +829,32 @@ class NumberBasicTests(NumberTests):
                 union_of_distinct_sets({1,2,3}, {3,4,5})
 
     def test_zone_sets(self):
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_FINITENESS)
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_REASONABLENESS)
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_ZERONESS)
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_BIGNESS)
-        self.assertEqualSets(Number.ZONE_ALL, Number._ZONE_ALL_BY_WHOLENESS)
+        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_FINITENESS)
+        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_REASONABLENESS)
+        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_ZERONESS)
+        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_BIGNESS)
+        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_WHOLENESS)
 
     def test_zone(self):
         """Test an example number in each zone."""
-        self.assertEqual(Number.Zone.TRANSFINITE,         Number('0qFF81').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_2A').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82_01').zone)
-        self.assertEqual(Number.Zone.POSITIVE,            Number('0q82').zone)
-        self.assertEqual(Number.Zone.FRACTIONAL,          Number('0q81FF_80').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_SMALL,     Number('0q80FF0000_FA0A1F01').zone)
-        self.assertEqual(Number.Zone.INFINITESIMAL,       Number('0q807F').zone)
-        self.assertEqual(Number.Zone.ZERO,                Number('0q80').zone)
-        self.assertEqual(Number.Zone.INFINITESIMAL_NEG,   Number('0q7F81').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_SMALL_NEG, Number('0q7F00FFFF_5F5E00FF').zone)
-        self.assertEqual(Number.Zone.FRACTIONAL_NEG,      Number('0q7E00_80').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7E').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_FF').zone)
-        self.assertEqual(Number.Zone.NEGATIVE,            Number('0q7D_D6').zone)
-        self.assertEqual(Number.Zone.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
-        self.assertEqual(Number.Zone.TRANSFINITE_NEG,     Number('0q007F').zone)
-        self.assertEqual(Number.Zone.NAN,                 Number('0q').zone)
+        self.assertEqual(Zone.TRANSFINITE,         Number('0qFF81').zone)
+        self.assertEqual(Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
+        self.assertEqual(Zone.POSITIVE,            Number('0q82_2A').zone)
+        self.assertEqual(Zone.POSITIVE,            Number('0q82_01').zone)
+        self.assertEqual(Zone.POSITIVE,            Number('0q82').zone)
+        self.assertEqual(Zone.FRACTIONAL,          Number('0q81FF_80').zone)
+        self.assertEqual(Zone.LUDICROUS_SMALL,     Number('0q80FF0000_FA0A1F01').zone)
+        self.assertEqual(Zone.INFINITESIMAL,       Number('0q807F').zone)
+        self.assertEqual(Zone.ZERO,                Number('0q80').zone)
+        self.assertEqual(Zone.INFINITESIMAL_NEG,   Number('0q7F81').zone)
+        self.assertEqual(Zone.LUDICROUS_SMALL_NEG, Number('0q7F00FFFF_5F5E00FF').zone)
+        self.assertEqual(Zone.FRACTIONAL_NEG,      Number('0q7E00_80').zone)
+        self.assertEqual(Zone.NEGATIVE,            Number('0q7E').zone)
+        self.assertEqual(Zone.NEGATIVE,            Number('0q7D_FF').zone)
+        self.assertEqual(Zone.NEGATIVE,            Number('0q7D_D6').zone)
+        self.assertEqual(Zone.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
+        self.assertEqual(Zone.TRANSFINITE_NEG,     Number('0q007F').zone)
+        self.assertEqual(Zone.NAN,                 Number('0q').zone)
 
     def test_float_qigits(self):
         self.assertEqual('0q82_01', Number(1.1, qigits=1).qstring())
@@ -1025,7 +1025,7 @@ class NumberBasicTests(NumberTests):
         if LUDICROUS_NUMBER_SUPPORT:
             # noinspection PyUnresolvedReferences
             m__s(mpmath.power(2,1024),    '0qFF000080_01')   # A smidgen too big for floating point
-            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Number.Zone.LUDICROUS_LARGE
+            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Zone.LUDICROUS_LARGE
             f__s(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
         else:
             f__s(float('+inf'),           '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
@@ -2512,22 +2512,22 @@ class NumberPickleTests(NumberTests):
 class NumberSuffixTests(NumberTests):
 
     # TODO:  Replace the indiscriminate use of suffix types here with TYPE_TEST.
-    # suffix type, e.g. Number.Suffix.TYPE_NOP,
+    # suffix type, e.g. Suffix.TYPE_NOP,
     # that's reserved for testing, and has no value implications.
     # (So, for example, a suffix someday for rational numbers might modify
     # the value returned by float(), and not break tests here when it's implemented.)
 
     def test_plus_suffix_type(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Number.Suffix.TYPE_TEST))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix.TYPE_TEST))
 
     def test_plus_suffix_type_by_class(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Number.Suffix(Number.Suffix.TYPE_TEST)))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix(Suffix.TYPE_TEST)))
 
     def test_plus_suffix_type_and_payload(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Number.Suffix.TYPE_TEST, b'\x88'))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix.TYPE_TEST, b'\x88'))
 
     def test_plus_suffix_type_and_payload_by_class(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Number.Suffix(Number.Suffix.TYPE_TEST, b'\x88')))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix(Suffix.TYPE_TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2554,8 +2554,8 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82_01__4455_330300', Number(1).plus_suffix(0x33, b'\x44\x55').qstring())
 
     def test_minus_suffix(self):
-        n = Number('0q82_01__{:02X}0100'.format(Number.Suffix.TYPE_TEST))
-        n_deleted = n.minus_suffix(Number.Suffix.TYPE_TEST)
+        n = Number('0q82_01__{:02X}0100'.format(Suffix.TYPE_TEST))
+        n_deleted = n.minus_suffix(Suffix.TYPE_TEST)
         self.assertEqual('0q82_01', n_deleted.qstring())
 
     def test_suffix_equality_impact(self):
@@ -2583,8 +2583,8 @@ class NumberSuffixTests(NumberTests):
 
     def test_minus_missing_suffix(self):
         no_imaginary_suffix = Number('0q82_01__8201_7F0300')
-        with self.assertRaises(Number.Suffix.NoSuchType):
-            no_imaginary_suffix.minus_suffix(Number.Suffix.TYPE_IMAGINARY)
+        with self.assertRaises(Suffix.NoSuchType):
+            no_imaginary_suffix.minus_suffix(Suffix.TYPE_IMAGINARY)
 
     def test_minus_suffix_among_many(self):
         n = Number(      '0q82_01__990100__880100__770100')
@@ -2600,7 +2600,7 @@ class NumberSuffixTests(NumberTests):
     def test_minus_suffix_multiple_tries(self):
         """Trying to remove the same suffix twice raises NoSuchType."""
         n = Number('0q82_01__990100__880100__880100__110100__880100__880100__770100')
-        with self.assertRaises(Number.Suffix.NoSuchType):
+        with self.assertRaises(Suffix.NoSuchType):
             n.minus_suffix(0x88).minus_suffix(0x88)
 
     def test_chain_minus_suffix(self):
@@ -2617,84 +2617,84 @@ class NumberSuffixTests(NumberTests):
 
         weird_type = WeirdType()
         with self.assertRaises(TypeError):
-            Number.Suffix(0x11, weird_type)
+            Suffix(0x11, weird_type)
 
     def test_suffix_class(self):
-        suffix = Number.Suffix(0x03)
+        suffix = Suffix(0x03)
         self.assertEqual(0x03, suffix.type_)
         self.assertEqual(b'', suffix.payload)
         self.assertEqual(b'\x03\x01\x00', suffix.raw)
 
     def test_suffix_class_empty(self):
-        suffix = Number.Suffix()
+        suffix = Suffix()
         self.assertEqual(None, suffix.type_)
         self.assertEqual(b'', suffix.payload)
         self.assertEqual(b'\x00\x00', suffix.raw)
 
     def test_suffix_class_payload(self):
-        suffix = Number.Suffix(33, b'\xDE\xAD\xBE\xEF')
+        suffix = Suffix(33, b'\xDE\xAD\xBE\xEF')
         self.assertEqual(33, suffix.type_)
         self.assertEqual(b'\xDE\xAD\xBE\xEF', suffix.payload)
         self.assertEqual(b'\xDE\xAD\xBE\xEF\x21\x05\x00', suffix.raw)
 
     def test_suffix_class_equality(self):
-        suffix1  = Number.Suffix(0x01)
-        another1 = Number.Suffix(0x01)
-        suffix3  = Number.Suffix(0x03)
-        another3 = Number.Suffix(0x03)
+        suffix1  = Suffix(0x01)
+        another1 = Suffix(0x01)
+        suffix3  = Suffix(0x03)
+        another3 = Suffix(0x03)
         self.assertTrue(suffix1 == another1)
         self.assertFalse(suffix1 == another3)
         self.assertFalse(suffix3 == another1)
         self.assertTrue(suffix3 == another3)
 
     def test_suffix_class_equality_payload(self):
-        suffix11  = Number.Suffix(0x01, b'\x01\x11\x10')
-        suffix13  = Number.Suffix(0x01, b'\x03\x33\x30')
-        another13 = Number.Suffix(0x01, b'\x03\x33\x30')
+        suffix11  = Suffix(0x01, b'\x01\x11\x10')
+        suffix13  = Suffix(0x01, b'\x03\x33\x30')
+        another13 = Suffix(0x01, b'\x03\x33\x30')
         self.assertTrue(suffix11 == suffix11)
         self.assertFalse(suffix11 == suffix13)
         self.assertFalse(suffix13 == suffix11)
         self.assertTrue(suffix13 == another13)
 
     def test_suffix_class_qstring(self):
-        self.assertEqual('0000', Number.Suffix().qstring())
-        self.assertEqual('110100', Number.Suffix(0x11).qstring())
-        self.assertEqual('2233110300', Number.Suffix(0x11, b'\x22\x33').qstring(underscore=0))
-        self.assertEqual('2233_110300', Number.Suffix(0x11, b'\x22\x33').qstring())
-        self.assertEqual('778899_110400', Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring())
+        self.assertEqual('0000', Suffix().qstring())
+        self.assertEqual('110100', Suffix(0x11).qstring())
+        self.assertEqual('2233110300', Suffix(0x11, b'\x22\x33').qstring(underscore=0))
+        self.assertEqual('2233_110300', Suffix(0x11, b'\x22\x33').qstring())
+        self.assertEqual('778899_110400', Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring())
 
     def test_parse_suffixes(self):
         self.assertEqual((Number(1), ), Number(1).parse_suffixes())
-        self.assertEqual((Number(1), Number.Suffix()), Number(1).plus_suffix().parse_suffixes())
-        self.assertEqual((Number(1), Number.Suffix(3)), Number(1).plus_suffix(3).parse_suffixes())
+        self.assertEqual((Number(1), Suffix()), Number(1).plus_suffix().parse_suffixes())
+        self.assertEqual((Number(1), Suffix(3)), Number(1).plus_suffix(3).parse_suffixes())
         self.assertEqual(
-            (Number(1.75), Number.Suffix(111), Number.Suffix(222)),
+            (Number(1.75), Suffix(111), Suffix(222)),
              Number(1.75)   .plus_suffix(111)   .plus_suffix(222).parse_suffixes()
         )
 
     def test_parse_suffixes_example_in_docstring(self):
         self.assertEqual(
-            (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')),
+            (Number(1), Suffix(2), Suffix(3, b'\x4567')),
              Number(1)   .plus_suffix(2)   .plus_suffix(3, b'\x4567').parse_suffixes()
         )
 
     def test_parse_multiple_suffixes(self):
         self.assertEqual(
-            (Number(1), Number.Suffix(2), Number.Suffix(3)),
+            (Number(1), Suffix(2), Suffix(3)),
              Number(1)   .plus_suffix(2)   .plus_suffix(3).parse_suffixes()
         )
 
     def test_parse_suffixes_payload(self):
         self.assertEqual(
-            (Number(22.25), Number.Suffix(123, b'')),
+            (Number(22.25), Suffix(123, b'')),
              Number(22.25)   .plus_suffix(123, b'').parse_suffixes()
         )
         self.assertEqual(
-            (Number(22.25), Number.Suffix(123, b' ')),
+            (Number(22.25), Suffix(123, b' ')),
             Number( 22.25)   .plus_suffix(123, b' ').parse_suffixes()
         )
         self.assertEqual(
-            (Number(22.25), Number.Suffix(123, b'\xAA\xBB\xCC')),
+            (Number(22.25), Suffix(123, b'\xAA\xBB\xCC')),
              Number(22.25)   .plus_suffix(123, b'\xAA\xBB\xCC').parse_suffixes()
         )
 
@@ -2711,38 +2711,38 @@ class NumberSuffixTests(NumberTests):
 
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q00').parse_suffixes()   # Where's the length byte?
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q__0000').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q__220100').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q__334455220400').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q82_01__9900').parse_suffixes()
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q82_01__000400').parse_suffixes()
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             Number('0q82_01__000300').parse_suffixes()   # Looks like suffixed Number.NAN.
         Number('0q82_01__000200').parse_suffixes()   # Yuck!  Really 0q82__01000200
         Number('0q82_01__000100').parse_suffixes()
         Number('0q82_01__0000').parse_suffixes()
 
     def test_suffix_payload_too_long(self):
-        self.assertEqual('11'*249 + '_08FA00', Number.Suffix(8, b'\x11' * 249).qstring())
-        self.assertEqual('11'*250 + '_08FB00', Number.Suffix(8, b'\x11' * 250).qstring())
-        with self.assertRaises(Number.Suffix.PayloadError):
-            Number.Suffix(8, b'\x11' * 251)
-        with self.assertRaises(Number.Suffix.PayloadError):
-            Number.Suffix(8, b'\x11' * 252)
+        self.assertEqual('11'*249 + '_08FA00', Suffix(8, b'\x11' * 249).qstring())
+        self.assertEqual('11'*250 + '_08FB00', Suffix(8, b'\x11' * 250).qstring())
+        with self.assertRaises(Suffix.PayloadError):
+            Suffix(8, b'\x11' * 251)
+        with self.assertRaises(Suffix.PayloadError):
+            Suffix(8, b'\x11' * 252)
 
     def test_suffix_payload_type_error(self):
         class SomeType(object):
             pass
         some_type = SomeType()
-        with self.assertRaises(Number.Suffix.PayloadError):
-            Number.Suffix(Number.Suffix.TYPE_TEST, some_type)
+        with self.assertRaises(Suffix.PayloadError):
+            Suffix(Suffix.TYPE_TEST, some_type)
 
     def test_suffix_number(self):
         self.assertEqual('0q83_01FF__823F_FF0300', Number(511).plus_suffix(255, Number(63)))
@@ -2752,9 +2752,9 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(b'\x33\x44', Number(1).plus_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
 
     def test_suffix_extract_raw_wrong(self):
-        number_with_test_suffix = Number(1).plus_suffix(Number.Suffix.TYPE_TEST, b'\x33\x44')
-        with self.assertRaises(Number.Suffix.NoSuchType):
-            number_with_test_suffix.get_suffix_payload(Number.Suffix.TYPE_IMAGINARY)
+        number_with_test_suffix = Number(1).plus_suffix(Suffix.TYPE_TEST, b'\x33\x44')
+        with self.assertRaises(Suffix.NoSuchType):
+            number_with_test_suffix.get_suffix_payload(Suffix.TYPE_IMAGINARY)
 
     def test_suffix_extract_raw_among_multiple(self):
         self.assertEqual(
@@ -2774,40 +2774,40 @@ class NumberSuffixTests(NumberTests):
 
     def test_suffix_extract_number_missing(self):
         self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).get_suffix_number(0x11))
-        with self.assertRaises(Number.Suffix.NoSuchType):
+        with self.assertRaises(Suffix.NoSuchType):
             Number(1).plus_suffix(0x99, Number(88)).get_suffix_number(0x11)
-        with self.assertRaises(Number.Suffix.NoSuchType):
+        with self.assertRaises(Suffix.NoSuchType):
             Number(1).get_suffix_number(0x11)
 
     def test_suffix_number_parse(self):
         n = Number(99).plus_suffix(0x11, Number(356))
         (idn, suffix) = n.parse_suffixes()
         self.assertIs(type(idn), Number)
-        self.assertIs(type(suffix), Number.Suffix)
+        self.assertIs(type(suffix), Suffix)
         self.assertEqual(Number(356), suffix.payload_number())
 
     def test_get_suffix(self):
         n = Number(99).plus_suffix(0x11).plus_suffix(0x22)
         s11 = n.get_suffix(0x11)
         s22 = n.get_suffix(0x22)
-        self.assertEqual(s11, Number.Suffix(0x11))
-        self.assertNotEqual(s11, Number.Suffix(0x22))
-        self.assertEqual(s22, Number.Suffix(0x22))
-        self.assertNotEqual(s22, Number.Suffix(0x11))
+        self.assertEqual(s11, Suffix(0x11))
+        self.assertNotEqual(s11, Suffix(0x22))
+        self.assertEqual(s22, Suffix(0x22))
+        self.assertNotEqual(s22, Suffix(0x11))
 
     def test_nan_suffix_empty(self):
         nan = Number(float('nan'))
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             nan.plus_suffix()
 
     def test_nan_suffix_type(self):
         nan = Number(float('nan'))
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             nan.plus_suffix(0x11)
 
     def test_nan_suffix_payload(self):
         nan = Number(float('nan'))
-        with self.assertRaises(Number.SuffixValueError):
+        with self.assertRaises(Suffix.RawError):
             nan.plus_suffix(0x11, b'abcd')
 
     def test_is_suffixed(self):
@@ -2828,7 +2828,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
     def test_root(self):
-        suffixed_word = Number(42).plus_suffix(Number.Suffix.TYPE_TEST)
+        suffixed_word = Number(42).plus_suffix(Suffix.TYPE_TEST)
         self.assertEqual(Number(42), suffixed_word.root())
 
 
@@ -3116,12 +3116,12 @@ class NumberUtilitiesTests(NumberTests):
 
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
-        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number.Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Number.name_of_zone[Zone.TRANSFINITE])
         self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
-        self.assertEqual('NAN', Number.name_of_zone[Number.Zone.NAN])
+        self.assertEqual('NAN', Number.name_of_zone[Zone.NAN])
         self.assertEqual('NAN', Number.name_of_zone[Number.NAN.zone])
         self.assertEqual('NAN', Number.name_of_zone[Number().zone])
-        self.assertEqual('ZERO', Number.name_of_zone[Number.Zone.ZERO])
+        self.assertEqual('ZERO', Number.name_of_zone[Zone.ZERO])
         self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
 
     def test_02_type_name(self):
