@@ -2449,7 +2449,10 @@ class NumberPickleTests(NumberTests):
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
-        self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
+        self.assertEqual(                     '0q82_0323D70A3D70A3E0',                x314.qstring())
+        self.assertEqual(                    b'\x82\x03#\xd7\n=p\xa3\xe0',            x314.raw)
+        self.assertEqual(py23( "",  "b") +  "'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw))
+        self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode())
         self.assertEqual(pickle.dumps(x314), py23(
             b'ccopy_reg\n'
             b'_reconstructor\n'
@@ -2462,7 +2465,7 @@ class NumberPickleTests(NumberTests):
             b'p2\n'
             b'Ntp3\n'
             b'Rp4\n'
-            b'S' + repr(x314.raw) + '\n'
+            b'S' + repr(x314.raw).encode() + b'\n'
             b'p5\n'
             b'b.',                 # Python 2.X
 
@@ -2490,7 +2493,7 @@ class NumberPickleTests(NumberTests):
 
             b'\x80\x02cnumber\n'                             # Python 3.X
             b'Number\n'
-            b'q\x00)\x81q\x0c_codecs\n'
+            b'q\x00)\x81q\x01c_codecs\n'
             b'encode\n'
             b'q\x02X\r\x00\x00\x00' + x314_raw_utf8 + b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
         ))
