@@ -14,7 +14,7 @@ import mysql.connector
 # TODO:  Move mysql stuff to lex_mysql.py?
 import six
 
-from qiki import Number
+from qiki import Number, Suffix
 
 
 # noinspection PyAttributeOutsideInit
@@ -392,7 +392,7 @@ class Word(object):
         #             # _, hack_index = Listing._parse_listing_idn(idn)
         #             # return listing_class(hack_index)
         #         # pieces = idn.parse_suffixes()
-        #         # assert len(pieces) == 1 or isinstance(pieces[1], Number.Suffix)
+        #         # assert len(pieces) == 1 or isinstance(pieces[1], Suffix)
         #         # if len(pieces) == 2 and pieces[1].
         #
         # assert hasattr(self, 'lex')
@@ -458,8 +458,11 @@ class Word(object):
         #     # And this ability may be needed anyway in the murk of LexMySQL.__init__()
         assert isinstance(other, Word)   # Instead of type(self)
         self.lex = other.lex
+        # noinspection PyProtectedMember
         if other._is_inchoate:
+            # noinspection PyProtectedMember
             self._idn         = other._idn
+            # noinspection PyProtectedMember
             self._is_inchoate = other._is_inchoate
         else:
             assert other.exists()
@@ -771,7 +774,7 @@ class Listing(Word):
                        # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
 
-    SUFFIX_TYPE = Number.Suffix.TYPE_LISTING
+    SUFFIX_TYPE = Suffix.TYPE_LISTING
 
     def __init__(self, index, lex=None):
         """
@@ -797,7 +800,7 @@ class Listing(Word):
             lex = self.meta_word.lex
         super(Listing, self).__init__(lex=lex)
 
-        idn = Number(self.meta_word.idn).add_suffix(self.SUFFIX_TYPE, self.index)
+        idn = Number(self.meta_word.idn).plus_suffix(self.SUFFIX_TYPE, self.index)
         # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
         # Did that morph a class property into an instance property?!?
 
@@ -809,7 +812,7 @@ class Listing(Word):
     def _from_idn(self, idn):
         assert idn.is_suffixed()
         assert idn.root() == self.meta_word.idn
-        assert idn.get_suffix(self.SUFFIX_TYPE) == Number.Suffix(self.SUFFIX_TYPE, self.index)
+        assert idn.get_suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
         self.lookup(self.index, self.lookup_callback)
 
     # TODO:  @abstractmethod
@@ -879,7 +882,7 @@ class Listing(Word):
         # except ValueError:
         #     raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
         # assert isinstance(identifier, Number)
-        # assert isinstance(suffix, Number.Suffix)
+        # assert isinstance(suffix, Suffix)
 
         meta_idn, index = cls._parse_listing_idn(idn)
         listing_subclass = cls.class_from_meta_idn(meta_idn)
@@ -919,7 +922,7 @@ class Listing(Word):
             raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
 
         assert isinstance(identifier, Number)
-        assert isinstance(suffix, Number.Suffix)
+        assert isinstance(suffix, Suffix)
         meta_idn = identifier
         index = suffix.payload_number()
         return meta_idn, index

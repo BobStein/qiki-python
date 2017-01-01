@@ -1880,7 +1880,9 @@ assert 'function' == type_name(type_name)
 
 # This lengthed export is not monotonic.
 
-# This scheme leaves an initial FF free for future something-or-other.
+# This scheme leaves an initial FF free for a future something-or-other.
+# Possibly for word.Text, or octet-stream.
+# Nt bytes of literal FF, Nt bytes of a length N (the first byte of which is NOT FF), then N bytes of the octet-stream.
 
 # What to call it?
 #     lengthed export
@@ -1912,6 +1914,7 @@ assert 'function' == type_name(type_name)
 #     candy coat
 #     dragee (jordan almond)
 #     sun dried
+#     shell (except that verb normally means to remove, so does un-shell mean to ADD a shell??)
 
 # Or maybe this is really similar to pickling.
 

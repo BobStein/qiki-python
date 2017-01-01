@@ -15,6 +15,7 @@ Usage example:
 """
 
 from number import Number
+from number import Suffix
 from word import Word
 from word import Lex
 from word import LexMySQL
@@ -31,4 +32,5 @@ __all__ = [
     'Qoolbar',
     'QoolbarSimple',
     'Text',
+    'Suffix',
 ]

@@ -1582,7 +1582,7 @@ class Word0030MoreTests(WordTests):
         """Make sure adding a suffix to the lex's idn does not modify lex.idn."""
         lex = self.lex[u'lex']
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
-        suffixed_lex_idn = lex.idn.add_suffix(3)
+        suffixed_lex_idn = lex.idn.plus_suffix(3)
         # FIXME:  Crap, this USED to mutate lex.idn!!
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
@@ -2101,7 +2101,7 @@ class Word0052ListingInternalsTests(WordListingTests):
         chad = self.Student(2)
         (listing_class_idn, listed_thing_number) = chad.idn.parse_suffixes()
         not_a_listing_idn = qiki.Number(listing_class_idn + 666)
-        not_a_listing_idn.add_suffix(listed_thing_number)
+        not_a_listing_idn.plus_suffix(listed_thing_number)
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.instance_from_idn(not_a_listing_idn)
 
