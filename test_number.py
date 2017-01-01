@@ -11,7 +11,6 @@ from __future__ import unicode_literals
 import operator
 import pickle
 import sys
-import textwrap
 import unittest
 
 from number import *
@@ -39,9 +38,10 @@ class NumberTests(unittest.TestCase):
     def assertEqualSets(self, s1, s2):
         if s1 != s2:
             self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
-                '\n\t'.join((Number.name_of_zone[z] for z in (s1-s2))),
-                '\n\t'.join((Number.name_of_zone[z] for z in (s2-s1))),
+                '\n\t'.join((Zone.name[z] for z in (s1-s2))),
+                '\n\t'.join((Zone.name[z] for z in (s2-s1))),
             ))
+            # XXX:  This only seems to report one of the extras, not all of them.
 
     def assertPositive(self, n):
         self.assertTrue(n.is_positive())
@@ -250,6 +250,8 @@ class NumberBasicTests(NumberTests):
         self.assertNotEqual(nan, Number(0))
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
+
+    # TODO:  Test that math with Number.NAN produces Number.NAN -- including with huge integers.
 
     def test_infinite_constants(self):
         self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
@@ -829,11 +831,13 @@ class NumberBasicTests(NumberTests):
                 union_of_distinct_sets({1,2,3}, {3,4,5})
 
     def test_zone_sets(self):
-        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_FINITENESS)
-        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_REASONABLENESS)
-        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_ZERONESS)
-        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_BIGNESS)
-        self.assertEqualSets(Number.ZONE_ALL, ZoneSet._ALL_BY_WHOLENESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_FINITENESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_REASONABLENESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_ZERONESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_BIGNESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_WHOLENESS)
+        self.assertEqualSets(ZoneSet.ALL, Zone.all)
+        # TODO:  Test Number._descending_zone_codes too.
 
     def test_zone(self):
         """Test an example number in each zone."""
@@ -2433,40 +2437,38 @@ class NumberPickleTests(NumberTests):
 
     def test_pickle_protocol_0_class(self):
         self.assertEqual(pickle.dumps(Number), py23(
-            textwrap.dedent("""\
-                cnumber
-                Number
-                p0
-                ."""
-            ),                                    # Python 2.X
+            b'cnumber\n'
+            b'Number\n'
+            b'p0\n'
+            b'.',                  # Python 2.X
 
-            b"\x80\x03cnumber\nNumber\nq\x00.",   # Python 3.X
+            b'\x80\x03cnumber\n'   # Python 3.X
+            b'Number\n'
+            b'q\x00.',
         ))
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
         self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
         self.assertEqual(pickle.dumps(x314), py23(
-            textwrap.dedent("""\
-                ccopy_reg
-                _reconstructor
-                p0
-                (cnumber
-                Number
-                p1
-                c__builtin__
-                object
-                p2
-                Ntp3
-                Rp4
-                S{x314_raw_repr}
-                p5
-                b."""
-            ).format(x314_raw_repr=repr(x314.raw)),            # Python 2.X
+            b'ccopy_reg\n'
+            b'_reconstructor\n'
+            b'p0\n'
+            b'(cnumber\n'
+            b'Number\n'
+            b'p1\n'
+            b'c__builtin__\n'
+            b'object\n'
+            b'p2\n'
+            b'Ntp3\n'
+            b'Rp4\n'
+            b'S' + repr(x314.raw) + '\n'
+            b'p5\n'
+            b'b.',                 # Python 2.X
 
-            b'\x80\x03cnumber\nNumber\nq\x00)\x81q\x01C\t' +   # Python 3.X
-            x314.raw +
-            b'q\x02b.'
+            b'\x80\x03cnumber\n'   # Python 3.X
+            b'Number\n'
+            b'q\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'
         ))
 
         y314 = pickle.loads(pickle.dumps(x314))
@@ -2478,19 +2480,19 @@ class NumberPickleTests(NumberTests):
     def test_pickle_protocol_2_instance(self):
         x314 = Number(3.14)
         self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
-        self.assertEqual(x314.raw, b'\x82\x03#\xd7\n=p\xa3\xe0')
-        x314_raw_utf8 = b'\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0'
+        self.assertEqual(x314.raw, b'\x82\x03\x23' b'\xd7\x0a\x3d\x70' b'\xa3' b'\xe0')
+        x314_raw_utf8 =        b'\xc2\x82\x03\x23\xc3\x97\x0a\x3d\x70\xc2\xa3\xc3\xa0'
 
         self.assertEqual(pickle.dumps(x314, 2), py23(
-            b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01' +
-            b'U\t' +
-            x314.raw +
-            b'q\x02b.',                                     # Python 2.X
+            b'\x80\x02cnumber\n'
+            b'Number\n'
+            b'q\x00)\x81q\x01U\t' + x314.raw + b'q\x02b.',   # Python 2.X
 
-            b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01' +   # Python 3.X
-            b'c_codecs\nencode\nq\x02X\r\x00\x00\x00' +
-            x314_raw_utf8 +
-            b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+            b'\x80\x02cnumber\n'                             # Python 3.X
+            b'Number\n'
+            b'q\x00)\x81q\x0c_codecs\n'
+            b'encode\n'
+            b'q\x02X\r\x00\x00\x00' + x314_raw_utf8 + b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
         ))
 
         # print(repr(pickle.dumps(x314, 2)))
@@ -3116,13 +3118,33 @@ class NumberUtilitiesTests(NumberTests):
 
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
-        self.assertEqual('TRANSFINITE', Number.name_of_zone[Zone.TRANSFINITE])
-        self.assertEqual('TRANSFINITE', Number.name_of_zone[Number(float('+inf')).zone])
-        self.assertEqual('NAN', Number.name_of_zone[Zone.NAN])
-        self.assertEqual('NAN', Number.name_of_zone[Number.NAN.zone])
-        self.assertEqual('NAN', Number.name_of_zone[Number().zone])
-        self.assertEqual('ZERO', Number.name_of_zone[Zone.ZERO])
-        self.assertEqual('ZERO', Number.name_of_zone[Number(0).zone])
+        self.assertEqual('TRANSFINITE', Zone.name[Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Zone.name[Number(float('+inf')).zone])
+        self.assertEqual('NAN', Zone.name[Zone.NAN])
+        self.assertEqual('NAN', Zone.name[Number.NAN.zone])
+        self.assertEqual('NAN', Zone.name[Number().zone])
+        self.assertEqual('ZERO', Zone.name[Zone.ZERO])
+        self.assertEqual('ZERO', Zone.name[Number(0).zone])
+
+        # TODO:  Test that Zone.name['actual_member_function'] raises IndexError.  Also Zone.name['name'].  Also:
+        #     "__class__",
+        #     "__delattr__",
+        #     "__dict__",
+        #     "__doc__",
+        #     "__format__",
+        #     "__getattribute__",
+        #     "__hash__",
+        #     "__init__",
+        #     "__module__",
+        #     "__new__",
+        #     "__reduce__",
+        #     "__reduce_ex__",
+        #     "__repr__",
+        #     "__setattr__",
+        #     "__sizeof__",
+        #     "__str__",
+        #     "__subclasshook__",
+        #     "__weakref__"
 
     def test_02_type_name(self):
         self.assertEqual(     'int',             type_name(3))
