@@ -1918,12 +1918,10 @@ class Word0051ListingBasicTests(WordListingTests):
         self.assertEqual(       3.0, chad.num)
         self.assertTrue(chad.exists())
 
-        idn_suffix = chad.idn.parse_suffixes()
-        self.assertEqual(2, len(idn_suffix))
-        idn = idn_suffix[0]
-        suffix = idn_suffix[1]
-        self.assertEqual(idn, self.names.idn)
-        self.assertEqual(suffix.payload_number(), number_two)
+        expected_root = self.names.idn
+        expect_one_suffix = qiki.Suffix(qiki.Suffix.TYPE_LISTING, number_two)
+        self.assertEqual(expected_root, chad.idn.root)
+        self.assertEqual([expect_one_suffix], chad.idn.suffixes)
 
     def test_listing_using_spawn_and_save(self):
         archie = self.Student(qiki.Number(0))
@@ -2099,9 +2097,9 @@ class Word0052ListingInternalsTests(WordListingTests):
 
     def test_listing_instance_from_idn_not_listing(self):
         chad = self.Student(2)
-        (listing_class_idn, listed_thing_number) = chad.idn.parse_suffixes()
+        (listing_class_idn, suffixes) = chad.idn.parse_suffixes()
         not_a_listing_idn = qiki.Number(listing_class_idn + 666)
-        not_a_listing_idn.plus_suffix(listed_thing_number)
+        not_a_listing_idn.plus_suffix(suffixes[0])
         with self.assertRaises(qiki.Listing.NotAListing):
             qiki.Listing.instance_from_idn(not_a_listing_idn)
 
@@ -2131,7 +2129,7 @@ class Word0052ListingInternalsTests(WordListingTests):
 
     def test_class_from_meta_idn(self):
         chad = self.Student(2)
-        chad_class_idn = chad.idn.parse_suffixes()[0]
+        chad_class_idn = chad.idn.root
         chad_class = qiki.Listing.class_from_meta_idn(chad_class_idn)
 
         self.assertEqual(self.Student, chad_class)

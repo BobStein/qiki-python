@@ -29,6 +29,7 @@ assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 
 # TODO:  Docstring every class
 # TODO:  Docstring every function
+# TODO:  Shouldn't all exception classes end in ...Error?
 # TODO:  Custom Exceptions should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
 
@@ -244,7 +245,7 @@ class Number(numbers.Complex):
         try:
             self_ready = self._op_ready(self)
             other_ready = self._op_ready(other)
-        except self.Incomparable:
+        except self.CompareError:
             return False
         else:
             return self_ready == other_ready
@@ -279,7 +280,7 @@ class Number(numbers.Complex):
             # DEBATE:  Return NotImplemented?  http://jcalderone.livejournal.com/32837.html
             # SEE:  http://stackoverflow.com/a/879005/673991
 
-            raise cls.Incomparable("A Number cannot be compared with a " + type(x).__name__)
+            raise cls.CompareError("A Number cannot be compared with a " + type(x).__name__)
             # NOTE:  This exception message never makes it out of code in this source file.
             # The only time it is raised, it is also caught, e.g. Number(0) == object
         else:
@@ -327,21 +328,21 @@ class Number(numbers.Complex):
     # Compacted forms are desirable in suffix numbers
     # TODO:  Should normalization strip empty suffixes?  (__0000)
 
-    class Incomparable(TypeError):
+    class CompareError(TypeError):
         """e.g. Number(1+2j) < Number(1+3j)"""
 
     def _both_real(self, other):
         """Make sure both operands are real (not complex) before comparison."""
         if self.is_complex():
-            raise self.Incomparable("Complex values are unordered.")
+            raise self.CompareError("Complex values are unordered.")
             # TODO:  Should this exception be "Unordered" instead?  Test other.is_complex() too??
         try:
             other_as_a_number = type(self)(other)
         except self.ConstructorTypeError:
-            raise self.Incomparable("Number cannot be compared with a " + type(other).__name__)
+            raise self.CompareError("Number cannot be compared with a " + type(other).__name__)
         else:
             if other_as_a_number.is_complex():
-                raise self.Incomparable("Cannot compare complex values.")
+                raise self.CompareError("Cannot compare complex values.")
 
 
     # Math
@@ -421,9 +422,9 @@ class Number(numbers.Complex):
         E.g.  0q7E01 becomes 0q7E00_FF for -1/256.
         """
         if self.zone in ZoneSet.MAYBE_PLATEAU:
-            pieces = self.parse_suffixes()
-            raw_qexponent = pieces[0].qex_raw()
-            raw_qantissa = pieces[0].qan_raw()
+            root, suffixes = self.parse_suffixes()
+            raw_qexponent = root.qex_raw()
+            raw_qantissa = root.qan_raw()
             is_plateau = False
             if len(raw_qantissa) == 0:
                 is_plateau = True
@@ -443,8 +444,8 @@ class Number(numbers.Complex):
                         is_plateau = True
                         self.raw = raw_qexponent + b'\xFF'
             if is_plateau:
-                for piece in pieces[1:]:
-                    self.raw = self.plus_suffix(piece).raw
+                for suffix in suffixes:
+                    self.raw = self.plus_suffix(suffix).raw
                     # TODO:  Test this branch (on a number with suffixes)
 
     def normalized(self):
@@ -508,11 +509,16 @@ class Number(numbers.Complex):
 
     @property
     def real(self):
-        return self.root()
+        return self.root
 
+    @property
     def root(self):
         # TODO:  Less vacuous name.  Unsuffixed()?
-        return self.parse_suffixes()[0]
+        return self.parse_root()
+
+    @property
+    def suffixes(self):
+        return self.parse_suffixes()[1]
 
     @property
     def imag(self):
@@ -757,21 +763,20 @@ class Number(numbers.Complex):
         if underscore == 0:
             return_value = '0q' + self.hex()
         else:
-            parsed_suffixes = list(self.parse_suffixes())
-            root_raw = parsed_suffixes.pop(0).raw
-            length = len(root_raw)
+            root, suffixes = self.parse_suffixes()
+            length = len(root.raw)
             if length == 0:
                 offset = 0
             elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
                 offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it is 64)
-            h = hex_from_string(root_raw)
+            h = hex_from_string(root.raw)
             if length <= offset:
                 return_value = '0q' + h
             else:
                 return_value = '0q' + h[:2*offset] + '_' + h[2*offset:]
-            for suffix in parsed_suffixes:
+            for suffix in suffixes:
                 return_value += '__'
                 return_value += suffix.qstring(underscore)
         return return_value
@@ -1069,8 +1074,21 @@ class Number(numbers.Complex):
                 else:
                     return                      Zone.NAN
 
+    # TODO:  Alternative suffix syntax
+    # n.suffixes() === n.parse_suffixes()[1:]
+    # n.root === n.parse_suffixes()[0]
+    # n.suffixes += Suffix(...) === n = n.plus_suffix(...)
+    # Number(n, Suffix(...), Suffix(...)) === n.plus_suffix(...).plus_suffix(...)
+    # n.remove(Suffix(...)) === n = n.minus_suffix(...)
+    # Number(n, *[suffix for suffix in n.suffixes() if suffix.type != t]) === n.minus_suffix(t)
+    # s = n.suffixes(); s.remove(t); m = Number(n.root, s) ; m = n.minus_suffix(t)
+    # n - Suffix(t) === n.minus_suffix(t)
+
+
     def is_suffixed(self):
-        return self.raw[-1:] == b'\x00'
+        return_value = self.raw[-1:] == b'\x00'
+        assert return_value == bool(self.suffixes)
+        return return_value
         # XXX:  This could be much less sneaky if raw were not the primary internal representation.
         # TODO:  is_suffixed(type)?
 
@@ -1108,21 +1126,23 @@ class Number(numbers.Complex):
     def minus_suffix(self, old_type=None):
         """Make a version of a number without any suffixes of the given type.  This does NOT mutate self."""
         # TODO:  A way to remove just ONE suffix of the given type?
-        pieces = self.parse_suffixes()
-        new_number = pieces[0]
+        # minus_suffix(t) for one, minus_suffixes() for all?
+        # minus_suffix(t, global=True) for all?
+        # minus_suffix(t, count=1) for one?
+        root, suffixes = self.parse_suffixes()
+        new_number = root
         any_deleted = False
-        for piece in pieces[1:]:
-            if piece.type_ == old_type:
+        for suffix in suffixes:
+            if suffix.type_ == old_type:
                 any_deleted = True
             else:
-                new_number = new_number.plus_suffix(piece.type_, piece.payload)
+                new_number = new_number.plus_suffix(suffix.type_, suffix.payload)
         if not any_deleted:
             raise Suffix.NoSuchType
         return new_number
 
     def get_suffix(self, sought_type):
-        suffixes = self.parse_suffixes()
-        for suffix in suffixes[1:]:
+        for suffix in self.suffixes:
             if suffix.type_ == sought_type:
                 return suffix
         raise Suffix.NoSuchType
@@ -1138,39 +1158,60 @@ class Number(numbers.Complex):
     def parse_suffixes(self):
         """Parse a Number into its root and suffixes.
 
-        Return a tuple of at least one element (the root of the Number)
-        followed by zero or more suffixes.
+        Return a tuple of two elements
+            the root
+            a list of suffixes
 
         assert \
-            (Number(1), Number.Suffix(2), Number.Suffix(3, b'\x4567')) == \
-             Number(1)   .plus_suffix(2)   .plus_suffix(3, b'\x4567').parse_suffixes()
+            (Number(1),    [Suffix(2),     Suffix(3, b'\x4567']) == \
+             Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
         """
-        return_array = []
-        n = Number(self)   # Is this really necessary? self.raw is immutable is it not?
-        while True:
-            last_byte = n.raw[-1:]
-            if last_byte == b'\x00':
+        suffixes = []
+        raw_remains = Number(self).raw
+        while raw_remains:
+            last_byte = six.indexbytes(raw_remains, -1)
+            if last_byte == 0x00:
                 try:
-                    length_of_payload_plus_type = six.indexbytes(n.raw, -2)
+                    length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
                 except IndexError:
-                    raise Suffix.RawError("Invalid suffix, or unstripped 00s.")
-                if length_of_payload_plus_type >= len(n.raw)-2:
+                    raise Suffix.RawError("Invalid suffix, case 1.")
+                if length_of_payload_plus_type >= len(raw_remains)-2:
                     # Suffix may neither be larger than raw, nor consume all of it.
-                    raise Suffix.RawError("Invalid suffix, or unstripped 00s.")
+                    raise Suffix.RawError("Invalid suffix, case 2.")
                 if length_of_payload_plus_type == 0x00:
-                    return_array.append(Suffix())
+                    suffixes.insert(0, Suffix())
                 else:
                     try:
-                        type_ = six.indexbytes(n.raw, -3)
+                        type_ = six.indexbytes(raw_remains, -3)
                     except IndexError:
-                        raise ValueError("Invalid suffix, or unstripped 00s.")
-                    payload = n.raw[-length_of_payload_plus_type-2:-3]
-                    return_array.append(Suffix(type_, payload))
-                n = self.from_raw(n.raw[0:-length_of_payload_plus_type-2])
+                        raise ValueError("Invalid suffix, case 3.")
+                    payload = raw_remains[-length_of_payload_plus_type-2:-3]
+                    suffixes.insert(0, Suffix(type_, payload))
+                raw_remains = raw_remains[0:-length_of_payload_plus_type-2]
             else:
                 break
-        return_array.append(n)
-        return tuple(reversed(return_array))
+        return self.from_raw(raw_remains), suffixes
+        # TODO:  Refactor parse_suffixes() to be more like parse_root() or vice versa.
+
+    def parse_root(self):
+        """Slightly quicker than parse_suffixes()[0]"""
+        raw_length = len(self.raw)
+        index_end = raw_length
+        if raw_length:
+            # NOTE:  The root can be NAN but only if the root is all there is.  I.e. can't suffix NAN.
+            while True:
+                index_00 = index_end - 1
+                if index_00 < 0:
+                    raise Suffix.RawError("Invalid suffix, case 4.")
+                zero_tag = six.indexbytes(self.raw, index_00)
+                if zero_tag != 0x00:
+                    break
+                index_length = index_end - 2
+                if index_length < 0:
+                    raise Suffix.RawError("Invalid suffix, case 5.")
+                length = six.indexbytes(self.raw, index_length)
+                index_end = index_length - length
+        return Number.from_raw(self.raw[:index_end])
 
 
     # Constants (see Number.internal_setup())
@@ -1197,10 +1238,11 @@ class Number(numbers.Complex):
 Number.internal_setup()
 
 
-def sets_exclusive(*the_sets):
-    for i in range(len(the_sets)):
+def sets_exclusive(*sets):
+    """Are these sets mutually exclusive?  Is every member unique?"""
+    for i in range(len(sets)):
         for j in range(i):
-            if set(the_sets[i]).intersection(the_sets[j]):
+            if sets[i].intersection(sets[j]):
                 return False
     return True
 assert True == sets_exclusive({1,2,3}, {4,5,6})
@@ -1208,11 +1250,9 @@ assert False == sets_exclusive({1,2,3}, {3,4,5})
 
 
 def union_of_distinct_sets(*sets):
+    """Return the union of these sets.  Assert there are no overlapping members."""
     assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
-    return_value = set()
-    for each_set in sets:
-        return_value |= each_set
-    return return_value
+    return set.union(*sets)
 assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 
 
@@ -1409,15 +1449,15 @@ class Suffix(object):
         TT - type code of the suffix, 0x00 to 0xFF or absent
         LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
              but not including the length itself nor the NUL (see empty suffix)
-        00 - NUL byte
+        00 - the zero-tag, to indicate presence of the suffix
 
-    The "empty suffix" is two NUL bytes:
+    The "empty suffix" is two 00 bytes:
         0000
 
-        That ia like saying LL is 00 means there are no type or payload parts.
+        That is like saying LL is 00, meaning the type is missing and the payload is empty.
         (It is not the same as type 00, which is otherwise available.)
 
-    The NUL byte is what indicates there is a suffix.
+    The zero-tag is what indicates there is a suffix.
     This is why an unsuffixed number has all its right-end 00-bytes stripped.
 
     A number can have multiple suffixes.
@@ -1436,11 +1476,16 @@ class Suffix(object):
     MAX_PAYLOAD_LENGTH = 250
 
     # TODO:  Formally define valid payload contents for each type
-    # TODO:  Number.Suffix.Type class?
+    # TODO:  SuffixType class?
+    # TODO:  And move that class to suffix_type.py?  Because it knows about qiki.word.Listing, and much more.
     TYPE_LISTING   = 0x1D   # 'ID' in 1337
-    TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.)
+    TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.?)
     TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
-    # TODO:  stack-exchange question:  are quaternions a superset of complex numbers?  Does i===i?
+
+    # TODO:  math.stackexchange question:  are quaternions a superset of complex numbers?  Does i===i?
+    # SEE:  quaternions from complex, http://math.stackexchange.com/q/1426433/60679
+    # SEE:  "k ... same role as ... imaginary", http://math.stackexchange.com/a/1159825/60679
+    # SEE:  "...any one of the imaginary components", http://math.stackexchange.com/a/1167326/60679
 
     def __init__(self, type_=None, payload=None):
         assert isinstance(type_, (int, type(None)))
@@ -1789,7 +1834,15 @@ assert 'function' == type_name(type_name)
 # 0q__7E0100 - suffixed NAN
 # 0q80__00 - 00-terminated means it should be suffixed but clearly it is not
 
-# TODO:  Lengthed-export.
+# TODO:  Other infinities:
+#     Omega
+#     Omega + N
+#     Aleph-one
+#     Complex Infinity
+#     Inaccessible Cardinal
+#     Ramsey
+
+# TODO:  Lengthed-export.  Package up a Number value in a byte sequence that knows its own length.
 # The raw attribute is an unlengthed representation of the number.
 # That is to say there is no way to know the length of a string of raw bytes from their content.
 # Content carries no reliable indication of its length.  Length must be encoded extrinsically somehow.
@@ -1797,14 +1850,16 @@ assert 'function' == type_name(type_name)
 # field of a MySQL table, where MySQL manages the length of that field.
 # For applications where a stream of bytes must encode its own length, a different
 # approach must be used.
-# One approach might be that if the first byte is 80-FF, what follows is a
+# Similar to pickling but more byte-efficient for a Number (and only supports Numbers).
+
+# One approach might be that if the first byte is 80-FE, what follows is the rest of a
 # positive integer with no zero stripping. In effect, the first byte is
-# the length (including itself) plus 80 hex.  Values could be:
+# the length (not including itself) plus 81 hex.  Values could be:
 # 8201 8202 8203 ... 82FF 830100 830101 830102 ... FE01(124 00s) ... FEFF(124 FFs)
 #    1    2    3      255    256    257    258     2**992            2**1000-1
 # In these cases the lengthed-export has the same bytes as the unlengthed export
-# except for multiples of 256, e.g. it's 830100 not 8301 (for 0q83_01 == 256).
-# (Because of the no-trailing-00 rule for raw.  That rule would not apply to lengthed exported integers.)
+# except for the zero-stripping, i.e. multiples of 256, e.g. it's 830100 not 8301 (for 0q83_01 == 256).
+# (The no-trailing-00 rule for raw would not apply to lengthed exported integers.)
 # (So conversion when importing must strip those 00s.)
 # (And so suffixed integers cannot be encoded this way, and must have the length prefix(es).)
 
@@ -1821,11 +1876,11 @@ assert 'function' == type_name(type_name)
 # Special case 7F represents -1, aka 0q7D_FF aka 0q7E
 # Special case 80 represents 0, aka 0q80
 # Special case 81 represents 1, aka 0q82_01.
-# So the sequence 7F 80 81 8202 8203 8204 ...
-#     represents  -1  0  1    2    3    4 ...
+# So the sequence is 7F 80 81 8202 8203 8204 ...
+#       representing -1  0  1    2    3    4 ...
 
 # Negative one might be handy as a brief value.
-# Though 017D could encode it, as could 027DFF But maybe plain 7F would be great.
+# Though 017E could encode it, as could 027DFF But maybe plain 7F would be great.
 # Then 00-7E would encode "other" (nonnegative, not-minus-one numbers)
 # Or 00-7D could be lengthed prefixes that are straightforward, and
 # 7E could be a special extender value,
@@ -1835,6 +1890,7 @@ assert 'function' == type_name(type_name)
 # A 65536-byte raw would have a lengthed-prefix of 7E7E7E7E00010000
 # But the number of 7E bytes don't have to be a power of 2, they way they do with the qex
 #     (Wait, why do the qex extenders have to be 2^n bytes?)
+#     (Maybe they don't!)
 
 # So in a way, length bytes 00-7D would be shorthand for 7E00 to 7E7D.
 # And                      8202 to FD...(124 FFs) representing integers 2 to 2**992-1
@@ -1847,28 +1903,32 @@ assert 'function' == type_name(type_name)
 #     7E-part, length-part, raw-part, 00-part
 # 7E-part is Np bytes of literal 7E.
 #     the 7E-part may be omitted if length-part (N) is 0 to 7D.
-# length-part (call it N) is Np bytes representing a (big-endian) length N (so N < 256**Np)
-#     both 7E-part and length-part may be omitted for an unsuffixed integer 0 to 2**992-1
+# length-part (call its value N) is stored in Np bytes representing a big-endian length N
+#     So clearly N < 256**Np
+#     both 7E-part and length-part may be omitted for an unsuffixed integer -1 to 2**992-1
 # raw-part is N bytes, identical to the bytes of Number.raw
 # 00-part consists of 00 bytes.
 #     It only exists if 7E-part and length-part are omitted.
-#     It serves to make the total length (of the entire lengthed-export)
+#     It serves to make the total length (of the raw-part after its first byte)
 #         equal to the first raw byte minus 81.
 #         Except for Number(0) where the raw-part is 80.
 #             Then the 00-part is not -1 bytes, it's just empty.
+#         And except for Number(-1) where the raw-part is 7F.
+#             Then the 00-part is not -2 bytes, it's just empty.
 #     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256.
 #     And it's 2 or more bytes for unsuffixed integer multiples of 256**2, etc.
 # 7F is an alias for 027DFF representing 0q7D_FF aka -1.
 # 81 is an alias for 8201 representing 0q82_01 aka 1.
-#     These two weirdo exceptions are the only cases without a raw-part.
+#     These two weirdo exceptions are the only cases when the raw-part doesn't come from Number.raw.
 #     For every other Number, there is a raw-part in its lengthed-export and it's identical to Number.raw.
 
-# Number.NAN would be seamlessly length-exported as 00.  (Length-part=00, other parts omitted.)
-#     The other weirdo case where Number.raw is empty.  So the raw-part is in there, it's just empty.
+# Number.NAN would be seamlessly length-exported as 00.  (Length-part=00, other parts omitted or empty.)
+#     In this case Number.raw is empty.  So the raw-part is in there, it's just empty.
 
 # Cases with a nonempty 7E-part, i.e. Np > 0:
 #     Say the raw-part is 128 bytes (e.g. lots of suffixes, e.g. googolplex approximations)
 #         then N is 128 and Np is 1
+#     Its lengthed-export would look like this:
 #         7E 80 (128-byte raw-part)
 
 # The following indented part is bogus.  I think.  Leaving it around until sure:
@@ -1877,12 +1937,13 @@ assert 'function' == type_name(type_name)
 #     The lengthed exports of those would be:
 #     7E02FE01 to 7E7E007EFEFF...(124 more FFs)
 # Wrong, FE01(plus 124 00s) makes sense for 2**992
+# But is there a problem for 2**992+1?  Does that fit?
 
 # This lengthed export is not monotonic.
 
 # This scheme leaves an initial FF free for a future something-or-other.
-# Possibly for word.Text, or octet-stream.
-# Nt bytes of literal FF, Nt bytes of a length N (the first byte of which is NOT FF), then N bytes of the octet-stream.
+# Possibly for qiki.word.Text, a utf-8 string, or some other octet-stream.
+# Nt bytes of FF, Nt bytes storing a length N (the first byte of which is NOT FF), then the N-byte octet-stream.
 
 # What to call it?
 #     lengthed export
@@ -1893,16 +1954,17 @@ assert 'function' == type_name(type_name)
 #         "packet"
 #         but it is not a string
 #         but p has some symmetry with q
-#         but it should not)
+#         but the p-string is really too different from the q-string
 #     b or d string would also be symmetrical with q, but it should rather be symmetrical with raw
 #     ink
 #     What real-world analogy for packaging a word for transport down a stream?
 #     stream byte array
 #     morse code
 #     packet
+#     packetized
 #     Think of a tardigrade, dessicated.  And reconstituted back to life.
 #         but this is not condensing, in fact it is expanding.
-#         really is more like a packetized number
+#         really it is more like a packetized number
 #     pickled?  That term is taken, but something analogous...
 #     fermented?
 #     calcified
@@ -1921,10 +1983,35 @@ assert 'function' == type_name(type_name)
 # The lengthed-export version of a Number might be useful for embedding multiple numbers in a suffix.
 # An example of multiple numbers in a suffix might be a "user-defined" type for a suffix
 #     where one number identifies the user, and the other has user-defined meaning.
+#     Or 3 numbers:  user number, type number, content
+#        Oh wait, it can be just type number and content
+#        Because the type number can be an idn for a word that itself represents
+#            user number and the user's custom-defined type
+#            that is, a word [user](define, 'foobar')[system] and another word [user](define, type-number)[foobar]
 # This seems complicated and intricate (complicantricate?) but so are consecutive or nested suffixes.
+#     (the other alternative for a user-defined type)
 # Particularly in the case of user-defined suffix types, we want the syntax to be simple
-# so it's easy to use, and economical with bytes, so the 250 or so 1-byte suffix types are greedily sought
-# and we can be extremely parsimonious with them.
+# so it's easy to use, and economical with bytes, so the 1-byte suffix types are not so greedily sought
+# and we can be extremely parsimonious with them, sloughing off many proposals for them to user-defined types.
 
-# NOTE:  The lengthed export is only lengthed from the left. It cannot be interpreted from the right.
-# That is, if the byte stream is coming in reverse order for some reason, the length cannot be reliably determined.
+# NOTE:  The lengthed export is only lengthed from the "left". It cannot be interpreted from the "right".
+# That is, if the byte stream is coming in reverse order for some reason,
+# the length cannot be reliably determined.
+# So if the payload of a suffix has any lengthed-export numbers
+# then any other parts must also be lengthed somehow.
+# e.g. it's not possible for a payload to contain string + lengthed-exported-number
+# unless the string were lengthed (NUL-terminated or preceded length bytes).
+
+# Whoa!  If we had right-lengthed export in the suffix then most suffixes
+# could contain two numbers (besides the zero-tag), type and payload. No need for a length-part!
+# I could store these suffix number raw bytes effing backwards!
+# All of this crap leads to the idea that Number should store separately:
+#     ludicrous-preamble (e.g. FF00FFFF...)
+#     qex (itself could store an exponent, but .raw could be the bytes)
+#     qan
+#     suffixes
+#        suffix
+#            type - a number (idn of a sentence defining the suffix type)
+#            payload - a number that's type-specific (which may be itself suffixed)
+#            raw - reversed(payload.lengthed_export) + reversed(type.lengthed_export) + 00
+#

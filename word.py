@@ -272,6 +272,7 @@ class Word(object):
             sentence requires an explicit num, define defaults to 1
         """
         # TODO:  rewrite this docstring
+        # TODO:  say()?
 
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
@@ -332,7 +333,8 @@ class Word(object):
         return new_word
 
     class SentenceArgs(TypeError):
-        pass
+        """Arguments to Word.says() (or intended for Word.says()) are wrong."""
+        # TODO:  SayError?
 
     def spawn(self, *args, **kwargs):
         """
@@ -769,7 +771,7 @@ class Listing(Word):
                        # listing_subclass.meta_word.idn is an unsuffixed qiki.Number.
                        # If x is an instance of a listing_subclass, then x.idn is a suffixed qiki.Number.
                        # The root of x.idn is its class's meta_word.idn.
-                       # I.e. x.idn.root() == x.meta_word.idn
+                       # I.e. x.idn.root == x.meta_word.idn
                        # See examples in test_example_idn().
                        # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
@@ -811,7 +813,7 @@ class Listing(Word):
 
     def _from_idn(self, idn):
         assert idn.is_suffixed()
-        assert idn.root() == self.meta_word.idn
+        assert idn.root == self.meta_word.idn
         assert idn.get_suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
         self.lookup(self.index, self.lookup_callback)
 
@@ -911,13 +913,12 @@ class Listing(Word):
     def _parse_listing_idn(cls, idn):
         """Return (meta_idn, index) or raise NotAListing."""
         try:
-            pieces = idn.parse_suffixes()
+            identifier, suffixes = idn.parse_suffixes()
         except AttributeError:
             raise cls.NotAListing("Not a Number: " + type(idn).__name__)
-        try:
-            (identifier, suffix) = pieces
-        except ValueError:
+        if len(suffixes) != 1:
             raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())
+        suffix = suffixes[0]
         if suffix.type_ != cls.SUFFIX_TYPE:
             raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
 
@@ -955,7 +956,7 @@ class ListingNotInstalled(Listing):
             "Listing identifier {idn} has meta_idn {meta_idn} "
             "which was not installed to a class.".format(
                 idn=self.idn,
-                meta_idn=self.idn.root(),
+                meta_idn=self.idn.root,
             )
         )
 

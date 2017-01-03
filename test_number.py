@@ -237,7 +237,7 @@ class NumberBasicTests(NumberTests):
     def test_nan_equality(self):
         # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
         # SEE:  http://stackoverflow.com/questions/1565164/what-is-the-rationale-for-all-comparisons-returning-false-for-ieee754-nan-values
-        # TODO:  Any comparisons with NAN should raise Number.Incomparable("...is_nan() instead...").
+        # TODO:  Any comparisons with NAN should raise Number.CompareError("...is_nan() instead...").
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
         self.assertEqual(nan, Number(None))
@@ -1870,18 +1870,18 @@ class NumberComparisonTests(NumberTests):
         class SomeType(object):
             pass
 
-        with self.assertRaises(Number.Incomparable):    Number(1) <  SomeType()
-        with self.assertRaises(Number.Incomparable):    Number(1) <= SomeType()
+        with self.assertRaises(Number.CompareError):    Number(1) <  SomeType()
+        with self.assertRaises(Number.CompareError):    Number(1) <= SomeType()
         self.assertFalse(                               Number(1) == SomeType())
         self.assertTrue(                                Number(1) != SomeType())
-        with self.assertRaises(Number.Incomparable):    Number(1) >  SomeType()
-        with self.assertRaises(Number.Incomparable):    Number(1) >= SomeType()
-        with self.assertRaises(Number.Incomparable):   SomeType() <  Number(1)
-        with self.assertRaises(Number.Incomparable):   SomeType() <= Number(1)
+        with self.assertRaises(Number.CompareError):    Number(1) >  SomeType()
+        with self.assertRaises(Number.CompareError):    Number(1) >= SomeType()
+        with self.assertRaises(Number.CompareError):   SomeType() <  Number(1)
+        with self.assertRaises(Number.CompareError):   SomeType() <= Number(1)
         self.assertFalse(                              SomeType() == Number(1))
         self.assertTrue(                               SomeType() != Number(1))
-        with self.assertRaises(Number.Incomparable):   SomeType() >  Number(1)
-        with self.assertRaises(Number.Incomparable):   SomeType() >= Number(1)
+        with self.assertRaises(Number.CompareError):   SomeType() >  Number(1)
+        with self.assertRaises(Number.CompareError):   SomeType() >= Number(1)
 
     def test_in_and_sorted(self):
         """
@@ -1919,7 +1919,7 @@ class NumberComparisonTests(NumberTests):
         self.assertIn(some_instance, mixed_tuple)
         self.assertNotIn(another_instance, mixed_tuple)
 
-        with self.assertRaises(Number.Incomparable):
+        with self.assertRaises(Number.CompareError):
             sorted(mixed_tuple)
 
 
@@ -2345,7 +2345,7 @@ class NumberComplex(NumberTests):
         n, n_bar = Number(888+111j), Number(888-111j)
         with self.assertRaises(TypeError):   # So should Number() comparisons with a nonzero imaginary.
             n_bar < n
-        with self.assertRaises(Number.Incomparable):   # By the way, Number.Incomparable is a TypeError.
+        with self.assertRaises(Number.CompareError):   # By the way, Number.CompareError is a TypeError.
             n_bar < n
 
     def test_06c_more_or_less_complex_comparisons(self):
@@ -2376,17 +2376,17 @@ class NumberComplex(NumberTests):
         self.assertEqual(native_real2, native_complex2.real)
         self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
         self.assertTrue(qiki_real1 >= qiki_real2)
-        with self.assertRaises(Number.Incomparable):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
+        with self.assertRaises(Number.CompareError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
             qiki_complex2 < qiki_real1
-        with self.assertRaises(Number.Incomparable):
+        with self.assertRaises(Number.CompareError):
             qiki_real2 < qiki_complex1
-        with self.assertRaises(Number.Incomparable):   # n vs q
+        with self.assertRaises(Number.CompareError):   # n vs q
             native_complex2 < qiki_real1
-        with self.assertRaises(Number.Incomparable):
+        with self.assertRaises(Number.CompareError):
             native_real2 < qiki_complex1
-        with self.assertRaises(Number.Incomparable):   # q vs n
+        with self.assertRaises(Number.CompareError):   # q vs n
             qiki_complex2 < native_real1
-        with self.assertRaises(Number.Incomparable):
+        with self.assertRaises(Number.CompareError):
             qiki_real2 < native_complex1
         with self.assertRaises(TypeError):   # n vs n
             native_complex2 < native_real1
@@ -2669,38 +2669,38 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('778899_110400', Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring())
 
     def test_parse_suffixes(self):
-        self.assertEqual((Number(1), ), Number(1).parse_suffixes())
-        self.assertEqual((Number(1), Suffix()), Number(1).plus_suffix().parse_suffixes())
-        self.assertEqual((Number(1), Suffix(3)), Number(1).plus_suffix(3).parse_suffixes())
+        self.assertEqual((Number(1), []), Number(1).parse_suffixes())
+        self.assertEqual((Number(1), [Suffix()]), Number(1).plus_suffix().parse_suffixes())
+        self.assertEqual((Number(1), [Suffix(3)]), Number(1).plus_suffix(3).parse_suffixes())
         self.assertEqual(
-            (Number(1.75), Suffix(111), Suffix(222)),
-             Number(1.75)   .plus_suffix(111)   .plus_suffix(222).parse_suffixes()
+            (Number(1.75),    [Suffix(111),     Suffix(222)]),
+             Number(1.75).plus_suffix(111).plus_suffix(222).parse_suffixes()
         )
 
     def test_parse_suffixes_example_in_docstring(self):
         self.assertEqual(
-            (Number(1), Suffix(2), Suffix(3, b'\x4567')),
-             Number(1)   .plus_suffix(2)   .plus_suffix(3, b'\x4567').parse_suffixes()
+            (Number(1),    [Suffix(2),     Suffix(3, b'\x4567')]),
+             Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
         )
 
     def test_parse_multiple_suffixes(self):
         self.assertEqual(
-            (Number(1), Suffix(2), Suffix(3)),
-             Number(1)   .plus_suffix(2)   .plus_suffix(3).parse_suffixes()
+            (Number(1),    [Suffix(2),     Suffix(3)]),
+             Number(1).plus_suffix(2).plus_suffix(3).parse_suffixes()
         )
 
     def test_parse_suffixes_payload(self):
         self.assertEqual(
-            (Number(22.25), Suffix(123, b'')),
-             Number(22.25)   .plus_suffix(123, b'').parse_suffixes()
+            (Number(22.25),    [Suffix(123, b'')]),
+             Number(22.25).plus_suffix(123, b'').parse_suffixes()
         )
         self.assertEqual(
-            (Number(22.25), Suffix(123, b' ')),
-            Number( 22.25)   .plus_suffix(123, b' ').parse_suffixes()
+            (Number(22.25),    [Suffix(123, b' ')]),
+            Number( 22.25).plus_suffix(123, b' ').parse_suffixes()
         )
         self.assertEqual(
-            (Number(22.25), Suffix(123, b'\xAA\xBB\xCC')),
-             Number(22.25)   .plus_suffix(123, b'\xAA\xBB\xCC').parse_suffixes()
+            (Number(22.25),    [Suffix(123, b'\xAA\xBB\xCC')]),
+             Number(22.25).plus_suffix(123, b'\xAA\xBB\xCC').parse_suffixes()
         )
 
     def test_parse_suffixes_is_passive(self):
@@ -2709,30 +2709,32 @@ class NumberSuffixTests(NumberTests):
         nbytes_original = len(n_original.raw)
         n = Number(n_original)
 
-        n.parse_suffixes()
+        _,_ = n.parse_suffixes()
 
         self.assertEqual(n_original, n)
         self.assertEqual(nbytes_original, len(n.raw))
 
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
-        with self.assertRaises(Suffix.RawError):
-            Number('0q00').parse_suffixes()   # Where's the length byte?
-        with self.assertRaises(Suffix.RawError):
-            Number('0q__0000').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Suffix.RawError):
-            Number('0q__220100').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Suffix.RawError):
-            Number('0q__334455220400').parse_suffixes()   # Can't suffix Number.NAN
-        with self.assertRaises(Suffix.RawError):
-            Number('0q82_01__9900').parse_suffixes()
-        with self.assertRaises(Suffix.RawError):
-            Number('0q82_01__000400').parse_suffixes()
-        with self.assertRaises(Suffix.RawError):
-            Number('0q82_01__000300').parse_suffixes()   # Looks like suffixed Number.NAN.
-        Number('0q82_01__000200').parse_suffixes()   # Yuck!  Really 0q82__01000200
-        Number('0q82_01__000100').parse_suffixes()
-        Number('0q82_01__0000').parse_suffixes()
+        def bad_to_parse(n):
+            with self.assertRaises(Suffix.RawError):
+                n.parse_suffixes()
+            with self.assertRaises(Suffix.RawError):
+                n.parse_root()
+        def good_to_parse(n):
+            n.parse_suffixes()
+            n.parse_root()
+
+        bad_to_parse(Number('0q00'))   # Where's the length byte?
+        bad_to_parse(Number('0q__0000'))   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__220100'))   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__334455220400'))   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q82_01__9900'))
+        bad_to_parse(Number('0q82_01__000400'))
+        bad_to_parse(Number('0q82_01__000300'))   # Looks like suffixed Number.NAN.
+        good_to_parse(Number('0q82_01__000200'))   # Can't avoid mistaking this flawed number for 0q82__01000200
+        good_to_parse(Number('0q82_01__000100'))
+        good_to_parse(Number('0q82_01__0000'))
 
     def test_suffix_payload_too_long(self):
         self.assertEqual('11'*249 + '_08FA00', Suffix(8, b'\x11' * 249).qstring())
@@ -2786,7 +2788,9 @@ class NumberSuffixTests(NumberTests):
 
     def test_suffix_number_parse(self):
         n = Number(99).plus_suffix(0x11, Number(356))
-        (idn, suffix) = n.parse_suffixes()
+        (idn, suffixes) = n.parse_suffixes()
+        self.assertEqual(1, len(suffixes))
+        suffix = suffixes[0]
         self.assertIs(type(idn), Number)
         self.assertIs(type(suffix), Suffix)
         self.assertEqual(Number(356), suffix.payload_number())
@@ -2834,8 +2838,16 @@ class NumberSuffixTests(NumberTests):
 
     def test_root(self):
         suffixed_word = Number(42).plus_suffix(Suffix.TYPE_TEST)
-        self.assertEqual(Number(42), suffixed_word.root())
+        self.assertEqual(Number(42), suffixed_word.root)
 
+    def test_parse_root(self):
+        def assert_root_consistent(n):
+            self.assertEqual(n.parse_root(), n.parse_suffixes()[0])
+        assert_root_consistent(Number('0q'))
+        assert_root_consistent(Number('0q82_10'))
+        assert_root_consistent(Number('0q82_10__0000'))
+        assert_root_consistent(Number('0q82_10__FFFFFF_7F0400'))
+        assert_root_consistent(Number('0q82_10__123456_7F0400'))
 
 # noinspection SpellCheckingInspection
 class NumberDictionaryKeyTests(NumberTests):
