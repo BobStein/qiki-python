@@ -2452,7 +2452,7 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(                     '0q82_0323D70A3D70A3E0',                x314.qstring())
         self.assertEqual(                    b'\x82\x03#\xd7\n=p\xa3\xe0',            x314.raw)
         self.assertEqual(py23( "",  "b") +  "'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw))
-        self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode())
+        self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode('ascii'))
         self.assertEqual(pickle.dumps(x314), py23(
             b'ccopy_reg\n'
             b'_reconstructor\n'
@@ -2465,7 +2465,7 @@ class NumberPickleTests(NumberTests):
             b'p2\n'
             b'Ntp3\n'
             b'Rp4\n'
-            b'S' + repr(x314.raw).encode() + b'\n'
+            b'S' + repr(x314.raw).encode('ascii') + b'\n'
             b'p5\n'
             b'b.',                 # Python 2.X
 
@@ -2562,6 +2562,15 @@ class NumberSuffixTests(NumberTests):
         n = Number('0q82_01__{:02X}0100'.format(Suffix.TYPE_TEST))
         n_deleted = n.minus_suffix(Suffix.TYPE_TEST)
         self.assertEqual('0q82_01', n_deleted.qstring())
+
+    def test_constructor_suffix(self):
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.TYPE_TEST)))
+
+    def test_constructor_not_suffix(self):
+        class SomeType(object):  pass
+        some_type = SomeType()
+        with self.assertRaises(Number.ConstructorSuffixError):
+            self.assertEqual(Number('0q82_01__7E0100'), Number(1, some_type))
 
     def test_suffix_equality_impact(self):
         """
@@ -2730,9 +2739,10 @@ class NumberSuffixTests(NumberTests):
         bad_to_parse(Number('0q__220100'))   # Can't suffix Number.NAN
         bad_to_parse(Number('0q__334455220400'))   # Can't suffix Number.NAN
         bad_to_parse(Number('0q82_01__9900'))
-        bad_to_parse(Number('0q82_01__000400'))
+        bad_to_parse(Number('0q82_01__000500'))
+        bad_to_parse(Number('0q82_01__000400'))   # Suffix "underflows" one byte off the left edge.
         bad_to_parse(Number('0q82_01__000300'))   # Looks like suffixed Number.NAN.
-        good_to_parse(Number('0q82_01__000200'))   # Can't avoid mistaking this flawed number for 0q82__01000200
+        good_to_parse(Number('0q82_01__000200'))   # Indistinguishable from 0q82__01000200
         good_to_parse(Number('0q82_01__000100'))
         good_to_parse(Number('0q82_01__0000'))
 
