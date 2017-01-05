@@ -82,8 +82,9 @@ class Zone(object):
     Zone class properties
     ---------------------
         Zone.name - dictionary translating each zone code to its name
-        Zone.descending_codes - list of zone codes in descending order
-        Zone.all - set of all zone codes
+            {ZONE.TRANSFINITE: 'TRANSFINITE', ...}
+        Zone.descending_codes - list of zone codes in descending order:
+            [ZONE.TRANSFINITE, ...]
     """
     # TODO:  Test that invalid and illegal values normalize to valid values.
     # Or should illegal values just crash?  I mean come on, 0q80_00 is just insane.
@@ -108,7 +109,6 @@ class Zone(object):
     # Zone.internal_setup() will set these:
     name = None
     descending_codes = None
-    all = None
 
     @classmethod
     def internal_setup(cls):
@@ -116,7 +116,6 @@ class Zone(object):
 
         cls.name = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
         cls.descending_codes = sorted(Zone.name.keys(), reverse=True)
-        cls.all = {zone for zone in Zone.descending_codes}
 
 
 Zone.internal_setup()

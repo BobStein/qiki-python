@@ -839,7 +839,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_ZERONESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_BIGNESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_WHOLENESS)
-        self.assertEqualSets(ZoneSet.ALL, Zone.all)
+        self.assertEqualSets(ZoneSet.ALL, set(Zone.descending_codes))
         # TODO:  Test Number._descending_zone_codes too.
 
     def test_zone(self):
