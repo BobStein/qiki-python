@@ -19,6 +19,7 @@ import six
 import qiki
 from number import hex_from_string
 from word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
+from word import is_iterable
 
 try:
     import secure.credentials
@@ -3024,6 +3025,61 @@ class WordQoolbarTests(WordTests):
         youtube_word = youtube_words[0]
         youtube_jbo = youtube_word.jbo
         self.assertEqual({self.anna_like_youtube, self.bart_like_youtube}, set(youtube_jbo))
+
+
+
+
+
+class WordInternalTests(WordTests):
+
+    def test_is_iterable_basic_types(self):
+        self.assertTrue(is_iterable([]))
+        self.assertTrue(is_iterable(()))
+        self.assertTrue(is_iterable({}))
+        self.assertTrue(is_iterable(set()))
+        self.assertTrue(is_iterable(dict()))
+        self.assertTrue(is_iterable(range(10)))
+        self.assertTrue(is_iterable(six.moves.range(10)))
+        self.assertTrue(is_iterable(bytearray()))
+
+        self.assertFalse(is_iterable(None))
+        self.assertFalse(is_iterable(Ellipsis))
+        self.assertFalse(is_iterable(NotImplemented))
+        self.assertFalse(is_iterable(Exception))
+        self.assertFalse(is_iterable(True))
+        self.assertFalse(is_iterable(''))
+        self.assertFalse(is_iterable(b''))
+        self.assertFalse(is_iterable(u''))
+        self.assertFalse(is_iterable(1))
+        self.assertFalse(is_iterable(1.0))
+        self.assertFalse(is_iterable(1.0 + 2.0j))
+
+    def test_is_iterable_classes(self):
+        self.assertFalse(is_iterable(object))
+        self.assertFalse(is_iterable(object()))
+
+        # noinspection PyClassHasNoInit
+        class OldStyleClass:
+            pass
+        class NewStyleClass(object):
+            pass
+        old_style_instance = OldStyleClass()
+        new_style_instance = NewStyleClass()
+        self.assertFalse(is_iterable(OldStyleClass))
+        self.assertFalse(is_iterable(NewStyleClass))
+        self.assertFalse(is_iterable(old_style_instance))
+        self.assertFalse(is_iterable(new_style_instance))
+
+    def test_is_iterable_functions(self):
+        def regular_function():
+            return 0
+        def generator_function():
+            yield 0
+        self.assertFalse(is_iterable(regular_function))
+        self.assertFalse(is_iterable(generator_function))
+        self.assertFalse(is_iterable(regular_function()))
+        self.assertTrue(is_iterable(generator_function()))
+
 
 
 

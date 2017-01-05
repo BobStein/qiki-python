@@ -201,7 +201,10 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number('0q82_2A'), Number.from_mysql(bytearray(b'\x82\x2A')))
 
     def test_to_mysql(self):
-        self.assertEqual("x'822A'", Number('0q82_2A').mysql())
+        self.assertEqual("x'822A'", Number('0q82_2A').mysql_string())
+
+    def test_to_c(self):
+        self.assertEqual(r'"\x82\x2A"', Number('0q82_2A').c_string())
 
     # TODO: test from_mysql and to_mysql using SELECT and @-variables -- maybe in test_word.py because it already has a db connection.
 
@@ -2566,8 +2569,58 @@ class NumberSuffixTests(NumberTests):
     def test_constructor_suffix(self):
         self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.TYPE_TEST)))
 
+    def test_constructor_suffixes(self):
+        number_fat = Number(
+            0,
+            Suffix(Suffix.TYPE_TEST, Number(1)),
+            Suffix(Suffix.TYPE_TEST, Number(2)),
+            Suffix(Suffix.TYPE_TEST, Number(3)),
+        )
+        self.assertEqual('0q80__8201_7E0300__8202_7E0300__8203_7E0300', number_fat.qstring())
+
+    def test_constructor_suffix_list(self):
+        number_fat = Number(
+            0,
+            [
+                Suffix(Suffix.TYPE_TEST, Number(1)),
+                Suffix(Suffix.TYPE_TEST, Number(2)),
+                Suffix(Suffix.TYPE_TEST, Number(3)),
+            ]
+        )
+        self.assertEqual('0q80__8201_7E0300__8202_7E0300__8203_7E0300', number_fat.qstring())
+
+    def test_constructor_suffix_deep_nested_list(self):
+        number_fat = Number(
+            0,
+            [
+                Suffix(Suffix.TYPE_TEST, Number(1)),
+                [
+                    Suffix(Suffix.TYPE_TEST, Number(2)),
+                    [
+                        Suffix(Suffix.TYPE_TEST, Number(3)),
+                        Suffix(Suffix.TYPE_TEST, Number(4)),
+                        Suffix(Suffix.TYPE_TEST, Number(5)),
+                    ],
+                    Suffix(Suffix.TYPE_TEST, Number(6)),
+                ],
+                Suffix(Suffix.TYPE_TEST, Number(7)),
+            ],
+            Suffix(Suffix.TYPE_TEST, Number(8)),
+        )
+        self.assertEqual(
+            '0q80__'
+            '8201_7E0300__'
+            '8202_7E0300__'
+            '8203_7E0300__'
+            '8204_7E0300__'
+            '8205_7E0300__'
+            '8206_7E0300__'
+            '8207_7E0300__'
+            '8208_7E0300', number_fat.qstring())
+
     def test_constructor_not_suffix(self):
-        class SomeType(object):  pass
+        class SomeType(object):
+            pass
         some_type = SomeType()
         with self.assertRaises(Number.ConstructorSuffixError):
             self.assertEqual(Number('0q82_01__7E0100'), Number(1, some_type))
@@ -2576,14 +2629,14 @@ class NumberSuffixTests(NumberTests):
         """
         In general, Number suffixes should impact equality.
 
-        That is, a suffixed Number should not equal an unsuffixed number, not even its root.
+        That is, a suffixed Number should not equal an unsuffixed number.
         Or two numbers with different suffixes should not be equal.
-        One exception is a complex number with a zero imaginary suffix, that should equal its
-        root, real-only version.
+        (One exception is a complex number with a zero imaginary suffix, that should equal its
+        root, real-only version.  That's tested elsewhere.)
         """
         n_plain = Number('0q82_01')
-        n_suffixed = Number('0q82_01__7F0100')
-        n_another_suffixed = Number('0q82_01__887F0200')
+        n_suffixed = Number('0q82_01__7E0100')
+        n_another_suffixed = Number('0q82_01__887E0200')
 
         self.assertTrue(n_plain == n_plain)
         self.assertFalse(n_plain == n_suffixed)
@@ -2595,8 +2648,19 @@ class NumberSuffixTests(NumberTests):
         self.assertFalse(n_another_suffixed == n_suffixed)
         self.assertTrue(n_another_suffixed == n_another_suffixed)
 
+    def test_suffix_equality_ther_types(self):
+        """
+        Look for a bug where Suffix.__eq__(self, other) expects other to be a Suffix.
+
+        Note that self.assertNotEqual() does not invoke Suffix.__eq__().
+        """
+        self.assertFalse(Suffix(Suffix.TYPE_TEST) == 0)
+        self.assertFalse(0 == Suffix(Suffix.TYPE_TEST))
+        self.assertFalse(Suffix(Suffix.TYPE_TEST) == object())
+        self.assertFalse(object() == Suffix(Suffix.TYPE_TEST))
+
     def test_minus_missing_suffix(self):
-        no_imaginary_suffix = Number('0q82_01__8201_7F0300')
+        no_imaginary_suffix = Number('0q82_01__8201_7E0300')
         with self.assertRaises(Suffix.NoSuchType):
             no_imaginary_suffix.minus_suffix(Suffix.TYPE_IMAGINARY)
 
@@ -2858,6 +2922,7 @@ class NumberSuffixTests(NumberTests):
         assert_root_consistent(Number('0q82_10__0000'))
         assert_root_consistent(Number('0q82_10__FFFFFF_7F0400'))
         assert_root_consistent(Number('0q82_10__123456_7F0400'))
+
 
 # noinspection SpellCheckingInspection
 class NumberDictionaryKeyTests(NumberTests):

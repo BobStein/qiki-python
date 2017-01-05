@@ -114,7 +114,7 @@ class Zone(object):
     def internal_setup(cls):
         """Initialize Zone properties after Zone class is defined."""
 
-        cls.name = { getattr(cls, attr): attr for attr in dir(cls) if attr[0].isupper() }
+        cls.name = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
         cls.descending_codes = sorted(Zone.name.keys(), reverse=True)
         cls.all = {zone for zone in Zone.descending_codes}
 
@@ -129,7 +129,7 @@ class Number(numbers.Complex):
     elif SlotsOptimized.FOR_SPEED:
         __slots__ = ('__raw', '_zone')
 
-    def __init__(self, content=None, qigits=None, normalize=False):
+    def __init__(self, *args, **kwargs):   # content=None, qigits=None, normalize=False):
         """
         Number constructor.
 
@@ -139,6 +139,18 @@ class Number(numbers.Complex):
 
         See _from_float() for more about floating point and Number.
         """
+
+        args_list = list(args)
+        try:
+            content = args_list.pop(0)
+        except IndexError:
+            content = kwargs.pop('content', None)
+        qigits = kwargs.pop('qigits', None)
+        normalize = kwargs.pop('normalize', False)
+
+        assert isinstance(qigits, (int, type(None)))
+        assert isinstance(normalize, (int, bool))
+
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
@@ -157,15 +169,25 @@ class Number(numbers.Complex):
                 inner=type_name(content),
             ))
 
+        for suffix in flatten(args_list):
+            # THANKS:  Flattening list, http://stackoverflow.com/a/952952/673991
+            if isinstance(suffix, Suffix):
+                self.raw = self.plus_suffix(suffix).raw
+            else:
+                raise self.ConstructorSuffixError("Expecting suffixes, not a '{}'".format(type_name(suffix)))
+
         assert(isinstance(self.__raw, six.binary_type))
         if normalize:
             self._normalize_all()
 
     class ConstructorTypeError(TypeError):
-        """e.g. Number(object) or Number([])"""
+        """e.g. Number(object) or Number(content=[])"""
 
     class ConstructorValueError(ValueError):
         """e.g. Number('alpha string') or Number.from_raw(0) or Number.from_qstring('0x80')"""
+
+    class ConstructorSuffixError(TypeError):
+        """e.g. Number(1, object)"""
 
     # Raw internal format
     # -------------------
@@ -531,7 +553,7 @@ class Number(numbers.Complex):
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
-            return_value = return_value.plus_suffix(Suffix.TYPE_IMAGINARY, (-imag).raw)
+            return_value = return_value.plus_suffix(Suffix.TYPE_IMAGINARY, (-imag))
         return return_value
 
     # "from" conversions:  Number <-- other type
@@ -743,7 +765,7 @@ class Number(numbers.Complex):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.raw = self.plus_suffix(Suffix.TYPE_IMAGINARY, type(self)(c.imag).raw).raw
+        self.raw = self.plus_suffix(Suffix.TYPE_IMAGINARY, type(self)(c.imag)).raw
         # THANKS:  Call constructor if subclassed, http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
@@ -983,25 +1005,36 @@ class Number(numbers.Complex):
     }   # TODO: ludicrous numbers
 
     def hex(self):
-        """Like q-string but denser.
+        """Like the printable qstring() but simpler (no 0q prefix, no underscores).
 
         assert '822A' == Number('0q82_42').hex()
         """
         return hex_from_string(self.raw)
 
     def x_apostrophe_hex(self):
+        """
+        Encode raw for MySQL:  x'8201'
+
+        assert u"x'8201'" == Number(1).x_apostrophe_hex()
+        """
         return "x'" + self.hex() + "'"
 
     def zero_x_hex(self):
         return "0x" + self.hex()
 
     def ditto_backslash_hex(self):
+        """
+        Encode raw for C or Python:  "\x82\x01"
+
+        assert r'"\x82\x01"' == Number(1).ditto_backslash_hex()
+        """
         hex_digits = self.hex()
-        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
-        # THANKS:  http://stackoverflow.com/a/9475354/673991
+        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in six.moves.range(0, len(hex_digits), 2)]
+        # THANKS:  Split string into pairs, http://stackoverflow.com/a/9475354/673991
         return '"' + ''.join(escaped_hex_pairs) + '"'
 
-    mysql = x_apostrophe_hex
+    mysql_string = x_apostrophe_hex
+    c_string = ditto_backslash_hex
 
     # Zone Determination
     # ------------------
@@ -1077,9 +1110,12 @@ class Number(numbers.Complex):
     # TODO:  Alternative suffix syntax
     # n.suffixes() === n.parse_suffixes()[1:]
     # n.root === n.parse_suffixes()[0]
+    # n.add(Suffix(...))        === n = n.plus_suffix(...)
     # n.suffixes += Suffix(...) === n = n.plus_suffix(...)
-    # Number(n, Suffix(...), Suffix(...)) === n.plus_suffix(...).plus_suffix(...)
-    # n.remove(Suffix(...)) === n = n.minus_suffix(...)
+    # n          += Suffix(...) === n = n.plus_suffix(...)
+    # n.remove(Suffix(...))     === n = n.minus_suffix(...)
+    # n.suffixes -= Suffix(...) === n = n.minus_suffix(...)
+    # n          -= Suffix(...) === n = n.minus_suffix(...)
     # Number(n, *[suffix for suffix in n.suffixes() if suffix.type != t]) === n.minus_suffix(t)
     # s = n.suffixes(); s.remove(t); m = Number(n.root, s) ; m = n.minus_suffix(t)
     # n - Suffix(t) === n.minus_suffix(t)
@@ -1235,13 +1271,33 @@ class Number(numbers.Complex):
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
 
+def flatten(things, build_on=None):
+    """
+    Flatten a nested container into a list.
+
+    THANKS:  http://stackoverflow.com/a/40252152/673991
+    """
+    if build_on is None:
+        build_on = []
+    for thing in things:
+        try:
+            0 in thing
+        except TypeError:
+            build_on.append(thing)
+        else:
+            flatten(thing, build_on)
+    return build_on
+assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))
+
+
 Number.internal_setup()
+assert Number.NAN.raw == b''
 
 
 def sets_exclusive(*sets):
     """Are these sets mutually exclusive?  Is every member unique?"""
-    for i in range(len(sets)):
-        for j in range(i):
+    for i in six.moves.range(len(sets)):
+        for j in six.moves.range(i):
             if sets[i].intersection(sets[j]):
                 return False
     return True
@@ -1518,13 +1574,18 @@ class Suffix(object):
                 )
 
     def __eq__(self, other):
-        return self.type_ == other.type_ and self.payload == other.payload
+        try:
+            other_type = other.type_
+            other_payload = other.payload
+        except AttributeError:
+            return False
+        return self.type_ == other_type and self.payload == other_payload
 
     def __repr__(self):
         if self.type_ is None:
-            return "Number.Suffix()"
+            return "Suffix()"
         else:
-            return "Number.Suffix({type_}, b'{payload}')".format(
+            return "Suffix({type_}, b'{payload}')".format(
                 type_=self.type_,
                 payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
             )
@@ -1617,7 +1678,7 @@ assert 2 == log256(65536)
 
 
 def shift_leftward(n, nbits):
-    """Shift positive left, or negative right."""
+    """Shift positive left, or negative right.  Same as n * 2**nbits"""
     if nbits < 0:
         return n >> -nbits
     else:
@@ -1725,7 +1786,7 @@ def unpack_big_integer_by_struct(binary_string):
 def unpack_big_integer_by_brute(binary_string):
     """Universal version of unpack_big_integer()."""
     return_value = 0
-    for i in range(len(binary_string)):
+    for i in six.moves.range(len(binary_string)):
         return_value <<= 8
         return_value |= six.indexbytes(binary_string, i)
     return return_value
