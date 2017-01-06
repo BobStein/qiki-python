@@ -3030,6 +3030,7 @@ class WordQoolbarTests(WordTests):
 
 
 
+
 class WordInternalTests(WordTests):
 
     def test_is_iterable_basic_types(self):
@@ -3042,13 +3043,6 @@ class WordInternalTests(WordTests):
         self.assertTrue(is_iterable(six.moves.range(10)))
         self.assertTrue(is_iterable(bytearray()))
 
-        if six.PY2:
-            self.assertFalse(is_iterable(b''))
-            self.assertFalse(is_iterable(bytes()))
-        else:
-            self.assertTrue(is_iterable(b''))
-            self.assertTrue(is_iterable(bytes()))
-
         self.assertFalse(is_iterable(None))
         self.assertFalse(is_iterable(Ellipsis))
         self.assertFalse(is_iterable(NotImplemented))
@@ -3059,6 +3053,24 @@ class WordInternalTests(WordTests):
         self.assertFalse(is_iterable(1))
         self.assertFalse(is_iterable(1.0))
         self.assertFalse(is_iterable(1.0 + 2.0j))
+
+    # noinspection PyArgumentList
+    def test_is_iterable_ambiguous(self):
+        """is_iterable() is ambiguous about b'abc' and bytes('abc')"""
+        if six.PY2:
+            self.assertFalse(is_iterable(b'abc'))
+            self.assertFalse(is_iterable(bytes('abc')))
+
+            assert bytes is str
+            self.assertEqual('a', bytes('abc')[0])
+            self.assertIs(str, type(bytes('abc')[0]))
+        else:
+            self.assertTrue(is_iterable(b'abc'))
+            self.assertTrue(is_iterable(bytes('abc', 'ascii')))
+
+            assert bytes is not str
+            self.assertEqual(97, bytes('abc', 'ascii')[0])
+            self.assertIs(int, type(bytes('abc', 'ascii')[0]))
 
     def test_is_iterable_classes(self):
         self.assertFalse(is_iterable(object))
@@ -3084,8 +3096,8 @@ class WordInternalTests(WordTests):
         self.assertFalse(is_iterable(regular_function))
         self.assertFalse(is_iterable(generator_function))
         self.assertFalse(is_iterable(regular_function()))
-        self.assertTrue(is_iterable(generator_function()))
 
+        self.assertTrue(is_iterable(generator_function()))
 
 
 
