@@ -14,7 +14,7 @@ import mysql.connector
 # TODO:  Move mysql stuff to lex_mysql.py?
 import six
 
-from qiki import Number, Suffix
+from number import Number, Suffix
 
 
 # noinspection PyAttributeOutsideInit

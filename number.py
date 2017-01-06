@@ -82,9 +82,9 @@ class Zone(object):
     Zone class properties
     ---------------------
         Zone.name - dictionary translating each zone code to its name
-            {ZONE.TRANSFINITE: 'TRANSFINITE', ...}
+            {Zone.TRANSFINITE: 'TRANSFINITE', ...}
         Zone.descending_codes - list of zone codes in descending order:
-            [ZONE.TRANSFINITE, ...]
+            [Zone.TRANSFINITE, ...]
     """
     # TODO:  Test that invalid and illegal values normalize to valid values.
     # Or should illegal values just crash?  I mean come on, 0q80_00 is just insane.
@@ -120,6 +120,8 @@ class Zone(object):
 
 Zone.internal_setup()
 assert Zone.name[Zone.ZERO] == 'ZERO'
+assert Zone.descending_codes[0] == Zone.TRANSFINITE
+assert Zone.descending_codes[13] == Zone.NAN
 
 
 class Number(numbers.Complex):

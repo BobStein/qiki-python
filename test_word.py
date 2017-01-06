@@ -528,7 +528,7 @@ class Word0011FirstTests(WordTests):
     def test_02a_str(self):
         if six.PY2:
             self.assertTripleEqual(b'noun', str(self.lex[u'noun']))
-        if six.PY3:
+        else:
             self.assertTripleEqual(u'noun', str(self.lex[u'noun']))
 
     def test_02b_unicode(self):
@@ -816,7 +816,7 @@ class Word0011FirstTests(WordTests):
     def test_13c_text_native(self):
         if six.PY2:
             self.assertTripleEqual(b'string', qiki.Text(u'string').native())
-        if six.PY3:
+        else:
             self.assertTripleEqual(u'string', qiki.Text(u'string').native())
 
     def test_13c_text_not_unicode(self):
@@ -1339,7 +1339,7 @@ class Word0020UnicodeVerb(WordUnicode):
         if six.PY2:
             with self.assertRaises(SyntaxError):
                 eval(u'self.lex.comentó.is_a_verb()')
-        if six.PY3:
+        else:
             self.assertTrue(eval(u'self.lex["comentó"].is_a_verb()'))
         self.assertTrue(self.lex[u'comentó'].exists())
         self.assertTrue(self.lex[u'comentó'].is_a_verb())
@@ -3042,13 +3042,19 @@ class WordInternalTests(WordTests):
         self.assertTrue(is_iterable(six.moves.range(10)))
         self.assertTrue(is_iterable(bytearray()))
 
+        if six.PY2:
+            self.assertFalse(is_iterable(b''))
+            self.assertFalse(is_iterable(bytes()))
+        else:
+            self.assertTrue(is_iterable(b''))
+            self.assertTrue(is_iterable(bytes()))
+
         self.assertFalse(is_iterable(None))
         self.assertFalse(is_iterable(Ellipsis))
         self.assertFalse(is_iterable(NotImplemented))
         self.assertFalse(is_iterable(Exception))
         self.assertFalse(is_iterable(True))
         self.assertFalse(is_iterable(''))
-        self.assertFalse(is_iterable(b''))
         self.assertFalse(is_iterable(u''))
         self.assertFalse(is_iterable(1))
         self.assertFalse(is_iterable(1.0))
