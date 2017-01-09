@@ -3265,6 +3265,18 @@ class NumberUtilitiesTests(NumberTests):
         instance_instance = instance()
         self.assertEqual('instance', type_name(instance_instance))
 
+    def test_03_string_from_hex(self):
+        self.assertEqual(b'',                                 string_from_hex(''))
+        self.assertEqual(b'\x00',                             string_from_hex('00'))
+        self.assertEqual(b'\xFF',                             string_from_hex('FF'))
+        self.assertEqual(b'hello',                            string_from_hex('68656C6C6F'))
+        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789ABCDEF'))
+        with self.assertRaises(TypeError):
+            string_from_hex('GH')
+        with self.assertRaises(TypeError):
+            string_from_hex('89XX')
+        with self.assertRaises(TypeError):
+            string_from_hex('000')
 
 class PythonTests(NumberTests):
     """
