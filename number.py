@@ -32,6 +32,7 @@ assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 # TODO:  Shouldn't all exception classes end in ...Error?
 # TODO:  Custom Exceptions should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
+# TODO:  Unit test all the utility functions at the bottom, e.g. string_from_hex()
 
 
 class Zone(object):
@@ -1633,15 +1634,30 @@ assert '0100' == hex_from_integer(256)
 
 
 def string_from_hex(s):
-    """Decode a hexadecimal string into an 8-bit binary (base-256) string.
+    """
+    Decode a hexadecimal string into an 8-bit binary (base-256) string.
 
-    Raises a TypeError on invalid hex digits."""
+    Raises a TypeError on invalid hex digits.
+
+    NOTE:  unhexlify() is slightly faster than fromhex()
+
+    2.7>>>timeit.timeit('bytes(bytearray.fromhex("123456789ABCDEF0"))', number=1000000)
+    0.3824402171467758
+    2.7>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
+    0.30095773581510343
+
+    3.5>>>timeit.timeit('bytes.fromhex("123456789ABCDEF0")', number=1000000)
+    0.16179575853203687
+    3.5>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
+    0.12774858387598442
+    """
     assert(isinstance(s, six.string_types))
     try:
-        return binascii.unhexlify(s)
+        return_value = binascii.unhexlify(s)
     except binascii.Error as e:   # This happens on '8X' in Python 3.  It is already a TypeError in Python 2.
         raise TypeError("aka binascii.Error: " + str(e))
-
+    assert return_value == bytes(bytearray.fromhex(s))
+    return return_value
 assert b'\xBE\xEF' == string_from_hex('BEEF')
 
 

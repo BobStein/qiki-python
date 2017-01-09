@@ -1697,6 +1697,7 @@ def is_iterable(x):
     It may consume some or all of it's elements.
 
     """
+    #XXX:  Fix is_iterable(b'')  (false in Python 2, true in Python 3)
     try:
         0 in x
     except TypeError as e:

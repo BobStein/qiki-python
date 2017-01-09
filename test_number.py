@@ -3440,6 +3440,29 @@ class PythonTests(NumberTests):
         self.assertIsNot(float('nan'), float('nan'))
         self.assertIsInstance(float('nan'), float)
 
+    def test_04_numbers(self):
+        an_int = int()
+        a_float = float()
+        a_complex = complex()
+
+        self.assertIsInstance(an_int, numbers.Number)
+        self.assertIsInstance(an_int, numbers.Complex)
+        self.assertIsInstance(an_int, numbers.Real)
+        self.assertIsInstance(an_int, numbers.Rational)
+        self.assertIsInstance(an_int, numbers.Integral)
+
+        self.assertIsInstance(a_float, numbers.Number)
+        self.assertIsInstance(a_float, numbers.Complex)
+        self.assertIsInstance(a_float, numbers.Real)
+        self.assertNotIsInstance(a_float, numbers.Rational)
+        self.assertNotIsInstance(a_float, numbers.Integral)
+
+        self.assertIsInstance(a_complex, numbers.Number)
+        self.assertIsInstance(a_complex, numbers.Complex)
+        self.assertNotIsInstance(a_complex, numbers.Real)
+        self.assertNotIsInstance(a_complex, numbers.Rational)
+        self.assertNotIsInstance(a_complex, numbers.Integral)
+
 
 def py23(if2, if3_or_greater):
     """

@@ -20,6 +20,7 @@ import qiki
 from number import hex_from_string
 from word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
 from word import is_iterable
+from test_number import py23
 
 try:
     import secure.credentials
@@ -3048,6 +3049,7 @@ class WordInternalTests(WordTests):
         self.assertFalse(is_iterable(NotImplemented))
         self.assertFalse(is_iterable(Exception))
         self.assertFalse(is_iterable(True))
+        self.assertFalse(is_iterable(str()))
         self.assertFalse(is_iterable(''))
         self.assertFalse(is_iterable(u''))
         self.assertFalse(is_iterable(1))
@@ -3067,6 +3069,7 @@ class WordInternalTests(WordTests):
         else:
             self.assertTrue(is_iterable(b'abc'))
             self.assertTrue(is_iterable(bytes('abc', 'ascii')))
+            # XXX:  These should be False in Python 3.
 
             assert bytes is not str
             self.assertEqual(97, bytes('abc', 'ascii')[0])
@@ -3076,30 +3079,86 @@ class WordInternalTests(WordTests):
         self.assertFalse(is_iterable(object))
         self.assertFalse(is_iterable(object()))
 
-        # noinspection PyClassHasNoInit
         class OldStyleClass:
-            pass
+            def __init__(self):
+                pass
         class NewStyleClass(object):
             pass
-        old_style_instance = OldStyleClass()
-        new_style_instance = NewStyleClass()
+
         self.assertFalse(is_iterable(OldStyleClass))
         self.assertFalse(is_iterable(NewStyleClass))
+
+        old_style_instance = OldStyleClass()
+        new_style_instance = NewStyleClass()
         self.assertFalse(is_iterable(old_style_instance))
         self.assertFalse(is_iterable(new_style_instance))
 
-    def test_is_iterable_functions(self):
+    def test_is_iterable_generator_function(self):
+
         def regular_function():
             return 0
         def generator_function():
             yield 0
+
         self.assertFalse(is_iterable(regular_function))
         self.assertFalse(is_iterable(generator_function))
         self.assertFalse(is_iterable(regular_function()))
 
         self.assertTrue(is_iterable(generator_function()))
 
+        self.assertEqual('generator', type(generator_function()).__name__)
 
+    def test_is_iterable_generator_expression(self):
+        self.assertTrue(is_iterable((i for i in (1,2,3,4) if i%2)))
+
+        self.assertEqual('generator', type((i for i in (1,2,3,4) if i%2)).__name__)
+
+    def test_is_iterable_comprehension(self):
+        self.assertTrue(is_iterable([i   for i in (1,2,3,4)]))
+        self.assertTrue(is_iterable({i   for i in (1,2,3,4)}))
+        self.assertTrue(is_iterable({i:i for i in (1,2,3,4)}))
+
+        self.assertIs(list, type([i   for i in (1,2,3,4)]))
+        self.assertIs(set,  type({i   for i in (1,2,3,4)}))
+        self.assertIs(dict, type({i:i for i in (1,2,3,4)}))
+
+    def test_is_iterable_by_next(self):
+        # THANKS:  Iterative object, http://stackoverflow.com/a/7542261/673991
+
+        class IteratorByNext:
+            def __init__(self, some_list):
+                self.some_list = some_list
+                self.index = 0
+            def __iter__(self):
+                return self
+            def __next__(self):
+                try:
+                    result = self.some_list[self.index]
+                except IndexError:
+                    raise StopIteration
+                else:
+                    self.index += 1
+                    return result
+            next = __next__
+        self.assertEqual([1,2,3], list(IteratorByNext([1,2,3])))
+
+        self.assertTrue(is_iterable(IteratorByNext([1,2,3])))
+
+        self.assertEqual(py23(b'instance', 'IteratorByNext'), type(IteratorByNext([1,2,3])).__name__)
+
+    def test_is_iterable_by_getitem(self):
+        # THANKS:  Iterative object, http://stackoverflow.com/a/7542261/673991
+
+        class IteratorByGetItem:
+            def __init__(self, some_list):
+                self.some_list = some_list
+            def __getitem__(self, index):
+                return self.some_list[index]
+        self.assertEqual([1,2,3], list(IteratorByGetItem([1,2,3])))
+
+        self.assertTrue(is_iterable(IteratorByGetItem([1,2,3])))
+
+        self.assertEqual(py23(b'instance', 'IteratorByGetItem'), type(IteratorByGetItem([1,2,3])).__name__)
 
 
 
@@ -3135,8 +3194,7 @@ class WordInternalTests(WordTests):
     #     self.assertEqual(lex.obj, agent.idn)
     #
     # def test_word_cant_construct_unfamiliar_class(self):
-    #     # noinspection PyClassHasNoInit
-    #     class UnExpected:
+    #     class UnExpected(object):
     #         pass
     #     with self.assertRaises(TypeError):
     #         qiki.Word(UnExpected)
@@ -3213,8 +3271,7 @@ class WordInternalTests(WordTests):
     #     print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
 
 
-# noinspection PyClassHasNoInit
-class SomeType:
+class SomeType(object):
     pass
 some_type = SomeType()
 
