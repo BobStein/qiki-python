@@ -32,7 +32,6 @@ assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 # TODO:  Shouldn't all exception classes end in ...Error?
 # TODO:  Custom Exceptions should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
-# TODO:  Unit test all the utility functions at the bottom, e.g. string_from_hex()
 
 
 class Zone(object):
@@ -1273,22 +1272,23 @@ class Number(numbers.Complex):
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
 
-def flatten(things, build_on=None):
+def flatten(things, put_them_where=None):
     """
     Flatten a nested container into a list.
 
     THANKS:  http://stackoverflow.com/a/40252152/673991
     """
-    if build_on is None:
-        build_on = []
+    if put_them_where is None:
+        put_them_where = []
     for thing in things:
+        # TODO:  Use is_iterable(), now in word.py.
         try:
             0 in thing
         except TypeError:
-            build_on.append(thing)
+            put_them_where.append(thing)
         else:
-            flatten(thing, build_on)
-    return build_on
+            flatten(thing, put_them_where)
+    return put_them_where
 assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))
 
 
@@ -1617,12 +1617,14 @@ class Suffix(object):
         """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
 
 
+
 # Hex
 # ---
 def hex_from_integer(the_integer):
-    """Encode a hexadecimal string from a big integer.
+    """
+    Encode a hexadecimal string from a big integer.
 
-    Like hex() but output an even number of digits, no '0x' prefix, no 'L' suffix.
+    Like hex() but output has:  an even number of digits, no '0x' prefix, no 'L' suffix, uppercase.
     """
     # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
     hex_string = hex(the_integer)[2:].rstrip('L')
@@ -1637,9 +1639,12 @@ def string_from_hex(s):
     """
     Decode a hexadecimal string into an 8-bit binary (base-256) string.
 
-    Raises a TypeError on invalid hex digits.
+    Raises a TypeError if s is not an even number of hex digits.
+    Why a TypeError?
+       Pro:  binascii.unhexlify('HH') raises a TypeError
+       Con:  int('0xHH', 0) raises a Value Error
 
-    NOTE:  unhexlify() is slightly faster than fromhex()
+    NOTE:  binascii.unhexlify() is slightly faster than bytearray.fromhex()
 
     2.7>>>timeit.timeit('bytes(bytearray.fromhex("123456789ABCDEF0"))', number=1000000)
     0.3824402171467758
@@ -1653,7 +1658,7 @@ def string_from_hex(s):
     """
     assert(isinstance(s, six.string_types))
     try:
-        return_value = binascii.unhexlify(s)
+        return_value = binascii.unhexlify(s)   # Raises TypeError on e.g. '000'
     except binascii.Error as e:   # This happens on '8X' in Python 3.  It is already a TypeError in Python 2.
         raise TypeError("aka binascii.Error: " + str(e))
     assert return_value == bytes(bytearray.fromhex(s))
@@ -1798,6 +1803,7 @@ assert b'\xFF\x56' == pack_big_integer_via_hex(-170,2)
 def unpack_big_integer_by_struct(binary_string):
     """Fast version of unpack_big_integer(), limited to 64 bits."""
     return struct.unpack('>Q', left_pad00(binary_string, 8))[0]
+assert 170 == unpack_big_integer_by_struct(b'\x00\xAA')
 
 
 def unpack_big_integer_by_brute(binary_string):
@@ -1807,16 +1813,18 @@ def unpack_big_integer_by_brute(binary_string):
         return_value <<= 8
         return_value |= six.indexbytes(binary_string, i)
     return return_value
+assert 170 == unpack_big_integer_by_brute(b'\x00\xAA')
 
 
 def unpack_big_integer(binary_string):
-    """Convert a byte string into an integer.
+    """
+    Convert a byte string into an integer.
 
     Akin to a base-256 decode, big-endian.
     """
     if len(binary_string) <= 8:
         return unpack_big_integer_by_struct(binary_string)
-        # NOTE:  1.1 to 4 times as fast as _unpack_big_integer_by_brute()
+        # NOTE:  1.1 to 4 times as fast as unpack_big_integer_by_brute()
     else:
         return unpack_big_integer_by_brute(binary_string)
 assert 170 == unpack_big_integer(b'\x00\xAA')
@@ -1838,6 +1846,7 @@ assert 'int' == type_name(3)
 assert 'list' == type_name([])
 assert 'Number' == type_name(Number.ZERO)
 assert 'function' == type_name(type_name)
+
 
 
 # TODO:  Ludicrous Numbers

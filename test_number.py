@@ -3021,10 +3021,139 @@ class NumberUtilitiesTests(NumberTests):
     Testing utility functions in number.py.
     """
 
+    # noinspection PyUnresolvedReferences
+    def test_01_name_of_zone(self):
+        self.assertEqual('TRANSFINITE', Zone.name[Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Zone.name[Number(float('+inf')).zone])
+        self.assertEqual('NAN', Zone.name[Zone.NAN])
+        self.assertEqual('NAN', Zone.name[Number.NAN.zone])
+        self.assertEqual('NAN', Zone.name[Number().zone])
+        self.assertEqual('ZERO', Zone.name[Zone.ZERO])
+        self.assertEqual('ZERO', Zone.name[Number(0).zone])
+
+        # TODO:  Test that Zone.name['actual_member_function'] raises IndexError.  Also Zone.name['name'].  Also:
+        #     "__class__",
+        #     "__delattr__",
+        #     "__dict__",
+        #     "__doc__",
+        #     "__format__",
+        #     "__getattribute__",
+        #     "__hash__",
+        #     "__init__",
+        #     "__module__",
+        #     "__new__",
+        #     "__reduce__",
+        #     "__reduce_ex__",
+        #     "__repr__",
+        #     "__setattr__",
+        #     "__sizeof__",
+        #     "__str__",
+        #     "__subclasshook__",
+        #     "__weakref__"
+
+
+
+    def test_01_hex_from_integer(self):
+        self.assertEqual('05', hex_from_integer(0x5))
+        self.assertEqual('55', hex_from_integer(0x55))
+        self.assertEqual('0555', hex_from_integer(0x555))
+        self.assertEqual('5555', hex_from_integer(0x5555))
+        self.assertEqual('055555', hex_from_integer(0x55555))
+        self.assertEqual('555555', hex_from_integer(0x555555))
+        self.assertEqual('05555555', hex_from_integer(0x5555555))
+        self.assertEqual('55555555', hex_from_integer(0x55555555))
+        self.assertEqual(  '555555555555555555', hex_from_integer(0x555555555555555555))
+        self.assertEqual('05555555555555555555', hex_from_integer(0x5555555555555555555))
+        self.assertEqual('AAAAAAAA', hex_from_integer(0xAAAAAAAA).upper())
+
+    def test_03_string_from_hex(self):
+        self.assertEqual(b'',                                 string_from_hex(''))
+        self.assertEqual(b'\x00',                             string_from_hex('00'))
+        self.assertEqual(b'\xFF',                             string_from_hex('FF'))
+        self.assertEqual(b'hello',                            string_from_hex('68656C6C6F'))
+        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789ABCDEF'))
+        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789abcdef'))
+        with self.assertRaises(TypeError):
+            string_from_hex('GH')   # nonhex
+        with self.assertRaises(TypeError):
+            string_from_hex('89XX')   # hex then nonhex
+        with self.assertRaises(TypeError):
+            string_from_hex('000')   # not even
+        with self.assertRaises(TypeError):
+            string_from_hex('DE AD')   # space
+
+    def test_hex_from_string(self):
+        self.assertEqual('',                 hex_from_string(b''))
+        self.assertEqual('00',               hex_from_string(b'\x00'))
+        self.assertEqual('FF',               hex_from_string(b'\xFF'))
+        self.assertEqual('68656C6C6F',       hex_from_string(b'hello'))
+        self.assertEqual('0123456789ABCDEF', hex_from_string(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF',))
+
+
+
+    def test_01_exp256(self):
+        self.assertEqual(1, exp256(0))
+        self.assertEqual(256, exp256(1))
+        self.assertEqual(65536, exp256(2))
+        self.assertEqual(16777216, exp256(3))
+        self.assertEqual(4294967296, exp256(4))
+        self.assertEqual(1208925819614629174706176, exp256(10))
+        self.assertEqual(1461501637330902918203684832716283019655932542976, exp256(20))
+        self.assertEqual(2**800, exp256(100))
+        self.assertEqual(2**8000, exp256(1000))
+
+    def test_01_log256(self):
+        self.assertEqual(0, log256(1))
+        self.assertEqual(0, log256(2))
+        self.assertEqual(0, log256(3))
+        self.assertEqual(0, log256(4))
+        self.assertEqual(0, log256(255))
+        self.assertEqual(1, log256(256))
+        self.assertEqual(1, log256(257))
+        self.assertEqual(1, log256(65535))
+        self.assertEqual(2, log256(65536))
+        self.assertEqual(2, log256(65537))
+        self.assertEqual(2, log256(16777215))
+        self.assertEqual(3, log256(16777216))
+        self.assertEqual(3, log256(16777217))
+        self.assertEqual(3, log256(4294967295))
+        self.assertEqual(4, log256(4294967296))
+        self.assertEqual(4, log256(4294967297))
+
     def test_01_shift_leftward(self):
-        self.assertEqual(0b000010000, shift_leftward(0b000010000, 0))
         self.assertEqual(0b000100000, shift_leftward(0b000010000, 1))
+        self.assertEqual(0b000010000, shift_leftward(0b000010000, 0))
         self.assertEqual(0b000001000, shift_leftward(0b000010000,-1))
+
+    def test_01_floats_really_same(self):
+        self.assertFloatSame(1.0, 1.0)
+        self.assertFloatNotSame(1.0, 0.0)
+        self.assertFloatNotSame(1.0, float('nan'))
+        self.assertFloatNotSame(float('nan'), 1.0)
+        self.assertFloatSame(float('nan'), float('nan'))
+
+        self.assertFloatSame(+0.0, +0.0)
+        self.assertFloatNotSame(+0.0, -0.0)
+        self.assertFloatNotSame(-0.0, +0.0)
+        self.assertFloatSame(-0.0, -0.0)
+
+
+
+    def test_01_left_pad00(self):
+        self.assertEqual(b'abc', left_pad00(b'abc', 1))
+        self.assertEqual(b'abc', left_pad00(b'abc', 2))
+        self.assertEqual(b'abc', left_pad00(b'abc', 3))
+        self.assertEqual(b'\x00abc', left_pad00(b'abc', 4))
+        self.assertEqual(b'\x00\x00abc', left_pad00(b'abc', 5))
+        self.assertEqual(b'\x00\x00\x00abc', left_pad00(b'abc', 6))
+
+    def test_01_right_strip00(self):
+        self.assertEqual(b'abc', right_strip00(b'abc'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00'))
+        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00\x00'))
+
+
 
     def test_01_pack_integer(self):
         """Test both _pack_big_integer and its less-efficient but more-universal variant, _pack_big_integer_Mike_Boers
@@ -3138,103 +3267,7 @@ class NumberUtilitiesTests(NumberTests):
         with self.assertRaises(Exception):
             unpack_big_integer_by_struct(b'ninebytes')
 
-    def test_01_exp256(self):
-        self.assertEqual(1, exp256(0))
-        self.assertEqual(256, exp256(1))
-        self.assertEqual(65536, exp256(2))
-        self.assertEqual(16777216, exp256(3))
-        self.assertEqual(4294967296, exp256(4))
-        self.assertEqual(1208925819614629174706176, exp256(10))
-        self.assertEqual(1461501637330902918203684832716283019655932542976, exp256(20))
-        self.assertEqual(2**800, exp256(100))
-        self.assertEqual(2**8000, exp256(1000))
 
-    def test_01_log256(self):
-        self.assertEqual(0, log256(1))
-        self.assertEqual(0, log256(2))
-        self.assertEqual(0, log256(3))
-        self.assertEqual(0, log256(4))
-        self.assertEqual(0, log256(255))
-        self.assertEqual(1, log256(256))
-        self.assertEqual(1, log256(257))
-        self.assertEqual(1, log256(65535))
-        self.assertEqual(2, log256(65536))
-        self.assertEqual(2, log256(65537))
-        self.assertEqual(2, log256(16777215))
-        self.assertEqual(3, log256(16777216))
-        self.assertEqual(3, log256(16777217))
-        self.assertEqual(3, log256(4294967295))
-        self.assertEqual(4, log256(4294967296))
-        self.assertEqual(4, log256(4294967297))
-
-    def test_01_hex_from_integer(self):
-        self.assertEqual('05', hex_from_integer(0x5))
-        self.assertEqual('55', hex_from_integer(0x55))
-        self.assertEqual('0555', hex_from_integer(0x555))
-        self.assertEqual('5555', hex_from_integer(0x5555))
-        self.assertEqual('055555', hex_from_integer(0x55555))
-        self.assertEqual('555555', hex_from_integer(0x555555))
-        self.assertEqual('05555555', hex_from_integer(0x5555555))
-        self.assertEqual('55555555', hex_from_integer(0x55555555))
-        self.assertEqual(  '555555555555555555', hex_from_integer(0x555555555555555555))
-        self.assertEqual('05555555555555555555', hex_from_integer(0x5555555555555555555))
-        self.assertEqual('AAAAAAAA', hex_from_integer(0xAAAAAAAA).upper())
-
-    def test_01_left_pad00(self):
-        self.assertEqual(b'abc', left_pad00(b'abc', 1))
-        self.assertEqual(b'abc', left_pad00(b'abc', 2))
-        self.assertEqual(b'abc', left_pad00(b'abc', 3))
-        self.assertEqual(b'\x00abc', left_pad00(b'abc', 4))
-        self.assertEqual(b'\x00\x00abc', left_pad00(b'abc', 5))
-        self.assertEqual(b'\x00\x00\x00abc', left_pad00(b'abc', 6))
-
-    def test_01_right_strip00(self):
-        self.assertEqual(b'abc', right_strip00(b'abc'))
-        self.assertEqual(b'abc', right_strip00(b'abc\x00'))
-        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00'))
-        self.assertEqual(b'abc', right_strip00(b'abc\x00\x00\x00'))
-
-    def test_01_floats_really_same(self):
-        self.assertFloatSame(1.0, 1.0)
-        self.assertFloatNotSame(1.0, 0.0)
-        self.assertFloatNotSame(1.0, float('nan'))
-        self.assertFloatNotSame(float('nan'), 1.0)
-        self.assertFloatSame(float('nan'), float('nan'))
-
-        self.assertFloatSame(+0.0, +0.0)
-        self.assertFloatNotSame(+0.0, -0.0)
-        self.assertFloatNotSame(-0.0, +0.0)
-        self.assertFloatSame(-0.0, -0.0)
-
-    # noinspection PyUnresolvedReferences
-    def test_01_name_of_zone(self):
-        self.assertEqual('TRANSFINITE', Zone.name[Zone.TRANSFINITE])
-        self.assertEqual('TRANSFINITE', Zone.name[Number(float('+inf')).zone])
-        self.assertEqual('NAN', Zone.name[Zone.NAN])
-        self.assertEqual('NAN', Zone.name[Number.NAN.zone])
-        self.assertEqual('NAN', Zone.name[Number().zone])
-        self.assertEqual('ZERO', Zone.name[Zone.ZERO])
-        self.assertEqual('ZERO', Zone.name[Number(0).zone])
-
-        # TODO:  Test that Zone.name['actual_member_function'] raises IndexError.  Also Zone.name['name'].  Also:
-        #     "__class__",
-        #     "__delattr__",
-        #     "__dict__",
-        #     "__doc__",
-        #     "__format__",
-        #     "__getattribute__",
-        #     "__hash__",
-        #     "__init__",
-        #     "__module__",
-        #     "__new__",
-        #     "__reduce__",
-        #     "__reduce_ex__",
-        #     "__repr__",
-        #     "__setattr__",
-        #     "__sizeof__",
-        #     "__str__",
-        #     "__subclasshook__",
-        #     "__weakref__"
 
     def test_02_type_name(self):
         self.assertEqual(     'int',             type_name(3))
@@ -3265,18 +3298,15 @@ class NumberUtilitiesTests(NumberTests):
         instance_instance = instance()
         self.assertEqual('instance', type_name(instance_instance))
 
-    def test_03_string_from_hex(self):
-        self.assertEqual(b'',                                 string_from_hex(''))
-        self.assertEqual(b'\x00',                             string_from_hex('00'))
-        self.assertEqual(b'\xFF',                             string_from_hex('FF'))
-        self.assertEqual(b'hello',                            string_from_hex('68656C6C6F'))
-        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789ABCDEF'))
-        with self.assertRaises(TypeError):
-            string_from_hex('GH')
-        with self.assertRaises(TypeError):
-            string_from_hex('89XX')
-        with self.assertRaises(TypeError):
-            string_from_hex('000')
+    def test_02_type_name_oops(self):
+        class SomeOtherClass(object):
+            pass
+        # noinspection PyPep8Naming
+        class instance(object):
+            __class__ = SomeOtherClass
+        instance_instance = instance()
+        self.assertEqual('SomeOtherClass', type_name(instance_instance))
+
 
 class PythonTests(NumberTests):
     """

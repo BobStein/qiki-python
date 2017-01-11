@@ -3084,7 +3084,6 @@ class WordInternalTests(WordTests):
                 pass
         class NewStyleClass(object):
             pass
-
         self.assertFalse(is_iterable(OldStyleClass))
         self.assertFalse(is_iterable(NewStyleClass))
 
