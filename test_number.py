@@ -821,18 +821,6 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(0, int(Number('0q7F81')))
         self.assertEqual('0q80', Number(0).qstring())
 
-    def test_sets_exclusive(self):
-        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}))
-        self.assertFalse(sets_exclusive({1,2,3}, {3,5,6}))
-        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}, {7,8,9}))
-        self.assertFalse(sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
-
-    def test_zone_union(self):
-        self.assertEqual({1,2,3,4,5,6}, union_of_distinct_sets({1,2,3}, {4,5,6}))
-        if not sys.flags.optimize:
-            with self.assertRaises(AssertionError):
-                union_of_distinct_sets({1,2,3}, {3,4,5})
-
     def test_zone_sets(self):
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_FINITENESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_REASONABLENESS)
@@ -3050,6 +3038,20 @@ class NumberUtilitiesTests(NumberTests):
         #     "__str__",
         #     "__subclasshook__",
         #     "__weakref__"
+
+
+
+    def test_sets_exclusive(self):
+        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}))
+        self.assertFalse(sets_exclusive({1,2,3}, {3,5,6}))
+        self.assertTrue (sets_exclusive({1,2,3}, {4,5,6}, {7,8,9}))
+        self.assertFalse(sets_exclusive({1,2,3}, {4,5,6}, {7,8,1}))
+
+    def test_union_of_distinct_sets(self):
+        self.assertEqual({1,2,3,4,5,6}, union_of_distinct_sets({1,2,3}, {4,5,6}))
+        if not sys.flags.optimize:
+            with self.assertRaises(AssertionError):
+                union_of_distinct_sets({1,2,3}, {3,4,5})
 
 
 

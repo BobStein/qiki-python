@@ -1278,6 +1278,8 @@ def flatten(things, put_them_where=None):
 
     THANKS:  http://stackoverflow.com/a/40252152/673991
     """
+    # TODO:  Unit test.  Or get rid of it?  Or use it in word.LexMySQL._super_parse()?
+    # TODO:  Make a version with no recursion and full yield pass-through.
     if put_them_where is None:
         put_them_where = []
     for thing in things:
@@ -1289,13 +1291,16 @@ def flatten(things, put_them_where=None):
         else:
             flatten(thing, put_them_where)
     return put_them_where
-assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))
+assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))   # when flatten() uses yield
+assert [1,2,3,4,'five',6,7,8] ==      flatten([1,(2,[3,(4,'five'),6],7),8])    # as long as it doesn't
 
 
 Number.internal_setup()
 assert Number.NAN.raw == b''
 
 
+# Set Logic
+# ---------
 def sets_exclusive(*sets):
     """Are these sets mutually exclusive?  Is every member unique?"""
     for i in six.moves.range(len(sets)):
@@ -1424,11 +1429,13 @@ class ZoneSet(object):
     # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
     #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
     # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
-    # Confusing?  Because then epsilon is both reasonable and unreasonable?
-    # (That's why the term ESSENTIALLY was introduced, different from REASONABLY.)
+    # Confusing because then epsilon is both reasonable and unreasonable?
+    # (That's why the term ESSENTIALLY was introduced, because it's distinct from REASONABLY.)
     # If not sufficiently confusing, we could also define
     # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
-    # And ESSENTIALLY_INFINITE and TRANSFINITE as just +/- transfinite.
+    # And ESSENTIALLY_INFINITE as just +/- transfinite.
+    # The same as a TRANSFINITE set would be.
+    # (But not NONFINITE, as that includes infinitesimals.)
 
     WHOLE_NO = {
         Zone.FRACTIONAL,
@@ -1442,13 +1449,13 @@ class ZoneSet(object):
         Zone.ZERO,
     }
     WHOLE_MAYBE = {
+        Zone.LUDICROUS_LARGE,
         Zone.POSITIVE,
         Zone.NEGATIVE,
+        Zone.LUDICROUS_LARGE_NEG,
     }
     WHOLE_INDETERMINATE = {
         Zone.TRANSFINITE,
-        Zone.LUDICROUS_LARGE,
-        Zone.LUDICROUS_LARGE_NEG,
         Zone.TRANSFINITE_NEG,
     }
 
@@ -1463,7 +1470,7 @@ class ZoneSet(object):
     # Different ways to slice the pie.
     # The following are each MECE, mutually exclusive and collectively exhaustive.
     # For documentation and testing purposes only.
-    # They're all identical to ZoneSet.ALL.
+    # Each is identical to ZoneSet.ALL.
 
     _ALL_BY_REASONABLENESS = union_of_distinct_sets(
         REASONABLE,
@@ -1615,7 +1622,6 @@ class Suffix(object):
 
     class RawError(ValueError):
         """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
-
 
 
 # Hex
@@ -1846,7 +1852,6 @@ assert 'int' == type_name(3)
 assert 'list' == type_name([])
 assert 'Number' == type_name(Number.ZERO)
 assert 'function' == type_name(type_name)
-
 
 
 # TODO:  Ludicrous Numbers
