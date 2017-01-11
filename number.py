@@ -1725,14 +1725,14 @@ def floats_really_same(f1,f2):
      1. They ARE the same if both are NAN.
      2. They are NOT the same if one is +0.0 and the other -0.0.
 
-    This is useful for precise unit testing.
+    This is useful for unit testing.
     """
     assert type(f1) is float
     assert type(f2) is float
     if math.isnan(f1) and math.isnan(f2):
         return True
     if math.copysign(1,f1) != math.copysign(1,f2):
-        # THANKS:  http://stackoverflow.com/a/25338224/673991
+        # THANKS:  Comparing with -0.0, http://stackoverflow.com/a/25338224/673991
         return False
     return f1 == f2
 assert True == floats_really_same(float('nan'), float('nan'))
@@ -1743,7 +1743,6 @@ assert False == floats_really_same(+0.0, -0.0)
 # -----------------------------
 def left_pad00(the_string, nbytes):
     """Make a string nbytes long by padding '\x00's on the left."""
-    # THANKS:  Jeff Mercado http://stackoverflow.com/a/5773669/673991
     assert(isinstance(the_string, six.binary_type))
     return the_string.rjust(nbytes, b'\x00')
 assert b'\x00\x00string' == left_pad00(b'string', 8)
