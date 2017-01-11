@@ -1630,7 +1630,7 @@ def hex_from_integer(the_integer):
     """
     Encode a hexadecimal string from a big integer.
 
-    Like hex() but output has:  an even number of digits, no '0x' prefix, no 'L' suffix, uppercase.
+    Like hex() but output has:  an even number of digits, no '0x' prefix, no 'L' suffix.
     """
     # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
     hex_string = hex(the_integer)[2:].rstrip('L')
@@ -1648,7 +1648,8 @@ def string_from_hex(s):
     Raises a TypeError if s is not an even number of hex digits.
     Why a TypeError?
        Pro:  binascii.unhexlify('HH') raises a TypeError
-       Con:  int('0xHH', 0) raises a Value Error
+       Con:  bytearray.fromhex('HH') raises a ValueError
+       Con:  int('0xHH', 0) raises a ValueError
 
     NOTE:  binascii.unhexlify() is slightly faster than bytearray.fromhex()
 
@@ -1661,6 +1662,8 @@ def string_from_hex(s):
     0.16179575853203687
     3.5>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
     0.12774858387598442
+
+    Possibly because fromhex is more permissive:  bytearray.fromhex('12 AB')
     """
     assert(isinstance(s, six.string_types))
     try:

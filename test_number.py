@@ -3123,9 +3123,11 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual(4, log256(4294967297))
 
     def test_01_shift_leftward(self):
+        self.assertEqual(0b001000000, shift_leftward(0b000010000, 2))
         self.assertEqual(0b000100000, shift_leftward(0b000010000, 1))
         self.assertEqual(0b000010000, shift_leftward(0b000010000, 0))
         self.assertEqual(0b000001000, shift_leftward(0b000010000,-1))
+        self.assertEqual(0b000000100, shift_leftward(0b000010000,-2))
 
     def test_01_floats_really_same(self):
         self.assertFloatSame(1.0, 1.0)
