@@ -38,7 +38,7 @@ class Zone(object):
     """
     Each qiki Number is in one of 14 distinct zones.  This class is an enumerator of those zones.
 
-    Also, it encapsulates some utilities, e.g. Zone.name[ZONE.NAN] == 'NAN'
+    Also, it encapsulates some utilities, e.g. Zone.name_from_code[ZONE.NAN] == 'NAN'
 
     Zone Code
     ---------
@@ -81,11 +81,20 @@ class Zone(object):
 
     Zone class properties
     ---------------------
-        Zone.name - dictionary translating each zone code to its name
+        Zone.name_from_code - dictionary translating each zone code to its name
             {Zone.TRANSFINITE: 'TRANSFINITE', ...}
         Zone.descending_codes - list of zone codes in descending order:
             [Zone.TRANSFINITE, ...]
     """
+    # TODO:  Make these caching functions?  Zone.name_from_code() and Zone.descending_codes().
+
+    # TODO:  Move the part of this docstring on illegal values and plateau values somewhere else?
+    # To Number class FFS?  To the Raw class!  No, it means different things in Number and Suffix.
+    # Or we could make classes Raw and RawForNumber and RawForSuffix?  Bah!  Forget that.
+    # This talk belongs in class Number docstring.
+    # TODO:  Rename invalid values to plateau values?
+    # TODO:  Or rename Plateau Codes or Code Plateaus, or Raw Plateau?
+    # since every q-string at a plateau represents the same VALUE.
     # TODO:  Test that invalid and illegal values normalize to valid values.
     # Or should illegal values just crash?  I mean come on, 0q80_00 is just insane.
     # TODO:  Formally define all invalid and illegal raw-strings.
@@ -107,19 +116,20 @@ class Zone(object):
     NAN                 = b''
 
     # Zone.internal_setup() will set these:
-    name = None
+    name_from_code = None
     descending_codes = None
 
     @classmethod
-    def internal_setup(cls):
-        """Initialize Zone properties after Zone class is defined."""
+    def _internal_setup(cls):
+        """Initialize Zone properties after the Zone class is defined."""
 
-        cls.name = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
-        cls.descending_codes = sorted(Zone.name.keys(), reverse=True)
+        cls.name_from_code = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
+        cls.descending_codes = sorted(Zone.name_from_code.keys(), reverse=True)
 
 
-Zone.internal_setup()
-assert Zone.name[Zone.ZERO] == 'ZERO'
+# noinspection PyProtectedMember
+Zone._internal_setup()
+assert Zone.name_from_code[Zone.ZERO] == 'ZERO'
 assert Zone.descending_codes[0] == Zone.TRANSFINITE
 assert Zone.descending_codes[13] == Zone.NAN
 
@@ -212,15 +222,27 @@ class Number(numbers.Complex):
     # That is, if x1.raw == x2.raw then x1 == x2.
     # Caveat #1, some raw strings represent the same number,
     # for example 0q82 and 0q82_01 are both exactly one.
-    # Computations normalize to a standard and unique representation (0q82_01).
+    # Computation results normalize to a standard and unique representation (0q82_01).
     # Storage (e.g. a database) may opt for brevity (0q82).
-    # So all 8-bit binary strings have exactly one interpretation as the raw part of a Number.
+    # So all 8-bit binary strings have at most one interpretation as the raw part of a Number.
     # And some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
+    # And some are illegal, e.g. 0q00
     # The qex and qan may be followed by suffixes.
     # Two underscores conventionally precede each suffix.
     # See the Number.Suffix class for underscore conventions within a suffix.
+    # All suffixes end in a 00 zero-tag.  The qex+qan pair never ends in a 00.
 
     # TODO:  Make class Raw?  Then both Number and Suffix contain instances??  Yay!
+    # Except even merely subclassing bytes, the size goes up from py23(24,20) bytes to 40.
+    # With composition the size goes up even more
+    #  __slots__=() helps in subclassing int, but not apparently in subclassing bytes.
+    # Except in Python 3 it does help!  Apparently it removes all overhead of subclassing!
+    # So I was wrong above, subclassing changes sizeof from py23(24,20) to py23(40,20).
+    # If we did make a Raw class, we could Number(Raw(b'\x82\x01')) instead of Number.from_raw(b'\x82\x01')
+    # And Number(bytearray(b'\x82\x01')) could work but should it?  Abolish from_bytearray()?
+    # In any case Number(bytes(b'\x82\x01')) should raise an exception.
+    # In Python 3 rather easily, but Python 2 because it fails int(content) etc.
+    # Number.from_qstring() is the only remaining public class method that makes sense.
     RAW_INFINITY          = b'\xFF\x81'
     RAW_INFINITESIMAL     = b'\x80\x7F'
     RAW_ZERO              = b'\x80'
@@ -1058,8 +1080,8 @@ class Number(numbers.Complex):
         assert zone_by_tree == self._find_zone_by_loop_scan(), \
             "Mismatched zone determination for %s:  if-tree=%s, loop-scan=%s" % (
                 repr(self),
-                Zone.name[zone_by_tree],
-                Zone.name[self._find_zone_by_loop_scan()]
+                Zone.name_from_code[zone_by_tree],
+                Zone.name_from_code[self._find_zone_by_loop_scan()]
             )
         return zone_by_tree
 
@@ -1261,7 +1283,7 @@ class Number(numbers.Complex):
     NEGATIVE_INFINITY = None
 
     @classmethod
-    def internal_setup(cls):
+    def _internal_setup(cls):
         """Initialize Number constants after the Number class is defined."""
 
         cls.NAN = cls(None)
@@ -1276,7 +1298,8 @@ def flatten(things, put_them_where=None):
     """
     Flatten a nested container into a list.
 
-    THANKS:  http://stackoverflow.com/a/40252152/673991
+    THANKS:  List nested irregularly, http://stackoverflow.com/q/2158395/673991
+    THANKS:  List nested exactly 2 levels, http://stackoverflow.com/a/40252152/673991
     """
     # TODO:  Unit test.  Or get rid of it?  Or use it in word.LexMySQL._super_parse()?
     # TODO:  Make a version with no recursion and full yield pass-through.
@@ -1295,8 +1318,9 @@ assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))   #
 assert [1,2,3,4,'five',6,7,8] ==      flatten([1,(2,[3,(4,'five'),6],7),8])    # as long as it doesn't
 
 
-Number.internal_setup()
-assert Number.NAN.raw == b''
+# noinspection PyProtectedMember
+Number._internal_setup()
+assert Number.NAN.raw == Number.RAW_NAN
 
 
 # Set Logic
@@ -1510,11 +1534,11 @@ class Suffix(object):
         PP...PP _ TT LL 00
     where:
         PP...PP - 0-byte to 250-byte payload
-         _ - underscore is a conventional qstring delimiter between payload and type-length-NUL
+         _ - underscore is a conventional qstring delimiter between payload and type-length-zero
         TT - type code of the suffix, 0x00 to 0xFF or absent
         LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
-             but not including the length itself nor the NUL (see empty suffix)
-        00 - the zero-tag, to indicate presence of the suffix
+             but not including the length itself nor the zero-tag (see empty suffix)
+        00 - the zero-tag, this indicates presence of the suffix.
 
     The "empty suffix" is two 00 bytes:
         0000
@@ -1532,7 +1556,7 @@ class Suffix(object):
         payload - byte string
         type_ - integer 0x00 to 0xFF type code of suffix, or None for the empty suffix
         length_of_payload_plus_type - integer value of length byte, 0 to MAX_PAYLOAD_LENGTH
-        raw - the encoded byte string suffix, including payload, type, length, and NUL
+        raw - the encoded byte string suffix, including payload, type, length, and zero-tag
 
     Example:
         assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
@@ -1742,14 +1766,14 @@ assert False == floats_really_same(+0.0, -0.0)
 # Padding and Unpadding Strings
 # -----------------------------
 def left_pad00(the_string, nbytes):
-    """Make a string nbytes long by padding '\x00's on the left."""
+    """Make a string nbytes long by padding '\x00' bytes on the left."""
     assert(isinstance(the_string, six.binary_type))
     return the_string.rjust(nbytes, b'\x00')
 assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
 def right_strip00(the_string):
-    """Remove '\x00' NULs from the right end of a string."""
+    """Remove '\x00' bytes from the right end of a string."""
     assert(isinstance(the_string, six.binary_type))
     return the_string.rstrip(b'\x00')
 assert b'string' == right_strip00(b'string\x00\x00')
@@ -1995,6 +2019,7 @@ assert 'function' == type_name(type_name)
 # FORMAL DEFINITION:
 # The way to look at the lengthed-export version of a Number is that it always conceptually consists of:
 #     7E-part, length-part, raw-part, 00-part
+#
 # 7E-part is Np bytes of literal 7E.
 #     the 7E-part may be omitted if length-part (N) is 0 to 7D.
 # length-part (call its value N) is stored in Np bytes representing a big-endian length N
@@ -2094,7 +2119,7 @@ assert 'function' == type_name(type_name)
 # So if the payload of a suffix has any lengthed-export numbers
 # then any other parts must also be lengthed somehow.
 # e.g. it's not possible for a payload to contain string + lengthed-exported-number
-# unless the string were lengthed (NUL-terminated or preceded length bytes).
+# unless the string were lengthed (NUL-terminated or preceded by length bytes).
 
 # Whoa!  If we had right-lengthed export in the suffix then most suffixes
 # could contain two numbers (besides the zero-tag), type and payload. No need for a length-part!

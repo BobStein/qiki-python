@@ -38,8 +38,8 @@ class NumberTests(unittest.TestCase):
     def assertEqualSets(self, s1, s2):
         if s1 != s2:
             self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
-                '\n\t'.join((Zone.name[z] for z in (s1-s2))),
-                '\n\t'.join((Zone.name[z] for z in (s2-s1))),
+                '\n\t'.join((Zone.name_from_code[z] for z in (s1-s2))),
+                '\n\t'.join((Zone.name_from_code[z] for z in (s2-s1))),
             ))
             # XXX:  This only seems to report one of the extras, not all of them.
 
@@ -579,14 +579,14 @@ class NumberBasicTests(NumberTests):
             assert isinstance(i, six.integer_types)
             assert isinstance(s, six.string_types)
             i_new = int(Number(s))
-            s_new =     Number(i).qstring()
-            self.assertEqual(s_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       s_new, s))
+            q_new =     Number(i).qstring()
+            self.assertEqual(q_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       q_new, s))
             self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
 
             out_of_sequence=[]
             if not context.the_first:
                 integers_oos =        i      >        context.i_last
-                strings_oos  = Number(s).raw > Number(context.s_last).raw
+                strings_oos  = Number(s).raw > Number(context.q_last).raw
                 if integers_oos:
                     out_of_sequence.append(
                         "Integers out of sequence: {i_below:d} should be less than {i_above:d}".format(
@@ -596,16 +596,16 @@ class NumberBasicTests(NumberTests):
                     )
                 if strings_oos:
                     out_of_sequence.append(
-                        "Q-strings out of sequence: {s_below} should be less than {s_above}".format(
-                            s_below=s,
-                            s_above=context.s_last
+                        "qstrings out of sequence: {q_below} should be less than {q_above}".format(
+                            q_below=s,
+                            q_above=context.q_last
                         )
                     )
                 if out_of_sequence:
                     self.fail("\n".join(out_of_sequence))
 
             context.i_last = i
-            context.s_last = s
+            context.q_last = s
             context.the_first = False
 
         # noinspection PyPep8Naming
@@ -832,7 +832,7 @@ class NumberBasicTests(NumberTests):
 
     def test_zone(self):
         """Test an example number in each zone."""
-        self.assertEqual(Zone.TRANSFINITE,         Number('0qFF81').zone)
+        self.assertEqual(Zone.TRANSFINITE,         Number('0qFF_81').zone)
         self.assertEqual(Zone.LUDICROUS_LARGE,     Number('0qFF00FFFF_5F5E00FF').zone)
         self.assertEqual(Zone.POSITIVE,            Number('0q82_2A').zone)
         self.assertEqual(Zone.POSITIVE,            Number('0q82_01').zone)
@@ -848,7 +848,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Zone.NEGATIVE,            Number('0q7D_FF').zone)
         self.assertEqual(Zone.NEGATIVE,            Number('0q7D_D6').zone)
         self.assertEqual(Zone.LUDICROUS_LARGE_NEG, Number('0q00FF0000_FA0A1F01').zone)
-        self.assertEqual(Zone.TRANSFINITE_NEG,     Number('0q007F').zone)
+        self.assertEqual(Zone.TRANSFINITE_NEG,     Number('0q00_7F').zone)
         self.assertEqual(Zone.NAN,                 Number('0q').zone)
 
     def test_float_qigits(self):
@@ -932,425 +932,496 @@ class NumberBasicTests(NumberTests):
 
     def test_floats_and_qstrings(self):
 
-        def f__s(x_in, s_out, s_in_opt=None):
+        def f__q(x, q, q_input_alternate=None):
             """
-            Test a float and a qstring, converting in both directions.
+            Test Number on a float and a qstring, converting in both directions.
 
-            Test each float and string in descending order, verifying monotonicity.
+            Short version:
+                assert q == Number(x).qstring()
+                assert x == float(Number(q))
 
-            Convert the optional alternative string s_in_opt to the same float.
-            It may represent a different value, too finely for float to register.
-            Or it may represent the same value in one of the redundant, invalid plateau values.
+            Verify each float and qstring is monotonic -- the values must be tested
+            in descending order.
 
-            Call zone_boundary() between zones.
+            The optional alternate qstring should convert to the same float.
+            It may represent a different value, too finely distinct for float to register.
+            Or it may represent the same value in one of the Code Plateaus.
+
+            Zones change (and only change) where zone_boundary() is called.
             """
-            assert isinstance(x_in,      float),                                 "f__s(%s,_) should be a float"  % type(x_in).__name__
-            assert isinstance(s_out,    six.string_types),                       "f__s(_,%s) should be a string" % type(s_out).__name__
-            assert isinstance(s_in_opt, six.string_types) or s_in_opt is None, "f__s(_,_,%s) should be a string" % type(s_in_opt).__name__
-            x_out = x_in
-            s_in = s_out if s_in_opt is None else s_in_opt
+            assert isinstance(x, float), \
+                "f__q({},_) should be a float".format(type_name(x))
+            assert isinstance(q, six.string_types), \
+                "f__q(_,{}) should be a string".format(type_name(q))
+            assert isinstance(q_input_alternate, six.string_types) or q_input_alternate is None, \
+                "f__q(_,_,{}) should be a qstring".format(type_name(q_input_alternate))
 
+            q_in = q if q_input_alternate is None else q_input_alternate
+
+            # Compare x and Number(q)
             try:
-                x_new = float(Number(s_in))
+                x_new = float(Number(q_in))
             except Exception as e:
-                print("%s(%s) <--Number--- %s" % (e.__class__.__name__, str(e), s_in))
+                print("{exception_type} <--Number--- {q_string_input}".format(
+                    exception_type=type_name(e),
+                    q_string_input=q_in,
+                ))
+                # NOTE:  print THEN a stack trace
                 raise
-            match_x = floats_really_same(x_new, x_out)
+            match_x = floats_really_same(x_new, x)
 
+            # Compare Number(x) and q
             try:
-                s_new = Number(x_in).qstring()
+                q_new = Number(x).qstring()
             except Exception as e:
-                print("%.17e ---Number--> %s(%s)" % (x_in, e.__class__.__name__, str(e)))
-
+                print("{x_input:.17e} ---Number--> {exception_type}".format(
+                    x_input=x,
+                    exception_type=type_name(e),
+                ))
                 raise
-            match_s = s_new == s_out
+            match_q = q_new == q
 
-            if not match_x or not match_s:
+            if not match_x or not match_q:
                 report = "\n"
                 if not match_x:
-                    s_shoulda = Number(x_out, qigits = 7).qstring()
-                    report += "Number(%s) ~~ " % s_shoulda
-                report += "%.17e %s %.17e <--- Number(%s).__float__()" % (
-                    x_out,
-                    '==' if match_x else '!!!=',
-                    x_new,
-                    s_in,
-                )
-                report += "\nNumber._from_float(%.17e) ---> %s %s %s" % (
-                    x_in,
-                    s_new,
-                    '==' if match_s else '!!!=',
-                    s_out,
-                )
+                    q_shoulda = Number(x, qigits = 7).qstring()
+                    report += "Number({}) ~~ ".format(q_shoulda)
+                report += \
+                    "{x_out_expected:.17e} {equality} {x_out_computed:.17e} " \
+                    "<--- " \
+                    "Number({q_in}).__float__()".format(
+                        x_out_expected=x,
+                        equality='==' if match_x else '!!!=',
+                        x_out_computed=x_new,
+                        q_in=q_in,
+                    )
+                report += \
+                    "\nNumber._from_float({x_in:.17e}) " \
+                    "---> " \
+                    "{q_out_computed} {equality} {q_out_expected}".format(
+                        x_in=x,
+                        q_out_computed=q_new,
+                        equality='==' if match_q else '!!!=',
+                        q_out_expected=q,
+                    )
                 self.fail(report)
 
             if not context.the_first:
-                float_oos =       x_in       >        context.x_in_last
-                qin_oos  = Number(s_in ).raw > Number(context.s_in_last ).raw
-                qout_oos = Number(s_out).raw > Number(context.s_out_last).raw
-                if float_oos: self.fail("Float out of sequence: %.17e should be less than %.17e" % (x_in, context.x_in_last))
-                if qin_oos:   self.fail("Qiki Number input out of sequence: %s should be less than %s" % (s_in, context.s_in_last))
-                if qout_oos:  self.fail("Qiki Number output out of sequence: %s should be less than %s" % (s_out, context.s_out_last))
+                x_oos    =        x         >        context.x_in_last
+                qin_oos  = Number(q_in).raw > Number(context.q_in_last ).raw
+                qout_oos = Number(q   ).raw > Number(context.q_out_last).raw
+                if x_oos:
+                    self.fail("Float out of sequence: {x_later:.17e} should be less than {x_early:.17e}".format(
+                        x_later=x, 
+                        x_early=context.x_in_last,
+                    ))
+                if qin_oos:   
+                    self.fail("Qiki Number input out of sequence: {q_later} should be less than {q_early}".format(
+                        q_later=q_in, 
+                        q_early=context.q_in_last,
+                    ))
+                if qout_oos:  
+                    self.fail("Qiki Number output out of sequence: {q_later} should be less than {q_early}".format(
+                        q_later=q, 
+                        q_early=context.q_out_last,
+                    ))
 
-                this_zone = Number(s_in).zone
-                last_zone =  Number(context.s_in_last).zone
+                this_zone = Number(q_in).zone
+                last_zone =  Number(context.q_in_last).zone
                 if not context.after_zone_boundary and this_zone != last_zone:
-                    self.fail("%s is in a different zone than %s -- need zone_boundary()?" % (context.s_in_last, s_in))
+                    self.fail("{zone_early} is in a different zone than {zone_later} -- need zone_boundary()?".format(
+                        zone_early=context.q_in_last,
+                        zone_later=q_in,
+                    ))
                 if context.after_zone_boundary and this_zone == last_zone:
-                    self.fail("%s is in the same zone as %s -- remove zone_boundary()?" % (context.s_in_last, s_in))
+                    self.fail("{zone_early} is in the same zone as {zone_later} -- remove zone_boundary()?".format(
+                        zone_early=context.q_in_last, 
+                        zone_later=q_in,
+                    ))
 
-            context.x_in_last = x_in
-            context.s_in_last = s_in
-            context.s_out_last = s_out
+            context.x_in_last = x
+            context.q_in_last = q_in
+            context.q_out_last = q
 
             context.the_first = False
             context.after_zone_boundary = False
 
         # noinspection PyPep8Naming
-        class context(object):   # variables that are local to test_floats_and_strings(), but global to f__s()
+        class context(object):   # variables that are local to test_floats_and_strings(), but global to f__q()
             the_first = True
             after_zone_boundary = False
 
         def zone_boundary():
             context.after_zone_boundary = True
 
+        def try_out_f__q_errors():
+            """Uncomment each set of f__q() calls to try out its exceptions and error messages."""
 
-        f__s(float('+inf'),               '0qFF_81')
+            # f__q(object(), '0q80')
+
+            # f__q(0.0, object())
+
+            # f__q(0.0, '0q80', object())
+
+            # f__q(0.0, 'nonsense')
+
+            # f__q(sys.float_info.max, '0q')
+
+            # f__q(1.0, '0q82____01')   # Both reports:  f == f <--- q and f ---> q !!!= q
+
+            # f__q(0.0, '0q80')
+            # f__q(1.0, '0q82_01')
+
+            # f__q(1.0, '0q82_01', '0q82_0001')
+            # f__q(1.0, '0q82_01')
+
+            # NOTE:  Can't trigger "Qiki Number output out of sequence..." without a bug in Number.
+
+            # f__q(2.0, '0q82_02')
+            # f__q(0.0, '0q80')
+
+            # f__q(0.0, '0q80')
+            # zone_boundary()
+            # f__q(0.0, '0q80')
+
+        try_out_f__q_errors()
+
+        f__q(float('+inf'),               '0qFF_81')
         zone_boundary()
         if LUDICROUS_NUMBER_SUPPORT:
             # noinspection PyUnresolvedReferences
             m__s(mpmath.power(2,1024),    '0qFF000080_01')   # A smidgen too big for floating point
-            f__s(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Zone.LUDICROUS_LARGE
-            f__s(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
+            f__q(1.7976931348623157e+308, '0qFF00007F_FFFFFFFFFFFFF8')   # Largest IEEE-754 64-bit floating point number -- a little ways into Zone.LUDICROUS_LARGE
+            f__q(math.pow(2,1000),        '0qFF00007D_01')   # TODO:  Smallest Ludicrously Large number:  +2 ** +1000.
         else:
-            f__s(float('+inf'),           '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
-            f__s(float('+inf'),           '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
+            f__q(float('+inf'),           '0qFF_81', '0qFF00FFFF_5F5E00FF_01')   # 2**99999999, a ludicrously large positive number
+            f__q(float('+inf'),           '0qFF_81', '0qFF000080_01')   # A smidgen too big for floating point
         zone_boundary()
-        f__s(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
-        f__s(5.3575430359313366e+300,     '0qFE_80')
-        f__s(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2:  +2 ** +999.
-        f__s(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
-        f__s(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol, or as close to it as float can get
-        f__s(       1e25,                 '0q8C_0845951614014880')
-        f__s(       1e10,                 '0q86_02540BE4')
-        f__s(4294967296.0,                '0q86_01')
-        f__s(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for +256**4, the official code being 0q86_01
-        f__s(  16777216.0,                '0q85_01')
-        f__s(     65536.0,                '0q84_01')
-        f__s(     32768.0,                '0q83_80')
-        f__s(     16384.0,                '0q83_40')
-        f__s(      8192.0,                '0q83_20')
-        f__s(      4096.0,                '0q83_10')
-        f__s(      2048.0,                '0q83_08')
-        f__s(      1234.567890123456789,  '0q83_04D291613F43F8')
-        f__s(      1234.5678901234,       '0q83_04D291613F43B980')
-        f__s(      1234.56789,            '0q83_04D291613D31B9C0')
-        f__s(      1111.1111112,          '0q83_04571C71C89A3840')
-        f__s(      1111.111111111111313,  '0q83_04571C71C71C72')    # XXX: use numpy.nextafter(1111.111111111111111, 1) or something -- http://stackoverflow.com/a/6163157/673991
-        f__s(      1111.111111111111111,  '0q83_04571C71C71C71C0')  # float has just under 17 significant digits
-        f__s(      1111.1111111,          '0q83_04571C71C6ECB9')
-        f__s(      1024.0,                '0q83_04')
-        f__s(      1000.0,                '0q83_03E8')
-        f__s(       512.0,                '0q83_02')
-        f__s(       258.0,                '0q83_0102')
-        f__s(       257.0,                '0q83_0101')
-        f__s(       256.0,                '0q83_01')
-        f__s(       256.0,                '0q83_01', '0q83')   # alias for +256
-        f__s(       256.0,                '0q83_01', '0q82_FFFFFFFFFFFFFC')
-        f__s(       255.9999999999999801, '0q82_FFFFFFFFFFFFF8')     # 53 bits in the float mantissa
-        f__s(       255.5,                '0q82_FF80')
-        f__s(       255.0,                '0q82_FF')
-        f__s(       254.0,                '0q82_FE')
-        f__s(       216.0,                '0q82_D8')
-        f__s(       128.0,                '0q82_80')
-        f__s(       100.0,                '0q82_64')
-        f__s(math.pi*2,                   '0q82_06487ED5110B46')
-        f__s(math.pi,                     '0q82_03243F6A8885A3')   # 50-bit pi mantissa?  Next qigit:  '08'.
-        f__s(         3.0,                '0q82_03')
-        f__s(math.exp(1),                 '0q82_02B7E151628AED20')   # 53-bit mantissa for e.
-        f__s(         2.5,                '0q82_0280')
-        f__s(         2.4,                '0q82_0266666666666660')
-        f__s(         2.3,                '0q82_024CCCCCCCCCCCC0')
-        f__s(         2.2,                '0q82_0233333333333340')
-        f__s(         2.1,                '0q82_02199999999999A0')
-        f__s(         2.0,                '0q82_02')
-        f__s(         1.875,              '0q82_01E0')
-        f__s(         1.75,               '0q82_01C0')
-        f__s(math.sqrt(3),                '0q82_01BB67AE8584CAA0')
-        f__s(         1.6666666666666666, '0q82_01AAAAAAAAAAAAA0')
-        f__s((1+math.sqrt(5))/2,          '0q82_019E3779B97F4A80')   # golden ratio
-        f__s(         1.6,                '0q82_01999999999999A0')
-        f__s(         1.5333333333333333, '0q82_0188888888888880')
-        f__s(         1.5,                '0q82_0180')
-        f__s(         1.4666666666666666, '0q82_0177777777777770')
-        f__s(math.sqrt(2),                '0q82_016A09E667F3BCD0')
-        f__s(         1.4,                '0q82_0166666666666660')
-        f__s(         1.3333333333333333, '0q82_0155555555555550')
-        f__s(         1.3,                '0q82_014CCCCCCCCCCCD0')
-        f__s(         1.2666666666666666, '0q82_0144444444444440')
-        f__s(         1.25,               '0q82_0140')
-        f__s(         1.2,                '0q82_0133333333333330')
-        f__s(         1.1333333333333333, '0q82_0122222222222220')
-        f__s(         1.125,              '0q82_0120')
-        f__s(         1.1,                '0q82_01199999999999A0')
-        f__s(         1.0666666666666666, '0q82_0111111111111110')
-        f__s(         1.0625,             '0q82_0110')
-        f__s(math.pow(2, 1/12.0),         '0q82_010F38F92D979630')   # semitone (twelfth of an octave)
-        f__s(         1.03125,            '0q82_0108')
-        f__s(         1.015625,           '0q82_0104')
-        f__s(         1.01,               '0q82_01028F5C28F5C290')
-        f__s(         1.0078125,          '0q82_0102')
-        f__s(         1.00390625,         '0q82_0101')
-        f__s(         1.001953125,        '0q82_010080')
-        f__s(         1.001,              '0q82_01004189374BC6A0')
-        f__s(         1.0009765625,       '0q82_010040')
-        f__s(         1.00048828125,      '0q82_010020')
-        f__s(         1.000244140625,     '0q82_010010')
-        f__s(         1.0001,             '0q82_0100068DB8BAC710')
-        f__s(         1.00001,            '0q82_010000A7C5AC4720')
-        f__s(         1.000001,           '0q82_01000010C6F7A0B0')
-        f__s(         1.0000001,          '0q82_01000001AD7F29B0')
-        f__s(         1.00000001,         '0q82_010000002AF31DC0')
-        f__s(         1.000000001,        '0q82_01000000044B83')
-        f__s(         1.0000000001,       '0q82_01000000006DF380')
-        f__s(         1.00000000001,      '0q82_01000000000AFEC0')
-        f__s(         1.000000000001,     '0q82_0100000000011980')
-        f__s(         1.0000000000001,    '0q82_0100000000001C20')
-        f__s(         1.00000000000001,   '0q82_01000000000002D0')
-        f__s(         1.000000000000001,  '0q82_0100000000000050')
-        f__s(         1.00000000000000067,'0q82_0100000000000030')
-        f__s(         1.00000000000000067,'0q82_0100000000000030', '0q82_01000000000000280001')
-        f__s(         1.00000000000000044,'0q82_0100000000000020', '0q82_0100000000000028')
-        f__s(         1.00000000000000044,'0q82_0100000000000020')
-        f__s(         1.00000000000000044,'0q82_0100000000000020', '0q82_0100000000000018')
-        f__s(         1.00000000000000022,'0q82_0100000000000010', '0q82_0100000000000017FFFF')  # alternated rounding?
-        f__s(         1.00000000000000022,'0q82_0100000000000010')
-        f__s(         1.00000000000000022,'0q82_0100000000000010', '0q82_01000000000000080001')
-        f__s(         1.0                ,'0q82_01',               '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
-        f__s(         1.0,                '0q82_01')
-        f__s(         1.0,                '0q82_01',  '0q82')   # alias for +1
+        f__q(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
+        f__q(5.3575430359313366e+300,     '0qFE_80')
+        f__q(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2:  +2 ** +999.
+        f__q(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
+        f__q(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol, or as close to it as float can get
+        f__q(       1e25,                 '0q8C_0845951614014880')
+        f__q(       1e10,                 '0q86_02540BE4')
+        f__q(4294967296.0,                '0q86_01')
+        f__q(4294967296.0,                '0q86_01', '0q86')   # 0q86 is an alias for +256**4, the official code being 0q86_01
+        f__q(  16777216.0,                '0q85_01')
+        f__q(     65536.0,                '0q84_01')
+        f__q(     32768.0,                '0q83_80')
+        f__q(     16384.0,                '0q83_40')
+        f__q(      8192.0,                '0q83_20')
+        f__q(      4096.0,                '0q83_10')
+        f__q(      2048.0,                '0q83_08')
+        f__q(      1234.567890123456789,  '0q83_04D291613F43F8')
+        f__q(      1234.5678901234,       '0q83_04D291613F43B980')
+        f__q(      1234.56789,            '0q83_04D291613D31B9C0')
+        f__q(      1111.1111112,          '0q83_04571C71C89A3840')
+        f__q(      1111.111111111111313,  '0q83_04571C71C71C72')    # XXX: use numpy.nextafter(1111.111111111111111, 1) or something -- http://stackoverflow.com/a/6163157/673991
+        f__q(      1111.111111111111111,  '0q83_04571C71C71C71C0')  # float has just under 17 significant digits
+        f__q(      1111.1111111,          '0q83_04571C71C6ECB9')
+        f__q(      1024.0,                '0q83_04')
+        f__q(      1000.0,                '0q83_03E8')
+        f__q(       512.0,                '0q83_02')
+        f__q(       258.0,                '0q83_0102')
+        f__q(       257.0,                '0q83_0101')
+        f__q(       256.0,                '0q83_01')
+        f__q(       256.0,                '0q83_01', '0q83')   # alias for +256
+        f__q(       256.0,                '0q83_01', '0q82_FFFFFFFFFFFFFC')
+        f__q(       255.9999999999999801, '0q82_FFFFFFFFFFFFF8')     # 53 bits in the float mantissa
+        f__q(       255.5,                '0q82_FF80')
+        f__q(       255.0,                '0q82_FF')
+        f__q(       254.0,                '0q82_FE')
+        f__q(       216.0,                '0q82_D8')
+        f__q(       128.0,                '0q82_80')
+        f__q(       100.0,                '0q82_64')
+        f__q(math.pi*2,                   '0q82_06487ED5110B46')
+        f__q(math.pi,                     '0q82_03243F6A8885A3')   # 50-bit pi mantissa?  Next qigit:  '08'.
+        f__q(         3.0,                '0q82_03')
+        f__q(math.exp(1),                 '0q82_02B7E151628AED20')   # 53-bit mantissa for e.
+        f__q(         2.5,                '0q82_0280')
+        f__q(         2.4,                '0q82_0266666666666660')
+        f__q(         2.3,                '0q82_024CCCCCCCCCCCC0')
+        f__q(         2.2,                '0q82_0233333333333340')
+        f__q(         2.1,                '0q82_02199999999999A0')
+        f__q(         2.0,                '0q82_02')
+        f__q(         1.875,              '0q82_01E0')
+        f__q(         1.75,               '0q82_01C0')
+        f__q(math.sqrt(3),                '0q82_01BB67AE8584CAA0')
+        f__q(         1.6666666666666666, '0q82_01AAAAAAAAAAAAA0')
+        f__q((1+math.sqrt(5))/2,          '0q82_019E3779B97F4A80')   # golden ratio
+        f__q(         1.6,                '0q82_01999999999999A0')
+        f__q(         1.5333333333333333, '0q82_0188888888888880')
+        f__q(         1.5,                '0q82_0180')
+        f__q(         1.4666666666666666, '0q82_0177777777777770')
+        f__q(math.sqrt(2),                '0q82_016A09E667F3BCD0')
+        f__q(         1.4,                '0q82_0166666666666660')
+        f__q(         1.3333333333333333, '0q82_0155555555555550')
+        f__q(         1.3,                '0q82_014CCCCCCCCCCCD0')
+        f__q(         1.2666666666666666, '0q82_0144444444444440')
+        f__q(         1.25,               '0q82_0140')
+        f__q(         1.2,                '0q82_0133333333333330')
+        f__q(         1.1333333333333333, '0q82_0122222222222220')
+        f__q(         1.125,              '0q82_0120')
+        f__q(         1.1,                '0q82_01199999999999A0')
+        f__q(         1.0666666666666666, '0q82_0111111111111110')
+        f__q(         1.0625,             '0q82_0110')
+        f__q(math.pow(2, 1/12.0),         '0q82_010F38F92D979630')   # semitone (twelfth of an octave)
+        f__q(         1.03125,            '0q82_0108')
+        f__q(         1.015625,           '0q82_0104')
+        f__q(         1.01,               '0q82_01028F5C28F5C290')
+        f__q(         1.0078125,          '0q82_0102')
+        f__q(         1.00390625,         '0q82_0101')
+        f__q(         1.001953125,        '0q82_010080')
+        f__q(         1.001,              '0q82_01004189374BC6A0')
+        f__q(         1.0009765625,       '0q82_010040')
+        f__q(         1.00048828125,      '0q82_010020')
+        f__q(         1.000244140625,     '0q82_010010')
+        f__q(         1.0001,             '0q82_0100068DB8BAC710')
+        f__q(         1.00001,            '0q82_010000A7C5AC4720')
+        f__q(         1.000001,           '0q82_01000010C6F7A0B0')
+        f__q(         1.0000001,          '0q82_01000001AD7F29B0')
+        f__q(         1.00000001,         '0q82_010000002AF31DC0')
+        f__q(         1.000000001,        '0q82_01000000044B83')
+        f__q(         1.0000000001,       '0q82_01000000006DF380')
+        f__q(         1.00000000001,      '0q82_01000000000AFEC0')
+        f__q(         1.000000000001,     '0q82_0100000000011980')
+        f__q(         1.0000000000001,    '0q82_0100000000001C20')
+        f__q(         1.00000000000001,   '0q82_01000000000002D0')
+        f__q(         1.000000000000001,  '0q82_0100000000000050')
+        f__q(         1.00000000000000067,'0q82_0100000000000030')
+        f__q(         1.00000000000000067,'0q82_0100000000000030', '0q82_01000000000000280001')
+        f__q(         1.00000000000000044,'0q82_0100000000000020', '0q82_0100000000000028')
+        f__q(         1.00000000000000044,'0q82_0100000000000020')
+        f__q(         1.00000000000000044,'0q82_0100000000000020', '0q82_0100000000000018')
+        f__q(         1.00000000000000022,'0q82_0100000000000010', '0q82_0100000000000017FFFF')  # alternated rounding?
+        f__q(         1.00000000000000022,'0q82_0100000000000010')
+        f__q(         1.00000000000000022,'0q82_0100000000000010', '0q82_01000000000000080001')
+        f__q(         1.0                ,'0q82_01',               '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
+        f__q(         1.0,                '0q82_01')
+        f__q(         1.0,                '0q82_01',  '0q82')   # alias for +1
         zone_boundary()
-        f__s(         0.99999237060546875,'0q81FF_FFFF80')
-        f__s(         0.9998779296875,    '0q81FF_FFF8')
-        f__s(         0.999,              '0q81FF_FFBE76C8B43958')     # 999/1000
-        f__s(         0.998046875,        '0q81FF_FF80')
-        f__s(         0.998,              '0q81FF_FF7CED916872B0')     # 998/1000
-        f__s(         0.9972222222222222, '0q81FF_FF49F49F49F4A0')     # 359/360
-        f__s(         0.9944444444444445, '0q81FF_FE93E93E93E940')     # 358/360
-        f__s(         0.99,               '0q81FF_FD70A3D70A3D70')     # 99/100
-        f__s(         0.98,               '0q81FF_FAE147AE147AE0')     # 98/100
-        f__s(         0.96875,            '0q81FF_F8')
-        f__s(         0.9375,             '0q81FF_F0')
-        f__s(         0.875,              '0q81FF_E0')
-        f__s(         0.75,               '0q81FF_C0')
-        f__s(math.sqrt(0.5),              '0q81FF_B504F333F9DE68')
-        f__s(         0.5,                '0q81FF_80')
-        f__s(         0.25,               '0q81FF_40')
-        f__s(         0.125,              '0q81FF_20')
-        f__s(         0.0625,             '0q81FF_10')
-        f__s(         0.03125,            '0q81FF_08')
-        f__s(         0.02,               '0q81FF_051EB851EB851EC0')   # 2/200
-        f__s(         0.015625,           '0q81FF_04')
-        f__s(         0.01171875,         '0q81FF_03')
-        f__s(         0.01,               '0q81FF_028F5C28F5C28F60')   # 1/100
-        f__s(         0.0078125,          '0q81FF_02')
-        f__s(         0.005555555555555556,'0q81FF_016C16C16C16C170')  # 2/360
-        f__s(         0.0039520263671875, '0q81FF_0103')               # 259/65536
-        f__s(         0.003936767578125,  '0q81FF_0102')               # 258/65536
-        f__s(         0.0039215087890625, '0q81FF_0101')               # 257/65536
-        f__s(         0.00390625,         '0q81FF_01')                 # 256/65536 aka 1/256
-        f__s(         0.00390625,         '0q81FF_01', '0q81FF')       # 1/256 alias
-        f__s(         0.0038909912109375, '0q81FE_FF')                 # 255/65536
-        f__s(         0.003875732421875,  '0q81FE_FE')                 # 254/65536
-        f__s(         0.0038604736328125, '0q81FE_FD')                 # 253/65536
-        f__s(         0.002777777777777778,'0q81FE_B60B60B60B60B8')    # 1/360
-        f__s(         0.002,              '0q81FE_83126E978D4FE0')     # 2/1000
-        f__s(         0.001953125,        '0q81FE_80')
-        f__s(         0.001,              '0q81FE_4189374BC6A7F0')     # 1/1000 = 0x0.004189374BC6A7EF9DB22D0E560 4189374BC6A7EF9DB22D0E560 ...
-        f__s(         0.0009765625,       '0q81FE_40')
-        f__s(         0.00048828125,      '0q81FE_20')
-        f__s(         0.000244140625,     '0q81FE_10')
-        f__s(         0.0001220703125,    '0q81FE_08')
-        f__s(         0.00006103515625,   '0q81FE_04')
-        f__s(         0.000030517578125,  '0q81FE_02')
-        f__s(math.pow(256, -2),           '0q81FE_01')
-        f__s(         0.0000152587890625, '0q81FE_01')                 # 1/65536
-        f__s(         0.0000152587890625, '0q81FE_01', '0q81FE')       # 1/65536 alias
-        f__s(         0.00000762939453125,'0q81FD_80')
-        f__s(math.pow(256, -3),           '0q81FD_01')
-        f__s(math.pow(256, -4),           '0q81FC_01')
-        f__s(math.pow(256, -10),          '0q81F6_01')
-        f__s(math.pow(256, -100),         '0q819C_01')
-        f__s(math.pow(256, -100),         '0q819C_01', '0q819C')   # alias for 256**-100
-        f__s(math.pow(  2, -991),         '0q8184_02')
-        f__s(math.pow(  2, -992),         '0q8184_01')
-        f__s(math.pow(256, -124),         '0q8184_01')
-        f__s(math.pow(  2, -993),         '0q8183_80')
-        f__s(math.pow(  2, -994),         '0q8183_40')
-        f__s(math.pow(  2, -998),         '0q8183_04')
-        f__s(math.pow(  2, -999),         '0q8183_02')
-        f__s(math.pow(  2, -1000) + math.pow(2,-1052),
+        f__q(         0.99999237060546875,'0q81FF_FFFF80')
+        f__q(         0.9998779296875,    '0q81FF_FFF8')
+        f__q(         0.999,              '0q81FF_FFBE76C8B43958')     # 999/1000
+        f__q(         0.998046875,        '0q81FF_FF80')
+        f__q(         0.998,              '0q81FF_FF7CED916872B0')     # 998/1000
+        f__q(         0.9972222222222222, '0q81FF_FF49F49F49F4A0')     # 359/360
+        f__q(         0.9944444444444445, '0q81FF_FE93E93E93E940')     # 358/360
+        f__q(         0.99,               '0q81FF_FD70A3D70A3D70')     # 99/100
+        f__q(         0.98,               '0q81FF_FAE147AE147AE0')     # 98/100
+        f__q(         0.96875,            '0q81FF_F8')
+        f__q(         0.9375,             '0q81FF_F0')
+        f__q(         0.875,              '0q81FF_E0')
+        f__q(         0.75,               '0q81FF_C0')
+        f__q(math.sqrt(0.5),              '0q81FF_B504F333F9DE68')
+        f__q(         0.5,                '0q81FF_80')
+        f__q(         0.25,               '0q81FF_40')
+        f__q(         0.125,              '0q81FF_20')
+        f__q(         0.0625,             '0q81FF_10')
+        f__q(         0.03125,            '0q81FF_08')
+        f__q(         0.02,               '0q81FF_051EB851EB851EC0')   # 2/200
+        f__q(         0.015625,           '0q81FF_04')
+        f__q(         0.01171875,         '0q81FF_03')
+        f__q(         0.01,               '0q81FF_028F5C28F5C28F60')   # 1/100
+        f__q(         0.0078125,          '0q81FF_02')
+        f__q(         0.005555555555555556,'0q81FF_016C16C16C16C170')  # 2/360
+        f__q(         0.0039520263671875, '0q81FF_0103')               # 259/65536
+        f__q(         0.003936767578125,  '0q81FF_0102')               # 258/65536
+        f__q(         0.0039215087890625, '0q81FF_0101')               # 257/65536
+        f__q(         0.00390625,         '0q81FF_01')                 # 256/65536 aka 1/256
+        f__q(         0.00390625,         '0q81FF_01', '0q81FF')       # 1/256 alias
+        f__q(         0.0038909912109375, '0q81FE_FF')                 # 255/65536
+        f__q(         0.003875732421875,  '0q81FE_FE')                 # 254/65536
+        f__q(         0.0038604736328125, '0q81FE_FD')                 # 253/65536
+        f__q(         0.002777777777777778,'0q81FE_B60B60B60B60B8')    # 1/360
+        f__q(         0.002,              '0q81FE_83126E978D4FE0')     # 2/1000
+        f__q(         0.001953125,        '0q81FE_80')
+        f__q(         0.001,              '0q81FE_4189374BC6A7F0')     # 1/1000 = 0x0.004189374BC6A7EF9DB22D0E560 4189374BC6A7EF9DB22D0E560 ...
+        f__q(         0.0009765625,       '0q81FE_40')
+        f__q(         0.00048828125,      '0q81FE_20')
+        f__q(         0.000244140625,     '0q81FE_10')
+        f__q(         0.0001220703125,    '0q81FE_08')
+        f__q(         0.00006103515625,   '0q81FE_04')
+        f__q(         0.000030517578125,  '0q81FE_02')
+        f__q(math.pow(256, -2),           '0q81FE_01')
+        f__q(         0.0000152587890625, '0q81FE_01')                 # 1/65536
+        f__q(         0.0000152587890625, '0q81FE_01', '0q81FE')       # 1/65536 alias
+        f__q(         0.00000762939453125,'0q81FD_80')
+        f__q(math.pow(256, -3),           '0q81FD_01')
+        f__q(math.pow(256, -4),           '0q81FC_01')
+        f__q(math.pow(256, -10),          '0q81F6_01')
+        f__q(math.pow(256, -100),         '0q819C_01')
+        f__q(math.pow(256, -100),         '0q819C_01', '0q819C')   # alias for 256**-100
+        f__q(math.pow(  2, -991),         '0q8184_02')
+        f__q(math.pow(  2, -992),         '0q8184_01')
+        f__q(math.pow(256, -124),         '0q8184_01')
+        f__q(math.pow(  2, -993),         '0q8183_80')
+        f__q(math.pow(  2, -994),         '0q8183_40')
+        f__q(math.pow(  2, -998),         '0q8183_04')
+        f__q(math.pow(  2, -999),         '0q8183_02')
+        f__q(math.pow(  2, -1000) + math.pow(2,-1052),
                                           '0q8183_0100000000000010')   # boldest reasonable float, near positive ludicrously small boundary
         if LUDICROUS_NUMBER_SUPPORT:
-            f__s(math.pow(  2, -1000),    'something')   # gentlest positive ludicrously small number
-            f__s(math.pow(256, -125),     'something')
+            f__q(math.pow(  2, -1000),    'something')   # gentlest positive ludicrously small number
+            f__q(math.pow(256, -125),     'something')
         else:
-            f__s(math.pow(  2, -1000),    '0q8183_01')   # gentlest positive ludicrously small number
-            f__s(math.pow(256, -125),     '0q8183_01')
+            f__q(math.pow(  2, -1000),    '0q8183_01')   # gentlest positive ludicrously small number
+            f__q(math.pow(256, -125),     '0q8183_01')
         zone_boundary()
-        f__s(         0.0,                '0q80',  '0q80FF0000_FF4143E0_01')   # +2**-99999999, a ludicrously small positive number
+        f__q(         0.0,                '0q80',  '0q80FF0000_FF4143E0_01')   # +2**-99999999, a ludicrously small positive number
         zone_boundary()
-        f__s(         0.0,                '0q80',  '0q807F')   # +infinitesimal
+        f__q(         0.0,                '0q80',  '0q807F')   # +infinitesimal
         zone_boundary()
-        f__s(         0.0,                '0q80')
+        f__q(         0.0,                '0q80')
         zone_boundary()
-        f__s(        -0.0,                '0q80',  '0q7F81')   # -infinitesimal
+        f__q(        -0.0,                '0q80',  '0q7F81')   # -infinitesimal
         zone_boundary()
-        f__s(        -0.0,                '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
+        f__q(        -0.0,                '0q80',  '0q7F00FFFF_00BEBC1F_80')   # -2**-99999999, a ludicrously small negative number
         zone_boundary()
         if LUDICROUS_NUMBER_SUPPORT:
-            f__s(-math.pow(256, -125),    'something')
-            f__s(-math.pow(  2, -100),    'something')   # gentlest negative ludicrously small number
+            f__q(-math.pow(256, -125),    'something')
+            f__q(-math.pow(  2, -100),    'something')   # gentlest negative ludicrously small number
         else:
-            f__s(-math.pow(256, -125),    '0q7E7C_FF')
-            f__s(-math.pow(  2, -1000),   '0q7E7C_FF')   # gentlest negative ludicrously small number
-        f__s(-math.pow(  2, -1000) - math.pow(2,-1052),
+            f__q(-math.pow(256, -125),    '0q7E7C_FF')
+            f__q(-math.pow(  2, -1000),   '0q7E7C_FF')   # gentlest negative ludicrously small number
+        f__q(-math.pow(  2, -1000) - math.pow(2,-1052),
                                           '0q7E7C_FEFFFFFFFFFFFFF0')   # boldest reasonable float, near negative ludicrously small boundary
-        f__s(-math.pow(  2, -999),        '0q7E7C_FE')
-        f__s(-math.pow(  2, -998),        '0q7E7C_FC')
-        f__s(-math.pow(  2, -994),        '0q7E7C_C0')
-        f__s(-math.pow(  2, -993),        '0q7E7C_80')
-        f__s(-math.pow(256, -124),        '0q7E7B_FF')
-        f__s(-math.pow(  2, -992),        '0q7E7B_FF')
-        f__s(-math.pow(  2, -991),        '0q7E7B_FE')
-        f__s(-math.pow(256, -100),        '0q7E63_FF', '0q7E64')   # alias for -256**-100
-        f__s(-math.pow(256, -100),        '0q7E63_FF')
-        f__s(-math.pow(256, -10),         '0q7E09_FF')
-        f__s(-math.pow(256, -4),          '0q7E03_FF')
-        f__s(-math.pow(256, -3),          '0q7E02_FF')
-        f__s(        -0.00000762939453125,'0q7E02_80')
-        f__s(        -0.0000152587890625, '0q7E01_FF', '0q7E02')   # alias for -256**-2
-        f__s(-math.pow(256, -2),          '0q7E01_FF')
-        f__s(        -0.0000152587890625, '0q7E01_FF')
-        f__s(        -0.000030517578125,  '0q7E01_FE')
-        f__s(        -0.00006103515625,   '0q7E01_FC')
-        f__s(        -0.0001220703125,    '0q7E01_F8')
-        f__s(        -0.000244140625,     '0q7E01_F0')
-        f__s(        -0.00048828125,      '0q7E01_E0')
-        f__s(        -0.0009765625,       '0q7E01_C0')
-        f__s(        -0.001953125,        '0q7E01_80')
-        f__s(        -0.001953125,        '0q7E01_80')
-        f__s(        -0.0038604736328125, '0q7E01_03')   # -253/65536
-        f__s(        -0.003875732421875,  '0q7E01_02')   # -254/65536
-        f__s(        -0.0038909912109375, '0q7E01_01')   # -255/65536
-        f__s(        -0.00390625,         '0q7E00_FF', '0q7E01')   # alias for -1/256 aka -256**-1
-        f__s(        -0.00390625,         '0q7E00_FF')   # -256/65536      aka -1/256
-        f__s(        -0.0039215087890625, '0q7E00_FEFF') # -257/65536
-        f__s(        -0.003936767578125,  '0q7E00_FEFE') # -258/65536
-        f__s(        -0.0039520263671875, '0q7E00_FEFD') # -259/65536
-        f__s(        -0.0078125,          '0q7E00_FE')
-        f__s(        -0.01171875,         '0q7E00_FD')
-        f__s(        -0.015625,           '0q7E00_FC')
-        f__s(        -0.03125,            '0q7E00_F8')
-        f__s(        -0.0625,             '0q7E00_F0')
-        f__s(        -0.125,              '0q7E00_E0')
-        f__s(        -0.25,               '0q7E00_C0')
-        f__s(        -0.5,                '0q7E00_80')
-        f__s(        -0.75,               '0q7E00_40')
-        f__s(        -0.875,              '0q7E00_20')
-        f__s(        -0.9375,             '0q7E00_10')
-        f__s(        -0.96875,            '0q7E00_08')
-        f__s(        -0.998046875,        '0q7E00_0080')
-        f__s(        -0.9998779296875,    '0q7E00_0008')
-        f__s(        -0.99999237060546875,'0q7E00_000080')
+        f__q(-math.pow(  2, -999),        '0q7E7C_FE')
+        f__q(-math.pow(  2, -998),        '0q7E7C_FC')
+        f__q(-math.pow(  2, -994),        '0q7E7C_C0')
+        f__q(-math.pow(  2, -993),        '0q7E7C_80')
+        f__q(-math.pow(256, -124),        '0q7E7B_FF')
+        f__q(-math.pow(  2, -992),        '0q7E7B_FF')
+        f__q(-math.pow(  2, -991),        '0q7E7B_FE')
+        f__q(-math.pow(256, -100),        '0q7E63_FF', '0q7E64')   # alias for -256**-100
+        f__q(-math.pow(256, -100),        '0q7E63_FF')
+        f__q(-math.pow(256, -10),         '0q7E09_FF')
+        f__q(-math.pow(256, -4),          '0q7E03_FF')
+        f__q(-math.pow(256, -3),          '0q7E02_FF')
+        f__q(        -0.00000762939453125,'0q7E02_80')
+        f__q(        -0.0000152587890625, '0q7E01_FF', '0q7E02')   # alias for -256**-2
+        f__q(-math.pow(256, -2),          '0q7E01_FF')
+        f__q(        -0.0000152587890625, '0q7E01_FF')
+        f__q(        -0.000030517578125,  '0q7E01_FE')
+        f__q(        -0.00006103515625,   '0q7E01_FC')
+        f__q(        -0.0001220703125,    '0q7E01_F8')
+        f__q(        -0.000244140625,     '0q7E01_F0')
+        f__q(        -0.00048828125,      '0q7E01_E0')
+        f__q(        -0.0009765625,       '0q7E01_C0')
+        f__q(        -0.001953125,        '0q7E01_80')
+        f__q(        -0.001953125,        '0q7E01_80')
+        f__q(        -0.0038604736328125, '0q7E01_03')   # -253/65536
+        f__q(        -0.003875732421875,  '0q7E01_02')   # -254/65536
+        f__q(        -0.0038909912109375, '0q7E01_01')   # -255/65536
+        f__q(        -0.00390625,         '0q7E00_FF', '0q7E01')   # alias for -1/256 aka -256**-1
+        f__q(        -0.00390625,         '0q7E00_FF')   # -256/65536      aka -1/256
+        f__q(        -0.0039215087890625, '0q7E00_FEFF') # -257/65536
+        f__q(        -0.003936767578125,  '0q7E00_FEFE') # -258/65536
+        f__q(        -0.0039520263671875, '0q7E00_FEFD') # -259/65536
+        f__q(        -0.0078125,          '0q7E00_FE')
+        f__q(        -0.01171875,         '0q7E00_FD')
+        f__q(        -0.015625,           '0q7E00_FC')
+        f__q(        -0.03125,            '0q7E00_F8')
+        f__q(        -0.0625,             '0q7E00_F0')
+        f__q(        -0.125,              '0q7E00_E0')
+        f__q(        -0.25,               '0q7E00_C0')
+        f__q(        -0.5,                '0q7E00_80')
+        f__q(        -0.75,               '0q7E00_40')
+        f__q(        -0.875,              '0q7E00_20')
+        f__q(        -0.9375,             '0q7E00_10')
+        f__q(        -0.96875,            '0q7E00_08')
+        f__q(        -0.998046875,        '0q7E00_0080')
+        f__q(        -0.9998779296875,    '0q7E00_0008')
+        f__q(        -0.99999237060546875,'0q7E00_000080')
         zone_boundary()
-        f__s(        -1.0,                '0q7D_FF', '0q7E')   # alias for -1
-        f__s(        -1.0,                '0q7D_FF')
-        f__s(        -1.000001,           '0q7D_FEFFFFEF39085F50')
-        f__s(        -1.00000762939453125,'0q7D_FEFFFF80')
-        f__s(        -1.0001220703125,    '0q7D_FEFFF8')
-        f__s(        -1.000244140625,     '0q7D_FEFFF0')
-        f__s(        -1.00048828125,      '0q7D_FEFFE0')
-        f__s(        -1.0009765625,       '0q7D_FEFFC0')
-        f__s(        -1.001953125,        '0q7D_FEFF80')
-        f__s(        -1.00390625,         '0q7D_FEFF')
-        f__s(        -1.0078125,          '0q7D_FEFE')
-        f__s(        -1.015625,           '0q7D_FEFC')
-        f__s(        -1.03125,            '0q7D_FEF8')
-        f__s(        -1.0625,             '0q7D_FEF0')
-        f__s(        -1.1,                '0q7D_FEE6666666666660')  # TODO:  Try more rational weirdos
-        f__s(        -1.125,              '0q7D_FEE0')
-        f__s(        -1.25,               '0q7D_FEC0')
-        f__s(        -1.5,                '0q7D_FE80')
-        f__s(        -1.75,               '0q7D_FE40')
-        f__s(        -1.875,              '0q7D_FE20')
-        f__s(        -1.9375,             '0q7D_FE10')
-        f__s(        -1.96875,            '0q7D_FE08')
-        f__s(        -1.998046875,        '0q7D_FE0080')
-        f__s(        -1.9998779296875,    '0q7D_FE0008')
-        f__s(        -1.99999237060546875,'0q7D_FE000080')
-        f__s(        -2.0,                '0q7D_FE')
-        f__s(        -2.00000762939453125,'0q7D_FDFFFF80')
-        f__s(        -2.25,               '0q7D_FDC0')
-        f__s(        -2.5,                '0q7D_FD80')
-        f__s(        -2.75,               '0q7D_FD40')
-        f__s(        -3.0,                '0q7D_FD')
-        f__s(        -3.06249999999999645,'0q7D_FCF00000000001')
-        f__s(        -3.0625,             '0q7D_FCF0')
-        f__s(        -3.062500000000005,  '0q7D_FCEFFFFFFFFFFEA0')
-        f__s(        -4.0,                '0q7D_FC')
-        f__s(        -8.0,                '0q7D_F8')
-        f__s(       -16.0,                '0q7D_F0')
-        f__s(       -32.0,                '0q7D_E0')
-        f__s(       -64.0,                '0q7D_C0')
-        f__s(      -128.0,                '0q7D_80')
-        f__s(      -255.0,                '0q7D_01')
-        f__s(      -255.5,                '0q7D_0080')
-        f__s(      -255.98046875,         '0q7D_0005')
-        f__s(      -255.984375,           '0q7D_0004')
-        f__s(      -255.98828125,         '0q7D_0003')
-        f__s(      -255.9921875,          '0q7D_0002')
-        f__s(      -255.99609375,         '0q7D_0001')
-        f__s(      -255.999984741210938,  '0q7D_000001')
-        f__s(      -255.999999940395355,  '0q7D_00000001')
-        f__s(      -255.999999999767169,  '0q7D_0000000001')
-        f__s(      -255.999999999999091,  '0q7D_000000000001')
-        f__s(      -255.999999999999943,  '0q7D_00000000000010')
-        f__s(      -255.999999999999972,  '0q7D_00000000000008')
-        f__s(      -256.0,                '0q7C_FF', '0q7D')   # alias for -256
-        f__s(      -256.0,                '0q7C_FF')
-        f__s(      -256.00390625,         '0q7C_FEFFFF')
-        f__s(      -256.0078125,          '0q7C_FEFFFE')
-        f__s(      -256.01171875,         '0q7C_FEFFFD')
-        f__s(      -256.015625,           '0q7C_FEFFFC')
-        f__s(      -256.01953125,         '0q7C_FEFFFB')
-        f__s(      -257.0,                '0q7C_FEFF')
-        f__s(      -512.0,                '0q7C_FE')
-        f__s(     -1024.0,                '0q7C_FC')
-        f__s(     -2048.0,                '0q7C_F8')
-        f__s(     -4096.0,                '0q7C_F0')
-        f__s(     -8192.0,                '0q7C_E0')
-        f__s(    -16384.0,                '0q7C_C0')
-        f__s(    -32768.0,                '0q7C_80')
-        f__s(    -65536.0,                '0q7B_FF', '0q7C')   # alias for -256**2
-        f__s(    -65536.0,                '0q7B_FF')
-        f__s(   -131072.0,                '0q7B_FE')
-        f__s(-4294967296.0,               '0q79_FF')
-        f__s(-math.pow(2,992),            '0q01_FF', '0q02')   # alias for -256**124
-        f__s(-math.pow(2,992),            '0q01_FF')
-        f__s(-math.pow(2,996),            '0q01_F0')
-        f__s(-math.pow(2,997),            '0q01_E0')
-        f__s(-math.pow(2,998),            '0q01_C0')
-        f__s(-math.pow(2,999),            '0q01_80')
-        f__s(-1.0715086071862672e+301,    '0q01_00000000000008')   # Boldest (furthest from one) reasonable number that floating point can represent
+        f__q(        -1.0,                '0q7D_FF', '0q7E')   # alias for -1
+        f__q(        -1.0,                '0q7D_FF')
+        f__q(        -1.000001,           '0q7D_FEFFFFEF39085F50')
+        f__q(        -1.00000762939453125,'0q7D_FEFFFF80')
+        f__q(        -1.0001220703125,    '0q7D_FEFFF8')
+        f__q(        -1.000244140625,     '0q7D_FEFFF0')
+        f__q(        -1.00048828125,      '0q7D_FEFFE0')
+        f__q(        -1.0009765625,       '0q7D_FEFFC0')
+        f__q(        -1.001953125,        '0q7D_FEFF80')
+        f__q(        -1.00390625,         '0q7D_FEFF')
+        f__q(        -1.0078125,          '0q7D_FEFE')
+        f__q(        -1.015625,           '0q7D_FEFC')
+        f__q(        -1.03125,            '0q7D_FEF8')
+        f__q(        -1.0625,             '0q7D_FEF0')
+        f__q(        -1.1,                '0q7D_FEE6666666666660')  # TODO:  Try more rational weirdos
+        f__q(        -1.125,              '0q7D_FEE0')
+        f__q(        -1.25,               '0q7D_FEC0')
+        f__q(        -1.5,                '0q7D_FE80')
+        f__q(        -1.75,               '0q7D_FE40')
+        f__q(        -1.875,              '0q7D_FE20')
+        f__q(        -1.9375,             '0q7D_FE10')
+        f__q(        -1.96875,            '0q7D_FE08')
+        f__q(        -1.998046875,        '0q7D_FE0080')
+        f__q(        -1.9998779296875,    '0q7D_FE0008')
+        f__q(        -1.99999237060546875,'0q7D_FE000080')
+        f__q(        -2.0,                '0q7D_FE')
+        f__q(        -2.00000762939453125,'0q7D_FDFFFF80')
+        f__q(        -2.25,               '0q7D_FDC0')
+        f__q(        -2.5,                '0q7D_FD80')
+        f__q(        -2.75,               '0q7D_FD40')
+        f__q(        -3.0,                '0q7D_FD')
+        f__q(        -3.06249999999999645,'0q7D_FCF00000000001')
+        f__q(        -3.0625,             '0q7D_FCF0')
+        f__q(        -3.062500000000005,  '0q7D_FCEFFFFFFFFFFEA0')
+        f__q(        -4.0,                '0q7D_FC')
+        f__q(        -8.0,                '0q7D_F8')
+        f__q(       -16.0,                '0q7D_F0')
+        f__q(       -32.0,                '0q7D_E0')
+        f__q(       -64.0,                '0q7D_C0')
+        f__q(      -128.0,                '0q7D_80')
+        f__q(      -255.0,                '0q7D_01')
+        f__q(      -255.5,                '0q7D_0080')
+        f__q(      -255.98046875,         '0q7D_0005')
+        f__q(      -255.984375,           '0q7D_0004')
+        f__q(      -255.98828125,         '0q7D_0003')
+        f__q(      -255.9921875,          '0q7D_0002')
+        f__q(      -255.99609375,         '0q7D_0001')
+        f__q(      -255.999984741210938,  '0q7D_000001')
+        f__q(      -255.999999940395355,  '0q7D_00000001')
+        f__q(      -255.999999999767169,  '0q7D_0000000001')
+        f__q(      -255.999999999999091,  '0q7D_000000000001')
+        f__q(      -255.999999999999943,  '0q7D_00000000000010')
+        f__q(      -255.999999999999972,  '0q7D_00000000000008')
+        f__q(      -256.0,                '0q7C_FF', '0q7D')   # alias for -256
+        f__q(      -256.0,                '0q7C_FF')
+        f__q(      -256.00390625,         '0q7C_FEFFFF')
+        f__q(      -256.0078125,          '0q7C_FEFFFE')
+        f__q(      -256.01171875,         '0q7C_FEFFFD')
+        f__q(      -256.015625,           '0q7C_FEFFFC')
+        f__q(      -256.01953125,         '0q7C_FEFFFB')
+        f__q(      -257.0,                '0q7C_FEFF')
+        f__q(      -512.0,                '0q7C_FE')
+        f__q(     -1024.0,                '0q7C_FC')
+        f__q(     -2048.0,                '0q7C_F8')
+        f__q(     -4096.0,                '0q7C_F0')
+        f__q(     -8192.0,                '0q7C_E0')
+        f__q(    -16384.0,                '0q7C_C0')
+        f__q(    -32768.0,                '0q7C_80')
+        f__q(    -65536.0,                '0q7B_FF', '0q7C')   # alias for -256**2
+        f__q(    -65536.0,                '0q7B_FF')
+        f__q(   -131072.0,                '0q7B_FE')
+        f__q(-4294967296.0,               '0q79_FF')
+        f__q(-math.pow(2,992),            '0q01_FF', '0q02')   # alias for -256**124
+        f__q(-math.pow(2,992),            '0q01_FF')
+        f__q(-math.pow(2,996),            '0q01_F0')
+        f__q(-math.pow(2,997),            '0q01_E0')
+        f__q(-math.pow(2,998),            '0q01_C0')
+        f__q(-math.pow(2,999),            '0q01_80')
+        f__q(-1.0715086071862672e+301,    '0q01_00000000000008')   # Boldest (furthest from one) reasonable number that floating point can represent
         zone_boundary()
-        # f__s(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Gentlest (closest to one) negative Ludicrously Large integer.
+        # f__q(math.pow(2,1000),            '0q00FFFF83_01')   # TODO:  -2 ** +1000 == Gentlest (closest to one) negative Ludicrously Large integer.
         zone_boundary()
-        f__s(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
+        f__q(float('-inf'),               '0q00_7F', '0q00FF0000_FA0A1F01_01')   # -2**99999999, a ludicrously large negative number
         zone_boundary()
-        f__s(float('-inf'),               '0q00_7F')
+        f__q(float('-inf'),               '0q00_7F')
         zone_boundary()
-        f__s(float('nan'),                '0q')
+        f__q(float('nan'),                '0q')
 
     def test_float_ludicrous_large(self):
         gentlest_ludicrous = 2.0 ** 1000
@@ -3011,15 +3082,17 @@ class NumberUtilitiesTests(NumberTests):
 
     # noinspection PyUnresolvedReferences
     def test_01_name_of_zone(self):
-        self.assertEqual('TRANSFINITE', Zone.name[Zone.TRANSFINITE])
-        self.assertEqual('TRANSFINITE', Zone.name[Number(float('+inf')).zone])
-        self.assertEqual('NAN', Zone.name[Zone.NAN])
-        self.assertEqual('NAN', Zone.name[Number.NAN.zone])
-        self.assertEqual('NAN', Zone.name[Number().zone])
-        self.assertEqual('ZERO', Zone.name[Zone.ZERO])
-        self.assertEqual('ZERO', Zone.name[Number(0).zone])
+        self.assertEqual('TRANSFINITE', Zone.name_from_code[Zone.TRANSFINITE])
+        self.assertEqual('TRANSFINITE', Zone.name_from_code[Number(float('+inf')).zone])
+        self.assertEqual('NAN', Zone.name_from_code[Zone.NAN])
+        self.assertEqual('NAN', Zone.name_from_code[Number.NAN.zone])
+        self.assertEqual('NAN', Zone.name_from_code[Number().zone])
+        self.assertEqual('ZERO', Zone.name_from_code[Zone.ZERO])
+        self.assertEqual('ZERO', Zone.name_from_code[Number(0).zone])
 
-        # TODO:  Test that Zone.name['actual_member_function'] raises IndexError.  Also Zone.name['name'].  Also:
+        # TODO:  Test that Zone.name_from_code['actual_member_function'] raises IndexError.
+        # Also exception on Zone.name_from_code['name'].
+        # Also exception on any of the following:
         #     "__class__",
         #     "__delattr__",
         #     "__dict__",
