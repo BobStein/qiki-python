@@ -16,6 +16,9 @@ import unittest
 from number import *
 
 
+# TODO:  Refactor from % to format.
+
+
 # Slow tests:
 TEST_INC_ON_THOUSAND_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (2-12 seconds)
 LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.  False => invalid values, or raise LudicrousNotImplemented
