@@ -309,9 +309,9 @@ class NumberBasicTests(NumberTests):
 
     def test_one_result(self):
         """
-        A different school of thought is these should result in NAN.
+        A different school of thought is that the following computations should result in NAN.
 
-        Here's why 0**0 is not so cut and dry:
+        Here's why e.g. 0**0 is not so cut and dry:
         The limit of x**0 as x approaches 0 from the positive is 1
         The limit of x**0 as x approaches 0 from the negative is -1
         The limit of 0**x as x approaches 0 from the positive is 0
@@ -338,9 +338,11 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(ZeroDivisionError):
             _ = Number(0) / Number(0)
         with self.assertRaises(ZeroDivisionError):
-            _ = Number(-0.0) / Number(0)
+            _ = Number(1) / Number(0)
         with self.assertRaises(ZeroDivisionError):
             _ = Number(1.5) / Number(0)
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number(-0.0) / Number(0)
         with self.assertRaises(ZeroDivisionError):
             _ = Number.POSITIVE_INFINITY / Number(0)
         with self.assertRaises(ZeroDivisionError):

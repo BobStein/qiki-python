@@ -1966,8 +1966,15 @@ assert 'function' == type_name(type_name)
 #     Inaccessible Cardinal
 #     Ramsey
 
-# TODO:  Other NaNs, e.g. 0q00_01, 0q00_02, ...?  Suffixed NaN e.g. 0q__8201_770300
+# TODO:  Other NaNs, e.g. 0q0000_01, 0q0000_02, ...?  Suffixed NaN e.g. 0q__8201_770300?
+# There's Quiet NaN and Signaling NaN.
 # SEE:  qNaN and sNan, https://en.wikipedia.org/wiki/NaN
+# There's reflexive and non-reflexive NaN -- within the Quiet NaNs.
+# NaN ala IEEE 754 is non-reflexive, where NaN != NaN
+# NaN could be reflexive if NaN == NaN
+# Number.NAN resembles Python float('nan')
+#     It is non-reflexive.
+#     It is a Quiet NaN except for division by zero which is a Signaling NaN.
 
 # TODO:  Lengthed-export.  Package up a Number value in a byte sequence that knows its own length.
 # The raw attribute is an unlengthed representation of the number.
