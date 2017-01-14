@@ -16,9 +16,6 @@ import unittest
 from number import *
 
 
-# TODO:  Refactor from % to format.
-
-
 # Slow tests:
 TEST_INC_ON_THOUSAND_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (2-12 seconds)
 LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.  False => invalid values, or raise LudicrousNotImplemented
@@ -40,11 +37,15 @@ class NumberTests(unittest.TestCase):
 
     def assertEqualSets(self, s1, s2):
         if s1 != s2:
-            self.fail("Left extras:\n\t%s\nRight extras:\n\t%s\n" % (
-                '\n\t'.join((Zone.name_from_code[z] for z in (s1-s2))),
-                '\n\t'.join((Zone.name_from_code[z] for z in (s2-s1))),
-            ))
-            # XXX:  This only seems to report one of the extras, not all of them.
+            self.fail(
+                "Left extras:\n"
+                "\t{left_extras}"
+                "\nRight extras:\n"
+                "\t{right_extras}\n".format(
+                    left_extras='\n\t'.join((Zone.name_from_code[z] for z in (s1-s2))),
+                    right_extras='\n\t'.join((Zone.name_from_code[z] for z in (s2-s1))),
+                )
+            )
 
     def assertPositive(self, n):
         self.assertTrue(n.is_positive())
@@ -76,8 +77,8 @@ class NumberBasicTests(NumberTests):
     def test_raw_from_byte_string(self):
         self.assertEqual(Number(1), Number(u'0q82_01'))
         if six.PY2:
-            self.assertEqual(Number(u'0q82_01'), Number(b'0q82_01'))
             self.assertEqual(       u'0q82_01',         b'0q82_01')
+            self.assertEqual(Number(u'0q82_01'), Number(b'0q82_01'))
         else:
             self.assertNotEqual(    u'0q82_01',         b'0q82_01')
             with self.assertRaises(TypeError):
@@ -257,7 +258,93 @@ class NumberBasicTests(NumberTests):
         self.assertNotEqual(nan, 0)
         self.assertNotEqual(nan, float('inf'))
 
-    # TODO:  Test that math with Number.NAN produces Number.NAN -- including with huge integers.
+    def test_nan_result(self):
+        """SEE:  https://en.wikipedia.org/wiki/NaN#Operations_generating_NaN"""
+        self.assertEqual(Number.NAN, Number.NAN + Number.NAN)
+        self.assertEqual(Number.NAN, Number.NAN + Number(0))
+        self.assertEqual(Number.NAN, Number(0) + Number.NAN)
+        self.assertEqual(Number.NAN, Number(0) - Number.NAN)
+        self.assertEqual(Number.NAN, Number(0) * Number.NAN)
+        self.assertEqual(Number.NAN, Number(0) / Number.NAN)
+        self.assertEqual(Number.NAN, Number.NAN + Number(1.5))
+        self.assertEqual(Number.NAN, Number.NAN + Number(2**1000-2))
+        self.assertEqual(Number.NAN, Number.NAN + Number(2**1000-1))
+        if LUDICROUS_NUMBER_SUPPORT:
+            self.assertEqual(Number.NAN, Number.NAN + Number(2**1000))
+            self.assertEqual(Number.NAN, Number.NAN + Number(2**1000+1))
+
+        self.assertEqual(Number.NAN, Number.POSITIVE_INFINITY - Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.POSITIVE_INFINITY + Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY + Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY - Number.NEGATIVE_INFINITY)
+
+        self.assertEqual(Number.NAN, Number(0) * Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number(0) * Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.POSITIVE_INFINITY * Number(0))
+        self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY * Number(0))
+
+        self.assertEqual(Number.NAN, Number.POSITIVE_INFINITY / Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.POSITIVE_INFINITY / Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY / Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY / Number.NEGATIVE_INFINITY)
+
+    def test_infinite_result(self):
+        self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY + Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY + Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY - Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY - Number.POSITIVE_INFINITY)
+
+        self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY * Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY * Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.POSITIVE_INFINITY)
+        self.assertEqual(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.NEGATIVE_INFINITY)
+
+    def test_zero_result(self):
+        self.assertEqual(Number(0), Number(1) / Number.POSITIVE_INFINITY)
+        self.assertEqual(Number(0), Number(1.5) / Number.POSITIVE_INFINITY)
+        self.assertEqual(Number(0), Number(-1.5) / Number.POSITIVE_INFINITY)
+        self.assertEqual(Number(0), Number(-1.5) / Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number(0), Number(1.5) / Number.NEGATIVE_INFINITY)
+        self.assertEqual(Number(0), Number(1) / Number.NEGATIVE_INFINITY)
+
+    def test_one_result(self):
+        """
+        A different school of thought is these should result in NAN.
+
+        Here's why 0**0 is not so cut and dry:
+        The limit of x**0 as x approaches 0 from the positive is 1
+        The limit of x**0 as x approaches 0 from the negative is -1
+        The limit of 0**x as x approaches 0 from the positive is 0
+        The limit of 0**x as x approaches 0 from the negative is division by zero, infinity maybe
+        """
+        self.assertEqual(Number(1), Number(0) ** Number(0))
+        self.assertEqual(Number(1), Number(1) ** Number.POSITIVE_INFINITY)
+        self.assertEqual(Number(1), Number.POSITIVE_INFINITY ** Number(0))
+
+    def test_ludicrous_boundary(self):
+        big_reasonable = Number(2**999-1)
+        self.assertEqual(Number(2**1000-2), big_reasonable + big_reasonable)
+
+        max_reasonable = Number(2**1000-1)
+        if LUDICROUS_NUMBER_SUPPORT:
+            self.assertEqual(Number(2**1001-2), max_reasonable + max_reasonable)
+        else:
+            with self.assertRaises(Number.LudicrousNotImplemented):
+                _ = Number(2**1001-2)
+            with self.assertRaises(Number.LudicrousNotImplemented):
+                _ = max_reasonable + max_reasonable
+
+    def test_zero_division(self):
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number(0) / Number(0)
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number(-0.0) / Number(0)
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number(1.5) / Number(0)
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number.POSITIVE_INFINITY / Number(0)
+        with self.assertRaises(ZeroDivisionError):
+            _ = Number.NEGATIVE_INFINITY / Number(0)
 
     def test_infinite_constants(self):
         self.assertEqual('0qFF_81', Number.POSITIVE_INFINITY.qstring())
@@ -572,24 +659,34 @@ class NumberBasicTests(NumberTests):
 
     def test_integers_and_qstrings(self):
 
-        def i__s(i, s):
+        def i__q(i, q):
             """
-            Test an integer and a qstring, converting in both directions.
+            Test the Number constructor on an integer and a qstring, converting in both directions.
 
-            Why a buncha calls to i__s() is superior to a 2D tuple of test cases:
+            Very Short Version:
+                assert Number(i) == Number(q)
+
+            Less Short version:
+                assert q == Number(i).qstring()
+                assert i == int(Number(q))
+
+            Verify each integer and qstring is monotonic -- the values must be tested
+            in descending order.
+
+            Why a buncha calls to i__q() are superior to a list of test cases:
             so the stack trace identifies the line with the failing data.
             """
             assert isinstance(i, six.integer_types)
-            assert isinstance(s, six.string_types)
-            i_new = int(Number(s))
+            assert isinstance(q, six.string_types)
+            i_new = int(Number(q))
             q_new =     Number(i).qstring()
-            self.assertEqual(q_new, s,       "%d ---Number--> '%s' != '%s'" % (i,       q_new, s))
-            self.assertEqual(i, i_new, "%d != %d <--Number--- '%s'" %         (i, i_new,       s))
+            self.assertEqual(i, i_new, "{} != {} <--Number--- '{}'"        .format(i, i_new,       q))
+            self.assertEqual(q_new, q,       "{} ---Number--> '{}' != '{}'".format(i,       q_new, q))
 
             out_of_sequence=[]
             if not context.the_first:
                 integers_oos =        i      >        context.i_last
-                strings_oos  = Number(s).raw > Number(context.q_last).raw
+                strings_oos  = Number(q).raw > Number(context.q_last).raw
                 if integers_oos:
                     out_of_sequence.append(
                         "Integers out of sequence: {i_below:d} should be less than {i_above:d}".format(
@@ -600,7 +697,7 @@ class NumberBasicTests(NumberTests):
                 if strings_oos:
                     out_of_sequence.append(
                         "qstrings out of sequence: {q_below} should be less than {q_above}".format(
-                            q_below=s,
+                            q_below=q,
                             q_above=context.q_last
                         )
                     )
@@ -608,162 +705,165 @@ class NumberBasicTests(NumberTests):
                     self.fail("\n".join(out_of_sequence))
 
             context.i_last = i
-            context.q_last = s
+            context.q_last = q
             context.the_first = False
 
         # noinspection PyPep8Naming
-        class context(object):   # variables that are local to test_ints_and_strings(), but global to i__s()
+        class context(object):
+            """Variables that are local to test_integers_and_qstrings(), but global to i__q()."""
             the_first = True
+            i_last = None
+            q_last = None
 
         if LUDICROUS_NUMBER_SUPPORT:
-            i__s(  2**65536,         '0qFF00FFFF00010000_01')   # XXX:  Or is it 0qFF00FFFF00010001_01 == 1/256 * 256**(65536+1)
-            i__s(  2**65535,         '0qFF00FFFF_01')   # XXX:  No!  Confusion with larger lexponents.  Note monotonicity failure!  See qikiNumbers.txt.
-            i__s(256**128,           '0qFF000080_01')
-            i__s(  2**1024,          '0qFF000080_01')
-            i__s(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional?
-        i__s(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__s(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
+            i__q(  2**65536,         '0qFF00FFFF00010000_01')   # XXX:  Or is it 0qFF00FFFF00010001_01 == 1/256 * 256**(65536+1)
+            i__q(  2**65535,         '0qFF00FFFF_01')   # XXX:  No!  Confusion with larger lexponents.  Note monotonicity failure!  See qikiNumbers.txt.
+            i__q(256**128,           '0qFF000080_01')
+            i__q(  2**1024,          '0qFF000080_01')
+            i__q(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional?
+        i__q(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__q(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
                           '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__s(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
-        i__s(   2**999+1, '0qFE_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(   2**999,   '0qFE_80')
-        i__s(   2**999-1, '0qFE_7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__s(   2**998+1, '0qFE_4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(   2**998,   '0qFE_40')
-        i__s(   2**998-1, '0qFE_3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__s(  10**300+1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD1000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  10**300,   '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD10')   # Here googol cubed has 37 stripped 00-qigits, or 296 bits.
-        i__s(  10**300-1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__s( 256**124,   '0qFE_01')
-        i__s(   2**992,   '0qFE_01')
-        i__s(41855804968213567224547853478906320725054875457247406540771499545716837934567817284890561672488119458109166910841919797858872862722356017328064756151166307827869405370407152286801072676024887272960758524035337792904616958075776435777990406039363527010043736240963055342423554029893064011082834640896,
+        i__q(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
+        i__q(   2**999+1, '0qFE_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__q(   2**999,   '0qFE_80')
+        i__q(   2**999-1, '0qFE_7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__q(   2**998+1, '0qFE_4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__q(   2**998,   '0qFE_40')
+        i__q(   2**998-1, '0qFE_3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__q(  10**300+1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD1000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__q(  10**300,   '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD10')   # Here googol cubed has 37 stripped 00-qigits, or 296 bits.
+        i__q(  10**300-1, '0qFE_17E43C8800759BA59C08E14C7CD7AAD86A4A458109F91C21C571DBE84D52D936F44ABE8A3D5B48C100959D9D0B6CC856B3ADC93B67AEA8F8E067D2C8D04BC177F7B4287A6E3FCDA36FA3B3342EAEB442E15D450952F4DD0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__q( 256**124,   '0qFE_01')
+        i__q(   2**992,   '0qFE_01')
+        i__q(41855804968213567224547853478906320725054875457247406540771499545716837934567817284890561672488119458109166910841919797858872862722356017328064756151166307827869405370407152286801072676024887272960758524035337792904616958075776435777990406039363527010043736240963055342423554029893064011082834640896,
                           '0qFE_01')
-        i__s( 256**123,   '0qFD_01')
-        i__s(   2**984,   '0qFD_01')
-        i__s(   2**504,   '0qC1_01')
-        i__s(   2**503,   '0qC0_80')
-        i__s(   2**500,   '0qC0_10')
-        i__s(   2**496,   '0qC0_01')
-        i__s(  10**100+1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol + 1  (integers can distinguish these)
-        i__s(  10**100,   '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')                           # googol
-        i__s(  10**100-1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F0FFFFFFFFFFFFFFFFFFFFFFFFF')   # googol - 1
-        i__s(1766847064778384329583297500742918515827483896875618958121606201292619777,'0qA0_01000000000000000000000000000000000000000000000000000000000001')
-        i__s(1766847064778384329583297500742918515827483896875618958121606201292619776,'0qA0_01')
-        i__s(5192296858534827628530496329220096,'0q90_01')
-        i__s(20282409603651670423947251286016,'0q8F_01')
-        i__s(10000000000000000000000001,'0q8C_084595161401484A000001')
-        i__s(10000000000000000000000000,'0q8C_084595161401484A')
-        i__s(18446744073709551618,'0q8A_010000000000000002')
-        i__s(18446744073709551617,'0q8A_010000000000000001')
-        i__s(18446744073709551616,'0q8A_01')
-        i__s(18446744073709551615,'0q89_FFFFFFFFFFFFFFFF')
-        i__s(18446744073709551614,'0q89_FFFFFFFFFFFFFFFE')
-        i__s(72057594037927936,'0q89_01')
-        i__s(281474976710656,'0q88_01')
-        i__s(1099511627776,'0q87_01')
-        i__s(68719476736, '0q86_10')
-        i__s(68719476735, '0q86_0FFFFFFFFF')
-        i__s(10000000001, '0q86_02540BE401')
-        i__s(10000000000, '0q86_02540BE4')
-        i__s( 4294967299, '0q86_0100000003')
-        i__s( 4294967298, '0q86_0100000002')
-        i__s( 4294967297, '0q86_0100000001')
-        i__s( 4294967296, '0q86_01')
-        i__s( 4294967295, '0q85_FFFFFFFF')
-        i__s( 2147483649, '0q85_80000001')
-        i__s( 2147483648, '0q85_80')
-        i__s( 2147483647, '0q85_7FFFFFFF')
-        i__s(  268435457, '0q85_10000001')
-        i__s(  268435456, '0q85_10')
-        i__s(  268435455, '0q85_0FFFFFFF')
-        i__s(   16777217, '0q85_01000001')
-        i__s(   16777216, '0q85_01')
-        i__s(   16777215, '0q84_FFFFFF')
-        i__s(    1048577, '0q84_100001')
-        i__s(    1048576, '0q84_10')
-        i__s(    1048575, '0q84_0FFFFF')
-        i__s(      65538, '0q84_010002')
-        i__s(      65537, '0q84_010001')
-        i__s(      65536, '0q84_01')
-        i__s(      65535, '0q83_FFFF')
-        i__s(       4097, '0q83_1001')
-        i__s(       4096, '0q83_10')
-        i__s(       4095, '0q83_0FFF')
-        i__s(       1729, '0q83_06C1')
-        i__s(        257, '0q83_0101')
-        i__s(        256, '0q83_01')
-        i__s(        255, '0q82_FF')
-        i__s(          3, '0q82_03')
-        i__s(          2, '0q82_02')
-        i__s(          1, '0q82_01')
-        i__s(          0, '0q80')
-        i__s(         -1, '0q7D_FF')
-        i__s(         -2, '0q7D_FE')
-        i__s(         -3, '0q7D_FD')
-        i__s(         -4, '0q7D_FC')
-        i__s(         -8, '0q7D_F8')
-        i__s(        -16, '0q7D_F0')
-        i__s(        -32, '0q7D_E0')
-        i__s(        -64, '0q7D_C0')
-        i__s(       -128, '0q7D_80')
-        i__s(       -252, '0q7D_04')
-        i__s(       -253, '0q7D_03')
-        i__s(       -254, '0q7D_02')
-        i__s(       -255, '0q7D_01')
-        i__s(       -256, '0q7C_FF')
-        i__s(       -257, '0q7C_FEFF')
-        i__s(       -258, '0q7C_FEFE')
-        i__s(       -259, '0q7C_FEFD')
-        i__s(       -260, '0q7C_FEFC')
-        i__s(       -511, '0q7C_FE01')
-        i__s(       -512, '0q7C_FE')
-        i__s(       -513, '0q7C_FDFF')
-        i__s(      -1023, '0q7C_FC01')
-        i__s(      -1024, '0q7C_FC')
-        i__s(      -1025, '0q7C_FBFF')
-        i__s(     -65534, '0q7C_0002')
-        i__s(     -65535, '0q7C_0001')
-        i__s(     -65536, '0q7B_FF')
-        i__s(     -65537, '0q7B_FEFFFF')
-        i__s(     -65538, '0q7B_FEFFFE')
-        i__s(  -16777214, '0q7B_000002')
-        i__s(  -16777215, '0q7B_000001')
-        i__s(  -16777216, '0q7A_FF')
-        i__s(  -16777217, '0q7A_FEFFFFFF')
-        i__s(  -16777218, '0q7A_FEFFFFFE')
-        i__s(-2147483647, '0q7A_80000001')
-        i__s(-2147483648, '0q7A_80')
-        i__s(-2147483649, '0q7A_7FFFFFFF')
-        i__s(-4294967294, '0q7A_00000002')
-        i__s(-4294967295, '0q7A_00000001')
-        i__s(-4294967296, '0q79_FF')
-        i__s(-4294967297, '0q79_FEFFFFFFFF')
-        i__s(-4294967298, '0q79_FEFFFFFFFE')
-        i__s(  -2**125,   '0q6E_E0')
-        i__s(  -2**250,   '0q5E_FC')
-        i__s(  -2**375,   '0q4F_80')
-        i__s(  -204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336,
+        i__q( 256**123,   '0qFD_01')
+        i__q(   2**984,   '0qFD_01')
+        i__q(   2**504,   '0qC1_01')
+        i__q(   2**503,   '0qC0_80')
+        i__q(   2**500,   '0qC0_10')
+        i__q(   2**496,   '0qC0_01')
+        i__q(  10**100+1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol + 1  (integers can distinguish these)
+        i__q(  10**100,   '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')                           # googol
+        i__q(  10**100-1, '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F0FFFFFFFFFFFFFFFFFFFFFFFFF')   # googol - 1
+        i__q(1766847064778384329583297500742918515827483896875618958121606201292619777,'0qA0_01000000000000000000000000000000000000000000000000000000000001')
+        i__q(1766847064778384329583297500742918515827483896875618958121606201292619776,'0qA0_01')
+        i__q(5192296858534827628530496329220096,'0q90_01')
+        i__q(20282409603651670423947251286016,'0q8F_01')
+        i__q(10000000000000000000000001,'0q8C_084595161401484A000001')
+        i__q(10000000000000000000000000,'0q8C_084595161401484A')
+        i__q(18446744073709551618,'0q8A_010000000000000002')
+        i__q(18446744073709551617,'0q8A_010000000000000001')
+        i__q(18446744073709551616,'0q8A_01')
+        i__q(18446744073709551615,'0q89_FFFFFFFFFFFFFFFF')
+        i__q(18446744073709551614,'0q89_FFFFFFFFFFFFFFFE')
+        i__q(72057594037927936,'0q89_01')
+        i__q(281474976710656,'0q88_01')
+        i__q(1099511627776,'0q87_01')
+        i__q(68719476736, '0q86_10')
+        i__q(68719476735, '0q86_0FFFFFFFFF')
+        i__q(10000000001, '0q86_02540BE401')
+        i__q(10000000000, '0q86_02540BE4')
+        i__q( 4294967299, '0q86_0100000003')
+        i__q( 4294967298, '0q86_0100000002')
+        i__q( 4294967297, '0q86_0100000001')
+        i__q( 4294967296, '0q86_01')
+        i__q( 4294967295, '0q85_FFFFFFFF')
+        i__q( 2147483649, '0q85_80000001')
+        i__q( 2147483648, '0q85_80')
+        i__q( 2147483647, '0q85_7FFFFFFF')
+        i__q(  268435457, '0q85_10000001')
+        i__q(  268435456, '0q85_10')
+        i__q(  268435455, '0q85_0FFFFFFF')
+        i__q(   16777217, '0q85_01000001')
+        i__q(   16777216, '0q85_01')
+        i__q(   16777215, '0q84_FFFFFF')
+        i__q(    1048577, '0q84_100001')
+        i__q(    1048576, '0q84_10')
+        i__q(    1048575, '0q84_0FFFFF')
+        i__q(      65538, '0q84_010002')
+        i__q(      65537, '0q84_010001')
+        i__q(      65536, '0q84_01')
+        i__q(      65535, '0q83_FFFF')
+        i__q(       4097, '0q83_1001')
+        i__q(       4096, '0q83_10')
+        i__q(       4095, '0q83_0FFF')
+        i__q(       1729, '0q83_06C1')
+        i__q(        257, '0q83_0101')
+        i__q(        256, '0q83_01')
+        i__q(        255, '0q82_FF')
+        i__q(          3, '0q82_03')
+        i__q(          2, '0q82_02')
+        i__q(          1, '0q82_01')
+        i__q(          0, '0q80')
+        i__q(         -1, '0q7D_FF')
+        i__q(         -2, '0q7D_FE')
+        i__q(         -3, '0q7D_FD')
+        i__q(         -4, '0q7D_FC')
+        i__q(         -8, '0q7D_F8')
+        i__q(        -16, '0q7D_F0')
+        i__q(        -32, '0q7D_E0')
+        i__q(        -64, '0q7D_C0')
+        i__q(       -128, '0q7D_80')
+        i__q(       -252, '0q7D_04')
+        i__q(       -253, '0q7D_03')
+        i__q(       -254, '0q7D_02')
+        i__q(       -255, '0q7D_01')
+        i__q(       -256, '0q7C_FF')
+        i__q(       -257, '0q7C_FEFF')
+        i__q(       -258, '0q7C_FEFE')
+        i__q(       -259, '0q7C_FEFD')
+        i__q(       -260, '0q7C_FEFC')
+        i__q(       -511, '0q7C_FE01')
+        i__q(       -512, '0q7C_FE')
+        i__q(       -513, '0q7C_FDFF')
+        i__q(      -1023, '0q7C_FC01')
+        i__q(      -1024, '0q7C_FC')
+        i__q(      -1025, '0q7C_FBFF')
+        i__q(     -65534, '0q7C_0002')
+        i__q(     -65535, '0q7C_0001')
+        i__q(     -65536, '0q7B_FF')
+        i__q(     -65537, '0q7B_FEFFFF')
+        i__q(     -65538, '0q7B_FEFFFE')
+        i__q(  -16777214, '0q7B_000002')
+        i__q(  -16777215, '0q7B_000001')
+        i__q(  -16777216, '0q7A_FF')
+        i__q(  -16777217, '0q7A_FEFFFFFF')
+        i__q(  -16777218, '0q7A_FEFFFFFE')
+        i__q(-2147483647, '0q7A_80000001')
+        i__q(-2147483648, '0q7A_80')
+        i__q(-2147483649, '0q7A_7FFFFFFF')
+        i__q(-4294967294, '0q7A_00000002')
+        i__q(-4294967295, '0q7A_00000001')
+        i__q(-4294967296, '0q79_FF')
+        i__q(-4294967297, '0q79_FEFFFFFFFF')
+        i__q(-4294967298, '0q79_FEFFFFFFFE')
+        i__q(  -2**125,   '0q6E_E0')
+        i__q(  -2**250,   '0q5E_FC')
+        i__q(  -2**375,   '0q4F_80')
+        i__q(  -204586912993508866875824356051724947013540127877691549342705710506008362275292159680204380770369009821930417757972504438076078534117837065833032974336,
                           '0q3F_FF')
-        i__s(  -2**496,   '0q3F_FF')
-        i__s(  -3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376,
+        i__q(  -2**496,   '0q3F_FF')
+        i__q(  -3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376,
                           '0q3F_F0')
-        i__s(  -2**500,   '0q3F_F0')
-        i__s(  -2**625,   '0q2F_FE')
-        i__s(  -2**750,   '0q20_C0')
-        i__s(  -2**875,   '0q10_F8')
-        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034687,
+        i__q(  -2**500,   '0q3F_F0')
+        i__q(  -2**625,   '0q2F_FE')
+        i__q(  -2**750,   '0q20_C0')
+        i__q(  -2**875,   '0q10_F8')
+        i__q(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034687,
                           '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  -2**999+1, '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688,
+        i__q(  -2**999+1, '0q01_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
+        i__q(  -5357543035931336604742125245300009052807024058527668037218751941851755255624680612465991894078479290637973364587765734125935726428461570217992288787349287401967283887412115492710537302531185570938977091076523237491790970633699383779582771973038531457285598238843271083830214915826312193418602834034688,
                           '0q01_80')
-        i__s(  -2**999,   '0q01_80')
-        i__s(int('-1071508607186267320948425049060001810561404811705533607443750388370351051124936122493198378815695858'
+        i__q(  -2**999,   '0q01_80')
+        i__q(int('-1071508607186267320948425049060001810561404811705533607443750388370351051124936122493198378815695858'
                  '12759467291755314682518714528569231404359845775746985748039345677748242309854210746050623711418779541'
                  '82153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375'
                  ),       '0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000001')
-        i__s(  -2**1000+1,'0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+        i__q(  -2**1000+1,'0q01_000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                           '00000000000000000000000000000000000000000000000000000000000000000000001')
 
@@ -937,9 +1037,12 @@ class NumberBasicTests(NumberTests):
 
         def f__q(x, q, q_input_alternate=None):
             """
-            Test Number on a float and a qstring, converting in both directions.
+            Test the Number constructor on a float and a qstring, converting in both directions.
 
-            Short version:
+            Very Short Version:
+                assert Number(x) == Number(q)
+
+            Less Short version:
                 assert q == Number(x).qstring()
                 assert x == float(Number(q))
 
@@ -950,7 +1053,7 @@ class NumberBasicTests(NumberTests):
             It may represent a different value, too finely distinct for float to register.
             Or it may represent the same value in one of the Code Plateaus.
 
-            Zones change (and only change) where zone_boundary() is called.
+            Zones change, and only change, where zone_boundary() is called.
             """
             assert isinstance(x, float), \
                 "f__q({},_) should be a float".format(type_name(x))
@@ -1050,15 +1153,19 @@ class NumberBasicTests(NumberTests):
             context.after_zone_boundary = False
 
         # noinspection PyPep8Naming
-        class context(object):   # variables that are local to test_floats_and_strings(), but global to f__q()
+        class context(object):
+            """Variables that are local to test_floats_and_qstrings(), but global to f__q()."""
             the_first = True
             after_zone_boundary = False
+            x_in_last = None
+            q_in_last = None
+            q_out_last = None
 
         def zone_boundary():
             context.after_zone_boundary = True
 
         def try_out_f__q_errors():
-            """Uncomment each set of f__q() calls to try out its exceptions and error messages."""
+            """Uncomment each set of statements to test f__q() exceptions and error messages."""
 
             # f__q(object(), '0q80')
 

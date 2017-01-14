@@ -421,13 +421,19 @@ class Number(numbers.Complex):
         else:
             return Number(op(float(n)))
 
-    @staticmethod
-    def _binary_op(op, input_left, input_right):
+    @classmethod
+    def _binary_op(cls, op, input_left, input_right):
         n1 = Number(input_left)
         n2 = Number(input_right)
         if n1.is_complex() or n2.is_complex():
             return Number(op(complex(n1), complex(n2)))
-        elif n1.is_whole() and n2.is_whole():
+
+        try:
+            int_better_than_float = n1.is_whole() and n2.is_whole()
+        except cls.WholeIndeterminate:
+            int_better_than_float = False
+
+        if int_better_than_float:
             return Number(op(int(n1), int(n2)))
         else:
             return Number(op(float(n1), float(n2)))
@@ -1959,6 +1965,9 @@ assert 'function' == type_name(type_name)
 #     Complex Infinity
 #     Inaccessible Cardinal
 #     Ramsey
+
+# TODO:  Other NaNs, e.g. 0q00_01, 0q00_02, ...?  Suffixed NaN e.g. 0q__8201_770300
+# SEE:  qNaN and sNan, https://en.wikipedia.org/wiki/NaN
 
 # TODO:  Lengthed-export.  Package up a Number value in a byte sequence that knows its own length.
 # The raw attribute is an unlengthed representation of the number.
