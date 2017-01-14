@@ -29,8 +29,7 @@ assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 
 # TODO:  Docstring every class
 # TODO:  Docstring every function
-# TODO:  Shouldn't all exception classes end in ...Error?
-# TODO:  Custom Exceptions should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
+# TODO:  Custom Exception names should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
 
 
