@@ -2819,7 +2819,7 @@ class NumberSuffixTests(NumberTests):
         self.assertFalse(n_another_suffixed == n_suffixed)
         self.assertTrue(n_another_suffixed == n_another_suffixed)
 
-    def test_suffix_equality_ther_types(self):
+    def test_suffix_equality_other_types(self):
         """
         Look for a bug where Suffix.__eq__(self, other) expects other to be a Suffix.
 
@@ -2829,6 +2829,25 @@ class NumberSuffixTests(NumberTests):
         self.assertFalse(0 == Suffix(Suffix.TYPE_TEST))
         self.assertFalse(Suffix(Suffix.TYPE_TEST) == object())
         self.assertFalse(object() == Suffix(Suffix.TYPE_TEST))
+
+    def test_suffix_equality_normalize_root(self):
+        """Test that roots of suffixed Numbers are normalized before comparison."""
+        self.assertEqual(
+            Number('0q82'),
+            Number('0q82_01')
+        )
+        self.assertNotEqual(
+            Number('0q82').qstring(),
+            Number('0q82_01').qstring()
+        )
+        self.assertEqual(
+            Number('0q82').plus_suffix(Suffix.TYPE_TEST),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST)
+        )
+        self.assertNotEqual(
+            Number('0q82').plus_suffix(Suffix.TYPE_TEST).qstring(),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST).qstring()
+        )
 
     def test_minus_missing_suffix(self):
         no_imaginary_suffix = Number('0q82_01__8201_7E0300')
@@ -2860,6 +2879,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82_01', n.minus_suffix(0x99).minus_suffix(0x88).minus_suffix(0x77))
         self.assertEqual('0q82_01', n.minus_suffix(0x77).minus_suffix(0x88).minus_suffix(0x99))
         self.assertEqual('0q82_01', n.minus_suffix(0x88).minus_suffix(0x77).minus_suffix(0x99))
+
     def test_suffix_weird_type(self):
         class WeirdType(object):
             pass

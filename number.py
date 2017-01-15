@@ -111,10 +111,10 @@ class Zone(object):
     FRACTIONAL_NEG      = b'\x7E\x00'
     NEGATIVE            = b'\x01'
     LUDICROUS_LARGE_NEG = b'\x00\x80'
-    TRANSFINITE_NEG     = b'\x00'
+    TRANSFINITE_NEG     = b'\x00'    # TODO:  b'\x00\x01' would leave room for custom NANs.
     NAN                 = b''
 
-    # Zone.internal_setup() will set these:
+    # NOTE:  Zone.internal_setup() will set these:
     name_from_code = None
     descending_codes = None
 
@@ -264,6 +264,7 @@ class Number(numbers.Complex):
     def raw(self, value):
         """Set the raw byte-string.  Rare."""
         # TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
+        # Would making Number immutable avoid common ref bugs, e.g. def f(n=Number(0)):  n += 1 ...
         assert(isinstance(value, six.binary_type))
         # noinspection PyAttributeOutsideInit
         self.__raw = value
