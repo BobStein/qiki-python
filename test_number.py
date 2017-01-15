@@ -2849,6 +2849,36 @@ class NumberSuffixTests(NumberTests):
             Number('0q82_01').plus_suffix(Suffix.TYPE_TEST).qstring()
         )
 
+    def test_suffix_type_inequality(self):
+        """Different suffix types make the Numbers different."""
+        self.assertNotEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST-1)
+        )
+
+    def test_suffix_payload_inequality(self):
+        """Different suffix payloads make the Numbers different."""
+        self.assertEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'')
+        )
+        self.assertNotEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+        )
+        self.assertEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88'),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+        )
+        self.assertNotEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88'),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88\x88')
+        )
+        self.assertNotEqual(
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x11'),
+            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+        )
+
     def test_minus_missing_suffix(self):
         no_imaginary_suffix = Number('0q82_01__8201_7E0300')
         with self.assertRaises(Suffix.NoSuchType):

@@ -345,8 +345,8 @@ class Number(numbers.Complex):
     # (By the way, I went with Option one.)
     # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
-    #     TODO:  What to do about suffixes, e.g. should this be true?  0q82__FF0100 == 0q82_01__FF0100
-    #     TODO:  Obviously different suffixes should matter:  0q80__FF0100 != 0q80__110100
+    #     DONE:  0q82__FF0100 == 0q82_01__FF0100
+    #     Obviously different suffix contents matter:  0q80__FF0100 != 0q80__110100
     #     This approach may be the way it needs to go in the future.
     #     For example if lossless rational numbers were supported, you might want 2/10 == 1/5
     #     So if rational numbers were implemented by approximation in the root number,
