@@ -136,11 +136,12 @@ class Number(numbers.Complex):
     """
     Representing integers, floating point, complex numbers and more.
 
-    2 == Number('0q82_02')
-    1 == Number('0q82_01')
-    0 == Number('0q80')
-    -1 == Number('0q7D_FF')
-    -2 == Number('0q7D_FE')
+    Introducing some familiar numbers:
+        +2 == Number('0q82_02')
+        +1 == Number('0q82_01')
+        +0 == Number('0q80')
+        -1 == Number('0q7D_FF')
+        -2 == Number('0q7D_FE')
     """
     if SlotsOptimized.FOR_MEMORY:
         __slots__ = ('__raw', )
@@ -968,7 +969,8 @@ class Number(numbers.Complex):
             qexp = self.qexponent()
         except ValueError:
             return 0.0
-        (qan, qanlength) = self.qantissa()
+        (qan, qanlength) = self.qantissa(max_qigits=self.QIGITS_PRECISION_DEFAULT + 2)
+        # NOTE:  The +2 gives slightly less inaccurate rounding on e.g. 0q82_01000000000000280001
         if self.raw < self.RAW_ZERO:
             qan -= exp256(qanlength)
             if qanlength > 0 and qan >= - exp256(qanlength-1):
@@ -979,24 +981,31 @@ class Number(numbers.Complex):
         exponent_base_2 = 8 * (qexp-qanlength)
         return math.ldexp(float(qan), exponent_base_2)
 
-    def qantissa(self):
+    def qantissa(self, max_qigits=None):
         """Extract the base-256 significand in its raw form.
+
+        max_qigits limits how much of raw is looked at.  (None means no limit.)
 
         Returns a tuple:  (integer value of significand, number of qigits)
         The number of qigits is the amount stored in the qantissa,
         and is unrelated to the location of the radix point.
         """
-        raw_qantissa = self.qan_raw()
+        raw_qantissa = self.qan_raw(max_qigits=max_qigits)
         number_qantissa = unpack_big_integer(raw_qantissa)
         return tuple((number_qantissa, len(raw_qantissa)))
 
-    def qan_raw(self):
+    def qan_raw(self, max_qigits=None):
         # TODO:  unit test
-        return self.raw[self.qan_offset():]
+        if max_qigits is None:
+            return self.raw[self.qan_offset() : ]
+        else:
+            offset = self.qan_offset()
+            return self.raw[offset : offset + max_qigits]
+
 
     def qex_raw(self):
         # TODO:  unit test
-        return self.raw[:self.qan_offset()]
+        return self.raw[ : self.qan_offset()]
 
     def qan_offset(self):
         # TODO:  unit test
