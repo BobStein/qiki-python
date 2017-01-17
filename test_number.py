@@ -2690,23 +2690,22 @@ class NumberPickleTests(NumberTests):
 # noinspection SpellCheckingInspection
 class NumberSuffixTests(NumberTests):
 
-    # TODO:  Replace the indiscriminate use of suffix types here with TYPE_TEST.
-    # suffix type, e.g. Suffix.TYPE_NOP,
+    # TODO:  Replace the indiscriminate use of suffix types here with Type.TEST.
     # that's reserved for testing, and has no value implications.
     # (So, for example, a suffix someday for rational numbers might modify
     # the value returned by float(), and not break tests here when it's implemented.)
 
     def test_plus_suffix_type(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix.TYPE_TEST))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix.Type.TEST))
 
     def test_plus_suffix_type_by_class(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix(Suffix.TYPE_TEST)))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix(Suffix.Type.TEST)))
 
     def test_plus_suffix_type_and_payload(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix.TYPE_TEST, b'\x88'))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix.Type.TEST, b'\x88'))
 
     def test_plus_suffix_type_and_payload_by_class(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix(Suffix.TYPE_TEST, b'\x88')))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix(Suffix.Type.TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2733,19 +2732,19 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82_01__4455_330300', Number(1).plus_suffix(0x33, b'\x44\x55').qstring())
 
     def test_minus_suffix(self):
-        n = Number('0q82_01__{:02X}0100'.format(Suffix.TYPE_TEST))
-        n_deleted = n.minus_suffix(Suffix.TYPE_TEST)
+        n = Number('0q82_01__{:02X}0100'.format(Suffix.Type.TEST))
+        n_deleted = n.minus_suffix(Suffix.Type.TEST)
         self.assertEqual('0q82_01', n_deleted.qstring())
 
     def test_constructor_suffix(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.TYPE_TEST)))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.Type.TEST)))
 
     def test_constructor_suffixes(self):
         number_fat = Number(
             0,
-            Suffix(Suffix.TYPE_TEST, Number(1)),
-            Suffix(Suffix.TYPE_TEST, Number(2)),
-            Suffix(Suffix.TYPE_TEST, Number(3)),
+            Suffix(Suffix.Type.TEST, Number(1)),
+            Suffix(Suffix.Type.TEST, Number(2)),
+            Suffix(Suffix.Type.TEST, Number(3)),
         )
         self.assertEqual('0q80__8201_7E0300__8202_7E0300__8203_7E0300', number_fat.qstring())
 
@@ -2753,9 +2752,9 @@ class NumberSuffixTests(NumberTests):
         number_fat = Number(
             0,
             [
-                Suffix(Suffix.TYPE_TEST, Number(1)),
-                Suffix(Suffix.TYPE_TEST, Number(2)),
-                Suffix(Suffix.TYPE_TEST, Number(3)),
+                Suffix(Suffix.Type.TEST, Number(1)),
+                Suffix(Suffix.Type.TEST, Number(2)),
+                Suffix(Suffix.Type.TEST, Number(3)),
             ]
         )
         self.assertEqual('0q80__8201_7E0300__8202_7E0300__8203_7E0300', number_fat.qstring())
@@ -2764,19 +2763,19 @@ class NumberSuffixTests(NumberTests):
         number_fat = Number(
             0,
             [
-                Suffix(Suffix.TYPE_TEST, Number(1)),
+                Suffix(Suffix.Type.TEST, Number(1)),
                 [
-                    Suffix(Suffix.TYPE_TEST, Number(2)),
+                    Suffix(Suffix.Type.TEST, Number(2)),
                     [
-                        Suffix(Suffix.TYPE_TEST, Number(3)),
-                        Suffix(Suffix.TYPE_TEST, Number(4)),
-                        Suffix(Suffix.TYPE_TEST, Number(5)),
+                        Suffix(Suffix.Type.TEST, Number(3)),
+                        Suffix(Suffix.Type.TEST, Number(4)),
+                        Suffix(Suffix.Type.TEST, Number(5)),
                     ],
-                    Suffix(Suffix.TYPE_TEST, Number(6)),
+                    Suffix(Suffix.Type.TEST, Number(6)),
                 ],
-                Suffix(Suffix.TYPE_TEST, Number(7)),
+                Suffix(Suffix.Type.TEST, Number(7)),
             ],
-            Suffix(Suffix.TYPE_TEST, Number(8)),
+            Suffix(Suffix.Type.TEST, Number(8)),
         )
         self.assertEqual(
             '0q80__'
@@ -2825,10 +2824,10 @@ class NumberSuffixTests(NumberTests):
 
         Note that self.assertNotEqual() does not invoke Suffix.__eq__().
         """
-        self.assertFalse(Suffix(Suffix.TYPE_TEST) == 0)
-        self.assertFalse(0 == Suffix(Suffix.TYPE_TEST))
-        self.assertFalse(Suffix(Suffix.TYPE_TEST) == object())
-        self.assertFalse(object() == Suffix(Suffix.TYPE_TEST))
+        self.assertFalse(Suffix(Suffix.Type.TEST) == 0)
+        self.assertFalse(0 == Suffix(Suffix.Type.TEST))
+        self.assertFalse(Suffix(Suffix.Type.TEST) == object())
+        self.assertFalse(object() == Suffix(Suffix.Type.TEST))
 
     def test_suffix_equality_normalize_root(self):
         """Test that roots of suffixed Numbers are normalized before comparison."""
@@ -2841,48 +2840,48 @@ class NumberSuffixTests(NumberTests):
             Number('0q82_01').qstring()
         )
         self.assertEqual(
-            Number('0q82').plus_suffix(Suffix.TYPE_TEST),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST)
+            Number('0q82').plus_suffix(Suffix.Type.TEST),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST)
         )
         self.assertNotEqual(
-            Number('0q82').plus_suffix(Suffix.TYPE_TEST).qstring(),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST).qstring()
+            Number('0q82').plus_suffix(Suffix.Type.TEST).qstring(),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST).qstring()
         )
 
     def test_suffix_type_inequality(self):
         """Different suffix types make the Numbers different."""
         self.assertNotEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST-1)
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST-1)
         )
 
     def test_suffix_payload_inequality(self):
         """Different suffix payloads make the Numbers different."""
         self.assertEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'')
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'')
         )
         self.assertNotEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88')
         )
         self.assertEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88'),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88'),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88')
         )
         self.assertNotEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88'),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88\x88')
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88'),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88\x88')
         )
         self.assertNotEqual(
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x11'),
-            Number('0q82_01').plus_suffix(Suffix.TYPE_TEST, b'\x88')
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x11'),
+            Number('0q82_01').plus_suffix(Suffix.Type.TEST, b'\x88')
         )
 
     def test_minus_missing_suffix(self):
         no_imaginary_suffix = Number('0q82_01__8201_7E0300')
         with self.assertRaises(Suffix.NoSuchType):
-            no_imaginary_suffix.minus_suffix(Suffix.TYPE_IMAGINARY)
+            no_imaginary_suffix.minus_suffix(Suffix.Type.IMAGINARY)
 
     def test_minus_suffix_among_many(self):
         n = Number(      '0q82_01__990100__880100__770100')
@@ -3044,7 +3043,7 @@ class NumberSuffixTests(NumberTests):
             pass
         some_type = SomeType()
         with self.assertRaises(Suffix.PayloadError):
-            Suffix(Suffix.TYPE_TEST, some_type)
+            Suffix(Suffix.Type.TEST, some_type)
 
     def test_suffix_number(self):
         self.assertEqual('0q83_01FF__823F_FF0300', Number(511).plus_suffix(255, Number(63)))
@@ -3054,9 +3053,9 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(b'\x33\x44', Number(1).plus_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
 
     def test_suffix_extract_raw_wrong(self):
-        number_with_test_suffix = Number(1).plus_suffix(Suffix.TYPE_TEST, b'\x33\x44')
+        number_with_test_suffix = Number(1).plus_suffix(Suffix.Type.TEST, b'\x33\x44')
         with self.assertRaises(Suffix.NoSuchType):
-            number_with_test_suffix.get_suffix_payload(Suffix.TYPE_IMAGINARY)
+            number_with_test_suffix.get_suffix_payload(Suffix.Type.IMAGINARY)
 
     def test_suffix_extract_raw_among_multiple(self):
         self.assertEqual(
@@ -3132,7 +3131,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
     def test_root(self):
-        suffixed_word = Number(42).plus_suffix(Suffix.TYPE_TEST)
+        suffixed_word = Number(42).plus_suffix(Suffix.Type.TEST)
         self.assertEqual(Number(42), suffixed_word.root)
 
     def test_parse_root(self):

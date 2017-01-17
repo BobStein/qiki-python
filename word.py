@@ -776,7 +776,7 @@ class Listing(Word):
                        # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
 
-    SUFFIX_TYPE = Suffix.TYPE_LISTING
+    SUFFIX_TYPE = Suffix.Type.LISTING
 
     def __init__(self, index, lex=None):
         """
@@ -787,7 +787,7 @@ class Listing(Word):
                      It is passed to the LDC constructor, and to it's lookup() method.
         self.idn - The identifier is a suffixed number:
                    root - meta_idn for the LDC, the idn of the meta_word that defined the LDC
-                   type - TYPE_LISTING
+                   type - Type.LISTING
                    payload - the index
         """
         assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.

@@ -1921,7 +1921,7 @@ class Word0051ListingBasicTests(WordListingTests):
         self.assertTrue(chad.exists())
 
         expected_root = self.names.idn
-        expect_one_suffix = qiki.Suffix(qiki.Suffix.TYPE_LISTING, number_two)
+        expect_one_suffix = qiki.Suffix(qiki.Suffix.Type.LISTING, number_two)
         self.assertEqual(expected_root, chad.idn.root)
         self.assertEqual([expect_one_suffix], chad.idn.suffixes)
 

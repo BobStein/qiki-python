@@ -22,12 +22,11 @@ import six
 
 
 class SlotsOptimized(object):
+    """Option for Number class."""
     FOR_MEMORY = False
     FOR_SPEED = True
-assert not (SlotsOptimized.FOR_MEMORY and SlotsOptimized.FOR_SPEED)
 
 
-# TODO:  Docstring every class
 # TODO:  Docstring every function
 # TODO:  Custom Exception names should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
@@ -134,6 +133,15 @@ assert Zone.descending_codes[13] == Zone.NAN
 
 
 class Number(numbers.Complex):
+    """
+    Representing integers, floating point, complex numbers and more.
+
+    2 == Number('0q82_02')
+    1 == Number('0q82_01')
+    0 == Number('0q80')
+    -1 == Number('0q7D_FF')
+    -2 == Number('0q7D_FE')
+    """
     if SlotsOptimized.FOR_MEMORY:
         __slots__ = ('__raw', )
     elif SlotsOptimized.FOR_SPEED:
@@ -458,12 +466,12 @@ class Number(numbers.Complex):
         """
         # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
         try:
-            imaginary_part = self.get_suffix_number(Suffix.TYPE_IMAGINARY)
+            imaginary_part = self.get_suffix_number(Suffix.Type.IMAGINARY)
         except Suffix.NoSuchType:
             """No imaginary suffix already; nothing to normalize away."""
         else:
             if imaginary_part == self.ZERO:
-                self.raw = self.minus_suffix(Suffix.TYPE_IMAGINARY).raw
+                self.raw = self.minus_suffix(Suffix.Type.IMAGINARY).raw
 
     def _normalize_plateau(self):
         """
@@ -520,6 +528,7 @@ class Number(numbers.Complex):
         return return_value
 
     def is_whole(self):
+        """Is the number an integer?"""
         if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan, qanlength) = self.qantissa()
             qexp = self.qexponent() - qanlength
@@ -534,8 +543,8 @@ class Number(numbers.Complex):
             return True
         elif self.zone in ZoneSet.WHOLE_NO:
             return False
-        else:   #              ZONE_WHOLE_INDETERMINATE
-            raise self.WholeIndeterminate("Cannot process " + repr(self))   # e.g. ludicrously large numbers
+        else:           # ZoneSet.WHOLE_INDETERMINATE
+            raise self.WholeIndeterminate("Cannot process " + repr(self))   # e.g. Number.POSITIVE_INFINITY
 
     is_integer = is_whole
 
@@ -574,7 +583,7 @@ class Number(numbers.Complex):
     @property
     def imag(self):
         try:
-            return self.get_suffix_number(Suffix.TYPE_IMAGINARY)
+            return self.get_suffix_number(Suffix.Type.IMAGINARY)
         except Suffix.NoSuchType:
             return self.ZERO
 
@@ -582,7 +591,7 @@ class Number(numbers.Complex):
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
-            return_value = return_value.plus_suffix(Suffix.TYPE_IMAGINARY, (-imag))
+            return_value = return_value.plus_suffix(Suffix.Type.IMAGINARY, (-imag))
         return return_value
 
     # "from" conversions:  Number <-- other type
@@ -794,7 +803,7 @@ class Number(numbers.Complex):
 
     def _from_complex(self, c):
         self._from_float(c.real)
-        self.raw = self.plus_suffix(Suffix.TYPE_IMAGINARY, type(self)(c.imag)).raw
+        self.raw = self.plus_suffix(Suffix.Type.IMAGINARY, type(self)(c.imag)).raw
         # THANKS:  Call constructor if subclassed, http://stackoverflow.com/a/14209708/673991
 
     # "to" conversions:  Number --> other type
@@ -1162,8 +1171,8 @@ class Number(numbers.Complex):
         Add a suffix to this Number.  Does not mutate self, but returns a new suffixed number.
 
         Forms:
-            m = n.plus_suffix(Number.Suffix.TYPE_TEST, b'byte string')
-            m = n.plus_suffix(Number.Suffix.TYPE_TEST, Number(x))
+            m = n.plus_suffix(Number.Suffix.Type.TEST, b'byte string')
+            m = n.plus_suffix(Number.Suffix.Type.TEST, Number(x))
             m = n.plus_suffix(Number.Suffix(...))
             m = n.plus_suffix()
         """
@@ -1350,6 +1359,7 @@ assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 
 
 class ZoneSet(object):
+    """Sets of Zones, for categorizing Numbers."""
     # TODO:  Venn Diagram or table or something.
     # TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
 
@@ -1570,12 +1580,13 @@ class Suffix(object):
 
     MAX_PAYLOAD_LENGTH = 250
 
-    # TODO:  Formally define valid payload contents for each type
-    # TODO:  SuffixType class?
-    # TODO:  And move that class to suffix_type.py?  Because it knows about qiki.word.Listing, and much more.
-    TYPE_LISTING   = 0x1D   # 'ID' in 1337
-    TYPE_IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.?)
-    TYPE_TEST      = 0x7E   # for unit testing, payload can be anything
+    class Type(object):
+        """The 3rd byte from the right of a Suffix.  (Except the empty suffix 0000 has no type.)"""
+        # TODO:  Move to suffix_type.py?  Because it knows about qiki.word.Listing, and much more.
+        # TODO:  Formally define valid payload contents for each type (Number(s), utf8 strings, etc.)
+        LISTING   = 0x1D   # 'ID' in 1337
+        IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.?)
+        TEST      = 0x7E   # for unit testing, payload can be anything
 
     # TODO:  math.stackexchange question:  are quaternions a superset of complex numbers?  Does i===i?
     # SEE:  quaternions from complex, http://math.stackexchange.com/q/1426433/60679
