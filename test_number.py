@@ -1888,23 +1888,58 @@ class NumberBasicTests(NumberTests):
         n = Number(1)
         self.assertIsInstance(n, numbers.Number)
 
-    def test_long_qan(self):
-        qstring_pi = \
+    def test_big_qan_float(self):
+        """
+        Make sure we can handle a long qan.  float() may lose some accuracy.
+
+        This used to raise an OverflowError in Number._to_float() because the entire
+        qan was converted to an integer, and then to a float.  A qan with more than
+        about 128 qigits has an integer value greater than 2**1024 which exceeds
+        sys.float_info.max.  The solution is to limit how much of the qan
+        is converted for the purpose of making a float.
+
+        The complete, humungous integer version of the qan is still used in
+        Number._to_int_xxx().  A 254-qigit
+        """
+        qstring_for_pi = \
             '0q82_03243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89452821E638D01377BE5466CF34' \
             'E90C6CC0AC29B7C97C50DD3F84D5B5B54709179216D5D98979FB1BD1310BA698DFB5AC2FFD72DBD01ADFB7B8E1AFED6A2' \
             '67E96BA7C9045F12C7F9924A19947B3916CF70801F2E2858EFC16636920D871574E69A458FEA3F4933D7E0D95748F728E' \
             'B658718BCD5882154AEE7B54A41DC25A59B59C30D5392AF26013C5D1B023286085F0CA417918B8DB38EF8E79DCB0603A1' \
             '80E6C9E0E8BB01E8A3ED71577C1BD314B2778AF2FDA55605C60E65525F3AA55AB945748986263E8144055CA396A2AAB10' \
-            'B6B4CC5C341141E8CEA15486AF7C'   # 254-qigit qan (2032-bit)
-        pi = Number(qstring_pi)
-        pi_f = float(pi)
+            'B6B4CC5C341141E8CEA15486AF7C'   # 254-qigit qan (2032 bits, or about 610 decimal digits)
+        pi = Number(qstring_for_pi)
         math_pi = Number(math.pi)
+
+        self.assertEqual(qstring_for_pi, pi.qstring())
+        self.assertEqual('0q82_03243F6A8885A3', math_pi.qstring())
+
+        pi_f = float(pi)
         math_pi_f = float(math_pi)
 
-        self.assertNotEqual(pi, math_pi)
-        self.assertEqual(pi_f, math_pi_f)
+        self.assertNotEqual(pi,   math_pi  )
+        self.assertEqual   (pi_f, math_pi_f)
 
-        self.assertEqual(qstring_pi, pi.qstring())
+    def test_big_qan_int(self):
+        """
+        Make sure we can handle a long qan integer with no loss of accuracy.
+
+        The biggest qan for a reasonable integer is the 125-qigit 2**1000-1.
+        (A 254-qigit qan integer would in the Ludicrous zone.)
+        """
+        qstring_for_max_reasonable = \
+            '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' \
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' \
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'   # 125-qigit qan
+        max_reasonable = Number(qstring_for_max_reasonable)
+
+        self.assertEqual(qstring_for_max_reasonable, max_reasonable.qstring())
+        self.assertEqual(2**1000-1, int(max_reasonable))
+
+        self.assertEqual('FF', (max_reasonable - Number(0)).qstring()[-2:])
+        self.assertEqual('FE', (max_reasonable - Number(1)).qstring()[-2:])   # See the rightmost qigit work.
+        self.assertEqual('FD', (max_reasonable - Number(2)).qstring()[-2:])
+        self.assertEqual('FC', (max_reasonable - Number(3)).qstring()[-2:])
 
 
 ################## new INDIVIDUAL tests go above here ###########################
@@ -2150,7 +2185,7 @@ class NumberIsTests(NumberTests):
         self.assertEqual(Number('0q8A_010000000000000001'), 18446744073709551617)
 
     def test_is_whole_indeterminate(self):
-        with self.assertRaises(Number.WholeIndeterminate):
+        with self.assertRaises(Number.WholeError):
             Number(float('+inf')).is_whole()
 
     def test_is_integer(self):
@@ -3040,23 +3075,24 @@ class NumberSuffixTests(NumberTests):
 
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
-        def bad_to_parse(n):
-            with self.assertRaises(Suffix.RawError):
+        def bad_to_parse(n, case_suffix, case_root):
+            with self.assertRaisesRegexp(Suffix.RawError, r'case {}'.format(case_suffix)):
                 n.parse_suffixes()
-            with self.assertRaises(Suffix.RawError):
+            with self.assertRaisesRegexp(Suffix.RawError, r'case {}'.format(case_root)):
                 n.parse_root()
         def good_to_parse(n):
             n.parse_suffixes()
             n.parse_root()
 
-        bad_to_parse(Number('0q00'))   # Where's the length byte?
-        bad_to_parse(Number('0q__0000'))   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__220100'))   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__334455220400'))   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q82_01__9900'))
-        bad_to_parse(Number('0q82_01__000500'))
-        bad_to_parse(Number('0q82_01__000400'))   # Suffix "underflows" one byte off the left edge.
-        bad_to_parse(Number('0q82_01__000300'))   # Looks like suffixed Number.NAN.
+        bad_to_parse(Number('0q00'), 1, 5)   # Where's the length byte?
+        bad_to_parse(Number('0q__0000'), 2, 4)   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__220100'), 2, 4)   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__334455220400'), 2, 4)   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q82_01__9900'), 2, 4)
+        bad_to_parse(Number('0q82_01__000500'), 2, 4)
+        bad_to_parse(Number('0q82_01__000400'), 2, 4)   # Suffix "underflows" one byte off the left edge.
+        bad_to_parse(Number('0q82_01__000300'), 2, 4)   # Looks like suffixed Number.NAN.
+
         good_to_parse(Number('0q82_01__000200'))   # Indistinguishable from 0q82__01000200
         good_to_parse(Number('0q82_01__000100'))
         good_to_parse(Number('0q82_01__0000'))
@@ -3340,13 +3376,26 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual(b'hello',                            string_from_hex('68656C6C6F'))
         self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789ABCDEF'))
         self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789abcdef'))
-        with self.assertRaises(TypeError):
+
+    # noinspection PyUnresolvedReferences
+    def test_03_string_from_hex_errors(self):
+
+        with self.assertRaises(string_from_hex.Error):
             string_from_hex('GH')   # nonhex
-        with self.assertRaises(TypeError):
+        with self.assertRaises(string_from_hex.Error):
             string_from_hex('89XX')   # hex then nonhex
-        with self.assertRaises(TypeError):
+        with self.assertRaises(string_from_hex.Error):
             string_from_hex('000')   # not even
-        with self.assertRaises(TypeError):
+        with self.assertRaises(string_from_hex.Error):
+            string_from_hex('DE AD')   # space
+
+        with self.assertRaises(ValueError):
+            string_from_hex('GH')   # nonhex
+        with self.assertRaises(ValueError):
+            string_from_hex('89XX')   # hex then nonhex
+        with self.assertRaises(ValueError):
+            string_from_hex('000')   # not even
+        with self.assertRaises(ValueError):
             string_from_hex('DE AD')   # space
 
     def test_hex_from_string(self):

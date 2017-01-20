@@ -28,7 +28,6 @@ class SlotsOptimized(object):
 
 
 # TODO:  Docstring every function
-# TODO:  Custom Exception names should end in Error, e.g. WholeIndeterminate --> WholeIndeterminateError
 # TODO:  Move big comment sections to docstrings.
 
 
@@ -36,7 +35,7 @@ class Zone(object):
     """
     Each qiki Number is in one of 14 distinct zones.  This class is an enumerator of those zones.
 
-    Also, it encapsulates some utilities, e.g. Zone.name_from_code[ZONE.NAN] == 'NAN'
+    Also, it encapsulates some utilities, e.g. Zone.name_from_code[Zone.NAN] == 'NAN'
 
     Zone Code
     ---------
@@ -439,7 +438,7 @@ class Number(numbers.Complex):
 
         try:
             int_better_than_float = n1.is_whole() and n2.is_whole()
-        except cls.WholeIndeterminate:
+        except cls.WholeError:
             int_better_than_float = False
 
         if int_better_than_float:
@@ -545,11 +544,11 @@ class Number(numbers.Complex):
         elif self.zone in ZoneSet.WHOLE_NO:
             return False
         else:           # ZoneSet.WHOLE_INDETERMINATE
-            raise self.WholeIndeterminate("Cannot process " + repr(self))   # e.g. Number.POSITIVE_INFINITY
+            raise self.WholeError("Cannot process " + repr(self))   # e.g. Number.POSITIVE_INFINITY
 
     is_integer = is_whole
 
-    class WholeIndeterminate(OverflowError):
+    class WholeError(OverflowError):
         """When the whole part of a number does not make sense, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
@@ -669,13 +668,13 @@ class Number(numbers.Complex):
             )
 
     def _from_qstring(self, s):
-        """Private method to fill in raw from a qstring."""
+        """Fill in raw from a qstring."""
         digits = s[2:].replace('_', '')
         if len(digits) % 2 != 0:
             digits += '0'
         try:
             byte_string = string_from_hex(digits)
-        except TypeError:
+        except string_from_hex.Error:
             raise self.ConstructorValueError(
                 "A q-string must use hexadecimal digits (or underscore), not {}".format(repr(s))
             )
@@ -713,7 +712,7 @@ class Number(numbers.Complex):
             )
     QIGITS_PRECISION_DEFAULT = 8
 
-    SMALLEST_UNREASONABLE_FLOAT = 2.0 ** 1000   # == 256.0**125 == 1.0715086071862673e+301
+    SMALLEST_UNREASONABLE_FLOAT = 2.0 ** 1000   # == 256.0**125 ~~ 1.0715086071862673e+301
 
     def _from_float(self, x, qigits=None):
         """
@@ -1113,7 +1112,7 @@ class Number(numbers.Complex):
         for z in Zone.descending_codes:
             if z <= self.raw:
                 return z
-        raise ValueError("Number._find_zone_by_loop_scan() fell through?!  '%s' < Zone.NAN!" % repr(self))
+        raise RuntimeError("Number._find_zone_by_loop_scan() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
         raw = self.raw
@@ -1267,7 +1266,8 @@ class Number(numbers.Complex):
                     try:
                         type_ = six.indexbytes(raw_remains, -3)
                     except IndexError:
-                        raise ValueError("Invalid suffix, case 3.")
+                        raise Suffix.RawError("Invalid suffix, case 3.")
+                        # NOTE:  case 3 may be impossible -- eclipsed by case 2.
                     payload = raw_remains[-length_of_payload_plus_type-2:-3]
                     suffixes.insert(0, Suffix(type_, payload))
                 raw_remains = raw_remains[0:-length_of_payload_plus_type-2]
@@ -1338,8 +1338,7 @@ def flatten(things, put_them_where=None):
         else:
             flatten(thing, put_them_where)
     return put_them_where
-assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))   # when flatten() uses yield
-assert [1,2,3,4,'five',6,7,8] ==      flatten([1,(2,[3,(4,'five'),6],7),8])    # as long as it doesn't
+assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))
 
 
 # noinspection PyProtectedMember
@@ -1586,6 +1585,10 @@ class Suffix(object):
     Example:
         assert '778899_110400' == Number.Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring()
     """
+    # TODO:  Another name for type TT.  Alternatives:
+    # CC class (haha no)
+    # (Make them both apply by subclassing Suffix, and each subclass assigns its own whatever-its-called?)
+    # (Make it a Number?  Every suffix could be a Number plus a Number/Text/empty payload?)
 
     MAX_PAYLOAD_LENGTH = 250
 
@@ -1678,11 +1681,11 @@ class Suffix(object):
 # ---
 def hex_from_integer(the_integer):
     """
-    Encode a hexadecimal string from a big integer.
+    Encode a hexadecimal string from an arbitrarily big integer.
 
     Like hex() but output has:  an even number of digits, no '0x' prefix, no 'L' suffix.
     """
-    # THANKS:  Mike Boers code http://stackoverflow.com/a/777774/673991
+    # THANKS:  Mike Boers code, http://stackoverflow.com/a/777774/673991
     hex_string = hex(the_integer)[2:].rstrip('L')
     if len(hex_string) % 2:
         hex_string = '0' + hex_string
@@ -1695,11 +1698,12 @@ def string_from_hex(s):
     """
     Decode a hexadecimal string into an 8-bit binary (base-256) string.
 
-    Raises a TypeError if s is not an even number of hex digits.
-    Why a TypeError?
-       Pro:  binascii.unhexlify('HH') raises a TypeError
-       Con:  bytearray.fromhex('HH') raises a ValueError
-       Con:  int('0xHH', 0) raises a ValueError
+    Raises string_from_hex.Error if s is not an even number of hex digits.
+    The string_from_hex.Error exception is a ValueError.  Why a ValueError?
+        Pro:  bytearray.fromhex('nonsense') raises a ValueError
+        Pro:  int('0xNonsense', 0) raises a ValueError
+        Con:  binascii.unhexlify('nonsense') raises a TypeError in Python 2
+        Con:  binascii.unhexlify('nonsense') raises a binascii.Error in Python 3
 
     NOTE:  binascii.unhexlify() is slightly faster than bytearray.fromhex()
 
@@ -1717,11 +1721,17 @@ def string_from_hex(s):
     """
     assert(isinstance(s, six.string_types))
     try:
-        return_value = binascii.unhexlify(s)   # Raises TypeError on e.g. '000'
-    except binascii.Error as e:   # This happens on '8X' in Python 3.  It is already a TypeError in Python 2.
-        raise TypeError("aka binascii.Error: " + str(e))
+        return_value = binascii.unhexlify(s)
+    except (
+        TypeError,        # binascii.unhexlify('nonsense') in Python 2.
+        binascii.Error,   # binascii.unhexlify('nonsense') in Python 3.
+    ):
+        raise string_from_hex.Error("This is not hexadecimal: " + repr(s))
     assert return_value == bytes(bytearray.fromhex(s))
     return return_value
+class _StringFromHexError(ValueError):
+    pass
+string_from_hex.Error = _StringFromHexError
 assert b'\xBE\xEF' == string_from_hex('BEEF')
 
 
@@ -1808,10 +1818,11 @@ assert b'string' == right_strip00(b'string\x00\x00')
 # Packing and Unpacking Integers
 # ------------------------------
 def pack_integer(the_integer, nbytes=None):
-    """Pack an integer into a binary string, which is like a base-256, big-endian string.
+    """
+    Pack an integer into a binary string, which is like a base-256, big-endian string.
 
     :param the_integer:  an arbitrarily large integer
-    :param nbytes:  number of bytes (base-256 digits) to output (omit for minimum)
+    :param nbytes:  number of bytes (base-256 digits aka qigits) to output (omit for minimum)
     :return:  an unsigned two's complement string, MSB first
 
     Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
@@ -1819,25 +1830,26 @@ def pack_integer(the_integer, nbytes=None):
         assert b'\x00\xFF' == pack_integer(255,2)
         assert     b'\x01' == pack_integer(-255)
         assert b'\xFF\x01' == pack_integer(-255,2)
-    Caution, nbytes lower than minimum may not be enforced, see unit tests.
+    Caution, nbytes lower than the minimum may not be enforced, see unit tests.
     """
-    # GENERIC: This function might be useful elsewhere.
 
     if nbytes is None:
         nbytes =  log256(abs(the_integer)) + 1
 
     if nbytes <= 8 and 0 <= the_integer < 4294967296:
-        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit says this is 4x as fast as the Mike Boers way
+        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit:  4x as fast as the Mike Boers way
     elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
         return struct.pack('>q', the_integer)[8-nbytes:]
     else:
         return pack_big_integer_via_hex(the_integer, nbytes)
+        # NOTE:  Pretty sure this could never ever raise string_from_hex.Error
 assert b'\x00\xAA' == pack_integer(170,2)
 assert b'\xFF\x56' == pack_integer(-170,2)
 
 
 def pack_big_integer_via_hex(num, nbytes):
-    """Pack an integer into a binary string.
+    """
+    Pack an arbitrarily large integer into a binary string, via hexadecimal encoding.
 
     Akin to base-256 encode.
     """
@@ -1925,7 +1937,8 @@ assert 'function' == type_name(type_name)
 # TODO:  Number.inc() native - taking advantage of raw encodings
 # TODO:  __neg__ native - taking advantage of two's complement encoding of (non suffixed) qex + qan
 #        (and fixing it for unreasonable numbers)
-# TODO:  Possibly generate an exception for __neg__ of suffixed number?  For any math on suffixed numbers??
+# TODO:  Possibly generate an exception for __neg__ of suffixed number?
+# For any math on suffixed numbers??
 # TODO:  __add__, __mul__, etc. native
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
 
@@ -1934,7 +1947,8 @@ assert 'function' == type_name(type_name)
 # TODO:  change raw from str/bytes to bytearray?
 # SEE:  http://ze.phyr.us/bytearray/
 # TODO:  raise subclass of built-in exceptions
-# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces (qex, qan, qan_length)
+# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should be '0q'
 # TODO:  Number.natural() should be int() if whole, float if non-whole.
@@ -1961,7 +1975,8 @@ assert 'function' == type_name(type_name)
 # __invert__, __lshift__, __mod__, __or__, __rand__, __rfloordiv__, __rlshift__, __rmod__, __ror__,
 # __rrshift__, __rshift__, __rxor__, __trunc__, __xor__
 
-# TODO:  Better object internal representation:  store separate qex, qan, suffixes (and synthesize raw on demand)
+# TODO:  Better object internal representation:  store separate qex, qan, suffixes
+# (and synthesize raw on demand)
 # perhaps raw == qex + qan + ''.join([suffix.raw for suffix in suffixes])
 
 # TODO:  Number.to_JSON()
@@ -1971,7 +1986,8 @@ assert 'function' == type_name(type_name)
 # >>> mpmath.frexp(mpmath.power(mpmath.mpf(2), 65536))
 # (mpf('0.5'), 65537)
 
-# TODO:  is_valid() detects (at different severity levels?)  Or validate() raising a family tree of exceptions:
+# TODO:  is_valid() detects (at different severity levels?)
+# Or validate() raising a family tree of exceptions:
 # 0q82_00FF - as 1 but inside the plateau
 # 0q82 as - compact but nonstandard
 # 0q8183_01 - sensible as 2**-1000 but really should be ludicrous small encoding (longer qex)
@@ -2098,7 +2114,8 @@ assert 'function' == type_name(type_name)
 
 # This scheme leaves an initial FF free for a future something-or-other.
 # Possibly for qiki.word.Text, a utf-8 string, or some other octet-stream.
-# Nt bytes of FF, Nt bytes storing a length N (the first byte of which is NOT FF), then the N-byte octet-stream.
+# Nt bytes of FF, Nt bytes storing a length N (the first byte of which is NOT FF), then the N-byte
+# octet-stream.
 
 # What to call it?
 #     lengthed export
@@ -2142,12 +2159,16 @@ assert 'function' == type_name(type_name)
 #        Oh wait, it can be just type number and content
 #        Because the type number can be an idn for a word that itself represents
 #            user number and the user's custom-defined type
-#            that is, a word [user](define, 'foobar')[system] and another word [user](define, type-number)[foobar]
+#            that is, a word
+#                [user](define, 'foobar')[system]
+#        and another word
+#                [user](define, type-number)[foobar]
 # This seems complicated and intricate (complicantricate?) but so are consecutive or nested suffixes.
 #     (the other alternative for a user-defined type)
 # Particularly in the case of user-defined suffix types, we want the syntax to be simple
 # so it's easy to use, and economical with bytes, so the 1-byte suffix types are not so greedily sought
-# and we can be extremely parsimonious with them, sloughing off many proposals for them to user-defined types.
+# and we can be extremely parsimonious with them, sloughing off many proposals for them to user-defined
+# types.
 
 # NOTE:  The lengthed export is only lengthed from the "left". It cannot be interpreted from the "right".
 # That is, if the byte stream is coming in reverse order for some reason,
