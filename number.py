@@ -239,17 +239,20 @@ class Number(numbers.Complex):
     # See the Number.Suffix class for underscore conventions within a suffix.
     # All suffixes end in a 00 zero-tag.  The qex+qan pair never ends in a 00.
 
-    # TODO:  Make class Raw?  Then both Number and Suffix contain instances??  Yay!
+    # TODO:  Make class Raw?  Then both Number and Suffix contain instances of Raw??  Yay!
     # Except even merely subclassing bytes, the size goes up from py23(24,20) bytes to 40.
     # With composition the size goes up even more
     #  __slots__=() helps in subclassing int, but not apparently in subclassing bytes.
     # Except in Python 3 it does help!  Apparently it removes all overhead of subclassing!
     # So I was wrong above, subclassing changes sizeof from py23(24,20) to py23(40,20).
     # If we did make a Raw class, we could Number(Raw(b'\x82\x01')) instead of Number.from_raw(b'\x82\x01')
-    # And Number(bytearray(b'\x82\x01')) could work but should it?  Abolish from_bytearray()?
+    # And Number(bytearray(b'\x82\x01')) could be made to work but should it?  Abolish from_raw_bytearray()?
+    # Probably not, because from_mysql == from_raw_bytearray.
     # In any case Number(bytes(b'\x82\x01')) should raise an exception.
     # In Python 3 rather easily, but Python 2 because it fails int(content) etc.
     # Number.from_qstring() is the only remaining public class method that makes sense.
+    # One good reason to put off implementing a Raw class:  resolve Suffix formatting,
+    # in case there's a more generic, open, powerful way to encode them, e.g. type field being a Number.
     RAW_INFINITY          = b'\xFF\x81'
     RAW_INFINITESIMAL     = b'\x80\x7F'
     RAW_ZERO              = b'\x80'
@@ -299,28 +302,33 @@ class Number(numbers.Complex):
             self_ready = self._op_ready(self)
             other_ready = self._op_ready(other)
         except self.CompareError:
-            return False
+            # FIXME:  This never happens now that _op_ready() returns NotImplemented itself.
+            return NotImplemented
+            # THANKS:  Fall back to e.g. other.__eq__(self), http://jcalderone.livejournal.com/32837.html
         else:
             return self_ready == other_ready
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        eq_result = self.__eq__(other)
+        if eq_result is NotImplemented:
+            return NotImplemented
+        return not eq_result
 
-    def __lt__(self, other):  self._both_real(other); return self._op_ready(self) <  self._op_ready(other)
-    def __le__(self, other):  self._both_real(other); return self._op_ready(self) <= self._op_ready(other)
-    def __gt__(self, other):  self._both_real(other); return self._op_ready(self) >  self._op_ready(other)
-    def __ge__(self, other):  self._both_real(other); return self._op_ready(self) >= self._op_ready(other)
-    # SEE:  Greg Ward sez "avoid __cmp__()", http://gerg.ca/blog/post/2012/python-comparison/
+    def __lt__(self, other):  self._comparable(other); return self._op_ready(self) <  self._op_ready(other)
+    def __le__(self, other):  self._comparable(other); return self._op_ready(self) <= self._op_ready(other)
+    def __gt__(self, other):  self._comparable(other); return self._op_ready(self) >  self._op_ready(other)
+    def __ge__(self, other):  self._comparable(other); return self._op_ready(self) >= self._op_ready(other)
+    # SEE:  Avoiding __cmp__(), http://gerg.ca/blog/post/2012/python-comparison/
 
     @classmethod
     def _op_ready(cls, x):
-        """Get some kind of value ready for comparison operators."""
+        """Get x ready for comparison operators."""
         try:
             normalized_number = cls(x, normalize=True)
         except cls.ConstructorTypeError:
-            # DEBATE:  Not pythonic to raise an exception here (or in _both_real())
-            # 0 < object should always be True, 0 > object always False.
-            # With this exception we cannot sort a list of Numbers and other objects
+            # DEBATE:  Not pythonic to raise an exception here (or in _comparable())
+            # 0 < object will always be True, 0 > object always False.
+            # With this exception we cannot sort a mixed type list of Numbers and other objects
             # (Order would be arbitrary, but it should not raise an exception.)
             # SEE:  about arbitrary ordering, http://stackoverflow.com/a/6252953/673991
             # SEE:  about arbitrary ordering, http://docs.python.org/reference/expressions.html#not-in
@@ -331,11 +339,16 @@ class Number(numbers.Complex):
             # than being able to "sort" a mixed bag of Numbers and other types.
 
             # DEBATE:  Return NotImplemented?  http://jcalderone.livejournal.com/32837.html
-            # SEE:  http://stackoverflow.com/a/879005/673991
+            # SEE:  Comparison in list.sort(), http://stackoverflow.com/a/879005/673991
 
-            raise cls.CompareError("A Number cannot be compared with a " + type(x).__name__)
-            # NOTE:  This exception message never makes it out of code in this source file.
-            # The only time it is raised, it is also caught, e.g. Number(0) == object
+            # EXAMPLE:  Number(1) == object is one way to get here.
+
+            return NotImplemented
+
+            # raise cls.CompareError("A Number cannot be compared with a " + type(x).__name__)
+            # # NOTE:  This exception message never makes it out of code in this source file.
+            # # The only time it is raised, it is also caught, e.g. Number(0) == object
+            # # Whoa, not true, it can be intercepted by trying Number(0) < object
         else:
             return normalized_number.raw
 
@@ -384,14 +397,15 @@ class Number(numbers.Complex):
     class CompareError(TypeError):
         """e.g. Number(1+2j) < Number(1+3j)"""
 
-    def _both_real(self, other):
-        """Make sure both operands are real (not complex) before comparison."""
+    def _comparable(self, other):
+        """Make sure both operands are comparable (e.g. not unknown type, not complex) before comparison."""
         if self.is_complex():
             raise self.CompareError("Complex values are unordered.")
-            # TODO:  Should this exception be "Unordered" instead?  Test other.is_complex() too??
+            # TODO:  Should this exception be "Unordered" instead?
         try:
             other_as_a_number = type(self)(other)
         except self.ConstructorTypeError:
+
             raise self.CompareError("Number cannot be compared with a " + type(other).__name__)
         else:
             if other_as_a_number.is_complex():
@@ -424,7 +438,13 @@ class Number(numbers.Complex):
         n = Number(self)
         if n.is_complex():
             return Number(op(complex(n)))
-        elif n.is_whole():
+
+        try:
+            int_is_better_than_float = n.is_whole()
+        except self.WholeError:
+            int_is_better_than_float = False
+
+        if int_is_better_than_float:
             return Number(op(int(n)))
         else:
             return Number(op(float(n)))
@@ -604,7 +624,7 @@ class Number(numbers.Complex):
         Right:  assert Number(1) == Number(0q82_01')
         Wrong:                      Number(b'\x82\x01')
         Right:  assert Number(1) == Number.from_raw(b'\x82\x01')
-        Right:  assert Number(1) == Number.from_raw(bytearray(b'\x82\x01'))
+        Right:  assert Number(1) == Number.from_raw_bytearray(bytearray(b'\x82\x01'))
         """
         if not isinstance(value, six.binary_type):
             raise cls.ConstructorValueError(
@@ -615,10 +635,10 @@ class Number(numbers.Complex):
         return return_value
 
     @classmethod
-    def from_bytearray(cls, value):
+    def from_raw_bytearray(cls, value):
         return cls.from_raw(six.binary_type(value))
 
-    from_mysql = from_bytearray
+    from_mysql = from_raw_bytearray
 
     def _from_string(self, s):
         """
@@ -1516,9 +1536,9 @@ class ZoneSet(object):
     # Sets of Zone Sets
     # -----------------
     # Different ways to slice the pie.
-    # The following are each MECE, mutually exclusive and collectively exhaustive.
-    # For documentation and testing purposes only.
+    # Each of these sets are MECE, mutually exclusive and collectively exhaustive.
     # Each is identical to ZoneSet.ALL.
+    # For documentation and testing.
 
     _ALL_BY_REASONABLENESS = union_of_distinct_sets(
         REASONABLE,
@@ -2073,12 +2093,15 @@ assert 'function' == type_name(type_name)
 #     7E-part, length-part, raw-part, 00-part
 #
 # 7E-part is Np bytes of literal 7E.
-#     the 7E-part may be omitted if length-part (N) is 0 to 7D.
 # length-part (call its value N) is stored in Np bytes representing a big-endian length N
-#     So clearly N < 256**Np
-#     both 7E-part and length-part may be omitted for an unsuffixed integer -1 to 2**992-1
 # raw-part is N bytes, identical to the bytes of Number.raw
-# 00-part consists of 00 bytes.
+# 00-part consists of 00 bytes.  It only appears for unsuffixed integer multiples of 256.
+# Example:
+#     7E7E
+
+#     the 7E-part may be omitted if length-part (N) is 0 to 7D.
+#     So clearly N < 256**Np
+#     both 7E-part and length-part may be omitted for an unsuffixed integer 1 to 2**992-1
 #     It only exists if 7E-part and length-part are omitted.
 #     It serves to make the total length (of the raw-part after its first byte)
 #         equal to the first raw byte minus 81.
@@ -2088,13 +2111,14 @@ assert 'function' == type_name(type_name)
 #             Then the 00-part is not -2 bytes, it's just empty.
 #     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256.
 #     And it's 2 or more bytes for unsuffixed integer multiples of 256**2, etc.
-# 7F is an alias for 027DFF representing 0q7D_FF aka -1.
-# 81 is an alias for 8201 representing 0q82_01 aka 1.
+# 7F is a fabricated alias for 027DFF representing 0q7D_FF aka -1.
+# 80 is a fabricated alias for 0180 representing 0q80 aka 0.
+# 81 is a fabricated alias for 8201 representing 0q82_01 aka 1.
 #     These two weirdo exceptions are the only cases when the raw-part doesn't come from Number.raw.
 #     For every other Number, there is a raw-part in its lengthed-export and it's identical to Number.raw.
-
-# Number.NAN would be seamlessly length-exported as 00.  (Length-part=00, other parts omitted or empty.)
-#     In this case Number.raw is empty.  So the raw-part is in there, it's just empty.
+#     In particular, the raw length N is 0, not first-raw-byte minus 81.
+# 00 is a natural alias for Number.NAN  (Length-part=00, other parts omitted or empty.)
+#     In this case Number.raw is empty.  So the raw-part is sorta in there, it's just empty.
 
 # Cases with a nonempty 7E-part, i.e. Np > 0:
 #     Say the raw-part is 128 bytes (e.g. lots of suffixes, e.g. googolplex approximations)
@@ -2169,6 +2193,11 @@ assert 'function' == type_name(type_name)
 # so it's easy to use, and economical with bytes, so the 1-byte suffix types are not so greedily sought
 # and we can be extremely parsimonious with them, sloughing off many proposals for them to user-defined
 # types.
+# OMG is this leading to the notion of encoding a WORD inside a NUMBER?!?
+#     If it did, the "root" of a Number would correspond to Word.num
+#     and Suffix.type would correspond to Word.vrb
+#     and Suffix.payload                  Word.obj
+#     and Suffix.user/definer             Word.sbj
 
 # NOTE:  The lengthed export is only lengthed from the "left". It cannot be interpreted from the "right".
 # That is, if the byte stream is coming in reverse order for some reason,
@@ -2190,4 +2219,17 @@ assert 'function' == type_name(type_name)
 #            type - a number (idn of a sentence defining the suffix type)
 #            payload - a number that's type-specific (which may be itself suffixed)
 #            raw - reversed(payload.lengthed_export) + reversed(type.lengthed_export) + 00
+
+# One super crazy way to have a right-lengthed export of a Number is to store the
+# left-lengthed export bytes in reverse order.  I didn't even want to write this idea here
+# it's so wild.  Why wild?  Well if one of the Numbers inside a Suffix (type, payload)
+# were itself suffixed, then those bytes would be in double-reverse order, i.e. normal.
+# It would be very hard to interpret a Suffixed Number looking at the qstring.
+# But how would it compare to an existing suffix?
 #
+# If we did have two directions of lengthed-exports, it would be wild if they could be named
+# b-something for the left-lengthed and d-something for right-lengthed.
+# Then the strings could be e.g. 0b123456 and 0d563412 (or 563412d0!)
+# "boxed" both starts with a b and ends with a d.
+# Oh wait, b and d are both valid hex digits, that seems wrong somehow.  Neat how p and q are not.
+# s and z are mirrors in almost all fonts and styles.  k and y are kinda rotated versions.
