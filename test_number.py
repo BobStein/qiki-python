@@ -814,6 +814,7 @@ class NumberBasicTests(NumberTests):
         i__q(         -8, '0q7D_F8')
         i__q(        -16, '0q7D_F0')
         i__q(        -32, '0q7D_E0')
+        i__q(        -42, '0q7D_D6')
         i__q(        -64, '0q7D_C0')
         i__q(       -128, '0q7D_80')
         i__q(       -252, '0q7D_04')
@@ -1220,6 +1221,9 @@ class NumberBasicTests(NumberTests):
         f__q(1.0715086071862672e+301,     '0qFE_FFFFFFFFFFFFF8')   # Largest reasonable number that floating point can represent, 2**1000 - 2**947
         f__q(5.3575430359313366e+300,     '0qFE_80')
         f__q(math.pow(2,999),             '0qFE_80')   # Largest reasonable integral power of 2:  +2 ** +999.
+        f__q(math.pow(2,992),             '0qFE_01')
+        f__q(math.pow(2,880),             '0qF0_01')
+        f__q(2.04586912993508844e+149,    '0qBF_FFFFFFFFFFFFF8')
         f__q(       1e100+1.0,            '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10000000000000000000000001')   # googol+1 (though float can't distinguish)
         f__q(       1e100,                '0qAB_1249AD2594C37D', '0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7CAAB24308A82E8F10')   # googol, or as close to it as float can get
         f__q(       1e25,                 '0q8C_0845951614014880')
@@ -1527,6 +1531,7 @@ class NumberBasicTests(NumberTests):
         f__q(    -65536.0,                '0q7B_FF')
         f__q(   -131072.0,                '0q7B_FE')
         f__q(-4294967296.0,               '0q79_FF')
+        f__q(-2.04586912993508844e+149,   '0q40_00000000000008')
         f__q(-math.pow(2,992),            '0q01_FF', '0q02')   # alias for -256**124
         f__q(-math.pow(2,992),            '0q01_FF')
         f__q(-math.pow(2,996),            '0q01_F0')

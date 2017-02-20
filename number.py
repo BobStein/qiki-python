@@ -2092,15 +2092,18 @@ assert 'function' == type_name(type_name)
 # The way to look at the lengthed-export version of a Number is that it always conceptually consists of:
 #     7E-part, length-part, raw-part, 00-part
 #
-# 7E-part is Np bytes of literal 7E.
-# length-part (call its value N) is stored in Np bytes representing a big-endian length N
-# raw-part is N bytes, identical to the bytes of Number.raw
-# 00-part consists of 00 bytes.  It only appears for unsuffixed integer multiples of 256.
+# 1. 7E-part is Np bytes of literal 7E.
+# 2. length-part (call its value N) is stored in Np bytes representing a big-endian length N
+# 3. raw-part is N bytes, identical to the bytes of Number.raw
+# 4. 00-part consists of 00 bytes.  It only appears for unsuffixed integer multiples of 256.
+#
 # Example:
-#     7E7E
-
-#     the 7E-part may be omitted if length-part (N) is 0 to 7D.
-#     So clearly N < 256**Np
+#     7E027DD6 for 0q7D_D6 aka -42
+#
+# Exceptions:
+#     The 7E-part may be omitted if length-part (N) is 0 to 7D.
+#         So the above example is misleading in that 027DD6 would be the "real" export of -42.
+#     Clearly N < 256**Np
 #     both 7E-part and length-part may be omitted for an unsuffixed integer 1 to 2**992-1
 #     It only exists if 7E-part and length-part are omitted.
 #     It serves to make the total length (of the raw-part after its first byte)
@@ -2111,14 +2114,21 @@ assert 'function' == type_name(type_name)
 #             Then the 00-part is not -2 bytes, it's just empty.
 #     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256.
 #     And it's 2 or more bytes for unsuffixed integer multiples of 256**2, etc.
+#     For large exponents of 256, it might be shorter to use the length-part than the 00-part
+#         256**0 == 0q82_01 could be exported as 8201 or 028201 or 0182 or 81
+#         256**1 == 0q83_01 could be exported as 830100 or 028301
+#         256**2 == 0q84_01 could be exported as 84010000 or 028401
+#         256**3 == 0q85_01 could be exported as 8501000000 or 028501
+#     Clearly the 00-part is a penalty for 256**(2 or more)
+#
 # 7F is a fabricated alias for 027DFF representing 0q7D_FF aka -1.
 # 80 is a fabricated alias for 0180 representing 0q80 aka 0.
 # 81 is a fabricated alias for 8201 representing 0q82_01 aka 1.
-#     These two weirdo exceptions are the only cases when the raw-part doesn't come from Number.raw.
+#     These three weirdo exceptions are the only cases when the raw-part doesn't come from Number.raw.
 #     For every other Number, there is a raw-part in its lengthed-export and it's identical to Number.raw.
 #     In particular, the raw length N is 0, not first-raw-byte minus 81.
 # 00 is a natural alias for Number.NAN  (Length-part=00, other parts omitted or empty.)
-#     In this case Number.raw is empty.  So the raw-part is sorta in there, it's just empty.
+#     In this case Number.raw is empty.  So the raw-part is not so much omitted as empty anyway.
 
 # Cases with a nonempty 7E-part, i.e. Np > 0:
 #     Say the raw-part is 128 bytes (e.g. lots of suffixes, e.g. googolplex approximations)
@@ -2140,6 +2150,63 @@ assert 'function' == type_name(type_name)
 # Possibly for qiki.word.Text, a utf-8 string, or some other octet-stream.
 # Nt bytes of FF, Nt bytes storing a length N (the first byte of which is NOT FF), then the N-byte
 # octet-stream.
+# Perhaps more initial values should be "reserved".  We could reserve F0-FF for example,
+# then 0qFO_01 (2**880 ~~ 8e264) and larger would require a lengthed-part:  02F001
+
+# REDOING THE CODING
+# ==================
+# Interpreting the (left-lengthed) export, i.e. converting it to raw.  Start with first byte of raw, call it Byte0.
+# ---------------------------------------
+# Byte0
+# -----
+# FF - However many FF bytes, that's how many bytes encode the (big-endian) length.
+#      e.g. FFFF0100(and then a 256-byte raw)
+# C0-FE - open for expansion (63 values)
+# 82-BF - positive integers +2 to +2**496-1.  Length (not including Byte0) is Byte0-81.  Entire export identical to raw.
+# 81 - +1
+# 80 -  0
+# 7F - -1
+# 7E - open for expansion
+# 40-7D - negative integers -2 to -2**496+1.  Length (not including Byte0) is 7E-Byte0.  Entire export identical to raw.
+# 00-3F - length (not including Byte0) is Byte0.  Verbatim raw follows.
+#
+# Converting raw to export
+# ------------------------
+# Unsuffixed positive integer, +2 to +2**496-1 that is NOT a multiple of 256 - export identical to raw
+# Unsuffixed negative integer, -2 to -2**496+1 that is NOT a multiple of 256 - export identical to raw
+# Unsuffixed +1 - 81
+# Unsuffixed 0 - 80
+# Unsuffixed -1 - 7F
+# Otherwise, if the raw length is 0-63 bytes - encode as length (one byte) + raw
+# All other cases - Compute Np = log(base 256)(raw length) rounded up, or 0 if length is 0.
+#                   Export is:  Np FF bytes + length (big endian) + raw
+#
+# BTW 2**496 ~~ 2e149
+#
+# Hey, with so many values open for expansion, perhaps some compression is possible.
+# For example if 15% of the byte stream consisted of some 3-byte value, e.g. 0q83_8888,
+# then even though raw and export were the same, encoding the value as one-byte C0
+# would save 10% of space.  Or if 80% of the byte stream consisted of some 13-byte
+# export, e.g. 0q83_8888__8888_7E0200 exported as 0C83888888887E0200, then arranging to
+# encode it in one byte.
+#
+# Perhaps there's some advantage to using 7E bytes for the big-length preamble instead of FF?
+# Though FF is aesthetically more pleasing, this would free up the 64 expansion values C0-FF to all
+# have the same upper 2 bits (11) so the lower 6 bits can be any pattern.  Perhaps this makes some kind
+# of compression algorithm a little smoother (fewer special cases).
+#
+# But then said compression algorithm would use ALL the extra values.  Maybe the verbatim conversions
+# should shrink, e.g. how bad would 82-9F and 7D-60 be?  Integers 2**248 don't include googol (~1.7e72).
+# But that frees up another 64 expansion values!
+#
+# We could use more expansion values for text.  We NEED expansion values to identify the compression values!
+# BTW some compression values could be 1-byte, others 2-byte, etc., ala UTF-8.
+# So the ranges 82-AF and 7D-50 would include googol:  2**368 ~~ 6e110, and would free up 32 values (40-4F, B0-BF).
+#
+# Heck there's wiggle room with the lengths too.  Maybe leaving some room there (to possibly be taken up
+# by lengths anyway in the future) is wise.  Some codes could be dynamic (more lengths for a while, more compression
+# for a while).  But if compression is important, lots more could be done by compressing the whole
+# stream in some kind of lossless method, e.g. zlib.
 
 # What to call it?
 #     lengthed export
@@ -2225,11 +2292,16 @@ assert 'function' == type_name(type_name)
 # it's so wild.  Why wild?  Well if one of the Numbers inside a Suffix (type, payload)
 # were itself suffixed, then those bytes would be in double-reverse order, i.e. normal.
 # It would be very hard to interpret a Suffixed Number looking at the qstring.
-# But how would it compare to an existing suffix?
+# But how would it compare in terms of byte-efficiency, to the existing Suffix scheme?
+# An actual functional drawback would be the loss of sort order.  One lex's idn referring to
+#     another lex's idn would have it stored in reverse order (the root identifies the other lex)
+#     But then several idns from that lex would not sort by raw.
 #
 # If we did have two directions of lengthed-exports, it would be wild if they could be named
 # b-something for the left-lengthed and d-something for right-lengthed.
 # Then the strings could be e.g. 0b123456 and 0d563412 (or 563412d0!)
 # "boxed" both starts with a b and ends with a d.
-# Oh wait, b and d are both valid hex digits, that seems wrong somehow.  Neat how p and q are not.
-# s and z are mirrors in almost all fonts and styles.  k and y are kinda rotated versions.
+# Oh wait, b and d are both valid hex digits, that seems wrong somehow.  Good thing p and q are not.
+# s and z are mirrors in almost all fonts and styles.
+# k and y are kinda rotated versions.  u/n and m/w are kinda rotated pairs too.
+# In a way the existing Suffix scheme is already a right-lengthed export, with payload-type-length-00
