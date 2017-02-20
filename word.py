@@ -1009,6 +1009,9 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         pass
 
 
+# TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
+
+
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
 class LexMySQL(Lex):
     def __init__(self, **kwargs):
@@ -1333,7 +1336,7 @@ class LexMySQL(Lex):
         jbo_strictly=False,
         debug=False
     ):
-        # TODO:  Lex.find()
+        # TODO:  Lex.find()  It should return inchoate words.  Best of both find_words and find_idns.
         """
         Select words by subject, verb, and/or object.
 
@@ -1489,7 +1492,8 @@ class LexMySQL(Lex):
         Build a prepared statement query from a list of sql statement fragments
         interleaved with data parameters.
 
-        Return the two parameters to cursor.execute(), namely a tuple of query and parameters.
+        Return a tuple of the two parameters for cursor.execute(),
+        Namely (query, parameters) where query is a string with ?'s.
         """
         # TODO:  Recursive query_args?
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
@@ -1524,7 +1528,7 @@ class LexMySQL(Lex):
                 #     super_select('SELECT * in word WHERE txt=', 'define')
                 # Which could be an SQL injection bug.
                 # But that would break anyway (unless searching for .e.g 'txt').
-                # And I'm getting tired of all the Nones.
+                # And I'm getting tired of all the Nones to separate strings that aren't parameters.
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
@@ -1840,6 +1844,7 @@ class QoolbarSimple(Qoolbar):
         :rtype: collections.Iterable[dict[string, string]]
         """
         # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
+        # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991
         # Then we wouldn't have to translate verbs to verb_dicts:
         verbs = self.get_verbs(debug)
         for verb in verbs:

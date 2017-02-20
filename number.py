@@ -2070,23 +2070,25 @@ assert 'function' == type_name(type_name)
 
 # FORMAL DEFINITION:
 # The way to look at the lengthed-export version of a Number is that it always conceptually consists of:
-#     7E-part, length-part, raw-part, 00-part
+#
+#     7E-part   length-part   raw-part   00-part
 #
 # 7E-part is Np bytes of literal 7E.
 #     the 7E-part may be omitted if length-part (N) is 0 to 7D.
 # length-part (call its value N) is stored in Np bytes representing a big-endian length N
 #     So clearly N < 256**Np
 #     both 7E-part and length-part may be omitted for an unsuffixed integer -1 to 2**992-1
-# raw-part is N bytes, identical to the bytes of Number.raw
+# raw-part is N bytes, identical to Number.raw
 # 00-part consists of 00 bytes.
 #     It only exists if 7E-part and length-part are omitted.
-#     It serves to make the total length (of the raw-part after its first byte)
-#         equal to the first raw byte minus 81.
+#     It pads the qan (the raw-part after its first byte)
+#         so that its length equals the qex (first raw byte) minus 81.
 #         Except for Number(0) where the raw-part is 80.
 #             Then the 00-part is not -1 bytes, it's just empty.
 #         And except for Number(-1) where the raw-part is 7F.
 #             Then the 00-part is not -2 bytes, it's just empty.
-#     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256.
+#     So the 00-part is only nonempty (1 or more bytes) for unsuffixed integer multiples of 256
+#         up to and including 2**992-256.
 #     And it's 2 or more bytes for unsuffixed integer multiples of 256**2, etc.
 # 7F is an alias for 027DFF representing 0q7D_FF aka -1.
 # 81 is an alias for 8201 representing 0q82_01 aka 1.
@@ -2133,12 +2135,24 @@ assert 'function' == type_name(type_name)
 #     stream byte array
 #     morse code
 #     packet
+#         This one is warming.
+#         It's understood to have some kind of "header".
 #     packetized
+#     crated
 #     Think of a tardigrade, dessicated.  And reconstituted back to life.
 #         but this is not condensing, in fact it is expanding.
+#         Unless there WERE some kind of compression going on.  There is the 0q82_01 <==> 0q82 thing.
+#         Yeah, -1 and +1 are fewer bytes.
+#             0q82_01.packet() == '\x81'
+#             0q7D_FF.packet() == '\x7F'
+#         But -2 and +0.5 are more bytes.
+#             0q7D_FE.packet() == '\x02\x7D\xFE'
+#             0q81FF_80.packet() == '\x03\x81\xFF\x80'
 #         really it is more like a packetized number
 #     pickled?  That term is taken, but something analogous...
 #     fermented?
+#     distilled??  nah
+#     brewed
 #     calcified
 #     emulsified
 #     cauterized
@@ -2149,6 +2163,9 @@ assert 'function' == type_name(type_name)
 #     dragee (jordan almond)
 #     sun dried
 #     shell (except that verb normally means to remove, so does un-shell mean to ADD a shell??)
+#     dehydrated, hydrated (except the dehydrated form is bigger)
+#     salted (already used for encryption)
+#     plastic, versus organic
 
 # Or maybe this is really similar to pickling.
 
