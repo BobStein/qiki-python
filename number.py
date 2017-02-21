@@ -2159,7 +2159,7 @@ assert 'function' == type_name(type_name)
 # ---------------------------------------
 # Byte0
 # -----
-# FF - However many FF bytes, that's how many bytes encode the (big-endian) length.
+# FF - Count consecutive starting FF bytes, that's how many bytes follow that encoding the (big-endian) length. That many bytes after both of those is raw.
 #      e.g. FFFF0100(and then a 256-byte raw)
 # C0-FE - open for expansion (63 values)
 # 82-BF - positive integers +2 to +2**496-1.  Length (not including Byte0) is Byte0-81.  Entire export identical to raw.
@@ -2215,7 +2215,7 @@ assert 'function' == type_name(type_name)
 #     p-string
 #         "packed"
 #         "packet"
-#         but it is not a string
+#         but it is not a "string" in the sense that the qstring is a printable string
 #         but p has some symmetry with q
 #         but the p-string is really too different from the q-string
 #     b or d string would also be symmetrical with q, but it should rather be symmetrical with raw
