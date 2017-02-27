@@ -283,6 +283,7 @@ class Number(numbers.Complex):
 
     def __getstate__(self):
         """For the 'pickle' package, object serialization."""
+        # TODO:  Test with dill.
         return self.raw
 
     def __setstate__(self, d):
@@ -689,21 +690,22 @@ class Number(numbers.Complex):
 
     def _from_qstring(self, s):
         """Fill in raw from a qstring."""
-        digits = s[2:].replace('_', '')
+        s_without_0q = s[2:]
+        digits = s_without_0q.replace('_', '')
         if len(digits) % 2 != 0:
             digits += '0'
         try:
             byte_string = string_from_hex(digits)
         except string_from_hex.Error:
             raise self.ConstructorValueError(
-                "A q-string must use hexadecimal digits (or underscore), not {}".format(repr(s))
+                "A q-string consists of hexadecimal digits or underscores, not {}".format(repr(s))
             )
         self.raw = six.binary_type(byte_string)
 
     def _from_int(self, i):
-        if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81+e)
+        if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81 + e)
         elif i == 0:   self.raw = self.RAW_ZERO
-        else:          self.raw = self._raw_from_int(i, lambda e: 0x7E-e)
+        else:          self.raw = self._raw_from_int(i, lambda e: 0x7E - e)
 
     @classmethod
     def _raw_from_int(cls, i, qex_encoder):
@@ -724,12 +726,13 @@ class Number(numbers.Complex):
     def _qex_int_byte(cls, qex_integer):
         """Store encoded qex in a single byte, in the raw."""
         if 0x01 <= qex_integer <= 0xFE:
-            # NOTE:  0x00 and 0xFF are for unreasonable numbers (ludicrous or transfinite).
             return six.int2byte(qex_integer)
         else:
+            # NOTE:  0x00 and 0xFF are for unreasonable numbers (ludicrous or transfinite).
             raise cls.LudicrousNotImplemented(
-                "Ludicrous Numbers are not yet implemented:  " + str(qex_integer)
+                "Ludicrous Numbers are not yet implemented:  {:02x}".format(qex_integer)
             )
+
     QIGITS_PRECISION_DEFAULT = 8
 
     SMALLEST_UNREASONABLE_FLOAT = 2.0 ** 1000   # == 256.0**125 ~~ 1.0715086071862673e+301
@@ -766,11 +769,11 @@ class Number(numbers.Complex):
 
         if math.isnan(x):  self.raw =           self.RAW_NAN
         elif x >= smurf:   self.raw =           self._raw_unreasonable_float(x)
-        elif x >=  1.0:    self.raw =           self._raw_from_float(x, lambda e: 0x81+e, qigits)
-        elif x >   0.0:    self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF+e, qigits)
+        elif x >=  1.0:    self.raw =           self._raw_from_float(x, lambda e: 0x81 + e, qigits)
+        elif x >   0.0:    self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF + e, qigits)
         elif x ==  0.0:    self.raw =           self.RAW_ZERO
-        elif x >  -1.0:    self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00-e, qigits)
-        elif x > -smurf:   self.raw =           self._raw_from_float(x, lambda e: 0x7E-e, qigits)
+        elif x >  -1.0:    self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00 - e, qigits)
+        elif x > -smurf:   self.raw =           self._raw_from_float(x, lambda e: 0x7E - e, qigits)
         else:              self.raw =           self._raw_unreasonable_float(x)
 
     @classmethod
@@ -1073,7 +1076,7 @@ class Number(numbers.Complex):
     def hex(self):
         """Like the printable qstring() but simpler (no 0q prefix, no underscores).
 
-        assert '822A' == Number('0q82_42').hex()
+        assert '822A' == Number('0q82_2A').hex()
         """
         return hex_from_string(self.raw)
 
@@ -1173,6 +1176,7 @@ class Number(numbers.Complex):
                 else:
                     return                      Zone.NAN
 
+
     # TODO:  Alternative suffix syntax
     # n.suffixes() === n.parse_suffixes()[1:]
     # n.root === n.parse_suffixes()[0]
@@ -1185,7 +1189,6 @@ class Number(numbers.Complex):
     # Number(n, *[suffix for suffix in n.suffixes() if suffix.type != t]) === n.minus_suffix(t)
     # s = n.suffixes(); s.remove(t); m = Number(n.root, s) ; m = n.minus_suffix(t)
     # n - Suffix(t) === n.minus_suffix(t)
-
 
     def is_suffixed(self):
         return_value = self.raw[-1:] == b'\x00'
@@ -1216,7 +1219,7 @@ class Number(numbers.Complex):
         )
         if self.is_nan():
             # TODO:  Is this really so horrible?  A suffixed NAN?  e.g. 0q__7F0100
-            raise Suffix.RawError
+            raise Suffix.RawError("Number.NAN may not be suffixed.")
         if isinstance(suffix_or_type, Suffix):
             the_suffix = suffix_or_type
             return self.from_raw(self.raw + the_suffix.raw)
@@ -1240,14 +1243,14 @@ class Number(numbers.Complex):
             else:
                 new_number = new_number.plus_suffix(suffix.type_, suffix.payload)
         if not any_deleted:
-            raise Suffix.NoSuchType
+            raise Suffix.NoSuchType("Number {} had no suffix type {:02x}".format(self.qstring(), old_type))
         return new_number
 
     def get_suffix(self, sought_type):
         for suffix in self.suffixes:
             if suffix.type_ == sought_type:
                 return suffix
-        raise Suffix.NoSuchType
+        raise Suffix.NoSuchType("Number {} has no suffix type {:02x}".format(self.qstring(), sought_type))
 
     def get_suffix_payload(self, sought_type):
         # TODO:  Default value instead of NoSuchType?
@@ -1651,8 +1654,8 @@ class Suffix(object):
                     0x00
                 )))
             else:
-                raise self.PayloadError("Suffix payload is {} bytes too long.".format(
-                    str(len(self.payload) - self.MAX_PAYLOAD_LENGTH))
+                raise self.PayloadError("Suffix payload is {:d} bytes too long.".format(
+                    len(self.payload) - self.MAX_PAYLOAD_LENGTH)
                 )
 
     def __eq__(self, other):
@@ -1746,12 +1749,10 @@ def string_from_hex(s):
         TypeError,        # binascii.unhexlify('nonsense') in Python 2.
         binascii.Error,   # binascii.unhexlify('nonsense') in Python 3.
     ):
-        raise string_from_hex.Error("This is not hexadecimal: " + repr(s))
-    assert return_value == bytes(bytearray.fromhex(s))
+        raise string_from_hex.Error("Not an even number of hexadecimal digits: " + repr(s))
+    assert return_value == six.binary_type(bytearray.fromhex(s))
     return return_value
-class _StringFromHexError(ValueError):
-    pass
-string_from_hex.Error = _StringFromHexError
+string_from_hex.Error = type(str('string_from_hex_Error'), (ValueError,), {})
 assert b'\xBE\xEF' == string_from_hex('BEEF')
 
 
@@ -1768,21 +1769,22 @@ def exp256(e):
     """Compute 256**e for nonnegative integer e."""
     assert isinstance(e, six.integer_types)
     assert e >= 0
-    return 1 << (e<<3)   # which is the same as 2**(e*8) or (2**8)**e or 256**e
+    return 1 << (e<<3)   # == 2**(e*8) == (2**8)**e == 256**e
 assert 256 == exp256(1)
 assert 65536 == exp256(2)
 
 
 def log256(i):
     """Compute the log base 256 of an integer.  Return the floor integer."""
+    assert isinstance(i, six.integer_types)
     assert i > 0
     return_value = (i.bit_length()-1) >> 3
-    assert return_value == math.floor(math.log(i, 256)) or i > 2**47, "{0} {1} {2}".format(
+    assert return_value == len(hex_from_integer(i))//2 - 1
+    assert return_value == math.floor(math.log(i, 256)) or i >= 2**48-1, "Math.log disagrees, {} {} {}".format(
         i,
         return_value,
         math.floor(math.log(i, 256))
     )
-    assert return_value == len(hex_from_integer(i))//2 - 1
     return return_value
 assert 1 == log256(256)
 assert 2 == log256(65536)
@@ -1839,7 +1841,7 @@ assert b'string' == right_strip00(b'string\x00\x00')
 # ------------------------------
 def pack_integer(the_integer, nbytes=None):
     """
-    Pack an integer into a binary string, which is like a base-256, big-endian string.
+    Pack an integer into a binary string, which becomes a kind of base-256, big-endian number.
 
     :param the_integer:  an arbitrarily large integer
     :param nbytes:  number of bytes (base-256 digits aka qigits) to output (omit for minimum)
@@ -1970,7 +1972,7 @@ assert 'function' == type_name(type_name)
 # TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces
 # (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
-# TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should be '0q'
+# TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should (continue to) be '0q'
 # TODO:  Number.natural() should be int() if whole, float if non-whole.
 # Maybe .__str__() should call .natural()
 
@@ -2159,8 +2161,8 @@ assert 'function' == type_name(type_name)
 # ---------------------------------------
 # Byte0
 # -----
-# FF - Count consecutive starting FF bytes, that's how many bytes follow that encoding the (big-endian) length. That many bytes after both of those is raw.
-#      e.g. FFFF0100(and then a 256-byte raw)
+# FF - Count consecutive starting FF bytes, that's how many bytes follow that encoding the (big-endian) length.
+#      That many bytes after both of those is raw.  e.g. FFFF0100(and then a 256-byte raw)
 # C0-FE - open for expansion (63 values)
 # 82-BF - positive integers +2 to +2**496-1.  Length (not including Byte0) is Byte0-81.  Entire export identical to raw.
 # 81 - +1
@@ -2224,6 +2226,9 @@ assert 'function' == type_name(type_name)
 #     stream byte array
 #     morse code
 #     packet
+#         good that it's similar to pickle but it's not pickle
+#         or maybe not, pickling has more to do with making a byte stream,
+#         and anyway it doesn't seem that pickled data knows its length
 #     packetized
 #     Think of a tardigrade, dessicated.  And reconstituted back to life.
 #         but this is not condensing, in fact it is expanding.
@@ -2240,6 +2245,10 @@ assert 'function' == type_name(type_name)
 #     dragee (jordan almond)
 #     sun dried
 #     shell (except that verb normally means to remove, so does un-shell mean to ADD a shell??)
+#     serialized
+#     marshalled
+#     flattened
+#     gherkin (or some other pickle, though dill is taken, SEE http://dare.wisc.edu/survey-results/1965-1970/foods/h56)
 
 # Or maybe this is really similar to pickling.
 
@@ -2265,6 +2274,11 @@ assert 'function' == type_name(type_name)
 #     and Suffix.type would correspond to Word.vrb
 #     and Suffix.payload                  Word.obj
 #     and Suffix.user/definer             Word.sbj
+#
+# Freaky thought:  What if a word and a number were the same thing!?!
+#
+# I keep trying to unify everything else.
+# A regular "number" could be a word with a value and no sbj,vrb,obj?
 
 # NOTE:  The lengthed export is only lengthed from the "left". It cannot be interpreted from the "right".
 # That is, if the byte stream is coming in reverse order for some reason,

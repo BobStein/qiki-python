@@ -2499,11 +2499,15 @@ class NumberMathTests(NumberTests):
         def test_inc_powers_of_2(self):   # Takes take a long time, 2-12 seconds.
             power_of_two = 1
             for binary_exponent in range(0,1000):
+                self.assert_inc_works_on(power_of_two-4)
+                self.assert_inc_works_on(power_of_two-3)
                 self.assert_inc_works_on(power_of_two-2)
                 self.assert_inc_works_on(power_of_two-1)
                 self.assert_inc_works_on(power_of_two)
                 self.assert_inc_works_on(power_of_two+1)
                 self.assert_inc_works_on(power_of_two+2)
+                self.assert_inc_works_on(power_of_two+3)
+                self.assert_inc_works_on(power_of_two+4)
                 power_of_two *= 2
 
 
