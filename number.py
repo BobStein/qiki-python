@@ -430,10 +430,22 @@ class Number(numbers.Complex):
     def __rmul__(self, other): return self._binary_op(operator.__mul__, other, self)
     def __truediv__( self, other): return self._binary_op(operator.__truediv__, self, other)
     def __rtruediv__(self, other): return self._binary_op(operator.__truediv__, other, self)
-    def __div__( self, other): return self._binary_op(operator.__div__, self, other)
-    def __rdiv__(self, other): return self._binary_op(operator.__div__, other, self)
+    def __floordiv__( self, other): return self._binary_op(operator.__floordiv__, self, other)
+    def __rfloordiv__(self, other): return self._binary_op(operator.__floordiv__, other, self)
     def __pow__( self, other): return self._binary_op(operator.__pow__, self, other)
     def __rpow__(self, other): return self._binary_op(operator.__pow__, other, self)
+    if six.PY2:
+        def __div__(self, other):
+            """
+            Implement the hybrid division (true one-slash with floats, floor two-slash with integers).
+
+            Even though we import division from __future__ here, a client might not.
+            """
+            # noinspection PyUnresolvedReferences
+            return self._binary_op(operator.__div__, self, other)
+        def __rdiv__(self, other):
+            # noinspection PyUnresolvedReferences
+            return self._binary_op(operator.__div__, other, self)
 
     def _unary_op(self, op):
         n = Number(self)
@@ -875,7 +887,7 @@ class Number(numbers.Complex):
 
     if six.PY2:
         def __long__(self):
-           # noinspection PyCompatibility
+           # noinspection PyCompatibility,PyUnresolvedReferences
            return long(self.__int__())
 
     def __complex__(self):
@@ -1718,30 +1730,31 @@ assert '0100' == hex_from_integer(256)
 
 
 def string_from_hex(s):
+    # noinspection SpellCheckingInspection
     """
-    Decode a hexadecimal string into an 8-bit binary (base-256) string.
+        Decode a hexadecimal string into an 8-bit binary (base-256) string.
 
-    Raises string_from_hex.Error if s is not an even number of hex digits.
-    The string_from_hex.Error exception is a ValueError.  Why a ValueError?
-        Pro:  bytearray.fromhex('nonsense') raises a ValueError
-        Pro:  int('0xNonsense', 0) raises a ValueError
-        Con:  binascii.unhexlify('nonsense') raises a TypeError in Python 2
-        Con:  binascii.unhexlify('nonsense') raises a binascii.Error in Python 3
+        Raises string_from_hex.Error if s is not an even number of hex digits.
+        The string_from_hex.Error exception is a ValueError.  Why a ValueError?
+            Pro:  bytearray.fromhex('nonsense') raises a ValueError
+            Pro:  int('0xNonsense', 0) raises a ValueError
+            Con:  binascii.unhexlify('nonsense') raises a TypeError in Python 2
+            Con:  binascii.unhexlify('nonsense') raises a binascii.Error in Python 3
 
-    NOTE:  binascii.unhexlify() is slightly faster than bytearray.fromhex()
+        NOTE:  binascii.unhexlify() is slightly faster than bytearray.fromhex()
 
-    2.7>>>timeit.timeit('bytes(bytearray.fromhex("123456789ABCDEF0"))', number=1000000)
-    0.3824402171467758
-    2.7>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
-    0.30095773581510343
+        2.7>>>timeit.timeit('bytes(bytearray.fromhex("123456789ABCDEF0"))', number=1000000)
+        0.3824402171467758
+        2.7>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
+        0.30095773581510343
 
-    3.5>>>timeit.timeit('bytes.fromhex("123456789ABCDEF0")', number=1000000)
-    0.16179575853203687
-    3.5>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
-    0.12774858387598442
+        3.5>>>timeit.timeit('bytes.fromhex("123456789ABCDEF0")', number=1000000)
+        0.16179575853203687
+        3.5>>>timeit.timeit('binascii.unhexlify("123456789ABCDEF0")', number=1000000, setup='import binascii')
+        0.12774858387598442
 
-    Possibly because fromhex is more permissive:  bytearray.fromhex('12 AB')
-    """
+        Possibly because fromhex is more permissive:  bytearray.fromhex('12 AB')
+        """
     assert(isinstance(s, six.string_types))
     try:
         return_value = binascii.unhexlify(s)
@@ -1823,10 +1836,10 @@ assert False == floats_really_same(+0.0, -0.0)
 
 # Padding and Unpadding Strings
 # -----------------------------
-def left_pad00(the_string, nbytes):
-    """Make a string nbytes long by padding '\x00' bytes on the left."""
+def left_pad00(the_string, num_bytes):
+    """Make a string num_bytes long by padding '\x00' bytes on the left."""
     assert(isinstance(the_string, six.binary_type))
-    return the_string.rjust(nbytes, b'\x00')
+    return the_string.rjust(num_bytes, b'\x00')
 assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
@@ -1839,37 +1852,37 @@ assert b'string' == right_strip00(b'string\x00\x00')
 
 # Packing and Unpacking Integers
 # ------------------------------
-def pack_integer(the_integer, nbytes=None):
+def pack_integer(the_integer, num_bytes=None):
     """
     Pack an integer into a binary string, which becomes a kind of base-256, big-endian number.
 
     :param the_integer:  an arbitrarily large integer
-    :param nbytes:  number of bytes (base-256 digits aka qigits) to output (omit for minimum)
+    :param num_bytes:  number of bytes (base-256 digits aka qigits) to output (omit for minimum)
     :return:  an unsigned two's complement string, MSB first
 
-    Caution, there may not be a "sign bit" in the output unless nbytes is large enough.
+    Caution, there may not be a "sign bit" in the output unless num_bytes is large enough.
         assert     b'\xFF' == pack_integer(255)
         assert b'\x00\xFF' == pack_integer(255,2)
         assert     b'\x01' == pack_integer(-255)
         assert b'\xFF\x01' == pack_integer(-255,2)
-    Caution, nbytes lower than the minimum may not be enforced, see unit tests.
+    Caution, num_bytes lower than the minimum may not be enforced, see unit tests.
     """
 
-    if nbytes is None:
-        nbytes =  log256(abs(the_integer)) + 1
+    if num_bytes is None:
+        num_bytes =  log256(abs(the_integer)) + 1
 
-    if nbytes <= 8 and 0 <= the_integer < 4294967296:
-        return struct.pack('>Q', the_integer)[8-nbytes:]  # timeit:  4x as fast as the Mike Boers way
-    elif nbytes <= 8 and -2147483648 <= the_integer < 2147483648:
-        return struct.pack('>q', the_integer)[8-nbytes:]
+    if num_bytes <= 8 and 0 <= the_integer < 4294967296:
+        return struct.pack('>Q', the_integer)[8-num_bytes:]  # timeit:  4x as fast as the Mike Boers way
+    elif num_bytes <= 8 and -2147483648 <= the_integer < 2147483648:
+        return struct.pack('>q', the_integer)[8-num_bytes:]
     else:
-        return pack_big_integer_via_hex(the_integer, nbytes)
+        return pack_big_integer_via_hex(the_integer, num_bytes)
         # NOTE:  Pretty sure this could never ever raise string_from_hex.Error
 assert b'\x00\xAA' == pack_integer(170,2)
 assert b'\xFF\x56' == pack_integer(-170,2)
 
 
-def pack_big_integer_via_hex(num, nbytes):
+def pack_big_integer_via_hex(num, num_bytes):
     """
     Pack an arbitrarily large integer into a binary string, via hexadecimal encoding.
 
@@ -1879,14 +1892,14 @@ def pack_big_integer_via_hex(num, nbytes):
     if num >= 0:
         num_twos_complement = num
     else:
-        num_twos_complement = num + exp256(nbytes)   # two's complement of big negative integers
+        num_twos_complement = num + exp256(num_bytes)   # two's complement of big negative integers
     return left_pad00(
         string_from_hex(
             hex_from_integer(
                 num_twos_complement
             )
         ),
-        nbytes
+        num_bytes
     )
 assert b'\x00\xAA' == pack_big_integer_via_hex(170,2)
 assert b'\xFF\x56' == pack_big_integer_via_hex(-170,2)
@@ -1964,7 +1977,7 @@ assert 'function' == type_name(type_name)
 # TODO:  __add__, __mul__, etc. native
 # TODO:  other Number(string)s, e.g. assert 1 == Number('1')
 
-# TODO:  hooks to add features modularly, e.g. suffixes
+# TODO:  hooks to add features in some modular way, e.g. suffixes
 # TODO:  change % to .format()
 # TODO:  change raw from str/bytes to bytearray?
 # SEE:  http://ze.phyr.us/bytearray/

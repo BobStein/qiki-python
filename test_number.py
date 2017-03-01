@@ -120,13 +120,13 @@ class NumberBasicTests(NumberTests):
     def test_unicode(self):
         n = Number('0q83_03E8')
         if six.PY2:
-            # noinspection PyCompatibility
+            # noinspection PyCompatibility,PyUnresolvedReferences
             self.assertEqual('0q83_03E8', unicode(n))
-            # noinspection PyCompatibility
+            # noinspection PyCompatibility,PyUnresolvedReferences
             self.assertEqual('unicode', type(unicode(n)).__name__)
         else:
             with self.assertRaises(NameError):
-                # noinspection PyCompatibility
+                # noinspection PyCompatibility,PyUnresolvedReferences
                 unicode(n)
 
     def test_unicode_output(self):
@@ -2402,6 +2402,33 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__truediv__, 7.0, 42.0, 6.0)
         self.binary_op(operator.__truediv__, 1.5, 3.75, 2.5)
         self.binary_op(operator.__truediv__, 1+2j, -5+10j, 3+4j)
+        self.assertEqual('0q82_07',              (Number('0q82_2A')              / Number('0q82_06')).qstring())
+        self.assertEqual('0q82_0180',            (Number('0q82_03C0')            / Number('0q82_0280')).qstring())
+        self.assertEqual('0q82_01__8202_690300', (Number('0q7D_FB__820A_690300') / Number('0q82_03__8204_690300')).qstring())
+
+    def test_floordiv(self):
+        self.binary_op(operator.__floordiv__, 7, 47, 6)
+        self.binary_op(operator.__floordiv__, 2.0, 6.0, 2.5)
+        self.assertEqual('0q82_07', (Number(47)  // Number(6)).qstring())
+        self.assertEqual('0q82_02', (Number(6.0) // Number(2.5)).qstring())
+
+    def test_floordiv_complex(self):
+        """
+        Floor-division with complex numbers is
+            odd in Python 2:
+                floor() seems to strip the imaginary part.
+            disallowed in Python 3:
+                TypeError: can't take floor of complex number.
+        """
+        if six.PY2:
+            self.binary_op(operator.__floordiv__, 1+0j,  -5+10j,     3+4j )
+            self.assertEqual(                     1+0j, (-5+10j) // (3+4j))
+            self.assertEqual(                     1+2j, (-5+10j) /  (3+4j))
+        else:
+            with self.assertRaises(TypeError):
+                self.binary_op(operator.__floordiv__, 1+0j, -5+10j,   3+4j)
+            with self.assertRaises(TypeError):
+                self.assertEqual(                     1+0j, -5+10j // 3+4j)
 
     def test_div(self):
         if six.PY2:
@@ -3667,15 +3694,16 @@ class PythonTests(NumberTests):
     Checking assumptions about Python itself.
     """
 
-    def test_00_python_float_equality_weirdnesses(self):
+    def test_00_python_float_equality_weirdness(self):
         self.assertEqual(+0.0, -0.0)
         self.assertNotEqual(float('nan'), float('nan'))
 
     def test_00_python_ldexp(self):
+        """ldexp() does more than invert frexp() -- it doesn't require a normalized mantissa"""
         self.assertEqual(   1.0, math.ldexp(   .5, 1))
         self.assertEqual(  -1.0, math.ldexp(  -.5, 1))
         self.assertEqual(   3.0, math.ldexp(  .75, 2))
-        self.assertEqual( 100.0, math.ldexp(   25, 2))   # ldexp() does more than invert frexp() -- it doesn't require a normalized mantissa
+        self.assertEqual( 100.0, math.ldexp(   25, 2))
         self.assertEqual( 625.0, math.ldexp( 2500, -2))
         self.assertEqual(-625.0, math.ldexp(-2500, -2))
 
