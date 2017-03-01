@@ -2399,6 +2399,7 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__mul__, 6+8j, 2, 3+4j)
 
     def test_truediv(self):
+        """Single-slash true division outputs floating point."""
         self.binary_op(operator.__truediv__, 7.0, 42.0, 6.0)
         self.binary_op(operator.__truediv__, 1.5, 3.75, 2.5)
         self.binary_op(operator.__truediv__, 1+2j, -5+10j, 3+4j)
@@ -2407,10 +2408,38 @@ class NumberMathTests(NumberTests):
         self.assertEqual('0q82_01__8202_690300', (Number('0q7D_FB__820A_690300') / Number('0q82_03__8204_690300')).qstring())
 
     def test_floordiv(self):
+        """Double-slash floor division truncates toward negative infinity, outputing the nearest whole number."""
         self.binary_op(operator.__floordiv__, 7, 47, 6)
         self.binary_op(operator.__floordiv__, 2.0, 6.0, 2.5)
         self.assertEqual('0q82_07', (Number(47)  // Number(6)).qstring())
         self.assertEqual('0q82_02', (Number(6.0) // Number(2.5)).qstring())
+
+    def test_hybrid_division(self):
+        """
+        Test hybrid division:  integers floor-divide, non-integers true-divide.
+
+        Python 2 int single-slash int behaves like double-slash, when not importing division from __future__
+        We can't unimport future division, see http://stackoverflow.com/q/12498866/673991
+        So instead we call the __div__() method directly.
+
+        Possibly a bad idea to mimic single-slash hybrid division in Python 2
+        because qiki numbers can't distinguish Number(2) from Number(2.0).
+        But foisting true division on all Number()/Number() computations would probably
+        do something weird with the int/float boundaries.  More thought needed.
+        """
+        if six.PY2:
+            self.assertEqual('0q82_02',   Number('0q82_05').__div__(Number('0q82_02')))
+            self.assertEqual('0q82_02C0', Number('0q82_0580').__div__(Number('0q82_02')))
+
+            self.assertEqual(Number(2),    Number(5).__div__(Number(2)))   # floor-div because 5 and 2 are whole
+            self.assertEqual(Number(2.75), Number(5.5).__div__(Number(2)))   # true-div because 5.5 is not whole
+
+            self.assertEqual(Number(2),    Number(5) //  Number(2))
+            self.assertEqual(Number(2.5),  Number(5) /   Number(2))   # true-div because from __future__ import division
+            self.assertEqual(Number(2.75), Number(5.5) / Number(2))
+        else:
+            with self.assertRaises(AttributeError):
+                Number('0q82_05').__div__(Number('0q82_02'))
 
     def test_floordiv_complex(self):
         """

@@ -447,6 +447,9 @@ class Number(numbers.Complex):
             # noinspection PyUnresolvedReferences
             return self._binary_op(operator.__div__, other, self)
 
+    # TODO:  Should large (2**54) Numbers divide using int or float?  Based solely on whether they're whole?
+    # Problem:  Number(2e20)/Number(3e20) == Number(0) in Python 2 and no simple way to make it a true-div.
+
     def _unary_op(self, op):
         n = Number(self)
         if n.is_complex():
