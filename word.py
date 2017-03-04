@@ -28,7 +28,7 @@ class Word(object):
 
     Each of these seven components of a word has a 3-letter symbol.
     (idn, sbj, vrb, obj, num, txt, whn)
-    This helps a little in searching for the symbol, and avoiding Python reserved words.
+    This helps a little in searching for the symbol, and avoiding reserved words.
 
     A word is fundamentally, uniquely, and forever defined by its idn,
     within the context of its Lex,
@@ -41,12 +41,13 @@ class Word(object):
     :type obj: Number | Word
     :type num: Number
     :type txt: Unicode in either Python 2 or 3
-    :type lex: Word
+    :type lex: Lex
 
-    Note:  instantiation.txt is always Unicode
+    Note:  any_word_instance.txt is always Unicode
     """
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
+        assert isinstance(lex, (Lex, type(None)))
         self.lex = lex
         if Text.is_valid(content):   # e.g. Word('agent')
             self._from_definition(content)
@@ -97,7 +98,7 @@ class Word(object):
             word.whn
             word.exists()
 
-        These also make a word choate, but they do so implicitly
+        The following also make a word choate, and they also do so implicitly
         because they use one of the above members:
             str(word)
             repr(word)
@@ -121,32 +122,37 @@ class Word(object):
         It also makes it possible to work with a list of words
         in a way that's almost as resource-efficient as a list of idns.
         """
-        # TODO:  Refactor _is_inchoate property to check for the existence of self._fields
+        # DONE:  Refactor _is_inchoate property to check for the existence of self._fields instead.
         # CAUTION:  But Word(content=None) does populate self._fields, and Listing relies on that,
         # AND expects to instantiate to an inchoate word, so that needs to be refactored too.
         self._idn = idn
-        self._is_inchoate = True
-        # assert self.lex is not None   # lex == None if you:  x = ListingSubclass(index)
+        # self._is_inchoate = True
+        # assert self.lex is not None   # Nope, lex == None if you:  x = ListingSubclass(index)
 
     def _choate(self):
         """
         Transform an inchoate word into a not-inchoate word.
 
-        That is for a mere container of an idn to a fleshed-out word
+        That is, from a mere container of an idn to a fleshed-out word
         with num and txt (and if not a Listing, sbj, vrb, obj).
         This in preparation to use one of its properties, sbj, vrb, obj, txt, num, whn.
         """
         if self._is_inchoate:
-            del self._is_inchoate
+            # del self._is_inchoate
+            # self._fields = dict()
             self._from_idn(self._idn)
 
     def exists(self):
+        """"Does this word exist?  Is it stored in a Lex?"""
+        # TODO:  What about Listing words?
         self._choate()
-        return self._exists
+        return hasattr(self, '_exists') and self._exists   # WTF isn't hasattr() enough?
 
     def _now_it_exists(self):
+        """Declare that a word "exists"."""
         self._exists = True
 
+    # Hard-code the idns of the fundamental words.
     _IDN_DEFINE = Number(1)
     _IDN_NOUN   = Number(2)
     _IDN_VERB   = Number(3)
@@ -155,39 +161,86 @@ class Word(object):
 
     _IDN_MAX_FIXED = Number(5)
 
-    class NoSuchAttribute(AttributeError):
-        pass
+    # class NoSuchAttribute(AttributeError):
+    #     pass
 
-    class NoSuchKwarg(TypeError):
-        pass
+    # class NoSuchKwarg(TypeError):
+    #     pass
 
-    class MissingObj(TypeError):
-        pass
+    # class MissingObj(TypeError):
+    #     pass
 
-    def __getattr__(self, attribute_name):
-        # TODO:  Make this all less smelly.  Comments and error messages included.  This one especially.
-        if attribute_name.startswith('_'):
-            # TODO:  What about ('_word_before_the_dot', '_fields')
-            # return None
-            if attribute_name in ('_exists', '_is_inchoate', '_idn'):
-                return None
-            # XXX:  More pythonic to raise AttributeError
-            raise AttributeError("Verbs starting with underscore can't use the subject.verb syntax: " + attribute_name)
-        if attribute_name in ('sbj', 'vrb', 'obj', 'num', 'txt', 'whn'):
-            self._choate()
-            # if self._fields is None:
-            #     return None
-            #     # XXX:  More pythonic to raise AttributeError
-            try:
-                return self._fields[attribute_name]
-            except KeyError:   # Why don't I need AttributeError here too for _fields?
-                return None
-                # XXX:  More pythonic to raise AttributeError
-        if attribute_name == 'do_not_call_in_templates':
-            # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
-            return True
+    # def __getattr__(self, attribute_name):
+    #     # # TODO:  Make this all less smelly.  Comments and error messages included.  This one especially.
+    #     # if attribute_name.startswith('_'):
+    #     #     # TODO:  What about ('_word_before_the_dot', '_fields')
+    #     #     # return None
+    #         if attribute_name in ('_exists',):
+    #             return None
+    #         raise AttributeError("Verbs starting with underscore can't use the subject.verb syntax: " + attribute_name)
+    #     # # if attribute_name in ('whn',):
+    #     # #     self._choate()
+    #     # #     # if self._fields is None:
+    #     # #     #     return None
+    #     # #     #     # XXX:  More pythonic to raise AttributeError
+    #     # #     try:
+    #     # #         return self._fields[attribute_name]
+    #     # #     except KeyError:   # Why don't I need AttributeError here too for _fields?
+    #     # #         return None
+    #     # #         # XXX:  More pythonic to raise AttributeError
+    #     # # if attribute_name == 'do_not_call_in_templates':
+    #     # #     # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
+    #     # #     return True
+    #     #
+    #     # raise AttributeError("This word has no ''{}'' member".format(attribute_name))
 
-        raise AttributeError("This word has no ''{}'' member".format(attribute_name))
+    @property
+    def _is_inchoate(self):
+        return None if hasattr(self, '_fields') else True
+
+    @property
+    def sbj(self):
+        return self._get_field('sbj')
+
+    @property
+    def vrb(self):
+        return self._get_field('vrb')
+
+    @property
+    def obj(self):
+        return self._get_field('obj')
+
+    @property
+    def num(self):
+        return self._get_field('num')
+
+    @property
+    def txt(self):
+        return self._get_field('txt')
+
+    @property
+    def whn(self):
+        return self._get_field('whn')
+
+    @whn.setter
+    def whn(self, new_whn):
+        self._set_field('whn', new_whn)
+
+    def _set_field(self, field_name, new_value):
+        self._choate()
+        self._fields[field_name] = new_value
+
+    def _get_field(self, field_name):
+        self._choate()
+        try:
+            return self._fields[field_name]
+        except KeyError:
+            return None
+
+    @property
+    def do_not_call_in_templates(self):
+        # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
+        return True
 
     class NotExist(Exception):
         pass
@@ -462,10 +515,11 @@ class Word(object):
         self.lex = other.lex
         # noinspection PyProtectedMember
         if other._is_inchoate:
-            # noinspection PyProtectedMember
-            self._idn         = other._idn
-            # noinspection PyProtectedMember
-            self._is_inchoate = other._is_inchoate
+            self._inchoate(other.idn)
+            # # noinspection PyProtectedMember
+            # self._idn         = other._idn
+            # # noinspection PyProtectedMember
+            # self._is_inchoate = other._is_inchoate
         else:
             assert other.exists()
             self._from_idn(other.idn)
@@ -651,10 +705,13 @@ class Word(object):
 
     @property
     def idn(self):
-        return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
+        try:
+            return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
                                    # TODO:  but then what about w.sbj.add_suffix(n), etc.?
                                    # So this passing through Number() is a bad idea.
                                    # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
+        except AttributeError:
+            return Number.NAN
 
     @idn.setter
     def idn(self, value):
@@ -670,7 +727,7 @@ class Word(object):
         assert isinstance(self.obj, Word), "{obj} is not a Word".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
-        if self.exists() or self._idn is None:
+        if self.exists() or self.idn == Number.NAN:
             self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
             # Or store latest idn in another table
@@ -807,15 +864,21 @@ class Listing(Word):
         # Did that morph a class property into an instance property?!?
 
         self._inchoate(idn)
+        self.__is_inchoate = True
 
         # self.lookup(self.index, self.lookup_callback)
         # self.lex = self.meta_word.lex
+
+    @property
+    def _is_inchoate(self):
+        return self.__is_inchoate
 
     def _from_idn(self, idn):
         assert idn.is_suffixed()
         assert idn.root == self.meta_word.idn
         assert idn.get_suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
         self.lookup(self.index, self.lookup_callback)
+        self.__is_inchoate = False
 
     # TODO:  @abstractmethod
     # TODO:  No parameters for lookup()?  Don't pass index, and just return txt and num?
@@ -1008,6 +1071,35 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
     class ConnectError(Exception):
         pass
 
+    def word_from_word_or_number(self, x):
+        raise NotImplementedError()
+
+    def populate_word_from_idn(self, word, idn):
+        raise NotImplementedError()
+
+    def populate_word_from_definition(self, word, define_txt):
+        raise NotImplementedError()
+
+    def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
+        raise NotImplementedError()
+
+    def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
+        raise NotImplementedError()
+
+    def noun(self, name=None):
+        raise NotImplementedError()
+
+    def verb(self, name=None):
+        raise NotImplementedError()
+
+    def find_words(self, **kwargs):
+        raise NotImplementedError()
+
+    def max_idn(self):
+        raise NotImplementedError()
+
+    def insert_word(self, word):
+        raise NotImplementedError()
 
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
@@ -1055,7 +1147,9 @@ class LexMySQL(Lex):
         self._noun = self[self._IDN_NOUN]
         self._verb = self[self._IDN_VERB]
 
-        assert self.exists()
+        assert self.exists(), self.__dict__
+        # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
+        # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
 
         self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         # THANKS:  http://stackoverflow.com/a/27390024/673991
