@@ -2414,32 +2414,42 @@ class NumberMathTests(NumberTests):
         self.assertEqual('0q82_07', (Number(47)  // Number(6)).qstring())
         self.assertEqual('0q82_02', (Number(6.0) // Number(2.5)).qstring())
 
-    def test_hybrid_division(self):
+    def test_hybrid_python_division(self):
         """
-        Test hybrid division:  integers floor-divide, non-integers true-divide.
+        Pyrhon 2 has hybrid division.  True-division for floats, floor-division for ints.
 
-        Python 2 int single-slash int behaves like double-slash, when not importing division from __future__
+        In Python 2, int single-slash int behaves like int double-slash int,
+        when not importing division from __future__.  But we do that import in this file.
         We can't unimport future division, see http://stackoverflow.com/q/12498866/673991
-        So instead we call the __div__() method directly.
-
-        Possibly a bad idea to mimic single-slash hybrid division in Python 2
-        because qiki numbers can't distinguish Number(2) from Number(2.0).
-        But foisting true division on all Number()/Number() computations would probably
-        do something weird with the int/float boundaries.  More thought needed.
+        So instead we call operator.__div__(), which does NOT honor our future imports.
         """
+        self.assertEqual(2.5, 5 / 2)
+        self.assertEqual(2, 5 // 2)
+
+        self.assertEqual(2.5, operator.__truediv__(5, 2))
+        self.assertEqual(2, operator.__floordiv__(5, 2))
+
         if six.PY2:
-            self.assertEqual('0q82_02',   Number('0q82_05').__div__(Number('0q82_02')))
-            self.assertEqual('0q82_02C0', Number('0q82_0580').__div__(Number('0q82_02')))
-
-            self.assertEqual(Number(2),    Number(5).__div__(Number(2)))   # floor-div because 5 and 2 are whole
-            self.assertEqual(Number(2.75), Number(5.5).__div__(Number(2)))   # true-div because 5.5 is not whole
-
-            self.assertEqual(Number(2),    Number(5) //  Number(2))
-            self.assertEqual(Number(2.5),  Number(5) /   Number(2))   # true-div because from __future__ import division
-            self.assertEqual(Number(2.75), Number(5.5) / Number(2))
+            self.assertEqual(2, operator.__div__(5, 2))
         else:
             with self.assertRaises(AttributeError):
-                Number('0q82_05').__div__(Number('0q82_02'))
+                operator.__div__(5, 2)
+
+    def test_no_hybrid_number_division(self):
+        """qiki.Number divides ala Python 3:  single-slash always means true division."""
+        self.assertEqual(2, operator.__floordiv__(5, 2))
+        self.assertEqual(2.5, operator.__truediv__(5, 2))
+        self.assertEqual(2.75, operator.__truediv__(5.5, 2))
+
+        self.assertEqual(Number(2), Number(5) // Number(2))
+        self.assertEqual(Number(2.5), Number(5) / Number(2))   # true-div even though 5 and 2 are whole
+        self.assertEqual(Number(2.75), Number(5.5) / Number(2))
+
+        self.assertEqual(Number(2.5), Number(5).__div__(Number(2)))   # true-div even though 5 and 2 are whole
+        self.assertEqual(Number(2.75), Number(5.5).__div__(Number(2)))
+
+        self.assertEqual('0q82_0280', Number('0q82_05').__div__(Number('0q82_02')))   # true-div though whole
+        self.assertEqual('0q82_02C0', Number('0q82_0580').__div__(Number('0q82_02')))
 
     def test_floordiv_complex(self):
         """
@@ -2459,15 +2469,18 @@ class NumberMathTests(NumberTests):
             with self.assertRaises(TypeError):
                 self.assertEqual(                     1+0j, -5+10j // 3+4j)
 
-    def test_div(self):
+    def test_operator_div(self):
         if six.PY2:
             self.assertTrue(hasattr(operator, '__div__'))
             # noinspection PyUnresolvedReferences
             self.binary_op(operator.__div__, 7, 42, 6)
             # noinspection PyUnresolvedReferences
-            self.binary_op(operator.__div__, Number('0q8A_010000000000000001'),
+            self.binary_op(operator.__div__, Number('0q8A_01'),   # Loss of precision; true-div uses float
                                              Number('0q92_0100000000000000020000000000000001'),
                                              Number('0q8A_010000000000000001'))
+            self.binary_op(operator.__floordiv__,       0x010000000000000001,   # floor-div precise on large int
+                                                        0x0100000000000000020000000000000001,
+                                                        0x010000000000000001)
         else:
             self.assertFalse(hasattr(operator, '__div__'))
 

@@ -141,6 +141,18 @@ class Number(numbers.Complex):
         +0 == Number('0q80')
         -1 == Number('0q7D_FF')
         -2 == Number('0q7D_FE')
+      -2.5 == Number('0q7D_FD80')
+
+    Some exotic numbers:
+                       pi - 0q82_03243F6A8885A3 (53-bit double precision)
+                       pi - 0q82_03243F6A8885A308D313198A2E03707344A409382229
+                            9F31D0082EFA98EC4E6C89452821E638D01377BE54
+                            (338 bits or about 100 decimal digits)
+                   googol - 0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7C
+                            AAB24308A82E8F10 (exactly 10^100)
+        negative infinity - 0q00_7F (aleph-zero)
+            infinitesimal - 0q807F (epsilon)
+                        i - 0q80__8201_690300 (the imaginary number)
     """
     if SlotsOptimized.FOR_MEMORY:
         __slots__ = ('__raw', )
@@ -434,21 +446,36 @@ class Number(numbers.Complex):
     def __rfloordiv__(self, other): return self._binary_op(operator.__floordiv__, other, self)
     def __pow__( self, other): return self._binary_op(operator.__pow__, self, other)
     def __rpow__(self, other): return self._binary_op(operator.__pow__, other, self)
-    if six.PY2:
-        def __div__(self, other):
-            """
-            Implement the hybrid division (true one-slash with floats, floor two-slash with integers).
 
-            Even though we import division from __future__ here, a client might not.
-            """
-            # noinspection PyUnresolvedReferences
-            return self._binary_op(operator.__div__, self, other)
-        def __rdiv__(self, other):
-            # noinspection PyUnresolvedReferences
-            return self._binary_op(operator.__div__, other, self)
+    def __div__(self, other):
+        """
+        Implement the one-slash division operator for Python 2.
+
+        This will never be hybrid division (true with floats, floor with
+        integers).
+
+        Even though we use future division in this source file, a client
+        might not.  So a Python 2 client using Number(x) / Number(y)
+        should expect true division, whether or not they do:
+        from __future__ import division.
+
+        Otherwise, there would be no sensible way to force a true
+        division for that client.  The trick with native math is to
+        make sure one of the operands is a float.  For example, 2/3 is
+        zero but 2.0/3 is 0.666...  But Number(2.0)/Number(3) is
+        indistinguishable from Number(2)/Number(3).  So in this sense,
+        Number behaves slightly more like float than int.
+        """
+        # TODO:  Does using true-div here cause weird effects at float/int boundary?  Expose them in unit tests.
+        # Apparently true-div always converts to float.
+        # TODO:  Re-review division, here and unit tests, yet again.
+        return self._binary_op(operator.__truediv__, self, other)
+    def __rdiv__(self, other):
+        return self._binary_op(operator.__truediv__, other, self)
 
     # TODO:  Should large (2**54) Numbers divide using int or float?  Based solely on whether they're whole?
     # Problem:  Number(2e20)/Number(3e20) == Number(0) in Python 2 and no simple way to make it a true-div.
+    # Problem:  Some loss of precision dividing large integers, e.g. factoring 0x10000000000000001 ** 2
 
     def _unary_op(self, op):
         n = Number(self)

@@ -146,7 +146,7 @@ class Word(object):
         """"Does this word exist?  Is it stored in a Lex?"""
         # TODO:  What about Listing words?
         self._choate()
-        return hasattr(self, '_exists') and self._exists   # WTF isn't hasattr() enough?
+        return hasattr(self, '_exists') and self._exists   # WTF is not hasattr() enough?
 
     def _now_it_exists(self):
         """Declare that a word "exists"."""
@@ -177,7 +177,7 @@ class Word(object):
     #     #     # return None
     #         if attribute_name in ('_exists',):
     #             return None
-    #         raise AttributeError("Verbs starting with underscore can't use the subject.verb syntax: " + attribute_name)
+    #         raise AttributeError("Verbs starting with underscore cannot use the subject.verb syntax: " + attribute_name)
     #     # # if attribute_name in ('whn',):
     #     # #     self._choate()
     #     # #     # if self._fields is None:
@@ -185,7 +185,7 @@ class Word(object):
     #     # #     #     # XXX:  More pythonic to raise AttributeError
     #     # #     try:
     #     # #         return self._fields[attribute_name]
-    #     # #     except KeyError:   # Why don't I need AttributeError here too for _fields?
+    #     # #     except KeyError:   # Why do I not need AttributeError here too for _fields?
     #     # #         return None
     #     # #         # XXX:  More pythonic to raise AttributeError
     #     # # if attribute_name == 'do_not_call_in_templates':
@@ -270,7 +270,7 @@ class Word(object):
 
         # How to handle "duplications"
 
-        # TODO:  Shouldn't this be spawn(sbj=lex, vrb=define, txt)?
+        # TODO:  Should not this be spawn(sbj=lex, vrb=define, txt)?
         # Maybe someone else will define a word.
         # Then everyone who tries to define that word will use that first person's definition.
         # Anything interesting about the first definer of a word?  Maybe not much.
@@ -396,7 +396,7 @@ class Word(object):
 
         try:
             idn = idn_from_word_or_number(args[0])
-        except IndexError:                        # args is empty (kwargs probably isn't)
+        except IndexError:                        # args is empty (kwargs probably is not)
             pass
         except TypeError:                         # args[0] is neither a Word nor a Number
             pass
@@ -404,15 +404,15 @@ class Word(object):
             try:
                 return Listing.instance_from_idn(idn)
             except Listing.NotAListingRightNow:
-                return ListingNotInstalled(idn)   # args[0] is a listing, but its class wasn't installed
+                return ListingNotInstalled(idn)   # args[0] is a listing, but its class was not installed
             except Listing.NotAListing:
                 pass                              # args[0] is not a listing word
 
             if idn.is_suffixed():
-                raise self.NotAWord("Don't know how to spawn this suffixed idn " + idn.qstring())
+                raise self.NotAWord("Do not know how to spawn this suffixed idn " + idn.qstring())
 
         assert hasattr(self, 'lex')
-        # XXX:  Why did PY2 need this to be a b'lex'?!  And why doesn't it now??
+        # XXX:  Why did PY2 need this to be a b'lex'?!  And why does it not now??
         # Otherwise hasattr(): attribute name must be string
         assert isinstance(self.lex, Lex)
         kwargs['lex'] = self.lex
@@ -451,7 +451,7 @@ class Word(object):
         #         # if len(pieces) == 2 and pieces[1].
         #
         # assert hasattr(self, 'lex')
-        # # XXX:  Why did PY2 need this to be a b'lex'?!  And why doesn't it now??
+        # # XXX:  Why did PY2 need this to be a b'lex'?!  And why does it not now??
         # # Otherwise hasattr(): attribute name must be string
         # assert isinstance(self.lex, Lex)
         # kwargs['lex'] = self.lex
@@ -489,7 +489,7 @@ class Word(object):
         #         # SEE:  http://stackoverflow.com/a/3209240/673991
         #         # Or maybe the only Word() caller, spawn() should do this dynamic typing.
         #         # But that would mean a listing index could never be inchoate.
-        #         # Isn't that desirable?  Putting off.
+        #         # Is not that desirable?  Putting off.
         #
         #
         #
@@ -554,6 +554,18 @@ class Word(object):
         Useful for words as dictionary keys.
         """
         return self.spawn(self.idn)
+
+    def populate_from_word(self, word):
+        word_dict = dict(
+            idn=word.idn,
+            sbj=word.sbj,
+            vrb=word.vrb,
+            obj=word.obj,
+            num=word.num,
+            txt=word.txt,
+            whn=word.whn,
+        )
+        self.populate_from_row(word_dict)
 
     def populate_from_row(self, row, prefix=''):
         assert isinstance(row[prefix + 'idn'], Number)
@@ -638,7 +650,7 @@ class Word(object):
             sbj=str(self.sbj),
             vrb=str(self.vrb),
             obj=str(self.obj),
-            # TODO:  Would str(x) cause infinite recursion?  Not if str() doesn't call description()
+            # TODO:  Would str(x) cause infinite recursion?  Not if str() does not call description()
             maybe_num=(", " + self.presentable(self.num)) if self.num != 1   else "",
             maybe_txt=(", " + repr(self.txt))             if self.txt != u'' else "",
         )
@@ -706,7 +718,7 @@ class Word(object):
     @property
     def idn(self):
         try:
-            return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) won't modify w.idn.
+            return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) will not modify w.idn.
                                    # TODO:  but then what about w.sbj.add_suffix(n), etc.?
                                    # So this passing through Number() is a bad idea.
                                    # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
@@ -881,7 +893,7 @@ class Listing(Word):
         self.__is_inchoate = False
 
     # TODO:  @abstractmethod
-    # TODO:  No parameters for lookup()?  Don't pass index, and just return txt and num?
+    # TODO:  No parameters for lookup()?  Do not pass index, and just return txt and num?
     # Or was the callback some kind of async feature, in case looking up took a while?
     # Because I'm doubtful that would work anyway.
     def lookup(self, index, callback):
@@ -890,9 +902,9 @@ class Listing(Word):
 
     def lookup_callback(self, txt, num):
         # Another case where txt comes before num, the exception.
-        # XXX:  Wait, WHY does lookup need a callback?  Can't it just RETURN (txt, num)??
+        # XXX:  Wait, WHY does lookup need a callback?  Can it just RETURN (txt, num)??
         # It could even return a flexible tuple (n), (t), (n,t), (t,n), dict(num=n, txt=t)
-        # Oh wait, there's that pesky fact that the word shouldn't "exist" until num,txt are populated.
+        # Oh wait, there's that pesky fact that the word should not "exist" until num,txt are populated.
         # But maybe lookup should populate those fields instead.
         # The lookup's caller could check that they were populated, then call _now_it_exists()
         # Listing is just a burbling cauldron of refactoring need.
@@ -1002,7 +1014,7 @@ class ListingNotInstalled(Listing):
     To defer raising NotAWord until it becomes choate.
     So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
     And exceptions are raised only if those words try to become choate.
-    All this so we don't have to install obsolete listing classes,
+    All this so we do not have to install obsolete listing classes,
     but we can still instantiate the no-longer-used words that refer to them.
     """
     # noinspection PyUnresolvedReferences
@@ -1071,7 +1083,81 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
     class ConnectError(Exception):
         pass
 
+    def _install_all_seminal_words(self):
+        """
+        Insert the five fundamental sentences into the Lex database.
+        Each sentence uses verbs and nouns defined in some of the other seminal sentences.
+
+        The five seminal sentences:
+                    lex.define(verb, 'define')
+             noun = lex.define(noun, 'noun')
+             verb = lex.define(noun, 'verb')
+            agent = lex.define(noun, 'agent')
+                    lex.define(agent, 'lex')
+
+        At least that's how they'd be defined if forward references were not a problem.
+        """
+        def seminal_word(_idn, _obj, _txt):
+            """Subject is always 'lex'.  Verb is always 'define'."""
+            word = self.spawn(_idn)
+            if not word.exists():
+                self._install_one_seminal_word(_idn, _obj, _txt)
+                word = self.spawn(_idn)
+            assert word.exists()
+
+        __crazy_idea_define_lex_first__ = True
+        # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word._IDN_LEX
+        if __crazy_idea_define_lex_first__:
+                                                                        # forward, reflexive references
+            seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 2,1    0,+1,+4
+            seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 1,1   -1, 0,+2
+            seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
+            seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
+            seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
+                                                                        # ---
+                                                                        # 3,3
+        else:
+                                                                        # forward, reflexive references
+            seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
+            seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
+            seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
+            seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
+            seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 0,1    0,-4,-1
+                                                                        # ---
+                                                                        # 5,3
+
+        # assert not self.exists()
+        # if not self.exists():     # XXX:  Does this make sense??
+                                    # Why should from_idn() cause lex to "exist" if it "did not" already?
+                                    # Could lex just start out inchoate and that would take care of this??!??
+
+        self._from_idn(self._IDN_LEX)
+
+        assert self.exists()
+        assert self.is_lex()
+
+    def _install_one_seminal_word(self, _idn, _obj, _txt):
+        word = self.spawn(
+            sbj=self._IDN_LEX,
+            vrb=self._IDN_DEFINE,
+            obj=_obj,
+            num=Number(1),
+            txt=_txt,
+        )
+        word.save(override_idn=_idn)
+
     def word_from_word_or_number(self, x):
+        if isinstance(x, Word):
+            return x
+        elif isinstance(x, Number):
+            return self.spawn(x)
+            # return Word(x, lex=self)
+        else:
+            raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
+                type(x).__name__,
+            ))
+
+    def insert_word(self, word):
         raise NotImplementedError()
 
     def populate_word_from_idn(self, word, idn):
@@ -1098,14 +1184,105 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
     def max_idn(self):
         raise NotImplementedError()
 
-    def insert_word(self, word):
-        raise NotImplementedError()
-
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
+
+
+class LexMemory(Lex):
+    def __init__(self):
+        self.lex = self
+        super(LexMemory, self).__init__(self._IDN_LEX, lex=self)
+        self._choate()
+        if not self.exists():
+            self.words = [None]
+            self._install_all_seminal_words()
+        assert self.exists()
+        assert self.is_lex()
+        self._noun = self.words[Word._IDN_NOUN]
+        self._verb = self.words[Word._IDN_VERB]
+
+    def insert_word(self, word):
+        assert not word.idn.is_nan()
+        word.whn = Number(time.time())
+        self.words.append(word)
+        # noinspection PyProtectedMember
+        word._now_it_exists()
+
+    def populate_word_from_idn(self, word, idn):
+        for word_source in self.words:
+            if word_source.idn == idn:
+                word.populate_from_word(word_source)
+                return True
+        return False
+
+    def populate_word_from_definition(self, word, define_txt):
+        for word_source in self.words:
+            if word_source.vrb == Word._IDN_DEFINE and word_source.txt == Text(define_txt):
+                word.populate_from_word(word_source)
+                return True
+        return False
+
+    def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
+        for word_source in reversed(self.words):
+            if word_source.sbj == sbj and word_source.vrb == vrb and word_source.obj == obj:
+                word.populate_from_word(word_source)
+                return True
+        return False
+
+    def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
+        for word_source in reversed(self.words):
+            if (
+                word_source.sbj == sbj and
+                word_source.vrb == vrb and
+                word_source.obj == obj and
+                word_source.num == num and
+                word_source.txt == txt
+            ):
+                word.populate_from_word(word_source)
+                return True
+        return False
+
+    def noun(self, name=None):
+        if name is None:
+            return self._noun
+        else:
+            return self.define(self._noun, name)
+
+    def verb(self, name=None):
+        if name is None:
+            return self._verb
+        else:
+            return self.define(self._verb, name)
+
+    def max_idn(self):
+        try:
+            return self.words[-1].idn
+        except IndexError:
+            return Number(0)
+
+
+    def find_words(
+        self,
+        idn=None,
+        vrb=None,
+        obj=None,
+        jbo_vrb=(),
+        obj_group=False,
+        jbo_strictly=False,
+        debug=False
+    ):
+        return
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
 class LexMySQL(Lex):
+    """
+    Store a Lex in a MySQL table.
+
+    language - must be 'MySQL'
+    table - e.g. 'word'
+    engine - MySQL ENGINE, defaults to InnoDB
+    txt_type - MySQL type of txt, defaults to VARCHAR(10000)
+    """
     def __init__(self, **kwargs):
         language = kwargs.pop('language')
         assert language == 'MySQL'
@@ -1135,14 +1312,15 @@ class LexMySQL(Lex):
             if re.search(r"Table .* doesn't exist", exception_message):
                 # TODO:  Better detection of automatic table creation opportunity.
                 self.install_from_scratch()
-                # TODO:  Don't super() twice -- cuz it's not D.R.Y.
-                # TODO:  Don't install in unit tests if we're about to uninstall.
+                # TODO:  Do not super() twice -- cuz it's not D.R.Y.
+                # TODO:  Do not install in unit tests if we're about to uninstall.
                 super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
+
                 raise self.ConnectError(str(exception))
 
         if not self.exists():
-            self._install_seminal_words()
+            self._install_all_seminal_words()
 
         self._noun = self[self._IDN_NOUN]
         self._verb = self[self._IDN_VERB]
@@ -1197,68 +1375,11 @@ class LexMySQL(Lex):
 
             cursor.execute(query)
             # TODO:  other keys?  sbj-vrb?   obj-vrb?
-        self._install_seminal_words()
+        self._install_all_seminal_words()
 
-    def _install_seminal_words(self):
-        """
-        Insert the five fundamental sentences into the Lex database.
-        Each sentence uses verbs and nouns defined in some of the other seminal sentences.
-
-        The five seminal sentences:
-                    lex.define(verb, 'define')
-             noun = lex.define(noun, 'noun')
-             verb = lex.define(noun, 'verb')
-            agent = lex.define(noun, 'agent')
-                    lex.define(agent, 'lex')
-
-        At least that's how they'd be defined if forward references were not a problem.
-        """
-        def seminal_word(_idn, _obj, _txt):
-            """Subject is always 'lex'.  Verb is always 'define'."""
-            word = self.spawn(_idn)
-            if not word.exists():
-                self._install_word(_idn, _obj, _txt)
-                word = self.spawn(_idn)
-            assert word.exists()
-                                                                    # forward, reflexive references
-        seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
-        seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
-        seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
-        seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
-        seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 0,1    0,-4,-1
-                                                                    # ---
-                                                                    # 5,3
-        return
-        # noinspection PyUnreachableCode
-        # TODO:  If lex were moved to the first idn:
-                                                                    # forward, reflexive references
-        seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 2,1    0,+1,+4
-        seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 1,1   -1, 0,+2
-        seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
-        seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
-        seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
-                                                                    # ---
-                                                                    # 3,3
-
-        assert not self.exists()
-        # if not self.exists():     # XXX:  Does this make sense??
-                                    # Why should from_idn() cause lex to "exist" if it "didn't" already?
-                                    # Could lex just start out inchoate and that would take care of this??!??
-        self._from_idn(self._IDN_LEX)
-
-        assert self.exists()
-        assert self.is_lex()
-
-    def _install_word(self, _idn, _obj, _txt):
-        word = self.spawn(
-            sbj=self._IDN_LEX,
-            vrb=self._IDN_DEFINE,
-            obj=_obj,
-            num=Number(1),
-            txt=_txt,
-        )
+    def _install_one_seminal_word(self, _idn, _obj, _txt):
         try:
-            word.save(override_idn=_idn)
+            super(LexMySQL, self)._install_one_seminal_word(_idn, _obj, _txt)
         except mysql.connector.IntegrityError:
             # TODO:  What was I thinking should happen here?
             raise
@@ -1350,7 +1471,7 @@ class LexMySQL(Lex):
         The symptom is the same:
             mysql.connector.errors.OperationalError: MySQL Connection not available.
         I originally thought this had something to do with the connection_timeout
-        option aka socket.settimeout(), but it doesn't.
+        option aka socket.settimeout(), but it does not.
         """
         self._connection.close()
 
@@ -1522,7 +1643,7 @@ class LexMySQL(Lex):
                 # So yield would not work here -- because word continues to be modified after
                 # it gets appended to words.  Similarly new_jbo after appended to word.jbo.
                 # No wait, new_jbo is final, and not modified after appended to word.jbo.
-                # But wait a minute, who's to say an object can't be modified after yielded?
+                # But wait a minute, who's to say an object cannot be modified after yielded?
                 # It could, but that could lead to ferociously complicated bugs!
                 # Upshot:  append not yield
             jbo_idn = row.get('jbo_idn', None)
@@ -1532,18 +1653,18 @@ class LexMySQL(Lex):
                 word.jbo.append(new_jbo)
         return words
 
-    def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
-        """
-        Select word identifiers by subject, verb, and/or object.
-
-        Return list of idns.
-        """
-        query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
-        query_args += self._and_clauses(idn, sbj, vrb, obj)
-        query_args += ['ORDER BY idn ' + idn_order]
-        rows_of_idns = self.super_select(*query_args)
-        idns = [row['idn'] for row in rows_of_idns]
-        return idns
+    # def find_idns(self, idn=None, sbj=None, vrb=None, obj=None, idn_order='ASC'):
+    #     """
+    #     Select word identifiers by subject, verb, and/or object.
+    #
+    #     Return list of idns.
+    #     """
+    #     query_args = ['SELECT idn FROM', self.table, 'AS w WHERE TRUE', None]
+    #     query_args += self._and_clauses(idn, sbj, vrb, obj)
+    #     query_args += ['ORDER BY idn ' + idn_order]
+    #     rows_of_idns = self.super_select(*query_args)
+    #     idns = [row['idn'] for row in rows_of_idns]
+    #     return idns
 
     @staticmethod
     def _and_clauses(idn, sbj, vrb, obj):
@@ -1605,9 +1726,10 @@ class LexMySQL(Lex):
                 not isinstance(arg_next, (Text, Lex.SuperIdentifier))
             ):
                 raise self.SuperSelectStringString(
-                    "Consecutive super_select() arguments shouldn't be strings.  " +
+                    "Consecutive super_select() arguments should not be strings.  " +
                     "Pass string fields through qiki.Text().  " +
-                    "Or concatenate with +, or intersperse a None.\n"
+                    "Pass identifiers through SuperIdentifier().  " +
+                    "Or concatenate actual plaintext strings with +, or intersperse a None.\n"
                     "Argument #{n1}: '{arg1}\n"
                     "Argument #{n2}: '{arg2}".format(
                         n1=index+1,
@@ -1622,7 +1744,7 @@ class LexMySQL(Lex):
                 #     super_select('SELECT * in word WHERE txt=', 'define')
                 # Which could be an SQL injection bug.
                 # But that would break anyway (unless searching for .e.g 'txt').
-                # And I'm getting tired of all the Nones to separate strings that aren't parameters.
+                # And I'm getting tired of all the Nones to separate strings that are not parameters.
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
@@ -1751,17 +1873,6 @@ class LexMySQL(Lex):
 
     class IllegalEngineName(Exception):
         pass
-
-    def word_from_word_or_number(self, x):
-        if isinstance(x, Word):
-            return x
-        elif isinstance(x, Number):
-            return self.spawn(x)
-            # return Word(x, lex=self)
-        else:
-            raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
-                type(x).__name__,
-            ))
 
 
 def idn_from_word_or_number(x):
@@ -1918,7 +2029,7 @@ class QoolbarSimple(Qoolbar):
             if has_qool and last_iconify_url is not None:
                 qool_verb.icon_url = last_iconify_url
                 verbs.append(qool_verb)
-                # yield is not used here because find_word(jbo_vrb) doesn't handle
+                # yield is not used here because find_word(jbo_vrb) does not handle
                 # a generator's iterator well.  Can that be done in one pass anyway?
                 # Probably not because of super_select() -- the MySQL version of which
                 # needs to pass a list of its values and know its length anyway.
@@ -1939,7 +2050,7 @@ class QoolbarSimple(Qoolbar):
         """
         # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
         # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991
-        # Then we wouldn't have to translate verbs to verb_dicts:
+        # Then we would not have to translate verbs to verb_dicts:
         verbs = self.get_verbs(debug)
         for verb in verbs:
             yield dict(
@@ -1973,7 +2084,7 @@ class QoolbarSimple(Qoolbar):
 
 # DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
 # DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
-# DONE:  ...So combine all three.  Maybe Lex shouldn't subclass Word?
+# DONE:  ...So combine all three.  Maybe Lex should not subclass Word?
 # DONE:  Or make a class LexMysql(Lex)
 # DONE:  MySQL decouple -- reinvent some db abstraction class?  (Lex)
 
@@ -2051,9 +2162,9 @@ class QoolbarSimple(Qoolbar):
 #     lex-browse-path "/root"
 # That way the uniqueness thing would be confined to vrb=name words
 # (instead of vrb=define words)
-# And there could be defined nouns that didn't have a name, known only by their idn
+# And there could be defined nouns that did not have a name, known only by their idn
 # Or maybe rewinding to the first method, an unnamed define would have a blank txt
-# And that didn't have to be unique, and could never be Word(txt) searched for.
+# And that did not have to be unique, and could never be Word(txt) searched for.
 # This could help multilingual implementation by defining a different verb.
 #     lex.nombre-path "calle"
 # Or the word might be named in a computer language for reference by code.

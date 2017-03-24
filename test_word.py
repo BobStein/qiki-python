@@ -2383,10 +2383,10 @@ class Word0070FindTests(WordTests):
         self.assertEqual([], self.lex.find_words(sbj=self.crave))
         self.assertEqual([], self.lex.find_words(vrb=self.fred))
 
-    def test_find_idns(self):
-        idns = self.lex.find_idns()
-        for idn in idns:
-            self.assertIsInstance(idn, qiki.Number)
+    # def test_find_idns(self):
+    #     idns = self.lex.find_idns()
+    #     for idn in idns:
+    #         self.assertIsInstance(idn, qiki.Number)
 
     def test_find_by_vrb(self):
         crave1 = self.fred.says(self.crave, self.apple, 1)
@@ -2394,8 +2394,8 @@ class Word0070FindTests(WordTests):
         crave3 = self.fred.says(self.crave, self.macintosh, 0.5)
         self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave))
         self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave.idn))
-        self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave))
-        self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave.idn))
+        # self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave))
+        # self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave.idn))
 
     def test_find_by_vrb_list(self):
         c1 = self.fred.says(self.crave, self.apple, 1)
@@ -2407,20 +2407,20 @@ class Word0070FindTests(WordTests):
         self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch.idn]))
         self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch    ]))
         self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch.idn]))
-        self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave    , retch    ]))
-        self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave.idn, retch.idn]))
-        self.assertEqual([                r3.idn], self.lex.find_idns(vrb=[                retch.idn]))
+        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave    , retch    ]))
+        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave.idn, retch.idn]))
+        # self.assertEqual([                r3.idn], self.lex.find_idns(vrb=[                retch.idn]))
 
     def test_find_words(self):
         words = self.lex.find_words()
         for word in words:
             self.assertIsInstance(word, qiki.Word)
 
-    def test_find_idns_with_sql(self):
-        idns = self.lex.find_idns(idn_order='ASC')
-        self.assertLess(idns[0], idns[-1])
-        idns = self.lex.find_idns(idn_order='DESC')
-        self.assertGreater(idns[0], idns[-1])
+    # def test_find_idns_with_sql(self):
+    #     idns = self.lex.find_idns(idn_order='ASC')
+    #     self.assertLess(idns[0], idns[-1])
+    #     idns = self.lex.find_idns(idn_order='DESC')
+    #     self.assertGreater(idns[0], idns[-1])
 
     def test_find_words_sql(self):
         words = self.lex.find_words(idn_order='ASC')
@@ -2433,18 +2433,18 @@ class Word0070FindTests(WordTests):
         self.assertEqual(1, len(lex_by_idn))
         self.assertEqual(u"lex", lex_by_idn[0].txt)
 
-        lex_by_idn = self.lex.find_idns(idn=qiki.Word._IDN_LEX)
-        self.assertEqual(1, len(lex_by_idn))
-        self.assertEqual(self.lex.idn, lex_by_idn[0])
+        # lex_by_idn = self.lex.find_idns(idn=qiki.Word._IDN_LEX)
+        # self.assertEqual(1, len(lex_by_idn))
+        # self.assertEqual(self.lex.idn, lex_by_idn[0])
 
     def test_find_idn_word(self):
         lex_by_idn = self.lex.find_words(idn=self.lex)
         self.assertEqual(1, len(lex_by_idn))
         self.assertEqual(u"lex", lex_by_idn[0].txt)
 
-        lex_by_idn = self.lex.find_idns(idn=self.lex)
-        self.assertEqual(1, len(lex_by_idn))
-        self.assertEqual(self.lex.idn, lex_by_idn[0])
+        # lex_by_idn = self.lex.find_idns(idn=self.lex)
+        # self.assertEqual(1, len(lex_by_idn))
+        # self.assertEqual(self.lex.idn, lex_by_idn[0])
 
     def test_find_idn_not(self):
         lex_by_idn = self.lex.find_words(idn=qiki.Number(-42))
