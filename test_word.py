@@ -7,7 +7,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import mysql.connector
 import operator
+import subprocess
 import sys
 import time
 import unicodedata
@@ -50,6 +52,8 @@ except ImportError:
     sys.exit(1)
 
 
+# W_TO_MAKE_A_LEX = qiki.LexMemory   # \ pick
+HOW_TO_MAKE_A_LEX = qiki.LexMySQL    # / one
 LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
                                       # Set this to True to manually examine the database after running it.
                                       # If True, you may want to make RANDOMIZE_DATABASE_TABLE False.
@@ -58,6 +62,10 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
+
+print("Python version", sys.version)
+print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
+print("MySQL Client version", subprocess.Popen('mysql --version', shell=True, stdout=subprocess.PIPE).stdout.read().strip())
 
 
 # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
@@ -198,7 +206,7 @@ class WordTests(unittest.TestCase):
         credentials = secure.credentials.for_unit_testing_database.copy()
         if RANDOMIZE_DATABASE_TABLE:
             credentials['table'] = 'word_' + uuid.uuid4().hex
-        self.lex = qiki.LexMySQL(**credentials)
+        self.lex = HOW_TO_MAKE_A_LEX(**credentials)
         if LET_DATABASE_RECORDS_REMAIN:
             self.lex.uninstall_to_scratch()
             self.lex.install_from_scratch()
@@ -302,6 +310,9 @@ class WordTests(unittest.TestCase):
 
 
 class WordDemoTests(WordTests):
+
+    def test_show_version(self):
+        print("MySQL Server version", self.lex.server_version())
 
     # noinspection PyUnusedLocal
     def test_syntaxes(self):

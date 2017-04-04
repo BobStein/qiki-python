@@ -460,11 +460,12 @@ class Number(numbers.Complex):
         from __future__ import division.
 
         Otherwise, there would be no sensible way to force a true
-        division for that client.  The trick with native math is to
+        division for that client.  To get true division with native math,
         make sure one of the operands is a float.  For example, 2/3 is
         zero but 2.0/3 is 0.666...  But Number(2.0)/Number(3) is
         indistinguishable from Number(2)/Number(3).  So in this sense,
-        Number behaves slightly more like float than int.
+        Number behaves slightly more like float than int.  Or you could
+        say Number imposes a little Python 3 onto Python 2 users.
         """
         # TODO:  Does using true-div here cause weird effects at float/int boundary?  Expose them in unit tests.
         # Apparently true-div always converts to float.
@@ -474,7 +475,6 @@ class Number(numbers.Complex):
         return self._binary_op(operator.__truediv__, other, self)
 
     # TODO:  Should large (2**54) Numbers divide using int or float?  Based solely on whether they're whole?
-    # Problem:  Number(2e20)/Number(3e20) == Number(0) in Python 2 and no simple way to make it a true-div.
     # Problem:  Some loss of precision dividing large integers, e.g. factoring 0x10000000000000001 ** 2
 
     def _unary_op(self, op):

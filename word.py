@@ -741,7 +741,7 @@ class Word(object):
         assert isinstance(self.txt, Text)
         if self.exists() or self.idn == Number.NAN:
             self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
-            # TODO:  Race condition?  Make max_idn and insert_word part of a transaction.
+            # TODO:  Race condition?  Make max_idn and insert_word part of an atomic transaction.
             # Or store latest idn in another table
             # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
             assert not self.idn.is_nan()
@@ -1191,7 +1191,7 @@ class LexMemory(Lex):
     def __init__(self):
         self.lex = self
         super(LexMemory, self).__init__(self._IDN_LEX, lex=self)
-        self._choate()
+        # self._choate()
         if not self.exists():
             self.words = [None]
             self._install_all_seminal_words()
@@ -1200,19 +1200,35 @@ class LexMemory(Lex):
         self._noun = self.words[Word._IDN_NOUN]
         self._verb = self.words[Word._IDN_VERB]
 
+    def exists(self):
+        if hasattr(self, 'words'):
+            return super(LexMemory, self).exists()
+        else:
+            return False
+
     def insert_word(self, word):
         assert not word.idn.is_nan()
+        # assert word.idn == self.max_idn(), repr(word.idn) + ", " + repr(self.max_idn())
+        # TODO:  Suspend this assert for seminal words?
         word.whn = Number(time.time())
         self.words.append(word)
         # noinspection PyProtectedMember
         word._now_it_exists()
 
     def populate_word_from_idn(self, word, idn):
-        for word_source in self.words:
-            if word_source.idn == idn:
-                word.populate_from_word(word_source)
-                return True
-        return False
+        try:
+            word_source = self.words[int(idn)]
+        except IndexError:
+            return False
+        else:
+            word.populate_from_word(word_source)
+            return True
+
+        # for word_source in self.words:
+        #     if word_source.idn == idn:
+        #         word.populate_from_word(word_source)
+        #         return True
+        # return False
 
     def populate_word_from_definition(self, word, define_txt):
         for word_source in self.words:
@@ -1256,9 +1272,8 @@ class LexMemory(Lex):
     def max_idn(self):
         try:
             return self.words[-1].idn
-        except IndexError:
+        except (AttributeError, IndexError):   # whether self.words is missing or empty
             return Number(0)
-
 
     def find_words(
         self,
@@ -1788,6 +1803,15 @@ class LexMySQL(Lex):
         if debug:
             print("Query", query)
         return query, parameters
+
+    def server_version(self):
+        return self.super_select_one('SELECT VERSION()')[0]
+
+    def super_select_one(self, *query_args, **kwargs):
+        query, parameters = self._super_parse(*query_args, **kwargs)
+        with self._cursor() as cursor:
+            cursor.execute(query, parameters)
+            return cursor.fetchone()
 
     def super_query(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
