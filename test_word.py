@@ -311,9 +311,6 @@ class WordTests(unittest.TestCase):
 
 class WordDemoTests(WordTests):
 
-    def test_show_version(self):
-        print("MySQL Server version", self.lex.server_version())
-
     # noinspection PyUnusedLocal
     def test_syntaxes(self):
         lex = self.lex
@@ -419,8 +416,11 @@ class WordExoticTests(WordTests):
         self.assertEqual(u'courage',  w.txt)
 
 
-class InternalTestWordTests(WordTests):
+class InternalWordTests(WordTests):
     """Test the WordTests class itself."""
+
+    def test_000_show_version(self):
+        print("MySQL Server version", self.lex.server_version())
 
     def test_assertNoNewWord(self):
         with self.assertNoNewWord():

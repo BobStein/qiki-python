@@ -1805,7 +1805,7 @@ class LexMySQL(Lex):
         return query, parameters
 
     def server_version(self):
-        return self.super_select_one('SELECT VERSION()')[0]
+        return Text.decode_if_you_must(self.super_select_one('SELECT VERSION()')[0])
 
     def super_select_one(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
