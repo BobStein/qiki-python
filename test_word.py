@@ -65,7 +65,12 @@ RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
 
 print("Python version", sys.version)
 print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
-print("MySQL Client version", subprocess.Popen('mysql --version', shell=True, stdout=subprocess.PIPE).stdout.read().strip())
+print("MySQL Client version", subprocess.Popen(
+    'mysql --version',
+    shell=True,
+    stdout=subprocess.PIPE
+).stdout.read().strip().decode('ascii'))
+# SEE:  MySQL Server version, InternalWordTests.test_000_show_version()
 
 
 # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
@@ -174,8 +179,11 @@ class LexErrorTests(unittest.TestCase):
         """
         credentials = secure.credentials.for_unit_testing_database.copy()
         credentials['password'] = 'wrong'
-        with self.assertRaisesRegexp(qiki.Lex.ConnectError, r'Access denied'):
+        with six.assertRaisesRegex(self, qiki.Lex.ConnectError, r'Access denied'):
+            # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
             qiki.LexMySQL(**credentials)
+            # TODO:  Prevent in Python 3.5:  ResourceWarning: unclosed <socket.socket ...
+            #        Intermittent:  sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
 
     def test_two_lex(self):
         lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
@@ -498,6 +506,11 @@ class Word0011FirstTests(WordTests):
 
     def test_00_number(self):
         n = qiki.Number(1)
+        # NOTE:  Can't class Number(..., typing.SupportsInt).
+        # Because then can't isinstance(..., Number).
+        # So suppress the following error the hard way:
+        #     Unexpected type(s): (Number) Possible types: (SupportsInt) (Union[str, unicode, bytearray])
+        # noinspection PyTypeChecker
         self.assertEqual(1, int(n))
 
     def test_01a_lex(self):
@@ -741,22 +754,22 @@ class Word0011FirstTests(WordTests):
             def __init__(self):
                 pass
         bogus_instance = BogusType()
-        with self.assertRaisesRegexp(TypeError, '^((?!unicode).)*$'):
+        with six.assertRaisesRegex(self, TypeError, '^((?!unicode).)*$'):
             # THANKS:  For negative regex, http://stackoverflow.com/a/406408/673991
             qiki.Word(bogus_instance)
         class BogusNewType(object):
             def __init__(self):
                 pass
         bogus_new_instance = BogusNewType()
-        with self.assertRaisesRegexp(TypeError, '^((?!unicode).)*$'):
+        with six.assertRaisesRegex(self, TypeError, '^((?!unicode).)*$'):
             qiki.Word(bogus_new_instance)
 
     def test_09h_word_constructor_by_name_must_be_unicode(self):
-        with self.assertRaisesRegexp(TypeError, "unicode"):
+        with six.assertRaisesRegex(self, TypeError, "unicode"):
             qiki.Word(b'this is not unicode')
-        with self.assertRaisesRegexp(TypeError, "unicode"):
+        with six.assertRaisesRegex(self, TypeError, "unicode"):
             qiki.Word(bytearray(b'this is not unicode'))
-        with self.assertRaisesRegexp(TypeError, "unicode"):
+        with six.assertRaisesRegex(self, TypeError, "unicode"):
             qiki.Word(bytes(b'this is not unicode'))
         w = qiki.Word(u'this is unicode', lex=self.lex)
         self.assertFalse(w.exists())
@@ -1336,23 +1349,18 @@ class WordUnicodeTxt(WordUnicode):
 # noinspection SpellCheckingInspection
 class Word0020UnicodeVerb(WordUnicode):
     """Unicode characters in verb names."""
-    # TODO:  OBSOLETE, verb names are no longer method names
 
     def test_unicode_j_verb_ascii(self):
         sentence1 = self.lex.define(self.comment, u"remark")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"remark", sentence2.txt)
+        self.assertTrue(self.lex['remark'].exists())
         self.assertTrue(self.lex['remark'].is_a_verb())
 
     def test_unicode_l_verb_spanish(self):
         sentence1 = self.lex.define(self.comment, u"comentó")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"comentó", sentence2.txt)
-        if six.PY2:
-            with self.assertRaises(SyntaxError):
-                eval(u'self.lex.comentó.is_a_verb()')
-        else:
-            self.assertTrue(eval(u'self.lex["comentó"].is_a_verb()'))
         self.assertTrue(self.lex[u'comentó'].exists())
         self.assertTrue(self.lex[u'comentó'].is_a_verb())
 
@@ -1360,8 +1368,7 @@ class Word0020UnicodeVerb(WordUnicode):
         sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"enc☺urage", sentence2.txt)
-        with self.assertRaises(SyntaxError):
-            eval(u'self.lex.enc☺urage.is_a_verb()')
+        self.assertTrue(self.lex['enc☺urage'].is_a_verb())
         self.assertTrue(self.lex[u'enc☺urage'].exists())
         self.assertTrue(self.lex[u'enc☺urage'].is_a_verb())
 
@@ -1371,8 +1378,6 @@ class Word0020UnicodeVerb(WordUnicode):
             sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
             sentence2 = self.lex[sentence1.idn]
             self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
-            with self.assertRaises(SyntaxError):
-                eval(u'self.lex.\U0001F47Dlienate.is_a_verb()')
             self.assertTrue(self.lex[u'\U0001F47Dlienate'].exists())
             self.assertTrue(self.lex[u'\U0001F47Dlienate'].is_a_verb())
 
@@ -1762,9 +1767,9 @@ class Word0040SentenceTests(WordTests):
 
     def test_sentence_01b_missing(self):
         self.assertGoodSentence(self.sam.says(vrb=self.vet, obj=self.orb))
-        with self.assertRaises(TypeError):   # was self.assertRaisesRegexp(qiki.Word.SentenceArgs, 'obj'):
+        with self.assertRaises(TypeError):   # was six.assertRaisesRegex(self, qiki.Word.SentenceArgs, 'obj'):
             self.assertGoodSentence(self.sam.says(vrb=self.vet))
-        with self.assertRaises(TypeError):   # was self.assertRaisesRegexp(qiki.Word.SentenceArgs, 'vrb'):
+        with self.assertRaises(TypeError):   # was six.assertRaisesRegex(self, qiki.Word.SentenceArgs, 'vrb'):
             self.assertGoodSentence(self.sam.says(obj=self.orb))
 
     def test_sentence_02a_positional(self):
@@ -3052,7 +3057,6 @@ class WordInternalTests(WordTests):
         self.assertTrue(is_iterable(set()))
         self.assertTrue(is_iterable(dict()))
         self.assertTrue(is_iterable(range(10)))
-        self.assertTrue(is_iterable(six.moves.range(10)))
         self.assertTrue(is_iterable(bytearray()))
 
         self.assertFalse(is_iterable(None))
@@ -3288,4 +3292,8 @@ some_type = SomeType()
 
 if __name__ == '__main__':
     import unittest
-    unittest.main()
+    unittest.main(verbosity=2)
+    # NOTE:  Most verbose level 2, https://stackoverflow.com/a/1322648/673991
+
+
+# TODO:  Convert to pytest, https://docs.pytest.org/en/latest/getting-started.html#grouping-multiple-tests-in-a-class

@@ -17,6 +17,7 @@ import math
 import numbers
 import operator
 import struct
+import typing
 
 import six
 
@@ -131,7 +132,7 @@ assert Zone.descending_codes[0] == Zone.TRANSFINITE
 assert Zone.descending_codes[13] == Zone.NAN
 
 
-class Number(numbers.Complex):
+class Number(numbers.Complex, typing.SupportsFloat, typing.SupportsInt):
     """
     Representing integers, floating point, complex numbers and more.
 
@@ -181,11 +182,14 @@ class Number(numbers.Complex):
         assert isinstance(qigits, (int, type(None)))
         assert isinstance(normalize, (int, bool))
 
+        # TODO:  Is-instance or duck-typing?
+        # SEE:  Duck-typing constructor arguments, https://stackoverflow.com/q/602046/673991
+        # SEE:  Is-instance comparison methods, https://stackoverflow.com/q/602046/673991
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        elif isinstance(content, Number):  # SomeSubclassOfNumber(AnotherSubclassOfNumber())
+        elif isinstance(content, Number):  # SomeSubclassOfNumber(DifferentSubclassOfNumber())
             self.raw = content.raw
         elif isinstance(content, six.string_types):
             self._from_string(content)
@@ -298,8 +302,8 @@ class Number(numbers.Complex):
         # TODO:  Test with dill.
         return self.raw
 
-    def __setstate__(self, d):
-        self.raw = d
+    def __setstate__(self, raw_incoming):
+        self.raw = raw_incoming
 
     def __repr__(self):
         return "Number('{}')".format(self.qstring())

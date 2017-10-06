@@ -158,6 +158,7 @@ class Word(object):
     _IDN_VERB   = Number(3)
     _IDN_AGENT  = Number(4)
     _IDN_LEX    = Number(5)
+    # FIXME:  Renumber idns due to Lex.__crazy_idea_define_lex_first__?
 
     _IDN_MAX_FIXED = Number(5)
 
@@ -1331,7 +1332,6 @@ class LexMySQL(Lex):
                 # TODO:  Do not install in unit tests if we're about to uninstall.
                 super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
             else:
-
                 raise self.ConnectError(str(exception))
 
         if not self.exists():
@@ -1348,6 +1348,24 @@ class LexMySQL(Lex):
         # THANKS:  http://stackoverflow.com/a/27390024/673991
         assert self.is_lex()
         assert self._connection.is_connected()
+
+    def __del__(self):
+        # noinspection SpellCheckingInspection
+        """
+        Prevent lots of ResourceWarning messages in test_word.py in Python 3.5
+
+        EXAMPLE:
+            ...\qiki-python\number.py:180: ResourceWarning: unclosed
+            <socket.socket fd=532, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM,
+            proto=6, laddr=(...), raddr=(...)>
+
+        THANKS:  Close aggregated connection, https://softwareengineering.stackexchange.com/a/200529/56713
+        """
+        if hasattr(self, '_connection') and self._connection is not None:
+            if self._connection.is_connected():
+                # NOTE:  Prevent `TypeError: 'NoneType'` deep in MySQL Connector code.
+                self._connection.close()
+            self._connection = None
 
     def noun(self, name=None):
         if name is None:
@@ -1925,6 +1943,7 @@ def is_iterable(x):
         return hasattr(x, '__getitem__')
         return hasattr(x, '__iter__')
     SEE:  http://stackoverflow.com/a/36154791/673991
+    SEE:  is_iterable_not_string(), https://stackoverflow.com/q/1055360/673991
 
     CAUTION:  This will likely break a generator's iterator.
     It may consume some or all of it's elements.

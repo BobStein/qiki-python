@@ -630,6 +630,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(-65536, int(Number('0q7C')))
         self.assertEqual(-65536, int(Number('0q7B_FF')))
 
+        
+
     def test_normalize_less(self):
         self.assertFalse(Number('0q82') < Number('0q82_01'))
         self.assertFalse(Number('0q81FF') < Number('0q81FF_01'))
