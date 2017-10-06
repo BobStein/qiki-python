@@ -17,7 +17,6 @@ import math
 import numbers
 import operator
 import struct
-import typing
 
 import six
 
@@ -56,13 +55,13 @@ class Zone(object):
     Between versus Minimum
     ----------------------
     A minor, hair-splitting point.
-    Most zone codes are the minimum of their zone.
-    Zone.FRACTIONAL_NEG is one exceptional *between* value, b'\x7E\x00'
+    Most zone codes are the raw byte string for the minimum Number in their zone.
+    Zone.FRACTIONAL_NEG is one exception.  It is the *between* value, b'\x7E\x00'
     That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
-    The valid minimum value for this zone cannot be represented in finite storage,
-    because the real minimum of that zone would be an impossible hypothetical
+    The actual minimum value for this zone cannot be represented in finite storage,
+    because that would be a hypothetical infinite byte string
     b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
-    Representing a surreal -0.99999999999...infinitely many 9s, but greater than -1.
+    Representing a surreal -0.99999999999...infinitely many 9s, but still greater than -1.
     So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
     And all legal raw values in Zone FRACTIONAL_NEG are above it.
     And all legal raw values in Zone NEGATIVE are below it.
@@ -75,7 +74,7 @@ class Zone(object):
 
     So are there or are not there inter-zone Numbers?
     In other words, are the zones comprehensive?
-    Even illegal and invalid values should normalize to valid values.
+    Hopefully no.  Even illegal and invalid values should normalize to valid values.
 
     Zone class properties
     ---------------------
@@ -110,7 +109,7 @@ class Zone(object):
     FRACTIONAL_NEG      = b'\x7E\x00'
     NEGATIVE            = b'\x01'
     LUDICROUS_LARGE_NEG = b'\x00\x80'
-    TRANSFINITE_NEG     = b'\x00'    # TODO:  b'\x00\x01' would leave room for custom NANs.
+    TRANSFINITE_NEG     = b'\x00'
     NAN                 = b''
 
     # NOTE:  Zone.internal_setup() will set these:
@@ -132,7 +131,7 @@ assert Zone.descending_codes[0] == Zone.TRANSFINITE
 assert Zone.descending_codes[13] == Zone.NAN
 
 
-class Number(numbers.Complex, typing.SupportsFloat, typing.SupportsInt):
+class Number(numbers.Complex):
     """
     Representing integers, floating point, complex numbers and more.
 

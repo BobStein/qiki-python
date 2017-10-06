@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../number_playground/.idea/number_playground.iml" filepath="$PROJECT_DIR$/../number_playground/.idea/number_playground.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/qiki-python.iml" filepath="$PROJECT_DIR$/.idea/qiki-python.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/qiki-python.iml" filepath="$PROJECT_DIR$/.idea/qiki-python.iml" />
     </modules>
   </component>
 </project>

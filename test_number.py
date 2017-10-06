@@ -1690,15 +1690,22 @@ class NumberBasicTests(NumberTests):
 
     def test_sizeof(self):
         """Illicit snooping into how big these things are."""
-        self.assertIn(sys.getsizeof(Number('0q')), (
+        expected_sizes = (
             28,   # Windows 7, 64-bit desktop, Python 2.7.9-12
             32,   # Windows 7, 64-bit desktop, Python 3.5.1-2
             56,   # Windows 7, 64-bit laptop, Python 2.7.12, 3.5.2
-        ))  # depends on Number.__slots__ containing _zone or not
-        self.assertIn(sys.getsizeof(Number('0q80')), (28, 32, 56))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8')), (28, 32, 56))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
-        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), (28, 32, 56))
+            64,   # macOS 10, 64-bit macbook, Python 2.7.10
+        )  # depends on Number.__slots__ containing _zone or not
+        self.assertIn(sys.getsizeof(Number('0q')), expected_sizes)
+        self.assertIn(sys.getsizeof(Number('0q80')), expected_sizes)
+        self.assertIn(sys.getsizeof(Number('0q83_03E8')), expected_sizes)
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8')), expected_sizes)
+        self.assertIn(sys.getsizeof(Number('0q83_03E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8'
+                                                  'E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8'
+                                                  'E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8'
+                                                  'E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8'
+                                                  'E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8E8'
+                                                  'E8E8E8E8E8E8E8E8E8E8E8')), expected_sizes)
 
         # Testing getsizeof() on raw was a dumb idea.  Anyway it broke over some distinction between laptop and desktop.
         # self.assertEqual(py2312( 21, 17, 33), sys.getsizeof(Number('0q').raw))
