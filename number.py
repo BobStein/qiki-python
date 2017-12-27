@@ -1156,7 +1156,8 @@ class Number(numbers.Complex):
     def zone(self):
         try:
             return self._zone
-        except AttributeError:   # (benign, this happens if _zone is missing from __slots__)
+        except AttributeError:
+            '''Benign, this happens if _zone is missing from __slots__'''
             return self._zone_from_scratch()
 
     def _zone_refresh(self):
@@ -1164,9 +1165,12 @@ class Number(numbers.Complex):
             # noinspection PyDunderSlots,PyUnresolvedReferences
             self._zone = self._zone_from_scratch()
         except AttributeError:
-            """Benign, this happens if _zone is missing from __slots__"""
+            '''Benign, this happens if _zone is missing from __slots__'''
 
     def _zone_from_scratch(self):
+        # TODO:  ONLY use the else-tree here.  Move loop to a monkeypatched unit test.
+        # SEE:  To monkeypatch pytest, https://docs.pytest.org/en/latest/monkeypatch.html
+        # SEE:  To monkeypatch unittest, http://www.voidspace.org.uk/python/mock/
         zone_by_tree = self._find_zone_by_if_else_tree()
         assert zone_by_tree == self._find_zone_by_loop_scan(), \
             "Mismatched zone determination for %s:  if-tree=%s, loop-scan=%s" % (
@@ -1184,6 +1188,7 @@ class Number(numbers.Complex):
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
         raw = self.raw
+        # THANKS:  local variable faster, https://stackoverflow.com/q/12397984/673991
         if raw > Zone.ZERO:
             if raw >= Zone.POSITIVE:
                 if raw >= Zone.LUDICROUS_LARGE:
@@ -1711,12 +1716,18 @@ class Suffix(object):
             return False
         return self.type_ == other_type and self.payload == other_payload
 
+    def __ne__(self, other):
+        eq_result = self.__eq__(other)
+        if eq_result is NotImplemented:
+            return NotImplemented
+        return not eq_result
+
     def __repr__(self):
         if self.type_ is None:
             return "Suffix()"
         else:
             return "Suffix({type_}, b'{payload}')".format(
-                type_=self.type_,
+                type_=repr(self.type_),
                 payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
             )
 

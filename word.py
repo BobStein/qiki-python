@@ -256,8 +256,10 @@ class Word(object):
         Define a word.  Name it txt.  Its type or class is obj.
 
         Example:
-            agent = lex('agent')
+            agent = lex['agent']
             lex.define(agent, 'fred')
+        Or:
+            lex.define('agent', 'fred')
 
         The obj may be identified by its txt, example:
             lex.define('agent', 'fred')
@@ -884,6 +886,8 @@ class Listing(Word):
 
     @property
     def _is_inchoate(self):
+        # TODO:  Instead override base class property with a member boolean self._is_inchoate?
+        #        Otherwise, self._is_choate is better than self.__is_inchoate, avoiding double-underscore.
         return self.__is_inchoate
 
     def _from_idn(self, idn):
@@ -1154,9 +1158,12 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
             return self.spawn(x)
             # return Word(x, lex=self)
         else:
-            raise TypeError("idn_from_word_or_number({}) is not supported, only Word or Number.".format(
-                type(x).__name__,
-            ))
+            raise TypeError(
+                "word_from_word_or_number({}) is not supported, "
+                "only Word or Number.".format(
+                    type(x).__name__,
+                )
+            )
 
     def insert_word(self, word):
         raise NotImplementedError()
@@ -1293,13 +1300,17 @@ class LexMemory(Lex):
 class LexMySQL(Lex):
     """
     Store a Lex in a MySQL table.
-
-    language - must be 'MySQL'
-    table - e.g. 'word'
-    engine - MySQL ENGINE, defaults to InnoDB
-    txt_type - MySQL type of txt, defaults to VARCHAR(10000)
     """
     def __init__(self, **kwargs):
+        """
+        Create or initialize the table, as necessary.
+
+        kwargs parameters:
+            language - must be 'MySQL' (required)
+            table - e.g. 'word' (required)
+            engine - MySQL ENGINE, defaults to InnoDB
+            txt_type - MySQL type of txt, defaults to VARCHAR(10000)
+        """
         language = kwargs.pop('language')
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
@@ -1311,7 +1322,7 @@ class LexMySQL(Lex):
         #                  for the used table type, not counting BLOBs, is 65535. This includes
         #                  storage overhead, check the manual. You have to change some columns to
         #                  TEXT or BLOBs
-
+        # SEE:  VARCHAR versus TEXT, https://stackoverflow.com/a/2023513/673991
         self._txt_type = kwargs.pop('txt_type', default_txt_type)
         try:
             self._connection = mysql.connector.connect(**kwargs)
@@ -1491,7 +1502,14 @@ class LexMySQL(Lex):
 
         # noinspection PyUnusedLocal
         def __exit__(self, exc_type, exc_val, exc_tb):
-            self.the_cursor.close()
+            try:
+                self.the_cursor.close()
+            except mysql.connector.DatabaseError as e:
+                # NOTE:  Avoid this exception masking another, while a cursor is alive.
+                # EXAMPLE:  InternalError: Unread result found
+                #           This can happen if an exception is raised inside a with-cursor clause
+                #           when selecting multiple rows.
+                print("Error closing cursor", str(e))
 
     def _cursor(self):
         return self.Cursor(self._connection)

@@ -62,6 +62,27 @@ class NumberTests(unittest.TestCase):
         self.assertFalse(n.is_zero())
         self.assertTrue(n.is_negative())
 
+    def assertRaisesRegex(self, error, expression):
+        """
+        A lot of shenanigans just to avoid a warning in Python 3, or an error in Python 2.
+
+        The warning in Python 3 when using assertRaisesRegexp:
+            DeprecationWarning: Please use assertRaisesRegex instead.
+        The error in Python 2 when using assertRaisesRegex:
+            AttributeError: 'NumberSuffixTests' object has no attribute 'assertRaisesRegex'
+
+        :param error: - class derived from Error
+        :param expression: - regular expression to match the error message
+        :return: - for use in a with statement
+        """
+        if hasattr(super(NumberTests, self), 'assertRaisesRegex'):
+            # noinspection PyUnresolvedReferences
+            return super(NumberTests, self).assertRaisesRegex(error, expression)
+        elif hasattr(super(NumberTests, self), 'assertRaisesRegexp'):
+            # noinspection PyUnresolvedReferences
+            return super(NumberTests, self).assertRaisesRegexp(error, expression)
+        else:
+            raise AttributeError("Cannot find the assert function for matching the message")
 
 # noinspection SpellCheckingInspection
 class NumberBasicTests(NumberTests):
@@ -682,10 +703,10 @@ class NumberBasicTests(NumberTests):
                 assert q == Number(i).qstring()
                 assert i == int(Number(q))
 
-            Verify each integer and qstring is monotonic -- the values must be tested
+            Verify each integer and qstring is monotonic -- the values are tested
             in descending order.
 
-            Why a buncha calls to i__q() are superior to a list of test cases:
+            Why a buncha i__q() calls are superior to a list of test case data:
             so the stack trace identifies the line with the failing data.
             """
             assert isinstance(i, six.integer_types)
@@ -728,11 +749,17 @@ class NumberBasicTests(NumberTests):
             q_last = None
 
         if LUDICROUS_NUMBER_SUPPORT:
-            i__q(  2**65536,         '0qFF00FFFF00010000_01')   # XXX:  Or is it 0qFF00FFFF00010001_01 == 1/256 * 256**(65536+1)
-            i__q(  2**65535,         '0qFF00FFFF_01')   # XXX:  No!  Confusion with larger lexponents.  Note monotonicity failure!  See qikiNumbers.txt.
-            i__q(256**128,           '0qFF000080_01')
-            i__q(  2**1024,          '0qFF000080_01')
-            i__q(  2**1000,          '0qFF00007D_01')   # XXX:  Or 0qFF00007E_01?  Because radix point is all the way left, i.e. qan is fractional?
+            i__q(256**65536,  '0qFF00FFFF00010000_01')   # 1 * 256**65536
+            i__q(256**65535,  '0qFF00FFFF0000FFFF_01')
+            i__q(256**65282,  '0qFF00FFFF0000FF02_01')
+            i__q(256**65281,  '0qFF00FFFF0000FF01_01')
+            i__q(256**65280,  '0qFF00FFFF0000FF00_01')   #  __/ 8-byte qex, at 256**0xFF00 \ this preserves
+            i__q(256**65279,  '0qFF00FEFF_01')           #    \ 4-byte qex, at 256**0xFEFF / monotonicity
+            i__q(256**65278,  '0qFF00FEFE_01')
+            i__q(256**65277,  '0qFF00FEFD_01')
+            i__q(256**128,    '0qFF000080_01')
+            i__q(  2**1024,   '0qFF000080_01')
+            i__q(  2**1000,   '0qFF00007D_01')   # 1 * 256**125 == 2**1000
         i__q(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__q(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
                           '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
@@ -881,6 +908,21 @@ class NumberBasicTests(NumberTests):
                           '00000000000000000000000000000000000000000000000000000000000000000000001')
 
     def test_int_ludicrous_large(self):
+        """
+        Test the max reasonable positive integer, 2**1000 - 1.
+
+        And the min ludicrous positive integer, 2**1000.
+
+        Where is the radix point in a ludicrous qan?
+            If way left,  then 0qFF000001_01 ==   1 and smallest_ludicrous == 0qFF00007E_01
+            If way right, then 0qFF000001_01 == 256 and smallest_ludicrous == 0qFF00007D_01
+        (The fictional 0qFF000001_01 and 0qFF000000_01 are nonstandard and would break monotonicity,
+        but they are still illustrative.)
+            If way left,  then 0x82_01 == 0qFF000001_01 and 0x81 is the "offset" for reasonable qex
+            If way right, then 0x82_01 == 0qFF000000_01 and 0x82 is the "offset" for reasonable qex
+
+        Decision:  It's way right.   0qFF000000_01 would be 1.  A qan of 888888 is conceptually 88.8888
+        """
         smallest_ludicrous = 2 ** 1000
         biggest_reasonable = 2 ** 1000 - 1
         assert smallest_ludicrous == 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376
@@ -891,7 +933,9 @@ class NumberBasicTests(NumberTests):
             'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
             Number(biggest_reasonable).qstring()
         )
-        if not LUDICROUS_NUMBER_SUPPORT:
+        if LUDICROUS_NUMBER_SUPPORT:
+            self.assertEqual('0qFF00007D_01', Number(smallest_ludicrous).qstring())
+        else:
             with self.assertRaises(NotImplementedError):
                 Number(smallest_ludicrous)
 
@@ -2119,18 +2163,18 @@ class NumberComparisonTests(NumberTests):
         class SomeType(object):
             pass
 
-        with self.assertRaises(Number.CompareError):    Number(1) <  SomeType()
-        with self.assertRaises(Number.CompareError):    Number(1) <= SomeType()
-        self.assertFalse(                               Number(1) == SomeType())
-        self.assertTrue(                                Number(1) != SomeType())
-        with self.assertRaises(Number.CompareError):    Number(1) >  SomeType()
-        with self.assertRaises(Number.CompareError):    Number(1) >= SomeType()
-        with self.assertRaises(Number.CompareError):   SomeType() <  Number(1)
-        with self.assertRaises(Number.CompareError):   SomeType() <= Number(1)
-        self.assertFalse(                              SomeType() == Number(1))
-        self.assertTrue(                               SomeType() != Number(1))
-        with self.assertRaises(Number.CompareError):   SomeType() >  Number(1)
-        with self.assertRaises(Number.CompareError):   SomeType() >= Number(1)
+        with self.assertRaises(Number.CompareError):   _ =  Number(1) <  SomeType()
+        with self.assertRaises(Number.CompareError):   _ =  Number(1) <= SomeType()
+        self.assertFalse(                                   Number(1) == SomeType())
+        self.assertTrue(                                    Number(1) != SomeType())
+        with self.assertRaises(Number.CompareError):   _ =  Number(1) >  SomeType()
+        with self.assertRaises(Number.CompareError):   _ =  Number(1) >= SomeType()
+        with self.assertRaises(Number.CompareError):   _ = SomeType() <  Number(1)
+        with self.assertRaises(Number.CompareError):   _ = SomeType() <= Number(1)
+        self.assertFalse(                                  SomeType() == Number(1))
+        self.assertTrue(                                   SomeType() != Number(1))
+        with self.assertRaises(Number.CompareError):   _ = SomeType() >  Number(1)
+        with self.assertRaises(Number.CompareError):   _ = SomeType() >= Number(1)
 
     def test_in_and_sorted(self):
         """
@@ -2470,13 +2514,18 @@ class NumberMathTests(NumberTests):
         """
         if six.PY2:
             self.binary_op(operator.__floordiv__, 1+0j,  -5+10j,     3+4j )
+            # noinspection PyUnresolvedReferences
             self.assertEqual(                     1+0j, (-5+10j) // (3+4j))
             self.assertEqual(                     1+2j, (-5+10j) /  (3+4j))
         else:
             with self.assertRaises(TypeError):
                 self.binary_op(operator.__floordiv__, 1+0j, -5+10j,   3+4j)
             with self.assertRaises(TypeError):
+                # noinspection PyTypeChecker
                 self.assertEqual(                     1+0j, -5+10j // 3+4j)
+            with self.assertRaises(TypeError):
+                # noinspection PyTypeChecker
+                _ = -5+10j // 3+4j
 
     def test_operator_div(self):
         if six.PY2:
@@ -2696,21 +2745,21 @@ class NumberComplex(NumberTests):
 
         n, n_bar = Number(888+111j), Number(888-111j)
         with self.assertRaises(TypeError):   # So should Number() comparisons with a nonzero imaginary.
-            n_bar < n
+            _ = n_bar < n
         with self.assertRaises(Number.CompareError):   # By the way, Number.CompareError is a TypeError.
-            n_bar < n
+            _ = n_bar < n
 
     def test_06c_more_or_less_complex_comparisons(self):
         """Complex ordered-comparisons < <= > >= should raise a TypeError, qiki numbers. """
         n, n_bar = Number(888+111j), Number(888-111j)
         with self.assertRaises(TypeError):   # Check all comparison operators.
-            n_bar < n
+            _ = n_bar < n
         with self.assertRaises(TypeError):
-            n_bar <= n
+            _ = n_bar <= n
         with self.assertRaises(TypeError):
-            n_bar > n
+            _ = n_bar > n
         with self.assertRaises(TypeError):
-            n_bar >= n
+            _ = n_bar >= n
 
     # noinspection PyStatementEffect
     def test_06d_mixed_types_and_mixed_complexities_comparison(self):
@@ -2729,21 +2778,21 @@ class NumberComplex(NumberTests):
         self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
         self.assertTrue(qiki_real1 >= qiki_real2)
         with self.assertRaises(Number.CompareError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
-            qiki_complex2 < qiki_real1
+            _ = qiki_complex2 < qiki_real1
         with self.assertRaises(Number.CompareError):
-            qiki_real2 < qiki_complex1
+            _ = qiki_real2 < qiki_complex1
         with self.assertRaises(Number.CompareError):   # n vs q
-            native_complex2 < qiki_real1
+            _ = native_complex2 < qiki_real1
         with self.assertRaises(Number.CompareError):
-            native_real2 < qiki_complex1
+            _ = native_real2 < qiki_complex1
         with self.assertRaises(Number.CompareError):   # q vs n
-            qiki_complex2 < native_real1
+            _ = qiki_complex2 < native_real1
         with self.assertRaises(Number.CompareError):
-            qiki_real2 < native_complex1
+            _ = qiki_real2 < native_complex1
         with self.assertRaises(TypeError):   # n vs n
-            native_complex2 < native_real1
+            _ = native_complex2 < native_real1
         with self.assertRaises(TypeError):
-            native_real2 < native_complex1
+            _ = native_real2 < native_complex1
 
     # TODO:  Check doubly mixed comparisons for <= > >=
 
@@ -3188,9 +3237,9 @@ class NumberSuffixTests(NumberTests):
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
         def bad_to_parse(n, case_suffix, case_root):
-            with self.assertRaisesRegexp(Suffix.RawError, r'case {}'.format(case_suffix)):
+            with self.assertRaisesRegex(Suffix.RawError, r'case {}'.format(case_suffix)):
                 n.parse_suffixes()
-            with self.assertRaisesRegexp(Suffix.RawError, r'case {}'.format(case_root)):
+            with self.assertRaisesRegex(Suffix.RawError, r'case {}'.format(case_root)):
                 n.parse_root()
         def good_to_parse(n):
             n.parse_suffixes()
@@ -3268,14 +3317,27 @@ class NumberSuffixTests(NumberTests):
         self.assertIs(type(suffix), Suffix)
         self.assertEqual(Number(356), suffix.payload_number())
 
+    def test_eq_ne_suffix(self):
+        self.assertTrue(Suffix(0x11) == Suffix(0x11))
+        self.assertFalse(Suffix(0x11) != Suffix(0x11))
+        self.assertFalse(Suffix(0x11) == Suffix(0x22))
+        self.assertTrue(Suffix(0x11) != Suffix(0x22))
+        self.assertEqual(Suffix(0x11), Suffix(0x11))
+        self.assertNotEqual(Suffix(0x11), Suffix(0x22))
+
+        self.assertTrue(Suffix(0x22) == Suffix(0x22))
+        self.assertFalse(Suffix(0x22) != Suffix(0x22))
+        self.assertFalse(Suffix(0x22) == Suffix(0x11))
+        self.assertTrue(Suffix(0x22) != Suffix(0x11))
+        self.assertEqual(Suffix(0x22), Suffix(0x22))
+        self.assertNotEqual(Suffix(0x22), Suffix(0x11))
+
     def test_get_suffix(self):
         n = Number(99).plus_suffix(0x11).plus_suffix(0x22)
         s11 = n.get_suffix(0x11)
         s22 = n.get_suffix(0x22)
         self.assertEqual(s11, Suffix(0x11))
-        self.assertNotEqual(s11, Suffix(0x22))
         self.assertEqual(s22, Suffix(0x22))
-        self.assertNotEqual(s22, Suffix(0x11))
 
     def test_nan_suffix_empty(self):
         nan = Number(float('nan'))
