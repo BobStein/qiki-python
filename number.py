@@ -19,6 +19,7 @@ import operator
 import struct
 
 import six
+import six.moves
 
 
 class SlotsOptimized(object):
@@ -308,7 +309,10 @@ class Number(numbers.Complex):
         return "Number('{}')".format(self.qstring())
 
     def __str__(self):
-        return self.qstring()
+        try:
+            return self.qstring()
+        except Suffix.RawError:
+            return "?" + self.hex() + "?"
 
 
     # Comparison
@@ -454,31 +458,40 @@ class Number(numbers.Complex):
         """
         Implement the one-slash division operator for Python 2.
 
-        This will never be hybrid division (true with floats, floor with
-        integers).
+        This will never be hybrid division. (Hybrid division is true-
+        division with floats, but floor-division with integers).
 
         Even though we use future division in this source file, a client
         might not.  So a Python 2 client using Number(x) / Number(y)
-        should expect true division, whether or not they do:
+        should expect true-division, whether or not they do:
         from __future__ import division.
 
-        Otherwise, there would be no sensible way to force a true
-        division for that client.  To get true division with native math,
-        make sure one of the operands is a float.  For example, 2/3 is
+        Otherwise, there would be no sensible way to force a true-
+        division for that client.  To get true-division with native math,
+        you make sure one of the operands is a float.  For example, 2/3 is
         zero but 2.0/3 is 0.666...  But Number(2.0)/Number(3) is
         indistinguishable from Number(2)/Number(3).  So in this sense,
         Number behaves slightly more like float than int.  Or you could
         say Number imposes a little Python 3 onto Python 2 users.
         """
-        # TODO:  Does using true-div here cause weird effects at float/int boundary?  Expose them in unit tests.
-        # Apparently true-div always converts to float.
+
+        return operator.__truediv__(self, other)
+
+        # return self._binary_op(operator.__truediv__, self, other)
+        # NOTE:  Pointless to call _binary_op(), because truediv always uses float
+
+        # TODO:  Does using true-division here cause weird effects at float/int boundary?
+        #        Expose them in unit tests.
+        #        Apparently operator.__truediv__() always converts to float.
         # TODO:  Re-review division, here and unit tests, yet again.
-        return self._binary_op(operator.__truediv__, self, other)
+
+        # TODO:  Should large N=(2**54) Numbers divide as int?
+        #        That is, use floordiv (aka int) instead of truediv (aka float).
+        #        Floor-division may be better than true-division:
+        #            (N+1)*(N+1)/(N+1) - N should be 1 not 0.0
+
     def __rdiv__(self, other):
         return self._binary_op(operator.__truediv__, other, self)
-
-    # TODO:  Should large (2**54) Numbers divide using int or float?  Based solely on whether they're whole?
-    # Problem:  Some loss of precision dividing large integers, e.g. factoring 0x10000000000000001 ** 2
 
     def _unary_op(self, op):
         n = Number(self)
@@ -610,12 +623,12 @@ class Number(numbers.Complex):
         elif self.zone in ZoneSet.WHOLE_NO:
             return False
         else:           # ZoneSet.WHOLE_INDETERMINATE
-            raise self.WholeError("Cannot process " + repr(self))   # e.g. Number.POSITIVE_INFINITY
+            raise self.WholeError("Cannot determine wholeness of " + repr(self))   # e.g. Number.POSITIVE_INFINITY
 
     is_integer = is_whole
 
     class WholeError(OverflowError):
-        """When the whole part of a number does not make sense, e.g. Number.POSITIVE_INFINITY.is_whole()"""
+        """When it's nonsense to ask if a number is whole, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
         return self.raw == self.RAW_NAN
@@ -688,7 +701,7 @@ class Number(numbers.Complex):
 
     def _from_string(self, s):
         """
-        Construct a Number from its string rendering.
+        Construct a Number from a string rendering.
 
         Example:  assert Number(1) == Number('0q82_01')
         Example:  assert Number(1) == Number('1')
@@ -888,10 +901,16 @@ class Number(numbers.Complex):
         # TODO:  triple-underscore 2-deep suffixes?  E.g. 0x82_01___8202__8203_7F0300_7F0800
         # TODO:    quad-underscore 3-deep suffixes?  E.g. 0x82_01____8202___8203__8204_7F0300_7F0800_7F0D00
         # TODO:  Alternative repr() for suffixed numbers, where calling-parens coincide with nesting depth.
+        error_tag = ""
         if underscore == 0:
             return_value = '0q' + self.hex()
         else:
-            root, suffixes = self.parse_suffixes()
+            try:
+                root, suffixes = self.parse_suffixes()
+            except Suffix.RawError:
+                root = self
+                suffixes = []
+                error_tag = "!?"
             length = len(root.raw)
             if length == 0:
                 offset = 0
@@ -907,7 +926,7 @@ class Number(numbers.Complex):
             for suffix in suffixes:
                 return_value += '__'
                 return_value += suffix.qstring(underscore)
-        return return_value
+        return return_value + error_tag
 
     def __int__(self):
         int_by_dictionary = self.__int__by_zone_dictionary()
@@ -952,15 +971,18 @@ class Number(numbers.Complex):
         elif Zone.FRACTIONAL_NEG       <= self.raw:  return 0
         elif Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
         elif Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
-        else:                                             return self._int_cant_be_nan()
+        else:                                        return self._int_cant_be_nan()
 
-    @staticmethod
-    def _int_cant_be_positive_infinity():
-        raise OverflowError("Positive Infinity cannot be represented by integers.")
+    @classmethod
+    def _int_cant_be_positive_infinity(cls):
+        raise cls.IntOverflowError("Positive Infinity cannot be represented by integers.")
 
-    @staticmethod
-    def _int_cant_be_negative_infinity():
-        raise OverflowError("Negative Infinity cannot be represented by integers.")
+    @classmethod
+    def _int_cant_be_negative_infinity(cls):
+        raise cls.IntOverflowError("Negative Infinity cannot be represented by integers.")
+
+    class IntOverflowError(OverflowError):
+        """Python int has no sane way to represent infinity.  Example int(Number.POSITIVE_INFINITY)"""
 
     @staticmethod
     def _int_cant_be_nan():
@@ -985,13 +1007,22 @@ class Number(numbers.Complex):
         return the_int
 
     def __float__(self):
-        if self.is_complex():
-            raise TypeError("{} has an imaginary part, use complex(n) instead of float(n)".format(self.qstring()))
-        x = self.real
-        float_by_dictionary = x.__float__by_zone_dictionary()
-        assert floats_really_same(float_by_dictionary, x.__float__by_zone_ifs()), (
+        try:
+            is_complex = self.is_complex()
+            the_root = self.root
+        except Suffix.RawError:
+            is_complex = False
+            the_root = self
+        if is_complex:
+            raise TypeError(
+                "{} has an imaginary part, "
+                "use float(n.real) or complex(n) "
+                "instead of float(n)".format(self.qstring())
+            )
+        float_by_dictionary = the_root.__float__by_zone_dictionary()
+        assert floats_really_same(float_by_dictionary, the_root.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  dict-method=%s, if-method=%s" % (
-                repr(x), float_by_dictionary, x.__float__by_zone_ifs()
+                repr(the_root), float_by_dictionary, the_root.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
@@ -1329,18 +1360,18 @@ class Number(numbers.Complex):
                 try:
                     length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
                 except IndexError:
-                    raise Suffix.RawError("Invalid suffix, case 1.")
+                    raise Suffix.RawError("Invalid suffix, hard length underflow.")
                 if length_of_payload_plus_type >= len(raw_remains)-2:
                     # Suffix may neither be larger than raw, nor consume all of it.
-                    raise Suffix.RawError("Invalid suffix, case 2.")
+                    raise Suffix.RawError("Invalid suffix, soft length underflow.")
                 if length_of_payload_plus_type == 0x00:
                     suffixes.insert(0, Suffix())
                 else:
                     try:
                         type_ = six.indexbytes(raw_remains, -3)
                     except IndexError:
-                        raise Suffix.RawError("Invalid suffix, case 3.")
-                        # NOTE:  case 3 may be impossible -- eclipsed by case 2.
+                        raise Suffix.RawError("Invalid suffix, fuzzy length underflow.")
+                        # NOTE:  fuzzy underflow may be impossible -- eclipsed by soft underflow.
                     payload = raw_remains[-length_of_payload_plus_type-2:-3]
                     suffixes.insert(0, Suffix(type_, payload))
                 raw_remains = raw_remains[0:-length_of_payload_plus_type-2]
@@ -1358,19 +1389,19 @@ class Number(numbers.Complex):
             while True:
                 index_00 = index_end - 1
                 if index_00 < 0:
-                    raise Suffix.RawError("Invalid suffix, case 4.")
+                    raise Suffix.RawError("Invalid suffix, soft root underflow.")
                 zero_tag = six.indexbytes(self.raw, index_00)
                 if zero_tag != 0x00:
                     break
                 index_length = index_end - 2
                 if index_length < 0:
-                    raise Suffix.RawError("Invalid suffix, case 5.")
+                    raise Suffix.RawError("Invalid suffix, hard root underflow.")
                 length = six.indexbytes(self.raw, index_length)
                 index_end = index_length - length
         return Number.from_raw(self.raw[:index_end])
 
 
-    # Constants (see Number.internal_setup())
+    # Constants (see Number._internal_setup())
     # ---------
     NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
     ZERO = None
@@ -1428,8 +1459,8 @@ def sets_exclusive(*sets):
             if sets[i].intersection(sets[j]):
                 return False
     return True
-assert True == sets_exclusive({1,2,3}, {4,5,6})
 assert False == sets_exclusive({1,2,3}, {3,4,5})
+assert True == sets_exclusive({1,2,3}, {4,5,6})
 
 
 def union_of_distinct_sets(*sets):
@@ -1442,7 +1473,8 @@ assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
 class ZoneSet(object):
     """Sets of Zones, for categorizing Numbers."""
     # TODO:  Venn Diagram or table or something.
-    # TODO:  is_x() routine for each zone set X, e.g. is_reasonable()
+    # TODO:  is_x() routine for each zone set X
+    #        e.g. is_reasonable() based on ZoneSet.REASONABLE
 
     ALL = {
         Zone.TRANSFINITE,
@@ -1662,6 +1694,7 @@ class Suffix(object):
     # CC class (haha no)
     # (Make them both apply by subclassing Suffix, and each subclass assigns its own whatever-its-called?)
     # (Make it a Number?  Every suffix could be a Number plus a Number/Text/empty payload?)
+    #     (Too bad 0q00 is so fundamentally malformed -- that could be the type of the "pad" suffix.)
 
     MAX_PAYLOAD_LENGTH = 250
 

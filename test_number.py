@@ -3236,25 +3236,40 @@ class NumberSuffixTests(NumberTests):
 
     def test_malformed_suffix(self):
         """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
-        def bad_to_parse(n, case_suffix, case_root):
-            with self.assertRaisesRegex(Suffix.RawError, r'case {}'.format(case_suffix)):
+
+        # TODO:  Should these raise exceptions in the *constructor*?
+        #        At least now these don't raise RawError:  n.qstring(), float(n), int(n)
+
+        def bad_to_parse(n, message_fragment):
+            # print("Well", n.qstring(), float(n))
+            # EXAMPLE:
+            #     Well 0q00!? -inf
+            #     Well 0q00_00!? -inf
+            #     Well 0q22_0100!? -3.60061779735e+221
+            #     Well 0q33_4455220400!? -3.04191017326e+180
+            #     Well 0q82_019900!? 1.59765625
+            #     Well 0q82_01000500!? 1.00007629395
+            #     Well 0q82_01000400!? 1.00006103516
+            #     Well 0q82_01000300!? 1.00004577637
+            with self.assertRaisesRegex(Suffix.RawError, message_fragment):
                 n.parse_suffixes()
-            with self.assertRaisesRegex(Suffix.RawError, r'case {}'.format(case_root)):
+            with self.assertRaisesRegex(Suffix.RawError, message_fragment):
                 n.parse_root()
+
         def good_to_parse(n):
             n.parse_suffixes()
             n.parse_root()
 
-        bad_to_parse(Number('0q00'), 1, 5)   # Where's the length byte?
-        bad_to_parse(Number('0q__0000'), 2, 4)   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__220100'), 2, 4)   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__334455220400'), 2, 4)   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q82_01__9900'), 2, 4)
-        bad_to_parse(Number('0q82_01__000500'), 2, 4)
-        bad_to_parse(Number('0q82_01__000400'), 2, 4)   # Suffix "underflows" one byte off the left edge.
-        bad_to_parse(Number('0q82_01__000300'), 2, 4)   # Looks like suffixed Number.NAN.
+        bad_to_parse(Number('0q00'), "hard")   # Where's the length byte?
+        bad_to_parse(Number('0q__0000'), "soft")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__220100'), "soft")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__334455220400'), "soft")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q82_01__9900'), "soft")     # Suffix length "underflow"
+        bad_to_parse(Number('0q82_01__000500'), "soft")
+        bad_to_parse(Number('0q82_01__000400'), "soft")   # Suffix underflows one byte off the left edge.
+        bad_to_parse(Number('0q82_01__000300'), "soft")   # Looks like a suffixed Number.NAN.
 
-        good_to_parse(Number('0q82_01__000200'))   # Indistinguishable from 0q82__01000200
+        good_to_parse(Number('0q82_01__000200'))   # Actually parsed as 0q82__01000200
         good_to_parse(Number('0q82_01__000100'))
         good_to_parse(Number('0q82_01__0000'))
 
