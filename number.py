@@ -19,7 +19,6 @@ import operator
 import struct
 
 import six
-import six.moves
 
 
 class SlotsOptimized(object):
