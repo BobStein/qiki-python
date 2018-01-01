@@ -182,7 +182,8 @@ class LexErrorTests(unittest.TestCase):
         with six.assertRaisesRegex(self, qiki.Lex.ConnectError, r'Access denied'):
             # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
             qiki.LexMySQL(**credentials)
-            # TODO:  Prevent in Python 3.5:  ResourceWarning: unclosed <socket.socket ...
+            # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
+            #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 64095), raddr=('127.0.0.1', 33073)>
             #        Intermittent:  sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
 
     def test_two_lex(self):
