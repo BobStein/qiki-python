@@ -495,10 +495,11 @@ class Number(numbers.Complex):
     def _unary_op(self, op):
         n = Number(self)
         if n.is_complex():
-            # return Number(op(complex(n)))
+            # noinspection PyTypeChecker
+            return Number(op(complex(n)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
-            return Number(op(n.__complex__()))
+            # return Number(op(n.__complex__()))
 
         try:
             int_is_better_than_float = n.is_whole()
@@ -515,10 +516,11 @@ class Number(numbers.Complex):
         n1 = Number(input_left)
         n2 = Number(input_right)
         if n1.is_complex() or n2.is_complex():
-            # return Number(op(complex(n1), complex(n2)))
+            # noinspection PyTypeChecker
+            return Number(op(complex(n1), complex(n2)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
-            return Number(op(n1.__complex__(), n2.__complex__()))
+            # return Number(op(n1.__complex__(), n2.__complex__()))
 
         try:
             int_better_than_float = n1.is_whole() and n2.is_whole()

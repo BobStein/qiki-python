@@ -62,7 +62,7 @@ class NumberTests(unittest.TestCase):
         self.assertFalse(n.is_zero())
         self.assertTrue(n.is_negative())
 
-    def assertRaisesRegex(self, error, expression):
+    def assertRaisesRegex(self, error, expression, *args, **kwargs):
         """
         A lot of shenanigans just to avoid a warning in Python 3, or an error in Python 2.
 
@@ -76,11 +76,11 @@ class NumberTests(unittest.TestCase):
         :return: - for use in a with statement
         """
         if hasattr(super(NumberTests, self), 'assertRaisesRegex'):
-            # noinspection PyUnresolvedReferences
-            return super(NumberTests, self).assertRaisesRegex(error, expression)
+            # noinspection PyUnresolvedReferences,PyCompatibility
+            return super(NumberTests, self).assertRaisesRegex(error, expression, *args, **kwargs)
         elif hasattr(super(NumberTests, self), 'assertRaisesRegexp'):
             # noinspection PyUnresolvedReferences
-            return super(NumberTests, self).assertRaisesRegexp(error, expression)
+            return super(NumberTests, self).assertRaisesRegexp(error, expression, *args, **kwargs)
         else:
             raise AttributeError("Cannot find the assert function for matching the message")
 
@@ -2483,9 +2483,11 @@ class NumberMathTests(NumberTests):
         self.assertEqual(2, operator.__floordiv__(5, 2))
 
         if six.PY2:
+            # noinspection PyUnresolvedReferences
             self.assertEqual(2, operator.__div__(5, 2))
         else:
             with self.assertRaises(AttributeError):
+                # noinspection PyUnresolvedReferences
                 operator.__div__(5, 2)
 
     def test_no_hybrid_number_division(self):
@@ -2677,6 +2679,7 @@ class NumberComplex(NumberTests):
         n = Number(888+111j)
         self.assertEqual(888.0, float(n.real))
         self.assertEqual(111.0, float(n.imag))
+        # noinspection PyTypeChecker
         self.assertEqual(888.0+111.0j, complex(n))
 
     def test_03b_complex_phantom_real(self):
@@ -2790,8 +2793,10 @@ class NumberComplex(NumberTests):
         with self.assertRaises(Number.CompareError):
             _ = qiki_real2 < native_complex1
         with self.assertRaises(TypeError):   # n vs n
+            # noinspection PyTypeChecker
             _ = native_complex2 < native_real1
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             _ = native_real2 < native_complex1
 
     # TODO:  Check doubly mixed comparisons for <= > >=
