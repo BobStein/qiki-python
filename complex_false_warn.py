@@ -1,12 +1,10 @@
-import typing
-
 class Moo: pass
 
 
 class NotComplex(object):
     pass
 
-def return_1j:
+def return_1j():
     return 1j
 
 class OneComplex(object, Moo):  __complex__ = return_1j

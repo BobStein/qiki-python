@@ -179,11 +179,14 @@ class LexErrorTests(unittest.TestCase):
         """
         credentials = secure.credentials.for_unit_testing_database.copy()
         credentials['password'] = 'wrong'
+        # noinspection SpellCheckingInspection,SpellCheckingInspection
         with six.assertRaisesRegex(self, qiki.Lex.ConnectError, r'Access denied'):
             # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
             qiki.LexMySQL(**credentials)
             # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
-            #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 64095), raddr=('127.0.0.1', 33073)>
+            #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
+            #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 64095),
+            #        raddr=('127.0.0.1', 33073)>
             #        Intermittent:  sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
 
     def test_two_lex(self):
@@ -194,7 +197,7 @@ class LexErrorTests(unittest.TestCase):
         lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
         self.assertEqual(max_start+1, lex2.max_idn())
 
-        # lex2.uninstall_to_scratch()   # WHy does this cause infinite hang?
+        # lex2.uninstall_to_scratch()   # Why does this cause infinite hang?
         lex2.disconnect()
         lex1.uninstall_to_scratch()
         lex1.disconnect()

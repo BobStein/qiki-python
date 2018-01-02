@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import collections
 import numbers
 import re
 import time
@@ -1205,8 +1206,8 @@ class LexMemory(Lex):
             self._install_all_seminal_words()
         assert self.exists()
         assert self.is_lex()
-        self._noun = self.words[Word._IDN_NOUN]
-        self._verb = self.words[Word._IDN_VERB]
+        self._noun = self.words[int(Word._IDN_NOUN)]
+        self._verb = self.words[int(Word._IDN_VERB)]
 
     def exists(self):
         if hasattr(self, 'words'):
@@ -1721,7 +1722,8 @@ class LexMySQL(Lex):
     def _and_clauses(idn, sbj, vrb, obj):
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
-        assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
+        # assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
+        assert isinstance(vrb, (Number, Word, type(None), collections.Iterable))
         assert isinstance(obj, (Number, Word, type(None)))
         query_args = []
         if idn is not None:
