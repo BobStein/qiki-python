@@ -1499,6 +1499,8 @@ class ZoneSet(object):
         Zone.TRANSFINITE_NEG,
         Zone.NAN,
     }
+
+    # The most basic way to group the zones:  REASONABLE, LUDICROUS, NONFINITE
     REASONABLE = {
         Zone.POSITIVE,
         Zone.FRACTIONAL,
@@ -1518,6 +1520,8 @@ class ZoneSet(object):
         Zone.INFINITESIMAL_NEG,
         Zone.TRANSFINITE_NEG,
     }
+
+    # Other ways to group the zones
     FINITE = union_of_distinct_sets(
         LUDICROUS,
         REASONABLE,
@@ -1526,7 +1530,6 @@ class ZoneSet(object):
         LUDICROUS,
         NONFINITE,
     )
-
     POSITIVE = {
         Zone.TRANSFINITE,
         Zone.LUDICROUS_LARGE,
@@ -1551,6 +1554,7 @@ class ZoneSet(object):
         Zone.ZERO
     }
 
+    # Some interesting Venn overlaps
     ESSENTIALLY_POSITIVE_ZERO = {
         Zone.LUDICROUS_SMALL,
         Zone.INFINITESIMAL,
@@ -1586,16 +1590,22 @@ class ZoneSet(object):
         Zone.TRANSFINITE_NEG,
     }
 
-    # TODO:  Maybe REASONABLY_ZERO  should include      infinitesimals and ludicrously small and zero
-    #          and ESSENTIALLY_ZERO should include just infinitesimals                       and zero
+    # TODO:  Maybe REASONABLY_ZERO  could include      infinitesimals and ludicrously small and zero
+    #          and ESSENTIALLY_ZERO could include just infinitesimals                       and zero
     # Except then REASONABLY_ZERO overlaps UNREASONABLE (the ludicrously small).
     # Confusing because then epsilon is both reasonable and unreasonable?
-    # (That's why the term ESSENTIALLY was introduced, because it's distinct from REASONABLY.)
+    # And it's not interesting to say that ludicrously small numbers are not reasonably zero.
+    #     They kind of totally are.
+    # That's why the term ESSENTIALLY was introduced, because it's distinct from REASONABLY.
+    #     So that's that, no REASONABLY_ZERO because it'd be confusing or useless.
+
     # If not sufficiently confusing, we could also define
-    # a REASONABLY_INFINITE set as ludicrously large plus transfinite.
-    # And ESSENTIALLY_INFINITE as just +/- transfinite.
-    # The same as a TRANSFINITE set would be.
-    # (But not NONFINITE, as that includes infinitesimals.)
+    #     a REASONABLY_INFINITE set as ludicrously large plus transfinite.
+    #     Nah that's UNREASONABLY_BIG
+    #     There's nothing "reasonable" about infinity.
+    # How about ESSENTIALLY_INFINITE as just +/- transfinite. (excluding ludicrously large)
+    #     The same as a TRANSFINITE set would be.
+    #     (But not NONFINITE, as that includes infinitesimals.)
 
     WHOLE_NO = {
         Zone.FRACTIONAL,
@@ -1631,6 +1641,13 @@ class ZoneSet(object):
     # Each of these sets are MECE, mutually exclusive and collectively exhaustive.
     # Each is identical to ZoneSet.ALL.
     # For documentation and testing.
+
+    _ALL_BY_SOME_KIND_OF_BASIC_WAY = union_of_distinct_sets(
+        REASONABLE,
+        LUDICROUS,
+        NONFINITE,
+        NAN,
+    )
 
     _ALL_BY_REASONABLENESS = union_of_distinct_sets(
         REASONABLE,
