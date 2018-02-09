@@ -91,6 +91,7 @@ target/
 **/.idea/dictionaries
 
 # Sensitive or high-churn files:
+**/.idea/dataSources/
 **/.idea/dataSources.ids
 **/.idea/dataSources.xml
 **/.idea/sqlDataSources.xml

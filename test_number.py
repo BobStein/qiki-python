@@ -982,8 +982,9 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q80', Number(0).qstring())
 
     def test_zone_sets(self):
-        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_FINITENESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_SOME_KIND_OF_BASIC_WAY)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_REASONABLENESS)
+        self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_FINITENESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_ZERONESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_BIGNESS)
         self.assertEqualSets(ZoneSet.ALL, ZoneSet._ALL_BY_WHOLENESS)
@@ -1451,7 +1452,7 @@ class NumberBasicTests(NumberTests):
         zone_boundary()
         if LUDICROUS_NUMBER_SUPPORT:
             f__q(-math.pow(256, -125),    'something')
-            f__q(-math.pow(  2, -100),    'something')   # gentlest negative ludicrously small number
+            f__q(-math.pow(  2, -1000),   'something')   # gentlest negative ludicrously small number
         else:
             f__q(-math.pow(256, -125),    '0q7E7C_FF')
             f__q(-math.pow(  2, -1000),   '0q7E7C_FF')   # gentlest negative ludicrously small number

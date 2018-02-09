@@ -1046,10 +1046,16 @@ class ListingNotInstalled(Listing):
 
 
 class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
-                    #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript, Diary,
-                    #                     Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
+                    #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
+                    #                     Diary, Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                     # Eventually, this will encapsulate other word repositories
-                    # Make this an abstract base class
+                    # Or should it simply be a sibling of e.g. Listing (List)?
+                    # This could encapsulate the idea of a container of sbj-vrb-obj words
+                    #     a sentence that defines a word.
+                    # Yeesh, should Word be an abstract base class, and derived classes
+                    #     have sbj,vrb,obj members, and other derivations that don't?
+                    #     class Sentence(Word)?
+                    # Make Lex formally an abstract base class
 
     def __getitem__(self, item):
         """
@@ -1970,13 +1976,44 @@ def is_iterable(x):
 
     """
     #XXX:  Fix is_iterable(b'')  (false in Python 2, true in Python 3)
+    # try:
+    #     0 in x
+    # except TypeError as e:
+    #     assert e.__class__ is TypeError   # A subclass of TypeError raised by comparison operators?  No thanks.
+    #     return False
+    # else:
+    #     return True
+
+    # THANKS:  https://stackoverflow.com/a/36230057/673991
+    # if (
+    #         hasattr(obj, '__iter__') and
+    #         # hasattr(obj, 'next') and      # or __next__ in Python 3
+    #         callable(obj.__iter__) and
+    #         obj.__iter__() is obj
+    #     ):
+    #     return True
+    # else:
+    #     return False
+    # PHOOEY, it likes strings
+
+    # TODO:  Rejigger this to return true if iter(x) doesn't raise an exception.
+    #        IOW to include strings.
+    #        But then define is_container() := is_iterable and not is_string()
+    #        Or, fuck it, maybe just test things for whatever ELSE is expected and as a last resort
+    #        use it in a for-statement and recurse if it doesn't raise a TypeError
+    #        Or call this is_recursable()?
+
+    # THANKS:  rule-out-string then duck-type, https://stackoverflow.com/a/1835259/673991
+    if isinstance(x, six.string_types):
+        return False
     try:
-        0 in x
+        iter(x)
     except TypeError as e:
         assert e.__class__ is TypeError   # A subclass of TypeError raised by comparison operators?  No thanks.
         return False
     else:
         return True
+
 assert is_iterable(['a', 'list', 'is', 'iterable'])
 assert not is_iterable('a string is not')
 
