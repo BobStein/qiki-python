@@ -48,7 +48,7 @@ except ImportError:
 
             CREATE DATABASE `database`;
             GRANT CREATE, INSERT, SELECT ON `database`.* TO 'user'@'localhost' IDENTIFIED BY 'password';
-    """)
+    \n""")
     sys.exit(1)
 
 

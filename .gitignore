@@ -76,43 +76,42 @@ target/
 ################## modified to not exclude the entire .idea/ directory
 ################## and includes Josh Unger's `**/` idea: http://stackoverflow.com/a/11968647/673991
 ################## froth:  http://stackoverflow.com/questions/11968531/what-to-gitignore-from-the-idea-folder
+################## 2018.0210 replaced with https://raw.githubusercontent.com/github/gitignore/master/Global/JetBrains.gitignore
 
-# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion
-
-*.iml
-
-## Directory-based project format:
-####################### .idea/
-# if you remove the above rule, at least ignore the following:
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
 # User-specific stuff:
-**/.idea/workspace.xml
-**/.idea/tasks.xml
-**/.idea/dictionaries
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/dictionaries
 
 # Sensitive or high-churn files:
-**/.idea/dataSources/
-**/.idea/dataSources.ids
-**/.idea/dataSources.xml
-**/.idea/sqlDataSources.xml
-**/.idea/dynamic.xml
-**/.idea/uiDesigner.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
 
 # Gradle:
-**/.idea/gradle.xml
-**/.idea/libraries
+.idea/**/gradle.xml
+.idea/**/libraries
+
+# CMake
+cmake-build-debug/
+cmake-build-release/
 
 # Mongo Explorer plugin:
-**/.idea/mongoSettings.xml
+.idea/**/mongoSettings.xml
 
 ## File-based project format:
-*.ipr
 *.iws
 
 ## Plugin-specific files:
 
 # IntelliJ
-/out/
+out/
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/
@@ -120,10 +119,11 @@ target/
 # JIRA plugin
 atlassian-ide-plugin.xml
 
+# Cursive Clojure plugin
+.idea/replstate.xml
+
 # Crashlytics plugin (for Android Studio and IntelliJ)
 com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
-
-################## misc.xml appears to be ignorable
-misc.xml
+fabric.properties
