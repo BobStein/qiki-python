@@ -1721,7 +1721,11 @@ class NumberBasicTests(NumberTests):
         """Make sure copy constructor copies by value, not reference."""
         source = Number(1)
         destination = Number(source)
+        self.assertEqual('0q82_01', source.qstring())
+        self.assertEqual('0q82_01', destination.qstring())
+
         source.raw = Number(9).raw
+        self.assertEqual('0q82_09', source.qstring())
         self.assertEqual('0q82_01', destination.qstring())
 
     def test_assignment_by_reference(self):

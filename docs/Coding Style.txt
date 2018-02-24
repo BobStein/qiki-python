@@ -1,0 +1,990 @@
+C O D I N G   S T Y L E
+-----------------------
+-----------------------
+
+
+
+
+
+PEP8 Amendments
+###############
+
+
+Use whitespace to reveal meaningful patterns
+--------------------------------------------
+
+Probably not:
+
+x             = 1
+y             = 2
+long_variable = 3
+
+
+Probably:
+
+x             = long_function_name(1)
+y             = long_function_name(2)
+long_variable = long_function_name(3)
+
+
+
+Rationale:  visual patterns enhance understanding.
+
+
+
+
+
+120 Wide
+--------
+
+Limit all lines to 119 characters, whether code or comments.  
+PyCharm defaults to this (Settings | Editor | Code Style | Right margin).
+
+Limit lines in docstrings and help messages (e.g. argparse description) to 72 characters.  
+This is an end-user limitation, and rightly more conservative than a developer limitation.
+
+Possibly 100 is better.  At least on my portrait-oriented monitors.
+
+
+
+
+Function parameters
+-------------------
+
+Enclosed things (e.g. function parameters) should either be: 
+    *  all on one line; or 
+    *  one per line, indented at the same level.  (The lines with the brackets should be outdented.)
+
+Yes:
+
+    y = f(x)
+
+    y = f(x1, x2, x3)
+
+    y = f(
+        x1,
+        x2,
+        x3
+    )
+
+    y = f(
+        x1,
+        x2,
+        f(y1, y2, y3)
+    )
+
+    y = f(
+        x1,
+        x2,
+        f(
+            y1,
+            y2,
+            y3
+        )
+    )
+
+No:
+
+    y = f(
+        x1,
+        x2,
+        x3)
+
+    y = f(x1,
+          x2,
+          x3
+    )
+
+    y = f(
+        x1, x2,
+        long_variable
+    )
+
+    y = f(x1, x2, x3, x_running_out_of_line_width,
+          long_variable)
+    
+Goes for function call or definition, and members of a literal tuple, list, dict, or set.
+
+This convention is derived from PHP coding standard PSR-2, section 4.6, Method and Function Calls.
+https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md#user-content-46-method-and-function-calls
+
+SEE:  multiline statements in Python, http://stackoverflow.com/a/4172465/673991
+
+Counterpoint:
+    lots_of_little_things = [
+         2,   3,   5,   7,  11,  13,  17,  19, 
+        23,  29,  31,  37,  41,  43,  47,  53, 
+        59,  61,  67,  71,  73,  79,  83,  89, 
+        97, 101, 103, 107, 109, 113, 127, 131, 
+    ]
+
+
+
+Answer-then-Question
+--------------------
+assertEquals(expected_value, computed_value)
+assert expected_return_value == function(parameter, parameter)
+
+Rationale:  This is the order of use in the wild, so that mental model should be reinforced:
+
+    returned_value = function(parameter, parameter)
+
+Counterpoint:  if variable_name == some_value   # (The difference is, variable_name is not being computed here.)
+
+
+
+Explicit Package Names
+----------------------
+
+Yes:
+    import binascii
+    :
+    hex = binascii.hexlify(bin)
+
+No:
+    from binascii import hexlify
+    :
+    hex = hexlify(bin)
+
+This guy concurs:  http://programmers.stackexchange.com/a/187471/56713
+
+Counterpoint:
+    aggregated packages
+        example:  from qiki import Number
+    deep nesting:
+        example:  from package.sub.subsub.subsubsub import module
+        example:  from django.http import HttpResponse
+    package name is more ephemeral than the object name
+        example:  from bs4 import BeautifulSoup
+    packages that hide their influence for noble reasons
+        example:  from __future__ import print_function
+
+
+
+Alphabetize imports, within their sections of course
+----------------------------------------------------
+No:
+    import collections
+    import binascii
+    import array
+
+    import coconut
+    import bungee
+    import anvil
+Yes:
+    import array
+    import binascii
+    import collections
+    
+    import anvil
+    import bungee
+    import coconut
+
+
+Import one module per line
+--------------------------
+Good:
+    from django.http import HttpResponse
+    
+from django.http import Http404
+
+Not so good:
+    from django.http import HttpResponse
+from, Http404
+
+
+
+
+Double Quotes for Humans, Single Quotes for Machines
+----------------------------------------------------
+Use "double quotes" for strings that are to be seen by humans.  
+
+    print("All is well.")
+    raise("This should never have happened.")
+
+Strings with functional consequences should use 'single quotes'.  The only humans likely to see them are programmers.
+
+    if __name__ == '__main__':
+        main(port='COM3')
+
+    serial_port.write('ATDT555-1212')
+    
+Double quoted strings can be changed without breaking the code.
+
+"""docstrings"""
+'''other multi-line comments'''   <-- Does that fit the pattern or buck it?  
+                                      Both are for human consumption and changes will not break.
+
+
+
+.format() over %
+----------------
+
+.format() is better than %.  The syntax and options are harder to remember, but if you tell people that's because
+they're too old, they should complain less.  If that doesn't do it, suggest their first programming language must 
+have been Fortran.
+
+
+.format() without numbers
+-------------------------
+A single unnamed argument is okay.
+
+    "The parrot is {}.".format("resting")
+
+Otherwise, use named formatting arguments.  
+
+    "The {something} in {other_thing}".format(something="rain", other_thing="Spain")
+
+Never use numbered "positional" arguments.
+
+    "He's not {0}, he's {1}!".format("resting", "dead")
+
+
+
+dict() over {} (unsure about this one)
+--------------
+
+Okay:   {'key': 'value'}
+Better: dict(key='value')
+
+Okay:
+    { 
+        'key': 'value',
+        'name': 'value',
+    }
+Better:
+    dict(
+        key='value',
+        name='value',
+    )
+
+
+Obviously there's a tradeoff in clutter.  Another advantage of dict() is the syntax highlighting of the key names. But the curly-syntax is more versatile.
+
+Counter-arguments:
+    You cannot do:
+
+        dict(class='value')
+        dict(3='three')
+
+    You could instead:
+    
+        { 'class': 'value' }
+        { 3: 'three' }
+
+
+    Sure looks nice:
+        d = {}
+
+
+
+Doc string
+----------
+
+Yes:
+
+    """This is 1 line."""
+
+
+    """
+    This is the first line.
+
+    This is the second line.
+    """
+
+No:
+
+    """This is the first line.
+    
+    This is the second line."""
+
+
+    """Sentence fragment."""
+
+    
+Slice Colon
+-----------
+Exactly one space (even if shared) before and after each slice colon.
+
+Yes:
+    ham[1 : 9], ham[1 : 9 : 3], ham[ : 9 : 3], ham[1 : : 3], ham[1 : 9 : ], ham[ : : 2]
+
+No:
+    ham[1:9], ham[1:9:3], ham[:9:3], ham[1::3], ham[1:9:], ham[::2]
+    
+    
+Avoid 'pass'
+------------
+THANKS:  Should document exception, http://code.activestate.com/lists/python-ideas/14893/
+No:
+    class SpecialError(Exception):
+        pass
+Yes:
+    class SpecialError(Exception):
+        """Why would this happen?  Example:  bad_function_call()"""
+
+No:
+    try:
+        risky_behavior()
+    except:
+        pass
+Yes:
+    try:
+        risky_behavior()
+    except:
+        """Why we're letting this pass.  Example when it happens."""
+        
+        
+Enumerate with class "constants" and an all-caps class name
+-----------------------------------------------------------
+No:
+    FRUIT_APPLE = 1
+    FRUIT_BANANA = 2
+    FRUIT_CHERRY = 3
+    
+    print(FRUIT_BANANA)
+
+Yes:
+    class FRUIT(object):
+        APPLE = 1
+        BANANA = 2
+        CHERRY = 3
+        
+    print(FRUIT.BANANA)
+        
+        
+
+Custom Exception or RuntimeError
+--------------------------------
+Raised exceptions should have a programmer-readable message.
+Raising a custom exception is better than raising a built-in exception.
+A custom exception class would be better derived from a built-in exception class, 
+    rather than the generic Exception.  
+A custom exception class should have a name that ends in "Error" 
+    following the convention of all built-in exception classes.
+You can raise a RuntimeError in reusable code on an extraordinary event 
+    that a client shouldn't be expected to anticipate, 
+    but which could be very hard to debug if execution proceeded.
+    E.g. someone must have broken the reusable code 
+        (in which case one of its unit tests should fail)
+    E.g. there's a bug in Python.
+    This can help document a non-obvious assumption, e.g. a side-effect of a built-in function
+        perhaps to forestall refactoring that would break,
+
+No:
+    def foo(bar):
+        if problem:
+            raise ValueError
+            
+Yes:
+    def foo(bar):
+        if problem:
+            raise FooAbuseError("What went wrong in this case.")
+    
+    class FooAbuseError(Exception):
+        """What this exception means.  Example foo(data_that_could_cause_it)"""
+        
+
+Commas Forever
+--------------
+Every literal tuple or list or dict should put a comma after its last member.
+
+No:
+    (1,2,3)
+Yes:
+    (1,2,3,)
+    
+Avoids bugs where (1) is not a tuple.
+
+
+What is important should stand out
+----------------------------------
+Ok:
+    var $elements = $(
+        '.long-class-name ' + 
+        '.another-long-class-name'
+    )
+Better:
+    var $elements = $(
+        '.long-class-name' +
+        ' ' + 
+        '.another-long-class-name'
+    )
+
+
+
+    
+Codetags (PEP 0350)
+--------
+
+Codetags should go on the line *after* the code they are tagging.
+This location resembles putting the codetag comment on the same line as the code,
+while complying with the rule "It should not share a line with code."
+
+A codetag should span exactly one line.  Indented continuation lines may elaborate.
+
+No <> fields.
+
+Mnemonics I have used from the standard list:
+    CAUTION (instead of CAVEAT or WARNING or DANGER or PANIC or HYSTERIA)
+    DONE
+    FIXME
+    HACK
+    NOTE (instead of N.B.)
+    SEE (instead of SOURCE or REF or REFERENCE)
+    THANKS (instead of CREDIT)
+    TODO
+    TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
+    XXX
+    
+Additional mnemonics:
+    DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
+        blank lines before and after 
+        counterarguments separated by a blank line
+    EXAMPLE (output, error message, etc.)
+    KUDOS (stronger THANKS)
+    REPORTED (noted for posterity, bug report, Q&A submitted by author)
+
+Variations
+    THANKS:  (maybe)  Some article on stack overflow I do not dare upvote until I know if it works. 
+             Because of dumb policy on tactical-downvoting, https://meta.stackexchange.com/a/18046/209317
+    THANKS:  (NOT)  Some article on stack overflow that turned out to be misleading.
+
+Possibilities:
+    ASSUMPTION  (NOTE is probably good enough.  Even better:  assert.)
+
+    
+Continuation lines are indented to line up with the stuff after the colon:
+    No:
+        // NOTE:  The rain in Spain falls mainly
+        // in the plain.
+    Yes:
+        // NOTE:  The rain in Spain falls mainly
+        //        in the plain.
+
+
+
+
+JavaScript Coding Standards
+###########################
+READ:  http://javascript.crockford.com/code.html
+
+$variable names for jQuery objects begin with a dollar sign.  
+SEE:  http://stackoverflow.com/questions/6209462/when-why-to-prefix-variables-with-when-using-jquery
+
+Stacked methods on the SAME jQuery object may be indented, and terminated by a single-line ';'
+
+    $name_field
+        .addClass('clout')
+        .attr('maxlength', 50)
+        .data('foo', 'bar')
+    ;
+    
+Not sure about stacked methods that traverse DIFFERENT jQuery objects.
+
+    // #1
+    $form
+        .find('#name')
+        .closest('.address')
+        .addClass('red-ring')
+    ;
+    
+Should this instead be:
+
+    // #2
+    var $name = $form.find('#name');
+    var $address = $name.closest('address');
+    $address.addClass('red-ring');
+    
+Pros to #1:
+    Brief
+    Lines start with important method names, instead of burying them
+Pros to #2:
+    Clarity the progression of objects
+    Clarity on which object each method is being called on
+    Cue that you cannot rearrange these lines
+
+Leaning toward #2.
+    
+Hmm, here's an exception to the same-object rule:
+
+    $good_names = $names
+        .not('.bad')
+        .not('#terrible')
+    ;
+
+    Leaning toward #1 in this case.  (In part because you CAN rearrange these lines.)
+
+
+
+
+
+
+
+Generic
+#######
+Principles that could apply to most languages.
+
+
+Human Readability
+=================
+The first priority for code is to function.  
+    Machines should work reliably and give humans an easier life.
+The second priority for code is accurate, quick comprehension by human readers.  
+    Do not fool, do not confuse.
+
+
+Visual patterns are good
+------------------------
+No:
+    for i in range(3):
+        something()
+Yes:
+    something()
+    something()
+    something()
+
+More than 3 repetitions may be tedious to count. Probably not as good a visual pattern.
+
+
+
+Avoid Double Negatives
+----------------------
+Do not nest negativity.  Limit human readers to one level of negativity per line of code.
+
+No:
+    is_invalid = error()
+    if not is_invalid:   # Double negatives are not painless.
+        goodie()
+Yes:
+    is_valid = not error()
+    if is_valid:
+        goodie()
+
+No:
+    if (!good) {
+        short code
+    } else {   // Double negatives are not uncomplicated.
+        very
+        long
+        code
+    }
+No:
+    if (good) {
+        very
+        long
+        code
+    } else {   // This 'else' is far from its 'if', making code review tedious.
+        short code
+    }
+Maybe:
+    bad = !good;
+    if (bad) {
+        short code
+    } else {
+        very
+        long
+        code
+    }
+Yes:
+    if (!good) {
+        short code
+    }
+    if (good) {   // Sacrifice a little brevity and D.R.Y. for easier reading.
+        very
+        long
+        code
+    }
+
+    
+    
+Creative questions?
+-------------------
+
+Meh:
+    if not this or not that or not the_other_thing:
+        do_something()
+Yes:
+    if this and that and the_other_thing:
+        '''Do nothing in this special case.  Sacrifice brevity for easier reading.'''
+    else:
+        do_something()
+
+
+Conversion function name should use "from" not "to"
+---------------------------------------------------
+No:
+    mm = inches_to_mm(inches)
+
+Yes:
+    mm = mm_from_inches(inches)
+
+    See how the mm's are close together and the inches are close together.
+
+
+Code >>> Documentation ('>>>' means 'is way better than')
+----------------------
+Subprinciples:
+    assert as documentation
+    Extract Variable
+
+
+assert as documentation
+-----------------------
+Using assert to document is meaningful, precise, and reliable.
+
+Even mildly experienced programmers think enough "in the language" to recognize meaning from a good example.
+And if they do not, they should be grateful to you for encouraging them to think that way.
+Soon, English will fade blurry for them and code will pop out.
+(This mindset has its limitations:  https://xkcd.com/149/)
+
+There is an added benefit to assert-based over comment-based documentation.
+Not only does assert document in the lingua locale, it packs the added punch of automated confirmation.
+
+These benefits are worth a little syntactic vinegar, e.g. for demonstrating a Python @staticmethod:
+
+    Class C
+        @staticmethod
+        def sum(a, b):
+            return a + b
+
+        assert 4 == sum.__func__(2+2)
+
+It's a shame this cannot be:
+
+        assert 4 == sum(2+2)
+
+But it is still better than nothing.
+Thanks to Ben from Melbourne for sleuthing this funky ".__func__" technique.
+See http://stackoverflow.com/a/12718272/673991
+
+This only helps with static methods.  No assert can follow a class method or a regular method.
+For example, this does not work immediately after qiki.Number._pack_integer() is defined:
+     assert b'\x00\xFF' == _pack_integer.__self__._pack_integer.__func__(255, 2)
+because the function has no __self__ member yet
+
+
+Extract Variable
+Introduce Explaining Variable
+-----------------------------
+http://refactoring.com/catalog/extractVariable.html
+http://c2.com/cgi/wiki?IntroduceExplainingVariable
+"Put the result of the expression, or parts of the expression, in a temporary variable with a name that explains the purpose."
+
+No:
+    fish(cut_bait())
+    
+Yes:
+    chum = cut_bait()
+    fish(chum)
+
+No:
+    y = f(g(x))    # Reason why we call g() first then f()
+    
+Yes:
+    explain_why_we_call_g_first = g(x)
+    y = f(explain_why_we_call_g_first)
+
+
+Conversational
+--------------
+Comments and documentation should use complete, grammatical, English sentences that one human might actually speak to another.
+
+
+Contractions and Apostrophes
+----------------------------
+Avoid contractions.
+
+    No:
+        can't
+    Yes:
+        cannot
+
+Reason 1, a little help for non-native English speakers.
+Reason 2, apostrophes (single-quote marks) in comments or message strings thwart searches and sometimes cause bugs.
+Apostrophes are worthwhile when avoidance would be silly (two's complement, Pascal's Triangle).
+Luckily the contraction "it's" is easy to replace with "it is".  And the possessive "its" has no apostrophe.
+
+
+Idioms
+------
+Bias against idioms, to help non-native English speakers.  These can be especially tedious to translate.
+
+
+
+Unambiguous Wording
+-------------------
+Avoid ambiguous wording.  Imagine your text passing through a cheap translator. Simple words are good, but big words may be more precise and may translate with less confusion.
+
+Where precise understanding is important, single-meaning English words are better than multiple-meaning words.
+Because language translators are less likely to confuse the meanings.
+So sometimes arcane polysyllabic jargon is better than a conversational monosyllable.
+
+    "unambiguous"
+        5 syllables
+        1 meaning:  "only one way to interpret it"
+    "clear"
+        1 syllable
+        more than 5 meanings
+            and even the one you want is less precise:  "it's obvious"
+
+Avoid non-primary meanings of simple words.  "Clear" means primarily transparent.  Be biased against using its other meanings.
+
+
+Code in Comments
+----------------
+If a code fragment is in a comment, nothing should follow it but the newline.
+
+A comment line that contains only a line of code is good.
+
+    # assert 4 == 2+2
+
+A comment line with an English sentence, and then code, is okay.
+
+    # We can rely on math.  assert 4 == 2+2
+
+A command line with an English sentence that contains code at its end is okay,
+but in that case forgo the period.
+
+    # We can rely on assert 4 == 2+2
+
+
+Links in Comments
+-----------------
+Where hyperlinks are in comments forgo punctuation.  Put whitespace before and a newline after.
+
+    No:
+        # Look it up on http://google.com/.
+
+        # Go to "http://google.com/" and look it up.    
+    
+        # This is from http://google.com/:
+        #   some content
+
+    Yes:
+        # Look it up on http://google.com/
+
+        # Go to http://google.com/
+        # and look it up.
+
+        # This is from http://google.com/
+        #   some content
+
+        
+D.R.Y. (Don't Repeat Yourself) Counterpoint
+-------------------------------------------
+Rationale:
+    The big value of D.R.Y. is avoiding bugs when someday only one part of a repeated feature gets edited.
+    The tiny value of D.R.Y. is less typing.
+
+Example:
+    DIRECTORY = '/var/etc/'
+    :
+    :
+    def full_path(name):
+        return DIRECTORY + name
+    assert '/var/etc/name' == full_path('name')
+    
+Crime:
+    '/var/etc/' is repeated.  It must be maintained in two places.
+    
+Counterpoint (why you may prefer to repeat yourself in this example):
+    This case doesn't have the big D.R.Y. problem for long because a skewed edit would be caught by the assert.
+    The benefit of repeating yourself here is comprehensible and trustable code.
+
+        
+
+Naming
+======
+
+2 > 3
+-----
+No:
+    url_for_login
+Yes:
+    url_login
+    
+
+significance first
+specificity first
+-----------------
+No:
+    url_login
+Yes:
+    login_url
+    
+    
+plural <- avoid
+plural names only for arrays
+----------------------------
+That is, an instance of a collection class.  Such as an array in JavaScript, or a list or set in Python.
+
+No:
+    NAV_BUTTONS_ELEMENT
+Yes:
+    NAV_BUTTON_ELEMENT
+    
+Yes:
+    product_names = list()
+    :
+    for product_name in product_names:
+        sell(product_name)
+
+Avoid confusion as to whether a name is plural.
+Support Python looping like this:  "for thing in things"
+    But not for dictionaries
+        Misleading:
+            for variable in variables
+        Corrected:
+            for name, value in variables.items()
+        Better:
+            for name, value in variable_dictionary.items()
+
+No:
+    utility_functions.js   // nearly every JavaScript source file has functions
+No: 
+    utilities.js   // avoidable plural (name the purpose, not the content)
+Yes:
+    utility.js
+    
+    
+SEE:  Singular table names, https://stackoverflow.com/a/5841297/673991
+      Plural table names, https://stackoverflow.com/a/3254185/673991
+        
+        
+English is better than abbreviations
+------------------------------------
+From PEP8, "Identifiers ... SHOULD use English words wherever feasible."
+
+Example:  latitude is better than lat
+
+
+
+Brevity is Good; Clarity is Great (BG;CG)
+=========================================
+
+
+One Line, One Idea
+------------------
+No:
+    import os, sys
+Yes:
+    import os
+    import sys
+
+    
+    
+Line Bites
+----------
+For comprehension, simple is better than brief.
+
+Meh:
+    return cache.setdefault(x, f(x))
+    # f() is always called!
+Better:
+    try:
+        y = cache[x]
+    except KeyError:
+        y = f(x)
+        cache[x] = y
+    return y
+Better:
+    if x not in cache:
+        cache[x] = f(x)
+    return cache[x]
+
+(Thanks, http://stackoverflow.com/a/36031293/673991)
+    
+
+
+Conditional Expressions - one idea max.
+
+Yes:
+    name = 'Jane Doe' if stiff.name is None else stiff.name
+Better?
+    name = 'Jane Doe'   if stiff.name is None   else stiff.name
+
+No:
+    a = (b ? c : (d ? e : f));
+    
+No:
+    a = c if b else (e if d else f)
+
+Yes:
+    if b
+        c
+    else
+        if d
+            e
+        else
+            f
+
+            
+Dictionaries and Lists
+----------------------
+
+Okay:
+    d = {}
+    l = []
+Better:
+    d = dict()
+    l = list()
+
+This is an example of readability trumping brevity.
+Or possibly a clarification on what brevity means.
+Brevity is less about characters and more about visual atoms.
+A four-letter-word is atomic to the visual cortex of a literate person.  
+Okay, "dict" is not an English word, but it becomes as good as one with Python fluency.
+Punctuation symbols may actually be more verbose, in terms of recognition cost.
+
+Anyway, there could be a high cost for misreading {} for () or []. 
+It's unfortunate the symbols only differ by a few pixels.
+A benevolent developer will only use curly braces when there are more compelling cues.
+
+Fine:
+    d = {'This': 'is more obviously a dictionary.'}
+    l = ['This', 'is more obviously a list.']
+    
+If you think the improvement is meager, just imagine twenty years from now 
+when your eyesight may be half as good as it is today.  
+Will you still be coding then?  A lot of us will be.  Be kind.
+
+Also there's the baked-in confusion that {0} is a set but {} is a dict.
+Not to mention () is an empty tuple but (0) is a plain zero.
+
+
+One Space Two Space, Red Space Blue Space
+-----------------------------------------
+One space after sentence-ending periods and list-starting colons in proportional-spaced fonts.
+Two spaces after sentence-ending periods* and list-starting colons in monospaced fonts.
+
+* Agrees with PEP8, as most source code is viewed monospace.
+
+
+
+Code comments prescribe:  declarative sentences  (PEP 257)
+Commit comments chronicle:  past tense sentences for human-developer behavior, present tense for code behavior (I guess)
+--------------------------
+
+Code comment
+    No:
+        # Adds two numbers
+    Yes:
+        # Add two numbers
+        
+Commit comment
+    No:
+        -m "Supports utf8mb4"
+    Meh:
+        -m "Supported utf8mb4"
+    Better:
+        -m "Added support for utf8mb4"
+
+Code comments should say what the code does, 
+in a "tone of voice" similar to the code itself.
+Almost in the first person, but omit the subject.
+(Even though code is not written in a spoken language, 
+you want to be fluent enough that it still "speaks" to you.)
+Comments should NOT resemble a human-writer talking to a human reader *about* the code.
+It should resemble the computer voicing what it's doing and why, as it's executing the code.
+(My interpretation of the intent of PEP 257.)
