@@ -1340,8 +1340,8 @@ class LexMySQL(Lex):
 
         super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
         try:
-            self._choate()
-        except mysql.connector.ProgrammingError as exception:
+            self._choate()   # Get the word out of this Lex that represents the Lex itself.
+        except self.SelectError as exception:   # was mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
                 # TODO:  Better detection of automatic table creation opportunity.
@@ -1447,7 +1447,7 @@ class LexMySQL(Lex):
         """Deletes table.  Opposite of install_from_scratch()."""
         try:
             self.super_query('DELETE FROM', self.table)
-        except mysql.connector.ProgrammingError:
+        except self.SelectError:
             pass
         self.super_query('DROP TABLE IF EXISTS', self.table)
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
@@ -1862,13 +1862,23 @@ class LexMySQL(Lex):
         with self._cursor() as cursor:
             cursor.execute(query, parameters)
 
+    class SelectError(Exception):
+        """super_select() had a MySQL exception.  Report the query."""
+
     def super_select(self, *query_args, **kwargs):
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         if debug:
             print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
         with self._cursor() as cursor:
-            cursor.execute(query, parameters)
+            try:
+                cursor.execute(query, parameters)
+            except mysql.connector.ProgrammingError as exception:
+                # EXAMPLE:
+                #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
+                #     and contains nonaggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
+                #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+                raise self.SelectError(str(exception) + " on query: " + query)
             for row in cursor:
                 field_dictionary = dict()
                 if debug:

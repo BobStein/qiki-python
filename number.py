@@ -313,7 +313,6 @@ class Number(numbers.Complex):
         except Suffix.RawError:
             return "?" + self.hex() + "?"
 
-
     # Comparison
     # ----------
     def __eq__(self, other):
@@ -429,7 +428,6 @@ class Number(numbers.Complex):
         else:
             if other_as_a_number.is_complex():
                 raise self.CompareError("Cannot compare complex values.")
-
 
     # Math
     # ----

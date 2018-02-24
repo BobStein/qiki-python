@@ -47,8 +47,11 @@ except ImportError:
         In MySQL you only need to create the database:  (LexMySQL will create the table.)
 
             CREATE DATABASE `database`;
-            GRANT CREATE, INSERT, SELECT ON `database`.* TO 'user'@'localhost' IDENTIFIED BY 'password';
-    """)
+            GRANT CREATE, INSERT, SELECT, DROP 
+                ON `database`.* 
+                TO 'user'@'localhost' 
+                IDENTIFIED BY 'password';
+    \n""")
     sys.exit(1)
 
 
@@ -432,7 +435,8 @@ class InternalWordTests(WordTests):
     """Test the WordTests class itself."""
 
     def test_000_show_version(self):
-        print("MySQL Server version", self.lex.server_version())
+        print("\nMySQL Server version", self.lex.server_version())
+        # NOTE:  Start with LF because all the other tests print an unterminated "."
 
     def test_assertNoNewWord(self):
         with self.assertNoNewWord():
