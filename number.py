@@ -1596,6 +1596,7 @@ class ZoneSet(object):
     #     They kind of totally are.
     # That's why the term ESSENTIALLY was introduced, because it's distinct from REASONABLY.
     #     So that's that, no REASONABLY_ZERO because it'd be confusing or useless.
+    # But then there's a REASONABLY_NONZERO and no REASONABLY_ZERO.  Is that confusing?
 
     # If not sufficiently confusing, we could also define
     #     a REASONABLY_INFINITE set as ludicrously large plus transfinite.

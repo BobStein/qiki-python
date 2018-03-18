@@ -412,6 +412,40 @@ Better:
     )
 
 
+Continuation Lines:  parentheses preferred, backslash bashed
+------------------
+Long atomic lines must be split.  But line terminators in Python have syntactic power, unlike C or Java.
+Backslashes are possible but parentheses look better. For emotional reasons I haven't rationalized yet.
+
+    Nah:
+        request['LandedCostRequest']['QueryRequest']['Shipment']['DestinationStateProvinceCode'] = \
+            shipment['ShipTo']['Address']['StateProvinceCode']
+        # readable, but jarring for some reason
+    Yeah:
+        request['LandedCostRequest']['QueryRequest']['Shipment']['DestinationStateProvinceCode'] = (
+            shipment['ShipTo']['Address']['StateProvinceCode']
+        )
+        # very clear what's happening
+    Ooh ooh:
+        (
+            request
+                ['LandedCostRequest']
+                ['QueryRequest']
+                ['Shipment']
+                ['DestinationStateProvinceCode']
+        ) = (
+            shipment
+                ['ShipTo']
+                ['Address']
+                ['StateProvinceCode']
+        )
+        # possibly even clearer what's happening
+    Meh:
+        new_query = request['LandedCostRequest']['QueryRequest']
+        old_province = shipment['ShipTo']['Address']['StateProvinceCode']
+        new_query['Shipment']['DestinationStateProvinceCode'] = old_province
+        # very difficult to read
+
 
     
 Codetags (PEP 0350)
