@@ -183,7 +183,14 @@ class Number(numbers.Complex):
 
         # TODO:  Is-instance or duck-typing?
         # SEE:  Duck-typing constructor arguments, https://stackoverflow.com/q/602046/673991
-        # SEE:  Is-instance comparison methods, https://stackoverflow.com/q/602046/673991
+        # NOTE:  Is-instance pros:
+        #        Readable type alternatives
+        #        Explicit hierarchy
+        # NOTE:  Duck-typing pros:
+        #        Flexibility, may inadvertently support unfamiliar number types
+        # NOTE:  factory-method pros:   (e.g. Number.from_int(42))
+        #        Clear usage code
+        #        Clear implementation code
         if isinstance(content, six.integer_types):
             self._from_int(content)
         elif isinstance(content, float):
@@ -387,7 +394,7 @@ class Number(numbers.Complex):
     #     DONE:  0q82__FF0100 == 0q82_01__FF0100
     #     Obviously different suffix contents matter:  0q80__FF0100 != 0q80__110100
     #     This approach may be the way it needs to go in the future.
-    #     For example if lossless rational numbers were supported, you might want 2/10 == 1/5
+    #     For example if loss-less rational numbers were supported, you might want 2/10 == 1/5
     #     So if rational numbers were implemented by approximation in the root number,
     #     and the denominator in a suffix, this could lead to storage ambiguities that
     #     should appear unambiguous to __eq__() etc.
@@ -802,7 +809,7 @@ class Number(numbers.Complex):
 
     def _from_float(self, x, qigits=None):
         """
-        Construct a Number from a Python IEEE 754 double-precision floating point number
+        Construct a Number from a Python IEEE-754 double-precision floating point number
 
         float('nan'), float('+inf'), float('-inf') each correspond to distinct Number values.
         Negative zero (-0.0) corresponds to Number.NEGATIVE_INFINITESIMAL.
@@ -1888,12 +1895,12 @@ assert 65536 == exp256(2)
 
 
 def log256(i):
-    """Compute the log base 256 of an integer.  Return the floor integer."""
+    """Compute the log base 256 of an integer.  Return the floor integer of that."""
     assert isinstance(i, six.integer_types)
     assert i > 0
     return_value = (i.bit_length()-1) >> 3
     assert return_value == len(hex_from_integer(i))//2 - 1
-    assert return_value == math.floor(math.log(i, 256)) or i >= 2**48-1, "Math.log disagrees, {} {} {}".format(
+    assert return_value == math.floor(math.log(float(i), 256)) or i >= 2**48-1, "Math.log disagrees, {} {} {}".format(
         i,
         return_value,
         math.floor(math.log(i, 256))
