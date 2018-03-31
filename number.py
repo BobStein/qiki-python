@@ -18,7 +18,8 @@ import numbers
 import operator
 import struct
 
-import six.moves
+
+import six
 
 
 class SlotsOptimized(object):
@@ -1179,7 +1180,7 @@ class Number(numbers.Complex):
         assert r'"\x82\x01"' == Number(1).ditto_backslash_hex()
         """
         hex_digits = self.hex()
-        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in six.moves.range(0, len(hex_digits), 2)]
+        escaped_hex_pairs = [r'\x' + hex_digits[i:i+2] for i in range(0, len(hex_digits), 2)]
         # THANKS:  Split string into pairs, http://stackoverflow.com/a/9475354/673991
         return '"' + ''.join(escaped_hex_pairs) + '"'
 
@@ -1459,8 +1460,8 @@ assert Number.NAN.raw == Number.RAW_NAN
 # ---------
 def sets_exclusive(*sets):
     """Are these sets mutually exclusive?  Is every member unique?"""
-    for i in six.moves.range(len(sets)):
-        for j in six.moves.range(i):
+    for i in range(len(sets)):
+        for j in range(i):
             if sets[i].intersection(sets[j]):
                 return False
     return True
@@ -2014,7 +2015,7 @@ assert 170 == unpack_big_integer_by_struct(b'\x00\xAA')
 def unpack_big_integer_by_brute(binary_string):
     """Universal version of unpack_big_integer()."""
     return_value = 0
-    for i in six.moves.range(len(binary_string)):
+    for i in range(len(binary_string)):
         return_value <<= 8
         return_value |= six.indexbytes(binary_string, i)
     return return_value
