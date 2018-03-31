@@ -185,12 +185,14 @@ class Number(numbers.Complex):
         # TODO:  Is-instance or duck-typing?
         # SEE:  Duck-typing constructor arguments, https://stackoverflow.com/q/602046/673991
         # NOTE:  Is-instance pros:
+        #        Brief use:  Number(42)
         #        Readable type alternatives
         #        Explicit hierarchy
         # NOTE:  Duck-typing pros:
+        #        Brief use
         #        Flexibility, may inadvertently support unfamiliar number types
-        # NOTE:  factory-method pros:   (e.g. Number.from_int(42))
-        #        Clear usage code
+        # NOTE:  factory-method pros:
+        #        Clear use:  Number.from_int(42)
         #        Clear implementation code
         if isinstance(content, six.integer_types):
             self._from_int(content)
