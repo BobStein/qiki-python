@@ -7,8 +7,10 @@ secure/
 # Django SQLite experimental database
 db.sqlite3
 
-# Less whining
+# Less whining, except it doesnt help
 .idea/dataSources/
+.idea/codeStyles/
+.idea/qiki-python.iml
 
 
 
