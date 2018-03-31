@@ -9,4 +9,5 @@ db.sqlite3
 
 # Less whining
 .idea/
+.cache/
 *.py[oc]
