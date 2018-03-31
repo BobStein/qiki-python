@@ -1081,7 +1081,7 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         else:
             return existing_word
 
-    class SuperIdentifier(str):
+    class SuperIdentifier(six.text_type):
         """Identifier in an SQL super-query that could go in `back-ticks`."""
         pass
 
@@ -1447,8 +1447,8 @@ class LexMySQL(Lex):
         """Deletes table.  Opposite of install_from_scratch()."""
         try:
             self.super_query('DELETE FROM', self.table)
-        except self.SelectError:
-            pass
+        except self.QueryError:
+            '''Not a problem if MySQL user doesn't have the DELETE privilege'''
         self.super_query('DROP TABLE IF EXISTS', self.table)
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
@@ -1647,6 +1647,16 @@ class LexMySQL(Lex):
         assert hasattr(jbo_vrb, '__iter__')
         query_args = [
             'SELECT '
+            'w.obj AS obj, '   # NOTE:  Avoid 
+            'w.idn AS idn, '
+            'w.sbj AS sbj, '
+            'w.vrb AS vrb, '
+            'w.num AS num, '
+            'w.txt AS txt, '
+            'w.whn AS whn',
+            None
+        ] if obj_group else [
+            'SELECT '
             'w.idn AS idn, '
             'w.sbj AS sbj, '
             'w.vrb AS vrb, '
@@ -1774,7 +1784,7 @@ class LexMySQL(Lex):
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
         # Instead of                 super_select('SELECT +', None, 'FROM table')
 
-        debug = kwargs.pop('debug', False)
+        debug = kwargs.pop(b'debug', False)
         query = ''
         parameters = []
         for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
@@ -1809,7 +1819,7 @@ class LexMySQL(Lex):
                 query += '?'
                 parameters.append(query_arg.unicode())
             elif isinstance(query_arg, Lex.SuperIdentifier):
-                query += '`' + query_arg + '`'
+                query += '`' + six.text_type(query_arg) + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
                 query += query_arg
             elif isinstance(query_arg, Number):
@@ -1857,16 +1867,25 @@ class LexMySQL(Lex):
             cursor.execute(query, parameters)
             return cursor.fetchone()
 
+    class QueryError(Exception):
+        """super_query() had a MySQL exception.  Report the query."""
+
     def super_query(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
-            cursor.execute(query, parameters)
+            try:
+                cursor.execute(query, parameters)
+            except mysql.connector.ProgrammingError as exception:
+                # EXAMPLE:
+                #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
+                #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
+                raise self.QueryError(str(exception) + " on query: " + query)
 
     class SelectError(Exception):
         """super_select() had a MySQL exception.  Report the query."""
 
     def super_select(self, *query_args, **kwargs):
-        debug = kwargs.get('debug', False)
+        debug = kwargs.get(b'debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         if debug:
             print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
@@ -1985,7 +2004,7 @@ def is_iterable(x):
     It may consume some or all of it's elements.
 
     """
-    #XXX:  Fix is_iterable(b'')  (false in Python 2, true in Python 3)
+    # XXX:  Fix is_iterable(b'')  (false in Python 2, true in Python 3)
     # try:
     #     0 in x
     # except TypeError as e:
@@ -2248,7 +2267,7 @@ class QoolbarSimple(Qoolbar):
 # word.brv?  The set of definitions and qualifiers supporting this verb??
     # No, that would be word.jbo.  word.brv is the set of sentences that use word as their verb!
 
-# TODO:  Word iterators and iteratables.
+# TODO:  Word iterators and iterables.
 # These will be needed for large sets, or sets that take a long time to determine, E.g.
     # The verbs in a qoolbar
     # A user's current qoolbar for a particular context.
