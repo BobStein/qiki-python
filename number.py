@@ -119,7 +119,7 @@ class Zone(object):
 
     @classmethod
     def _internal_setup(cls):
-        """Initialize Zone properties after the Zone class is defined."""
+        """Initialize Zone properties after the Zone class is otherwise defined."""
 
         cls.name_from_code = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
         cls.descending_codes = sorted(Zone.name_from_code.keys(), reverse=True)

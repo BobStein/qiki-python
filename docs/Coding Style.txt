@@ -301,18 +301,50 @@ No:
 
     """Sentence fragment."""
 
-    
-Slice Colon
------------
-Exactly one space (even if shared) before and after each slice colon.
 
-Yes:
-    ham[1 : 9], ham[1 : 9 : 3], ham[ : 9 : 3], ham[1 : : 3], ham[1 : 9 : ], ham[ : : 2]
 
-No:
-    ham[1:9], ham[1:9:3], ham[:9:3], ham[1::3], ham[1:9:], ham[::2]
+Weird-behaving code should be weird-looking
+-------------------------------------------
+
+    Slice Colon -- room to breathe
+    ------------------------------
+    Exactly one space (even if shared) before and after each slice colon.
+    There should be a spece whether or not the slice parameter is omitted.  In other words, 
+    cancel the exception in PEP8 that reads "when a slice parameter is omitted, 
+    the space is omitted")
+
+    Yes:
+        ham[1 : 9], ham[1 : 9 : 3], ham[ : 9 : 3], ham[1 : : 3], ham[1 : 9 : ], ham[ : : 2]
+
+    No:
+        ham[1:9], ham[1:9:3], ham[:9:3], ham[1::3], ham[1:9:], ham[::2]
+
+
+
+    Tuple assignment -- use parentheses
+    -----------------------------------
+    no:
+        width, height = dimensions()
+    yes:
+        (width, height) = dimensions()
+
+    no:
+        for key, value in zip(keys, values):
+    yes:
+        for (key, value) in zip(keys, values):
+        
+    Supports search for tuple-assignment:  ") :"
     
+    Rebuttal:  We don't do this for return because that generates 
+    a weak warning in PyCharm about redundant parens.
     
+    yes:
+        return key, value
+    meh:
+        return (key, value)
+
+
+
 Avoid 'pass'
 ------------
 THANKS:  Should document exception, http://code.activestate.com/lists/python-ideas/14893/
@@ -385,7 +417,7 @@ Yes:
         """What this exception means.  Example foo(data_that_could_cause_it)"""
         
 
-Commas Forever
+Commas Forever (MAYBE, NOT SO SURE ABOUT THIS)
 --------------
 Every literal tuple or list or dict should put a comma after its last member.
 
@@ -394,7 +426,7 @@ No:
 Yes:
     (1,2,3,)
     
-Avoids bugs where (1) is not a tuple.
+Avoids bugs where (1) is simple parentheses, not a tuple.
 
 
 What is important should stand out
@@ -447,6 +479,10 @@ Backslashes are possible but parentheses look better. For emotional reasons I ha
         # very difficult to read
 
 
+import sections
+---------------
+PEP8 identifies 3 sections for imports:  standard, pypi, local.  Single blank lines between each section. The middle pypi section should be further broken down, because many times it includes lots of related imports.  And sometimes it needs logic or verbose comments on all the difficulties.
+
     
 Codetags (PEP 0350)
 --------
@@ -455,7 +491,19 @@ Codetags should go on the line *after* the code they are tagging.
 This location resembles putting the codetag comment on the same line as the code,
 while complying with the rule "It should not share a line with code."
 
+    y = f(x)
+    # NOTE:  This code functions.
+
+Exceptions should be clear, e.g. a codetag ending in a colon ":" applies to lines that follow.
+
+    # NOTE:  Sequence records correctly:
+    print("Record sequence", ", ".join(records.keys()))
+
 A codetag should span exactly one line.  Indented continuation lines may elaborate.
+
+    # NOTE:  This is a summary.
+    #        More lines may
+    #        elaborate.
 
 No <> fields.
 
@@ -467,6 +515,7 @@ Mnemonics I have used from the standard list:
     NOTE (instead of N.B.)
     SEE (instead of SOURCE or REF or REFERENCE)
     THANKS (instead of CREDIT)
+    NOTHANKS (seemed helpful but was wrong or misleading)
     TODO
     TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
     XXX
@@ -481,8 +530,7 @@ Additional mnemonics:
 
 Variations
     THANKS:  (maybe)  Some article on stack overflow I do not dare upvote until I know if it works. 
-             Because of dumb policy on tactical-downvoting, https://meta.stackexchange.com/a/18046/209317
-    THANKS:  (NOT)  Some article on stack overflow that turned out to be misleading.
+             Because of dumb policy on tactical-down-voting, https://meta.stackexchange.com/a/18046/209317
 
 Possibilities:
     ASSUMPTION  (NOTE is probably good enough.  Even better:  assert.)
@@ -495,6 +543,24 @@ Continuation lines are indented to line up with the stuff after the colon:
     Yes:
         // NOTE:  The rain in Spain falls mainly
         //        in the plain.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
