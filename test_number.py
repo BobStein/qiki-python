@@ -3342,6 +3342,25 @@ class NumberSuffixTests(NumberTests):
         self.assertIs(type(suffix), Suffix)
         self.assertEqual(Number(356), suffix.payload_number())
 
+    def test_suffixes_1(self):
+        n = Number(99).plus_suffix(Suffix.Type.TEST, Number(356))
+        self.assertEqual(1, len(n.suffixes))
+        self.assertIs(type(n.suffixes[0]), Suffix)
+        self.assertEqual(Number(356), n.suffixes[0].payload_number())
+
+    def test_suffixes_3(self):
+        n = Number(99)\
+            .plus_suffix(Suffix.Type.TEST, Number(111))\
+            .plus_suffix(Suffix.Type.TEST, Number(222))\
+            .plus_suffix(Suffix.Type.TEST, Number(333))
+        self.assertEqual(3, len(n.suffixes))
+        self.assertIs(type(n.suffixes[0]), Suffix)
+        self.assertIs(type(n.suffixes[1]), Suffix)
+        self.assertIs(type(n.suffixes[2]), Suffix)
+        self.assertEqual(Number(111), n.suffixes[0].payload_number())
+        self.assertEqual(Number(222), n.suffixes[1].payload_number())
+        self.assertEqual(Number(333), n.suffixes[2].payload_number())
+
     def test_eq_ne_suffix(self):
         self.assertTrue(Suffix(0x11) == Suffix(0x11))
         self.assertFalse(Suffix(0x11) != Suffix(0x11))
@@ -3962,7 +3981,7 @@ class PythonTests(NumberTests):
         self.assertTrue(b'\x80' == b'\x80')
         self.assertTrue(b'\x7F' == b'\x7F')
 
-        self.assertFalse(b'' == b'\x00')
+        self.assertFalse(b'' == b'\x00')   # Unlike C-language
         self.assertFalse(b'' == b'\x80')
         self.assertFalse(b'\x80' == b'\x81')
         self.assertFalse(b'\x82' == b'\x82\x00')

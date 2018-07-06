@@ -30,11 +30,14 @@ class SlotsOptimized(object):
 
 # TODO:  Docstring every function
 # TODO:  Move big comment sections to docstrings.
+# TODO:  qantissa --> qan
 
 
 class Zone(object):
     """
-    Each qiki Number is in one of 14 distinct zones.  This class is an enumerator of those zones.
+    Zones of qiki Numbers
+
+    Each qiki Number is in one of 14 distinct zones.  This class enumerates the zones.
 
     Also, it encapsulates some utilities, e.g. Zone.name_from_code[Zone.NAN] == 'NAN'
 
@@ -92,7 +95,7 @@ class Zone(object):
     # This talk belongs in class Number docstring.
     # TODO:  Rename invalid values to plateau values?
     # TODO:  Or rename Plateau Codes or Code Plateaus, or Raw Plateau?
-    # since every q-string at a plateau represents the same VALUE.
+    # since every qstring at a plateau represents the same VALUE.
     # TODO:  Test that invalid and illegal values normalize to valid values.
     # Or should illegal values just crash?  I mean come on, 0q80_00 is just insane.
     # TODO:  Formally define all invalid and illegal raw-strings.
@@ -134,9 +137,9 @@ assert Zone.descending_codes[13] == Zone.NAN
 
 class Number(numbers.Complex):
     """
-    Representing integers, floating point, complex numbers and more.
+    Integers, floating point, complex numbers and more.
 
-    Introducing some familiar numbers:
+    Some familiar numbers:
         +2 == Number('0q82_02')
         +1 == Number('0q82_01')
         +0 == Number('0q80')
@@ -145,15 +148,28 @@ class Number(numbers.Complex):
       -2.5 == Number('0q7D_FD80')
 
     Some exotic numbers:
-                       pi - 0q82_03243F6A8885A3 (53-bit double precision)
+                       pi - 0q82_03243F6A8885A3 (53-bit IEEE double precision version of pi)
                        pi - 0q82_03243F6A8885A308D313198A2E03707344A409382229
                             9F31D0082EFA98EC4E6C89452821E638D01377BE54
-                            (338 bits or about 100 decimal digits)
+                            (338 bits of pi, about 100 decimal digits)
                    googol - 0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7C
                             AAB24308A82E8F10 (exactly 10^100)
         negative infinity - 0q00_7F (aleph-zero)
             infinitesimal - 0q807F (epsilon)
                         i - 0q80__8201_690300 (the imaginary number)
+
+    0q-what?
+
+    As every Python integer has a hexadecimal representation (42 == 0x2A), every qiki
+    Number has a qstring representation.  This shows its guts.  A qiki Number stores a
+    string of bytes and its qstring is those bytes in hexadecimal, plus a few underscores.
+    The underscores are decoration for human readers, to break up the hex into parts (into qex, qan,
+    and suffixes, described below), but the underscores are part of the guts.
+
+        assert Number(1) === Number('0q82_01')
+
+    The qiki Number one is internally represented as two bytes b'\x82\x01'.  82 is the qex,
+    like an exponent. 01 is the qan, like a mantissa.
     """
     if SlotsOptimized.FOR_MEMORY:
         __slots__ = ('__raw', )
@@ -165,8 +181,8 @@ class Number(numbers.Complex):
         Number constructor.
 
         content - int, float, '0q'-string, 'numeric'-string, complex, another Number, or None
-        qigits - number of bytes for the qantissa, see _raw_from_float()
-        normalize=True - collapse equal values e.g. 0q82 to 0q82_01, see _normalize_all()
+        qigits - number of bytes to put in the qan, this value is used in _raw_from_float()
+        normalize=True - collapse equal values e.g. 0q82 becomes 0q82_01.  See _normalize_all()
 
         See _from_float() for more about floating point and Number.
         """
@@ -182,14 +198,21 @@ class Number(numbers.Complex):
         assert isinstance(qigits, (int, type(None)))
         assert isinstance(normalize, (int, bool))
 
-        # TODO:  Is-instance or duck-typing?
+        # TODO:  Is-instance or duck-typing or factory-method?
+        #        is-instance calls isinstance(content) many times in the constructor,
+        #                    each type gets converted differently
+        #        duck-typing would somehow try to convert the content in different ways
+        #                    and use exceptions to fall back on other ways, leading to the correct way
+        #        factory-method would not allow a constructor, or allow it for only one type, probably
+        #                       a qstring.  Callers would resort to factory methods for converting other
+        #                       types.
         # SEE:  Duck-typing constructor arguments, https://stackoverflow.com/q/602046/673991
         # NOTE:  Is-instance pros:
         #        Brief use:  Number(42)
         #        Readable type alternatives
-        #        Explicit hierarchy
+        #        Explicit hierarchy, more straightforward debugging
         # NOTE:  Duck-typing pros:
-        #        Brief use
+        #        Brief use:  Number(42)
         #        Flexibility, may inadvertently support unfamiliar number types
         # NOTE:  factory-method pros:
         #        Clear use:  Number.from_int(42)
@@ -198,8 +221,8 @@ class Number(numbers.Complex):
             self._from_int(content)
         elif isinstance(content, float):
             self._from_float(content, qigits)
-        elif isinstance(content, Number):  # SomeSubclassOfNumber(DifferentSubclassOfNumber())
-            self.raw = content.raw
+        elif isinstance(content, Number):
+            self._from_another_number(content)
         elif isinstance(content, six.string_types):
             self._from_string(content)
         elif isinstance(content, complex):
@@ -222,6 +245,21 @@ class Number(numbers.Complex):
         assert(isinstance(self.__raw, six.binary_type))
         if normalize:
             self._normalize_all()
+
+    def _from_another_number(self, another_number):
+        """
+        Copy Constructor
+
+        Number can represent any numeric type, including itself.  So sensible things
+        happen like:
+
+            assert Number(1) == Number(Number(1))
+
+        And it could convert between subclasses:
+
+            x = SomeSubclassOfNumber(DifferentSubclassOfNumber())
+        """
+        self.raw = another_number.raw
 
     class ConstructorTypeError(TypeError):
         """e.g. Number(object) or Number(content=[])"""
@@ -312,12 +350,15 @@ class Number(numbers.Complex):
         return self.raw
 
     def __setstate__(self, raw_incoming):
+        """For the 'pickle' package, object serialization."""
         self.raw = raw_incoming
 
     def __repr__(self):
+        """Handle repr(Number(x))"""
         return "Number('{}')".format(self.qstring())
 
     def __str__(self):
+        """Handle str(Number(x))"""
         try:
             return self.qstring()
         except Suffix.RawError:
@@ -326,6 +367,7 @@ class Number(numbers.Complex):
     # Comparison
     # ----------
     def __eq__(self, other):
+        """Handle Number(x) == something"""
         try:
             self_ready = self._op_ready(self)
             other_ready = self._op_ready(other)
@@ -337,6 +379,7 @@ class Number(numbers.Complex):
             return self_ready == other_ready
 
     def __ne__(self, other):
+        """Handle Number(x) != something"""
         eq_result = self.__eq__(other)
         if eq_result is NotImplemented:
             return NotImplemented
@@ -417,9 +460,14 @@ class Number(numbers.Complex):
     # Option three:  give up on Number('0q82') == Number('0q82_01')
     # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
     # By the way, zero has no plateau, only 0q80 with no suffix is zero.  (except empty suffix?)
-    # TODO:  What about numbers embedded in suffixes, should 0q80__82_7F0200 == 0q80__8201_7F0300 ?
-    # TODO:  Number.compacted() that fights against normalize
-    # Compacted forms are desirable in suffix numbers
+    # TODO:  What about numbers embedded in suffixes, should these be equal?
+    #            0q80__82_7F0200
+    #            0q80__8201_7F0300
+    #        Same root, same suffix type, different suffix payloads: 82 and 8201
+    #                                                                which are both Number(1)
+    #                                                                if these payloads are in fact Numbers.
+    # TODO:  Number.compacted() an alternative to Number.normalized()
+    #        Compacted forms may be desirable Numbers in payload suffixes
     # TODO:  Should normalization strip empty suffixes?  (__0000)
 
     class CompareError(TypeError):
@@ -470,7 +518,7 @@ class Number(numbers.Complex):
 
         Even though we use future division in this source file, a client
         might not.  So a Python 2 client using Number(x) / Number(y)
-        should expect true-division, whether or not they do:
+        will just have to live with true-division, whether or not they do:
         from __future__ import division.
 
         Otherwise, there would be no sensible way to force a true-
@@ -492,15 +540,17 @@ class Number(numbers.Complex):
         #        Apparently operator.__truediv__() always converts to float.
         # TODO:  Re-review division, here and unit tests, yet again.
 
-        # TODO:  Should large N=(2**54) Numbers divide as int?
+        # TODO:  Should large (N >= 2**54) Numbers divide as int?
         #        That is, use floordiv (aka int) instead of truediv (aka float).
         #        Floor-division may be better than true-division:
         #            (N+1)*(N+1)/(N+1) - N should be 1 not 0.0
 
     def __rdiv__(self, other):
+        """Handle something / Number(x) when something is int/float/etc."""
         return self._binary_op(operator.__truediv__, other, self)
 
     def _unary_op(self, op):
+        """One-input operator - fob off on int or float or complex math."""
         n = Number(self)
         if n.is_complex():
             # noinspection PyTypeChecker
@@ -521,6 +571,7 @@ class Number(numbers.Complex):
 
     @classmethod
     def _binary_op(cls, op, input_left, input_right):
+        """Two-input operator - fob off on int or float or complex math."""
         n1 = Number(input_left)
         n2 = Number(input_right)
         if n1.is_complex() or n2.is_complex():
@@ -544,8 +595,7 @@ class Number(numbers.Complex):
         """
         Eliminate redundancies in the internal __raw string.
 
-        This and other normalization routines operate in-place, modifying self.
-        There are no return values.
+        This operates in-place, modifying self.  So there are no return values.
         """
         self._normalize_plateau()
         self._normalize_imaginary()
@@ -559,6 +609,8 @@ class Number(numbers.Complex):
         We do not check self.imag == self.ZERO because that may try to subtract a missing suffix.
         """
         # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
+        #        But then, caution, quaternary numbers stored as three imaginary suffixes could
+        #        get flummoxed if any of the first two imaginary suffixes were zero.
         try:
             imaginary_part = self.get_suffix_number(Suffix.Type.IMAGINARY)
         except Suffix.NoSuchType:
@@ -576,47 +628,56 @@ class Number(numbers.Complex):
         """
         if self.zone in ZoneSet.MAYBE_PLATEAU:
             root, suffixes = self.parse_suffixes()
-            raw_qexponent = root.qex_raw()
-            raw_qantissa = root.qan_raw()
+            raw_qex = root.qex_raw()
+            raw_qan = root.qan_raw()
             is_plateau = False
-            if len(raw_qantissa) == 0:
+            if len(raw_qan) == 0:
                 is_plateau = True
                 if self.is_positive():
-                    self.raw = raw_qexponent + b'\x01'
+                    self.raw = raw_qex + b'\x01'
                 else:
-                    new_qex_lsb = six.indexbytes(raw_qexponent,-1)
-                    new_qex = raw_qexponent[0:-1] + six.int2byte(new_qex_lsb-1)
+                    new_qex_lsb = six.indexbytes(raw_qex,-1)
+                    new_qex = raw_qex[0:-1] + six.int2byte(new_qex_lsb-1)
                     self.raw = new_qex + b'\xFF'
             else:
                 if self.is_positive():
-                    if raw_qantissa[0:1] == b'\x00':
+                    if raw_qan[0:1] == b'\x00':
                         is_plateau = True
-                        self.raw = raw_qexponent + b'\x01'
+                        self.raw = raw_qex + b'\x01'
                 else:
-                    if raw_qantissa[0:1] == b'\xFF':
+                    if raw_qan[0:1] == b'\xFF':
                         is_plateau = True
-                        self.raw = raw_qexponent + b'\xFF'
+                        self.raw = raw_qex + b'\xFF'
             if is_plateau:
                 for suffix in suffixes:
                     self.raw = self.plus_suffix(suffix).raw
                     # TODO:  Test this branch (on a number with suffixes)
 
     def normalized(self):
+        """
+        Return a normalized version of this number.
+
+        assert '0q82'    == Number('0q82').qstring()
+        assert '0q82_01' == Number('0q82').normalized().qstring()
+        """
         return type(self)(self, normalize=True)
 
     def is_negative(self):
+        """Is this Number negative?"""
         return_value = ((six.indexbytes(self.raw, 0) & 0x80) == 0)
         assert return_value == (self.zone in ZoneSet.NEGATIVE)
         assert return_value == (self.raw < self.RAW_ZERO)
         return return_value
 
     def is_positive(self):
+        """Is this Number positive?"""
         return_value = (not self.is_negative() and not self.is_zero())
         assert return_value == (self.zone in ZoneSet.POSITIVE)
         assert return_value == (self.raw > self.RAW_ZERO)
         return return_value
 
     def is_zero(self):
+        """Is this Number zero?"""
         return_value = (self.raw == self.RAW_ZERO)
         assert return_value == (self.zone in ZoneSet.ZERO)
         return return_value
@@ -646,28 +707,35 @@ class Number(numbers.Complex):
         """When it's nonsense to ask if a number is whole, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
+        """Is this NAN?"""
         return self.raw == self.RAW_NAN
 
     def is_real(self):
+        """Is the imaginary part zero?"""
         return not self.is_complex()
 
     def is_complex(self):
+        """Is the imaginary part nonzero?"""
         return self.imag != self.ZERO
 
     def inc(self):
+        """Add one."""
         self.raw = self._inc_raw_via_integer()
         return self
 
     def _inc_raw_via_integer(self):
+        """Add one by fobbing off on int."""
         return Number(int(self) + 1).raw
 
     @property
     def real(self):
+        """Return the real part.  Stripped of the imaginary part."""
         return self.root
 
     @property
     def root(self):
-        # TODO:  Less vacuous name.  Unsuffixed()?
+        """Return the part of this Number without any suffixes."""
+        # TODO:  Less vacuous name.  Easy to misunderstand, or conflate.  Hard to search for.  Unsuffixed()?
         return self.parse_root()
 
     @property
@@ -735,7 +803,7 @@ class Number(numbers.Complex):
                         float_value = float(s)   # e.g.  '1.5' '-1e-100'
                     except ValueError:
                         raise self.ConstructorValueError(
-                            "A qiki Number string must be a valid int, float, or q-string, "
+                            "A qiki Number string must be a valid int, float, or qstring, "
                             "but not {}".format(repr(s))
                         )
                     else:
@@ -758,7 +826,7 @@ class Number(numbers.Complex):
             return return_value
         else:
             raise cls.ConstructorValueError(
-                "A q-string must begin with '0q'.  This does not: " + repr(s)
+                "A qstring must begin with '0q'.  This does not: " + repr(s)
             )
 
     def _from_qstring(self, s):
@@ -771,7 +839,7 @@ class Number(numbers.Complex):
             byte_string = string_from_hex(digits)
         except string_from_hex.Error:
             raise self.ConstructorValueError(
-                "A q-string consists of hexadecimal digits or underscores, not {}".format(repr(s))
+                "A qstring consists of hexadecimal digits or underscores, not {}".format(repr(s))
             )
         self.raw = six.binary_type(byte_string)
 
@@ -905,10 +973,10 @@ class Number(numbers.Complex):
     # "to" conversions:  Number --> other type
     # ----------------------------------------
     def qstring(self, underscore=1):
-        """Output Number as a q-string:  assert '0q82_01' == Number(1).qstring()
+        """Output Number as a qstring:  assert '0q82_01' == Number(1).qstring()
 
         assert '0q85_12345678' == Number(0x12345678).qstring()
-        Q-string is a human-readable form of the raw representation of a qiki number
+        Qstring is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
         Except q for x, underscores optional, and of course the value interpretation differs.
         """
@@ -1103,9 +1171,9 @@ class Number(numbers.Complex):
         The number of qigits is the amount stored in the qantissa,
         and is unrelated to the location of the radix point.
         """
-        raw_qantissa = self.qan_raw(max_qigits=max_qigits)
-        number_qantissa = unpack_big_integer(raw_qantissa)
-        return tuple((number_qantissa, len(raw_qantissa)))
+        raw_qan = self.qan_raw(max_qigits=max_qigits)
+        number_qantissa = unpack_big_integer(raw_qan)
+        return tuple((number_qantissa, len(raw_qan)))
 
     def qan_raw(self, max_qigits=None):
         # TODO:  unit test
@@ -1287,7 +1355,7 @@ class Number(numbers.Complex):
     # n - Suffix(t) === n.minus_suffix(t)
 
     def is_suffixed(self):
-        return_value = self.raw[-1:] == b'\x00'
+        return_value = self.raw[-1:] == byte(Suffix.TERMINATOR)
         assert return_value == bool(self.suffixes)
         return return_value
         # XXX:  This could be much less sneaky if raw were not the primary internal representation.
@@ -1327,7 +1395,7 @@ class Number(numbers.Complex):
     def minus_suffix(self, old_type=None):
         """Make a version of a number without any suffixes of the given type.  This does NOT mutate self."""
         # TODO:  A way to remove just ONE suffix of the given type?
-        # minus_suffix(t) for one, minus_suffixes() for all?
+        # minus_suffix(t) for one, minus_suffixes(t) for all?
         # minus_suffix(t, global=True) for all?
         # minus_suffix(t, count=1) for one?
         root, suffixes = self.parse_suffixes()
@@ -1343,6 +1411,7 @@ class Number(numbers.Complex):
         return new_number
 
     def get_suffix(self, sought_type):
+        # TODO:  Rename suffix()
         for suffix in self.suffixes:
             if suffix.type_ == sought_type:
                 return suffix
@@ -1350,10 +1419,20 @@ class Number(numbers.Complex):
 
     def get_suffix_payload(self, sought_type):
         # TODO:  Default value instead of NoSuchType?
+        # Don't even do this:
+        #    Meh:  n.get_suffix_payload(t)
+        #    Yay:  n.suffix(t).payload()
         return self.get_suffix(sought_type).payload
 
     def get_suffix_number(self, sought_type):
         # TODO:  Default value instead of NoSuchType?
+        #        Or default parameter, which if omitted and the type is missing, raises an exception
+        #        n = n.suffix_number(t, default=None)
+        #        n = n.suffix(t).payload_number(default=None)
+        #        n = n.suffix(t).payload(default=None)  <--  why can't this just return a Number?
+        #        n = n.suffix(t).number(default=None)  <--  don't assume, this is better
+        #                                                   well, it's kinda assuming the "payload" part
+        #                                                   better than assuming the "number" part
         return self.get_suffix(sought_type).payload_number()
 
     def parse_suffixes(self):
@@ -1367,11 +1446,12 @@ class Number(numbers.Complex):
             (Number(1),    [Suffix(2),     Suffix(3, b'\x4567']) == \
              Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
         """
+        # TODO:  Rename as suffixes property and just blow off the unsuffixed part here.
         suffixes = []
         raw_remains = Number(self).raw
         while raw_remains:
             last_byte = six.indexbytes(raw_remains, -1)
-            if last_byte == 0x00:
+            if last_byte == Suffix.TERMINATOR:
                 try:
                     length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
                 except IndexError:
@@ -1381,6 +1461,8 @@ class Number(numbers.Complex):
                     raise Suffix.RawError("Invalid suffix, soft length underflow.")
                 if length_of_payload_plus_type == 0x00:
                     suffixes.insert(0, Suffix())
+                    # TODO:  Do we actually want to ignore the empty suffix, even here?
+                    #        To kind of enforce it's reliable meaninglessness
                 else:
                     try:
                         type_ = six.indexbytes(raw_remains, -3)
@@ -1397,6 +1479,7 @@ class Number(numbers.Complex):
 
     def parse_root(self):
         """Slightly quicker than parse_suffixes()[0]"""
+        # TODO:  Rename unsuffixed()
         raw_length = len(self.raw)
         index_end = raw_length
         if raw_length:
@@ -1406,7 +1489,7 @@ class Number(numbers.Complex):
                 if index_00 < 0:
                     raise Suffix.RawError("Invalid suffix, soft root underflow.")
                 zero_tag = six.indexbytes(self.raw, index_00)
-                if zero_tag != 0x00:
+                if zero_tag != Suffix.TERMINATOR:
                     break
                 index_length = index_end - 2
                 if index_length < 0:
@@ -1688,6 +1771,17 @@ class ZoneSet(object):
     )
 
 
+def byte(integer):
+    """
+    Convert integer to a one-character byte-string
+
+    Similar to chr(), except in Python 3 produce bytes() not str()
+    Same as pack_integer(integer, num_bytes=1)
+    """
+    return six.binary_type(bytearray((integer,)))
+assert b'A' == byte(65)
+
+
 class Suffix(object):
     """
     A Number can have suffixes.  Suffixed numbers include, complex, alternate ID spaces, etc.
@@ -1731,12 +1825,27 @@ class Suffix(object):
 
     MAX_PAYLOAD_LENGTH = 250
 
+    NUM_OVERHEAD = 3
+    # This is a class constant so if we ever want to change it we know where to work.
+    # In particular, the suffix type may be too limiting at 1 byte.
+    # On the other hand we can have the best of both worlds (or the best of EITHER world, more accurately)
+    # If we keep this 3 forever, and just have an expanded suffix type (a ONE-BYTE type) that
+    # includes a Number subtype in a special part of the payload.
+    # And some kind of length to separate it from the rest of the payload.
+    # Or maybe the payload is just a series of containers, using the lengthed-export version of Numbers.
+
+    TERMINATOR = 0x00
+    # TODO:  Use this everywhere, not literal 00
+    #        Not that it could ever change.  More to be able to find where it's used.
+
     class Type(object):
         """The 3rd byte from the right of a Suffix.  (Except the empty suffix 0000 has no type.)"""
-        # TODO:  Move to suffix_type.py?  Because it knows about qiki.word.Listing, and much more.
-        # TODO:  Formally define valid payload contents for each type (Number(s), utf8 strings, etc.)
+        # TODO:  Move to suffix_type.py?  Because it knows about qiki.Word.Listing, and much more.
+        #        Its scope is only going to grow.  Seems wrong buried here somehow.
+        # TODO:  Formally define valid payload contents for each type (Number(s), utf8 string, etc.)
+        #        or range of types, at least one of which is extensible or something.
         LISTING   = 0x1D   # 'ID' in 1337
-        IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,l,k quaternions, etc.?)
+        IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,j,k quaternions, etc.?)
         TEST      = 0x7E   # for unit testing, payload can be anything
 
     # TODO:  math.stackexchange question:  are quaternions a superset of complex numbers?  Does i===i?
@@ -1756,19 +1865,27 @@ class Suffix(object):
         else:
             # TODO:  Support Number.Suffix(suffix)?  As a copy constructor, ala Number(number)
             raise self.PayloadError("Suffix payload cannot be a {}".format(type_name(payload)))
+
         if self.type_ is None:
             assert self.payload == b''
-            # TODO:  Unit test this case?  Suffix(type None, payload not empty)
+            # TODO:  Raise custom exception on Suffix(type_=None, payload='not empty')
+            # TODO:  Unit test this case
             self.length_of_payload_plus_type = 0
-            self.raw = b'\x00\x00'
+            self.raw = (   # The empty suffix:  b'\x00\x00'
+                # no payload
+                # no type
+                byte(self.length_of_payload_plus_type) +
+                byte(self.TERMINATOR)
+            )
         else:
             self.length_of_payload_plus_type = len(self.payload) + 1
-            if 0x00 <= self.length_of_payload_plus_type <= self.MAX_PAYLOAD_LENGTH+1:
-                self.raw = self.payload + six.binary_type(bytearray((
-                    self.type_,
-                    self.length_of_payload_plus_type,
-                    0x00
-                )))
+            if self.length_of_payload_plus_type <= self.MAX_PAYLOAD_LENGTH + 1:
+                self.raw = (
+                    self.payload +
+                    byte(self.type_) +                           # \   Here are the
+                    byte(self.length_of_payload_plus_type) +     #  >  NUM_OVERHEAD
+                    byte(self.TERMINATOR)                        # /   bytes
+                )
             else:
                 raise self.PayloadError("Suffix payload is {:d} bytes too long.".format(
                     len(self.payload) - self.MAX_PAYLOAD_LENGTH)
@@ -1803,13 +1920,16 @@ class Suffix(object):
     def qstring(self, underscore=1):
         whole_suffix_in_hex = hex_from_string(self.raw)
         if underscore > 0 and self.payload:
-            payload_hex = whole_suffix_in_hex[:-6]
-            type_length_00_hex = whole_suffix_in_hex[-6:]
+            payload_hex = whole_suffix_in_hex[ : -self.NUM_OVERHEAD*2]
+            type_length_00_hex = whole_suffix_in_hex[-self.NUM_OVERHEAD*2 : ]
             return payload_hex + '_' + type_length_00_hex
         else:
             return whole_suffix_in_hex
 
     def payload_number(self):
+        # TODO:  Rename number()
+        #        What point does a suffix have other than surrendering its payload?
+        #        So then assume the suffix "number" is talking about its payload being interpreted as a Number.
         return Number.from_raw(self.payload)
 
     class NoSuchType(Exception):
@@ -1947,14 +2067,14 @@ assert False == floats_really_same(+0.0, -0.0)
 # Padding and Unpadding Strings
 # -----------------------------
 def left_pad00(the_string, num_bytes):
-    """Make a string num_bytes long by padding '\x00' bytes on the left."""
+    """Make a byte-string num_bytes long by padding '\x00' bytes on the left."""
     assert(isinstance(the_string, six.binary_type))
     return the_string.rjust(num_bytes, b'\x00')
 assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
 def right_strip00(the_string):
-    """Remove '\x00' bytes from the right end of a string."""
+    """Remove '\x00' bytes from the right end of a byte-string."""
     assert(isinstance(the_string, six.binary_type))
     return the_string.rstrip(b'\x00')
 assert b'string' == right_strip00(b'string\x00\x00')
@@ -1964,7 +2084,7 @@ assert b'string' == right_strip00(b'string\x00\x00')
 # ------------------------------
 def pack_integer(the_integer, num_bytes=None):
     """
-    Pack an integer into a binary string, which becomes a kind of base-256, big-endian number.
+    Pack an integer into a byte-string, which becomes a kind of base-256, big-endian number.
 
     :param the_integer:  an arbitrarily large integer
     :param num_bytes:  number of bytes (base-256 digits aka qigits) to output (omit for minimum)
@@ -1990,6 +2110,7 @@ def pack_integer(the_integer, num_bytes=None):
         # NOTE:  Pretty sure this could never ever raise string_from_hex.Error
 assert b'\x00\xAA' == pack_integer(170,2)
 assert b'\xFF\x56' == pack_integer(-170,2)
+assert byte(42) == pack_integer(42, num_bytes=1)
 
 
 def pack_big_integer_via_hex(num, num_bytes):
@@ -2342,7 +2463,7 @@ assert 'function' == type_name(type_name)
 #         "packet"
 #         but it is not a "string" in the sense that the qstring is a printable string
 #         but p has some symmetry with q
-#         but the p-string is really too different from the q-string
+#         but the p-string is really too different from the qstring
 #     b or d string would also be symmetrical with q, but it should rather be symmetrical with raw
 #     ink
 #     What real-world analogy for packaging a word for transport down a stream?
