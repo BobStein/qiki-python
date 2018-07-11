@@ -18,7 +18,8 @@ from number import *
 
 # Slow tests:
 TEST_INC_ON_THOUSAND_POWERS_OF_TWO = False   # E.g. 0q86_01.inc() == 0q86_010000000001 (2-12 seconds)
-LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.  False => invalid values, or raise LudicrousNotImplemented
+LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.
+                                   # False => invalid values, or raise LudicrousNotImplemented
 
 
 class NumberTests(unittest.TestCase):
@@ -83,6 +84,7 @@ class NumberTests(unittest.TestCase):
             return super(NumberTests, self).assertRaisesRegexp(error, expression, *args, **kwargs)
         else:
             raise AttributeError("Cannot find the assert function for matching the message")
+
 
 # noinspection SpellCheckingInspection
 class NumberBasicTests(NumberTests):
@@ -231,7 +233,8 @@ class NumberBasicTests(NumberTests):
     def test_to_c(self):
         self.assertEqual(r'"\x82\x2A"', Number('0q82_2A').c_string())
 
-    # TODO: test from_mysql and to_mysql using SELECT and @-variables -- maybe in test_word.py because it already has a db connection.
+    # TODO:  test from_mysql and to_mysql using SELECT and @-variables
+    #         -- maybe in test_word.py because it already has a db connection.
 
     # Blob literal syntaxes:
     # ----------------------
@@ -264,7 +267,7 @@ class NumberBasicTests(NumberTests):
 
     def test_nan_equality(self):
         # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
-        # SEE:  http://stackoverflow.com/questions/1565164/what-is-the-rationale-for-all-comparisons-returning-false-for-ieee754-nan-values
+        # SEE:  float('nan') comparisons all False, https://stackoverflow.com/q/1565164/673991
         # TODO:  Any comparisons with NAN should raise Number.CompareError("...is_nan() instead...").
         nan = Number.NAN
         self.assertEqual(nan, Number.NAN)
@@ -717,7 +720,7 @@ class NumberBasicTests(NumberTests):
             self.assertEqual(i, i_new, "{} != {} <--Number--- '{}'"        .format(i, i_new,       q))
             self.assertEqual(q_new, q,       "{} ---Number--> '{}' != '{}'".format(i,       q_new, q))
 
-            out_of_sequence=[]
+            out_of_sequence = []
             if not context.the_first:
                 integers_oos =        i      >        context.i_last
                 strings_oos  = Number(q).raw > Number(context.q_last).raw
@@ -761,8 +764,13 @@ class NumberBasicTests(NumberTests):
             i__q(256**128,    '0qFF000080_01')
             i__q(  2**1024,   '0qFF000080_01')
             i__q(  2**1000,   '0qFF00007D_01')   # 1 * 256**125 == 2**1000
-        i__q(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
-        i__q(   10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069375,
+        i__q(   2**1000-1,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+                               'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+                               'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        i__q(   int('1071508607186267320948425049060001810561404811705533607443750388370351051124936122493198378815695'
+                    '8581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141'
+                    '8779541821530464749835819412673987675591655439460770629145711964776865421676604298316526243868372'
+                    '05668069375'),
                           '0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
         i__q(   2**1000-2,'0qFE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE')
         i__q(   2**999+1, '0qFE_8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001')
@@ -1021,8 +1029,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q82_011999999A', Number(1.1, qigits=5).qstring())
         self.assertEqual('0q82_01199999999A', Number(1.1, qigits=6).qstring())
         self.assertEqual('0q82_0119999999999A', Number(1.1, qigits=7).qstring())
-        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=8).qstring())   # so float has about 7 significant qigits
-        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=9).qstring())
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=8).qstring())   # so float has about
+        self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=9).qstring())   # 7 significant qigits
         self.assertEqual('0q82_01199999999999A0', Number(1.1, qigits=15).qstring())
 
     def test_float_qigits_default(self):
@@ -1071,8 +1079,8 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FEE6666666', Number(-1.1, qigits=5).qstring())
         self.assertEqual('0q7D_FEE666666666', Number(-1.1, qigits=6).qstring())
         self.assertEqual('0q7D_FEE66666666666', Number(-1.1, qigits=7).qstring())
-        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=8).qstring())   # float's 53-bit significand:  2+8+8+8+8+8+8+3 = 53
-        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=9).qstring())
+        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=8).qstring())   # float's 53-bit significand:
+        self.assertEqual('0q7D_FEE6666666666660', Number(-1.1, qigits=9).qstring())   # 2+8+8+8+8+8+8+3 = 53
 
         self.assertEqual('0q7D_FECCCCCCCD', Number(-1.2, qigits=5).qstring())
         self.assertEqual('0q7D_FECCCCCCCCCD', Number(-1.2, qigits=6).qstring())
@@ -1369,7 +1377,7 @@ class NumberBasicTests(NumberTests):
         f__q(         1.00000000000000022,'0q82_0100000000000010', '0q82_0100000000000017FFFF')  # alternated rounding?
         f__q(         1.00000000000000022,'0q82_0100000000000010')
         f__q(         1.00000000000000022,'0q82_0100000000000010', '0q82_01000000000000080001')
-        f__q(         1.0                ,'0q82_01',               '0q82_0100000000000008') # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
+        f__q(         1.0                ,'0q82_01',               '0q82_0100000000000008')   # so float granularity [1.0,2.0) is 2**-52 ~~ 22e-17
         f__q(         1.0,                '0q82_01')
         f__q(         1.0,                '0q82_01',  '0q82')   # alias for +1
         zone_boundary()
@@ -1483,14 +1491,14 @@ class NumberBasicTests(NumberTests):
         f__q(        -0.0009765625,       '0q7E01_C0')
         f__q(        -0.001953125,        '0q7E01_80')
         f__q(        -0.001953125,        '0q7E01_80')
-        f__q(        -0.0038604736328125, '0q7E01_03')   # -253/65536
-        f__q(        -0.003875732421875,  '0q7E01_02')   # -254/65536
-        f__q(        -0.0038909912109375, '0q7E01_01')   # -255/65536
-        f__q(        -0.00390625,         '0q7E00_FF', '0q7E01')   # alias for -1/256 aka -256**-1
-        f__q(        -0.00390625,         '0q7E00_FF')   # -256/65536      aka -1/256
-        f__q(        -0.0039215087890625, '0q7E00_FEFF') # -257/65536
-        f__q(        -0.003936767578125,  '0q7E00_FEFE') # -258/65536
-        f__q(        -0.0039520263671875, '0q7E00_FEFD') # -259/65536
+        f__q(        -0.0038604736328125, '0q7E01_03')             # -253/65536
+        f__q(        -0.003875732421875,  '0q7E01_02')             # -254/65536
+        f__q(        -0.0038909912109375, '0q7E01_01')             # -255/65536
+        f__q(        -0.00390625,         '0q7E00_FF', '0q7E01')   # -256/65536   aka -1/256   aka -256**-1
+        f__q(        -0.00390625,         '0q7E00_FF')             # -256/65536
+        f__q(        -0.0039215087890625, '0q7E00_FEFF')           # -257/65536
+        f__q(        -0.003936767578125,  '0q7E00_FEFE')           # -258/65536
+        f__q(        -0.0039520263671875, '0q7E00_FEFD')           # -259/65536
         f__q(        -0.0078125,          '0q7E00_FE')
         f__q(        -0.01171875,         '0q7E00_FD')
         f__q(        -0.015625,           '0q7E00_FC')
@@ -2462,9 +2470,10 @@ class NumberMathTests(NumberTests):
         self.binary_op(operator.__truediv__, 7.0, 42.0, 6.0)
         self.binary_op(operator.__truediv__, 1.5, 3.75, 2.5)
         self.binary_op(operator.__truediv__, 1+2j, -5+10j, 3+4j)
-        self.assertEqual('0q82_07',              (Number('0q82_2A')              / Number('0q82_06')).qstring())
-        self.assertEqual('0q82_0180',            (Number('0q82_03C0')            / Number('0q82_0280')).qstring())
-        self.assertEqual('0q82_01__8202_690300', (Number('0q7D_FB__820A_690300') / Number('0q82_03__8204_690300')).qstring())
+        self.assertEqual('0q82_07',              (Number('0q82_2A')   / Number('0q82_06')).qstring())
+        self.assertEqual('0q82_0180',            (Number('0q82_03C0') / Number('0q82_0280')).qstring())
+        self.assertEqual('0q82_01__8202_690300', (Number('0q7D_FB__820A_690300')
+                                                                      / Number('0q82_03__8204_690300')).qstring())
 
     def test_floordiv(self):
         """Double-slash floor division truncates toward negative infinity, outputing the nearest whole number."""
@@ -2786,7 +2795,7 @@ class NumberComplex(NumberTests):
         self.assertEqual(native_real2, native_complex2.real)
         self.assertTrue(qiki_real1 <= qiki_real2)   # Only okay if both imaginaries are zero.
         self.assertTrue(qiki_real1 >= qiki_real2)
-        with self.assertRaises(Number.CompareError):   # q vs q -- Neither side of a comparison can have a nonzero imaginary.
+        with self.assertRaises(Number.CompareError):   # q vs q -- Neither side can have a nonzero imaginary.
             _ = qiki_complex2 < qiki_real1
         with self.assertRaises(Number.CompareError):
             _ = qiki_real2 < qiki_complex1
@@ -2912,7 +2921,8 @@ class NumberPickleTests(NumberTests):
 
         # print(repr(pickle.dumps(x314, 2)))
         # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
-        # PY3:  b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00\xc2\x82\x03#\xc3\x97\n=p\xc2\xa3\xc3\xa0q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+        # PY3:  b'\x80\x02cnumber\nNumber\nq\x00)\x81q\x01c_codecs\nencode\nq\x02X\r\x00\x00\x00\xc2\x82\x03#\xc3\x97'
+        #       b'\n=p\xc2\xa3\xc3\xa0q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
 
         # print(repr(x314.raw))
         # '\x82\x03#\xd7\n=p\xa3\xe0'
@@ -3203,8 +3213,7 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual([], Number(1).suffixes)
         self.assertEqual([Suffix()], Number(1).plus_suffix().suffixes)
         self.assertEqual([Suffix(3)], Number(1).plus_suffix(3).suffixes)
-        self.assertEqual(([Suffix(111), Suffix(222)]), Number(1.75).plus_suffix(111).plus_suffix(222).suffixes
-        )
+        self.assertEqual(([Suffix(111), Suffix(222)]), Number(1.75).plus_suffix(111).plus_suffix(222).suffixes)
 
     # def test_parse_suffixes_example_in_docstring(self):
     #     self.assertEqual(
@@ -3554,19 +3563,6 @@ class NumberDictionaryKeyTests(NumberTests):
 ################### New test GROUPS go above here ##################################
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # noinspection SpellCheckingInspection
 class NumberUtilitiesTests(NumberTests):
     """
@@ -3832,12 +3828,15 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual(0x10000000000000000, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x00'))
         self.assertEqual(0x10000000000000001, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x01'))
         self.assertEqual(0x10000000000000022, unpack_big_integer(b'\x01\x00\x00\x00\x00\x00\x00\x00\x22'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer(
+                                                 b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
 
     def test_01_unpack_big_integer_by_brute(self):
         self.assertEqual(0, unpack_big_integer_by_brute(b''))
         self.assertEqual(0x1234, unpack_big_integer_by_brute(b'\x12\x34'))
-        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer_by_brute(b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'))
+        self.assertEqual(0x807F99DEADBEEF00BADEFACE00, unpack_big_integer_by_brute(
+            b'\x80\x7F\x99\xDE\xAD\xBE\xEF\x00\xBA\xDE\xFA\xCE\x00'
+        ))
 
     def test_01_unpack_big_integer_by_struct(self):
         self.assertEqual(0, unpack_big_integer_by_struct(b''))
@@ -3860,8 +3859,10 @@ class NumberUtilitiesTests(NumberTests):
         # noinspection PyClassHasNoInit
         class OldStyleClass:
             pass
+
         class NewStyleClass(object):
             pass
+
         old_style_instance = OldStyleClass()
         new_style_instance = NewStyleClass()
         self.assertEqual('OldStyleClass', type_name(old_style_instance))
@@ -3882,11 +3883,14 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual('instance', type_name(instance_instance))
 
     def test_02_type_name_oops(self):
+
         class SomeOtherClass(object):
             pass
         # noinspection PyPep8Naming
+
         class instance(object):
             __class__ = SomeOtherClass
+
         instance_instance = instance()
         self.assertEqual('SomeOtherClass', type_name(instance_instance))
 

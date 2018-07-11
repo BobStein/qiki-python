@@ -1225,7 +1225,7 @@ class Number(numbers.Complex):
     class QanValueError(ValueError):
         """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qantissa()"""
 
-    __qan_offset_dict ={
+    __qan_offset_dict = {
         Zone.POSITIVE:       1,
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
@@ -1282,7 +1282,11 @@ class Number(numbers.Complex):
         return "x'" + self.hex() + "'"
 
     def zero_x_hex(self):
-        """Hexadecimal literal for the entire raw string as a big integer.  Based on C,C++,Java,JavaScript,etc. syntax."""
+        """
+        Hexadecimal literal for the entire raw string as a big integer.
+
+        Based on C,C++,Java,JavaScript,etc. syntax.
+        """
         return "0x" + self.hex()
 
     def ditto_backslash_hex(self):
@@ -1625,8 +1629,8 @@ def sets_exclusive(*sets):
             if sets[i].intersection(sets[j]):
                 return False
     return True
-assert False == sets_exclusive({1,2,3}, {3,4,5})
-assert True == sets_exclusive({1,2,3}, {4,5,6})
+assert False is sets_exclusive({1,2,3}, {3,4,5})
+assert True is sets_exclusive({1,2,3}, {4,5,6})
 
 
 def union_of_distinct_sets(*sets):
@@ -2090,7 +2094,7 @@ def exp256(e):
     """Compute 256**e for nonnegative integer e."""
     assert isinstance(e, six.integer_types)
     assert e >= 0
-    return 1 << (e<<3)   # == 2**(e*8) == (2**8)**e == 256**e
+    return 1 << (e << 3)   # == 2**(e*8) == (2**8)**e == 256**e
 assert 256 == exp256(1)
 assert 65536 == exp256(2)
 
@@ -2138,8 +2142,8 @@ def floats_really_same(f1,f2):
         # THANKS:  Comparing with -0.0, http://stackoverflow.com/a/25338224/673991
         return False
     return f1 == f2
-assert True == floats_really_same(float('nan'), float('nan'))
-assert False == floats_really_same(+0.0, -0.0)
+assert True is floats_really_same(float('nan'), float('nan'))
+assert False is floats_really_same(+0.0, -0.0)
 
 
 # Padding and Unpadding Strings

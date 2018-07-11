@@ -236,6 +236,7 @@ class WordTests(unittest.TestCase):
 
     def display_all_word_descriptions(self):
         histogram = {}
+
         def count(i):
             try:
                 histogram[i] += 1
@@ -692,7 +693,7 @@ class Word0011FirstTests(WordTests):
         child = self.lex.define(noun, u'child')
         grandchild = self.lex.define(child, u'grandchild')
         greatgrandchild = self.lex.define(grandchild, u'greatgrandchild')
-        greatgreatgrandchild =self.lex.define(greatgrandchild, u'greatgreatgrandchild')
+        greatgreatgrandchild = self.lex.define(greatgrandchild, u'greatgreatgrandchild')
         self.assertTrue(noun.is_a_noun())
         self.assertTrue(child.is_a_noun())
         self.assertTrue(grandchild.is_a_noun())
@@ -767,6 +768,7 @@ class Word0011FirstTests(WordTests):
         with six.assertRaisesRegex(self, TypeError, '^((?!unicode).)*$'):
             # THANKS:  For negative regex, http://stackoverflow.com/a/406408/673991
             qiki.Word(bogus_instance)
+
         class BogusNewType(object):
             def __init__(self):
                 pass
@@ -901,6 +903,7 @@ class Word0011FirstTests(WordTests):
         s = self.lex.noun(u's')
         v = self.lex.verb(u'v')
         o = self.lex.noun(u'o')
+
         def works_as_txt(txt):
             # word = o(txt)
             # self.assertIs(qiki.Text, type(word.txt))
@@ -1524,7 +1527,7 @@ class Word0030MoreTests(WordTests):
     def test_verb_overlay_duplicate(self):
         human = self.lex.define(u'agent', u'human')
         anna = self.lex.define(human, u'anna')
-        bart =self.lex.define( human, u'bart')
+        bart = self.lex.define( human, u'bart')
         like = self.lex.verb(u'like')
 
 
@@ -2206,6 +2209,7 @@ class Word0052ListingInternalsTests(WordListingTests):
         class ObsoleteListing(qiki.Listing):
             meta_word = obsolete_listing_meta_word
 
+            # noinspection PyMethodMayBeStatic,PyUnusedLocal
             def lookup(self, index, callback):
                 callback("foo", qiki.Number(1))
 
@@ -2625,6 +2629,7 @@ class WordQoolbarTests(WordTests):
         That is, strings that make up SQL.  Not the content of fields, e.g. txt."""
         def good_super_select(*args):
             self.assertEqual([{'txt':u'define'}], list(self.lex.super_select(*args)))
+
         def bad_super_select(*args):
             with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
                 list(self.lex.super_select(*args))
@@ -3109,8 +3114,10 @@ class WordInternalTests(WordTests):
         class OldStyleClass:
             def __init__(self):
                 pass
+
         class NewStyleClass(object):
             pass
+
         self.assertFalse(is_iterable(OldStyleClass))
         self.assertFalse(is_iterable(NewStyleClass))
 
@@ -3123,6 +3130,7 @@ class WordInternalTests(WordTests):
 
         def regular_function():
             return 0
+
         def generator_function():
             yield 0
 
@@ -3135,9 +3143,9 @@ class WordInternalTests(WordTests):
         self.assertEqual('generator', type(generator_function()).__name__)
 
     def test_is_iterable_generator_expression(self):
-        self.assertTrue(is_iterable((i for i in (1,2,3,4) if i%2)))
+        self.assertTrue(is_iterable((i for i in (1,2,3,4) if i % 2)))
 
-        self.assertEqual('generator', type((i for i in (1,2,3,4) if i%2)).__name__)
+        self.assertEqual('generator', type((i for i in (1,2,3,4) if i % 2)).__name__)
 
     def test_is_iterable_comprehension(self):
         self.assertTrue(is_iterable([i   for i in (1,2,3,4)]))
@@ -3152,11 +3160,14 @@ class WordInternalTests(WordTests):
         # THANKS:  Iterative object, http://stackoverflow.com/a/7542261/673991
 
         class IteratorByNext:
+
             def __init__(self, some_list):
                 self.some_list = some_list
                 self.index = 0
+
             def __iter__(self):
                 return self
+
             def __next__(self):
                 try:
                     result = self.some_list[self.index]
@@ -3165,6 +3176,7 @@ class WordInternalTests(WordTests):
                 else:
                     self.index += 1
                     return result
+
             next = __next__
         self.assertEqual([1,2,3], list(IteratorByNext([1,2,3])))
 
@@ -3176,17 +3188,18 @@ class WordInternalTests(WordTests):
         # THANKS:  Iterative object, http://stackoverflow.com/a/7542261/673991
 
         class IteratorByGetItem:
+
             def __init__(self, some_list):
                 self.some_list = some_list
+
             def __getitem__(self, index):
                 return self.some_list[index]
+
         self.assertEqual([1,2,3], list(IteratorByGetItem([1,2,3])))
 
         self.assertTrue(is_iterable(IteratorByGetItem([1,2,3])))
 
         self.assertEqual(py23(b'instance', 'IteratorByGetItem'), type(IteratorByGetItem([1,2,3])).__name__)
-
-
 
 
     ################## obsolete or maybe someday #################################
