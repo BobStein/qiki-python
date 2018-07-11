@@ -204,7 +204,7 @@ class Number(numbers.Complex):
         #                    and use exceptions to fall back on other ways, leading to the correct way
         #        factory-method would not allow a constructor, or allow it for only one type, probably
         #                       a qstring.  Callers would resort to factory methods for converting other
-        #                       types.
+        #                       types into a Number.
         # SEE:  Duck-typing constructor arguments, https://stackoverflow.com/q/602046/673991
         # NOTE:  Is-instance pros:
         #        Brief use:  Number(42)
