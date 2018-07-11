@@ -433,6 +433,7 @@ class NumberBasicTests(NumberTests):
             number_has_no_qexponent.qexponent()
 
     def test_qexponent_positive(self):
+        self.assertEqual(1, Number('0q82_01').qexponent())
         self.assertEqual(1, Number('0q82_01000001').qexponent())
         self.assertEqual(1, Number('0q82_02').qexponent())
         self.assertEqual(1, Number('0q82_FF').qexponent())
@@ -3295,35 +3296,40 @@ class NumberSuffixTests(NumberTests):
         # TODO:  Should '0q83_01FF__82_3F_FF0300' have an underscore in its payload Number?
 
     def test_suffix_extract_raw(self):
-        self.assertEqual(b'\x33\x44', Number(1).plus_suffix(0x11, b'\x33\x44').get_suffix_payload(0x11))
+        self.assertEqual(b'\x33\x44', Number(1).plus_suffix(0x11, b'\x33\x44').suffix(0x11).payload)
 
     def test_suffix_extract_raw_wrong(self):
         number_with_test_suffix = Number(1).plus_suffix(Suffix.Type.TEST, b'\x33\x44')
         with self.assertRaises(Suffix.NoSuchType):
-            number_with_test_suffix.get_suffix_payload(Suffix.Type.IMAGINARY)
+            _ = number_with_test_suffix.suffix(Suffix.Type.IMAGINARY).payload
 
     def test_suffix_extract_raw_among_multiple(self):
         self.assertEqual(
             b'\x33\x44',
-            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').get_suffix_payload(0x11)
+            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').suffix(0x11).payload
         )
         self.assertEqual(
             b'\x88\x99',
-            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').get_suffix_payload(0x22)
+            Number(1).plus_suffix(0x11, b'\x33\x44').plus_suffix(0x22, b'\x88\x99').suffix(0x22).payload
         )
 
     def test_suffix_extract_number(self):
-        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).get_suffix_number(0x11))
-        self.assertEqual(Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
-        self.assertEqual(       -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11))
-        self.assertIs(       Number, type(Number(1).plus_suffix(0x11, Number(-123.75)).get_suffix_number(0x11)))
+        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
+        self.assertEqual(Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
+        self.assertEqual(       -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
+        self.assertIs(       Number, type(Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number))
 
     def test_suffix_extract_number_missing(self):
-        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).get_suffix_number(0x11))
+        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
         with self.assertRaises(Suffix.NoSuchType):
-            Number(1).plus_suffix(0x99, Number(88)).get_suffix_number(0x11)
+            _ = Number(1).plus_suffix(0x99, Number(88)).suffix(0x11).number
         with self.assertRaises(Suffix.NoSuchType):
-            Number(1).get_suffix_number(0x11)
+            _ = Number(1).suffix(0x11).number
+
+    # def test_get_suffix_number_default(self):
+    #     self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).suffix(0x11, Number(99)))
+    #     self.assertEqual(Number(99), Number(1).plus_suffix(0x11, Number(88)).suffix(0x22, Number(99)))
+    #     self.assertEqual(Number(99), Number(1)                              .suffix(0x22, Number(99)))
 
     def test_suffix_number_parse(self):
         n = Number(99).plus_suffix(0x11, Number(356))
@@ -3332,13 +3338,13 @@ class NumberSuffixTests(NumberTests):
         suffix = suffixes[0]
         self.assertIs(type(suffix), Suffix)
         self.assertEqual(0x11, suffix.type_)
-        self.assertEqual(Number(356), suffix.payload_number())
+        self.assertEqual(Number(356), suffix.number)
 
     def test_suffixes_1(self):
         n = Number(99).plus_suffix(Suffix.Type.TEST, Number(356))
         self.assertEqual(1, len(n.suffixes))
         self.assertIs(type(n.suffixes[0]), Suffix)
-        self.assertEqual(Number(356), n.suffixes[0].payload_number())
+        self.assertEqual(Number(356), n.suffixes[0].number)
 
     def test_suffixes_3(self):
         n = Number(99)\
@@ -3349,9 +3355,9 @@ class NumberSuffixTests(NumberTests):
         self.assertIs(type(n.suffixes[0]), Suffix)
         self.assertIs(type(n.suffixes[1]), Suffix)
         self.assertIs(type(n.suffixes[2]), Suffix)
-        self.assertEqual(Number(111), n.suffixes[0].payload_number())
-        self.assertEqual(Number(222), n.suffixes[1].payload_number())
-        self.assertEqual(Number(333), n.suffixes[2].payload_number())
+        self.assertEqual(Number(111), n.suffixes[0].number)
+        self.assertEqual(Number(222), n.suffixes[1].number)
+        self.assertEqual(Number(333), n.suffixes[2].number)
 
     def test_eq_ne_suffix(self):
         self.assertTrue(Suffix(0x11) == Suffix(0x11))
@@ -3370,8 +3376,8 @@ class NumberSuffixTests(NumberTests):
 
     def test_get_suffix(self):
         n = Number(99).plus_suffix(0x11).plus_suffix(0x22)
-        s11 = n.get_suffix(0x11)
-        s22 = n.get_suffix(0x22)
+        s11 = n.suffix(0x11)
+        s22 = n.suffix(0x22)
         self.assertEqual(s11, Suffix(0x11))
         self.assertEqual(s22, Suffix(0x22))
 
@@ -3406,9 +3412,19 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(16.0, float(Number('0q82_10__123456_7F0400')))
         self.assertEqual(16.0625, float(Number('0q82_1010')))
 
-    def test_root(self):
+    def test_unsuffixed(self):
         suffixed_word = Number(42).plus_suffix(Suffix.Type.TEST)
-        self.assertEqual(Number(42), suffixed_word.root)
+        self.assertEqual(Number(42), suffixed_word.unsuffixed)
+
+    def test_unsuffixed_clone(self):
+        """
+        Make sure n.unsuffixed is a clone, so modifying it never risks modifying the original.
+
+        Make sure the .unsuffixed property never returns self, even when there are no suffixes.
+        """
+        n1 = Number(42)
+        n2 = n1.unsuffixed
+        self.assertIsNot(n1, n2)
 
     # def test_parse_root(self):
     #     def assert_root_consistent(n):

@@ -187,10 +187,12 @@ class LexErrorTests(unittest.TestCase):
             # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
             qiki.LexMySQL(**credentials)
             # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
+            # EXAMPLE:   (appears every time testing Word 3.5 or 3.6)
             #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
-            #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 64095),
+            #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 59546),
             #        raddr=('127.0.0.1', 33073)>
-            #        Intermittent:  sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
+            # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
+            #        sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
 
     def test_two_lex(self):
         lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
@@ -1944,9 +1946,9 @@ class Word0051ListingBasicTests(WordListingTests):
         self.assertEqual(       3.0, chad.num)
         self.assertTrue(chad.exists())
 
-        expected_root = self.names.idn
+        expected_unsuffixed = self.names.idn
         expect_one_suffix = qiki.Suffix(qiki.Suffix.Type.LISTING, number_two)
-        self.assertEqual(expected_root, chad.idn.root)
+        self.assertEqual(expected_unsuffixed, chad.idn.unsuffixed)
         self.assertEqual([expect_one_suffix], chad.idn.suffixes)
 
     def test_listing_using_spawn_and_save(self):
@@ -2102,7 +2104,7 @@ class Word0052ListingInternalsTests(WordListingTests):
         # But this helps to demonstrate Listing meta_word and instance idn contents.
         self.assertEqual('0q82_06', self.listing.idn.qstring())
         self.assertEqual('0q82_07', self.Student.meta_word.idn.qstring())   # Number(7)
-        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Root Number(7), payload Number(2)
+        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
         self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
         self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
 
@@ -2157,7 +2159,7 @@ class Word0052ListingInternalsTests(WordListingTests):
 
     def test_class_from_meta_idn(self):
         chad = self.Student(2)
-        chad_class_idn = chad.idn.root
+        chad_class_idn = chad.idn.unsuffixed
         chad_class = qiki.Listing.class_from_meta_idn(chad_class_idn)
 
         self.assertEqual(self.Student, chad_class)

@@ -843,8 +843,8 @@ class Listing(Word):
                        # It is assigned by install().
                        # listing_subclass.meta_word.idn is an unsuffixed qiki.Number.
                        # If x is an instance of a listing_subclass, then x.idn is a suffixed qiki.Number.
-                       # The root of x.idn is its class's meta_word.idn.
-                       # I.e. x.idn.root == x.meta_word.idn
+                       # The unsuffixed part of x.idn is its class's meta_word.idn.
+                       # I.e. x.idn.unsuffixed == x.meta_word.idn
                        # See examples in test_example_idn().
                        # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
@@ -859,9 +859,9 @@ class Listing(Word):
                      Just as two Words with the same idns are equal.  Which in fact they also are.)
                      It is passed to the LDC constructor, and to it's lookup() method.
         self.idn - The identifier is a suffixed number:
-                   root - meta_idn for the LDC, the idn of the meta_word that defined the LDC
-                   type - Type.LISTING
-                   payload - the index
+                   unsuffixed part - meta_idn for the LDC, the idn of the meta_word that defined the LDC
+                   suffix type - Type.LISTING
+                   suffix payload - the index
         """
         assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         assert self.meta_word is not None, (
@@ -893,8 +893,8 @@ class Listing(Word):
 
     def _from_idn(self, idn):
         assert idn.is_suffixed()
-        assert idn.root == self.meta_word.idn
-        assert idn.get_suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
+        assert idn.unsuffixed == self.meta_word.idn
+        assert idn.suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
         self.lookup(self.index, self.lookup_callback)
         self.__is_inchoate = False
 
@@ -927,7 +927,7 @@ class Listing(Word):
         """
         Associate the derived class with a word in the lex that represents the class.
         That class word should already exist, and it will (probably) have no suffix.
-        The class word's idn will be the root of the idn for all instances of the class.
+        The class word's idn will be the unsuffixed part of the idn for all instances of the class.
         Each instance will have a unique suffix,
         automatically created each time the class is instantiated with a unique index.
 
@@ -954,8 +954,7 @@ class Listing(Word):
 
         So it's a double-lookup.
         First we look up which class this idn is for.
-        That's determined by the root of the idn.
-        (The root is the Number part without any suffix.)
+        That's determined by the unsuffixed part of the idn.
         This class will be a subclass of Listing.
         Second we call that class's lookup on the suffix of the idn.
         """
@@ -994,21 +993,26 @@ class Listing(Word):
     def _parse_listing_idn(cls, idn):
         """Return (meta_idn, index) or raise NotAListing."""
         try:
-            identifier = idn.unsuffixed
-            suffixes = idn.suffixes
-        except (AttributeError, Suffix.RawError):
-            raise cls.NotAListing("Not a Number: " + type(idn).__name__)
-        if len(suffixes) != 1:
-            raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())
-        suffix = suffixes[0]
-        if suffix.type_ != cls.SUFFIX_TYPE:
-            raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
+            return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
+        except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
+            raise cls.NotAListing("Not a Listing identifier: " + type(idn).__name__ + " - " + six.text_type(e))
 
-        assert isinstance(identifier, Number)
-        assert isinstance(suffix, Suffix)
-        meta_idn = identifier
-        index = suffix.payload_number()
-        return meta_idn, index
+        # try:
+        #     identifier = idn.unsuffixed
+        #     suffixes = idn.suffixes
+        # except (AttributeError, Suffix.RawError):
+        #     raise cls.NotAListing("Not a Number: " + type(idn).__name__)
+        # if len(suffixes) != 1:
+        #     raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())
+        # suffix = suffixes[0]
+        # if suffix.type_ != cls.SUFFIX_TYPE:
+        #     raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
+        #
+        # assert isinstance(identifier, Number)
+        # assert isinstance(suffix, Suffix)
+        # meta_idn = identifier
+        # index = suffix.payload_number()
+        # return meta_idn, index
 
     class NotFound(Exception):
         pass
@@ -1038,7 +1042,7 @@ class ListingNotInstalled(Listing):
             "Listing identifier {idn} has meta_idn {meta_idn} "
             "which was not installed to a class.".format(
                 idn=self.idn,
-                meta_idn=self.idn.root,
+                meta_idn=self.idn.unsuffixed,
             )
         )
 
@@ -1785,7 +1789,7 @@ class LexMySQL(Lex):
         # Say, then this could work, super_select('SELECT *', ['FROM table'])
         # Instead of                 super_select('SELECT +', None, 'FROM table')
 
-        debug = kwargs.pop(b'debug', False)
+        debug = kwargs.pop('debug', False)
         query = ''
         parameters = []
         for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
@@ -1886,7 +1890,7 @@ class LexMySQL(Lex):
         """super_select() had a MySQL exception.  Report the query."""
 
     def super_select(self, *query_args, **kwargs):
-        debug = kwargs.get(b'debug', False)
+        debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         if debug:
             print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))

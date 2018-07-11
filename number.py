@@ -28,7 +28,6 @@ class SlotsOptimized(object):
     FOR_SPEED = True
 
 
-# TODO:  Docstring every function
 # TODO:  Move big comment sections to docstrings.
 # TODO:  qantissa --> qan
 
@@ -612,12 +611,13 @@ class Number(numbers.Complex):
         #        But then, caution, quaternary numbers stored as three imaginary suffixes could
         #        get flummoxed if any of the first two imaginary suffixes were zero.
         try:
-            imaginary_part = self.get_suffix_number(Suffix.Type.IMAGINARY)
+            imaginary_part = self.suffix(Suffix.Type.IMAGINARY).number
         except Suffix.NoSuchType:
-            """No imaginary suffix already; nothing to normalize away."""
+            """No imaginary suffix, nothing to normalize away."""
         else:
             if imaginary_part == self.ZERO:
-                self.raw = self.minus_suffix(Suffix.Type.IMAGINARY).raw
+                new_number = self.minus_suffix(Suffix.Type.IMAGINARY)
+                self.raw = new_number.raw
 
     def _normalize_plateau(self):
         """
@@ -730,73 +730,23 @@ class Number(numbers.Complex):
 
     @property
     def real(self):
-        """Return the real part.  Stripped of the imaginary part."""
+        """
+        Real part, of this seamlessly complex number.
+
+        Stripped of any imaginary suffix.  And any other suffix too.
+        """
         return self.unsuffixed
-
-    @property
-    def root(self):
-        """Return the part of this Number without any suffixes."""
-        # TODO:  Less vacuous name.  Harder to misunderstand, or conflate.  Easier to search for.
-        #        root alternatives:
-        #            unsuffixed
-        #            core
-        #            apex
-        #            base
-        #            crux
-        #            pith   <===
-        #            gist
-        #            stem   <===
-        #            trunk
-        #            pit
-        #        Maybe "suffix" is vacuous and misunderstandable too.  Need a new name for that.
-        #        suffix alternatives:
-        #            pod
-        #            pac
-        #            fix
-        #            extension
-        #            attachment
-        #            augmentation
-        #            aug
-        #            adjoin (not to be confused with adjective, which could be a word thing)
-        #            annex
-        #            accession
-        #            accretion
-        #            ps
-        #            addendum
-        #            amendment
-        #            supplemental
-        #            additive
-        #            extra
-        #            add-on
-        #            spice
-        #            endowment
-        #            boon
-        #            complement
-        #            extra
-        #            perk
-        #            perq   <===
-        #            bonus
-        #            fringe
-        #            lagniappe
-        #            secret passage
-        #            leaf    <===   (leading to "leafless" number)
-        #            branch
-        #            arm
-
-        return self.unsuffixed
-
-    # @property
-    # def suffixes(self):
-    #     return self.parse_suffixes()[1]
 
     @property
     def imag(self):
+        """Imaginary part, of this seamlessly complex number."""
         try:
-            return self.get_suffix_number(Suffix.Type.IMAGINARY)
+            return self.suffix(Suffix.Type.IMAGINARY).number
         except Suffix.NoSuchType:
             return self.ZERO
 
     def conjugate(self):
+        """Complex conjugate.  a + bj --> a - bj"""
         return_value = self.real
         imag = self.imag
         if imag != self.ZERO:
@@ -813,7 +763,6 @@ class Number(numbers.Complex):
         Right:  assert Number(1) == Number(0q82_01')
         Wrong:                      Number(b'\x82\x01')
         Right:  assert Number(1) == Number.from_raw(b'\x82\x01')
-        Right:  assert Number(1) == Number.from_raw_bytearray(bytearray(b'\x82\x01'))
         """
         if not isinstance(value, six.binary_type):
             raise cls.ConstructorValueError(
@@ -825,6 +774,11 @@ class Number(numbers.Complex):
 
     @classmethod
     def from_raw_bytearray(cls, value):
+        """
+        Construct a Number from a bytearray().
+
+        assert Number(1) == Number.from_raw_bytearray(bytearray(b'\x82\x01'))
+        """
         return cls.from_raw(six.binary_type(value))
 
     from_mysql = from_raw_bytearray
@@ -833,8 +787,8 @@ class Number(numbers.Complex):
         """
         Construct a Number from a string rendering.
 
-        Example:  assert Number(1) == Number('0q82_01')
-        Example:  assert Number(1) == Number('1')
+        assert Number(1) == Number('0q82_01')
+        assert Number(1) == Number('1')
         """
         assert(isinstance(s, six.string_types))
         if s.startswith('0q'):
@@ -863,9 +817,9 @@ class Number(numbers.Complex):
     @classmethod
     def from_qstring(cls, s):
         """
-        Public factory to generate a Number from its qstring.
+        Construct a Number from its qstring.
 
-        Example:  assert Number(1) == Number.from_qstring('0q82_01')
+        assert Number(1) == Number.from_qstring('0q82_01')
         """
         if s.startswith('0q'):
             return_value = cls()
@@ -891,6 +845,7 @@ class Number(numbers.Complex):
         self.raw = six.binary_type(byte_string)
 
     def _from_int(self, i):
+        """Fill in raw from an int."""
         if   i >  0:   self.raw = self._raw_from_int(i, lambda e: 0x81 + e)
         elif i == 0:   self.raw = self.RAW_ZERO
         else:          self.raw = self._raw_from_int(i, lambda e: 0x7E - e)
@@ -966,6 +921,7 @@ class Number(numbers.Complex):
 
     @classmethod
     def _raw_unreasonable_float(cls, x):
+        """Handle a float too big to handle."""
         if x == float('+inf'):
             return cls.RAW_INFINITY
         elif x == float('-inf'):
@@ -1013,6 +969,7 @@ class Number(numbers.Complex):
         """
 
     def _from_complex(self, c):
+        """Fill in raw from a complex number."""
         self._from_float(c.real)
         self.raw = self.plus_suffix(Suffix.Type.IMAGINARY, type(self)(c.imag)).raw
         # THANKS:  Call constructor if subclassed, http://stackoverflow.com/a/14209708/673991
@@ -1060,6 +1017,7 @@ class Number(numbers.Complex):
         return return_value + error_tag
 
     def __int__(self):
+        """To an integer."""
         int_by_dictionary = self.__int__by_zone_dictionary()
         assert int_by_dictionary == self.__int__by_zone_ifs(), (
             "Mismatched int encoding for {r}:  dict-method={d}, if-method={i}".format(
@@ -1072,13 +1030,16 @@ class Number(numbers.Complex):
 
     if six.PY2:
         def __long__(self):
-           # noinspection PyCompatibility,PyUnresolvedReferences
-           return long(self.__int__())
+            """To a long int."""
+            # noinspection PyCompatibility,PyUnresolvedReferences
+            return long(self.__int__())
 
     def __complex__(self):
+        """To a complex number."""
         return complex(float(self.real), float(self.imag))
 
     def __int__by_zone_dictionary(self):
+        """To an integer, using a dictionary keyed by Zone."""
         return self.__int__zone_dict[self.zone](self)
 
     __int__zone_dict =  {
@@ -1099,6 +1060,7 @@ class Number(numbers.Complex):
     }
 
     def __int__by_zone_ifs(self):
+        """To an integer, using exhaustive if-clauses."""
         if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
         elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
         elif Zone.FRACTIONAL_NEG       <= self.raw:  return 0
@@ -1108,10 +1070,12 @@ class Number(numbers.Complex):
 
     @classmethod
     def _int_cant_be_positive_infinity(cls):
+        """Handle integer positive infinity."""
         raise cls.IntOverflowError("Positive Infinity cannot be represented by integers.")
 
     @classmethod
     def _int_cant_be_negative_infinity(cls):
+        """Handle integer negative infinity."""
         raise cls.IntOverflowError("Negative Infinity cannot be represented by integers.")
 
     class IntOverflowError(OverflowError):
@@ -1119,15 +1083,18 @@ class Number(numbers.Complex):
 
     @staticmethod
     def _int_cant_be_nan():
+        """Handle integer NAN."""
         raise ValueError("Not-A-Number cannot be represented by integers.")
 
     def _to_int_positive(self):
+        """To a positive integer."""
         n = self.normalized()
         (qan, qanlength) = n.qantissa()
         qexp = n.qexponent() - qanlength
         return shift_leftward(qan, qexp*8)
 
     def _to_int_negative(self):
+        """To a negative integer."""
         (qan,qanlength) = self.qantissa()
         qexp = self.qexponent() - qanlength
         qan_negative = qan - exp256(qanlength)
@@ -1140,27 +1107,29 @@ class Number(numbers.Complex):
         return the_int
 
     def __float__(self):
+        """To a floating point number."""
         try:
             is_complex = self.is_complex()
-            the_root = self.root
+            unsuffixed = self.unsuffixed
         except Suffix.RawError:
             is_complex = False
-            the_root = self
+            unsuffixed = self
         if is_complex:
             raise TypeError(
                 "{} has an imaginary part, "
                 "use float(n.real) or complex(n) "
                 "instead of float(n)".format(self.qstring())
             )
-        float_by_dictionary = the_root.__float__by_zone_dictionary()
-        assert floats_really_same(float_by_dictionary, the_root.__float__by_zone_ifs()), (
+        float_by_dictionary = unsuffixed.__float__by_zone_dictionary()
+        assert floats_really_same(float_by_dictionary, unsuffixed.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  dict-method=%s, if-method=%s" % (
-                repr(the_root), float_by_dictionary, the_root.__float__by_zone_ifs()
+                repr(unsuffixed), float_by_dictionary, unsuffixed.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
 
     def __float__by_zone_dictionary(self):
+        """To a floating point number, using a dictionary keyed by Zone."""
         return self.__float__zone_dict[self.zone](self)
 
     __float__zone_dict =  {
@@ -1181,6 +1150,7 @@ class Number(numbers.Complex):
     }
 
     def __float__by_zone_ifs(self):
+        """To an floating point number, using exhaustive if-clauses."""
         _zone = self.zone
         if _zone in ZoneSet.REASONABLY_NONZERO:
             return self._to_float()
@@ -1196,6 +1166,7 @@ class Number(numbers.Complex):
             return float('nan')
 
     def _to_float(self):
+        """To a reasonable, nonzero floating point number."""
         try:
             qexp = self.qexponent()
         except ValueError:
@@ -1213,7 +1184,9 @@ class Number(numbers.Complex):
         return math.ldexp(float(qan), exponent_base_2)
 
     def qantissa(self, max_qigits=None):
-        """Extract the base-256 significand in its raw form.
+        """Extract the base-256 significand value in its integer form.
+
+        That is, return a tuple of the integer qan, and the number of qigits it contains.
 
         max_qigits limits how much of raw is looked at.  (None means no limit.)
 
@@ -1226,6 +1199,7 @@ class Number(numbers.Complex):
         return tuple((number_qantissa, len(raw_qan)))
 
     def qan_raw(self, max_qigits=None):
+        """The qan in raw, base-256 bytes."""
         # TODO:  unit test
         if max_qigits is None:
             return self.raw[self.qan_offset() : ]
@@ -1235,10 +1209,12 @@ class Number(numbers.Complex):
 
 
     def qex_raw(self):
+        """The qex in raw bytes"""
         # TODO:  unit test
         return self.raw[ : self.qan_offset()]
 
     def qan_offset(self):
+        """The offset into self.raw of the qan."""
         # TODO:  unit test
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
@@ -1257,6 +1233,14 @@ class Number(numbers.Complex):
     }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
 
     def qexponent(self):
+        """
+        The base-256 exponent.
+
+         2 for [    256...65536)
+         1 for [      1...256)
+         0 for [  1/256...1)
+        -1 for [1/65536...1/256)
+        """
         try:
             encoder = self.__qexponent_encode_dict[self.zone]
         except KeyError:
@@ -1298,6 +1282,7 @@ class Number(numbers.Complex):
         return "x'" + self.hex() + "'"
 
     def zero_x_hex(self):
+        """Hexadecimal literal for the entire raw string as a big integer.  Based on C,C++,Java,JavaScript,etc. syntax."""
         return "0x" + self.hex()
 
     def ditto_backslash_hex(self):
@@ -1318,6 +1303,7 @@ class Number(numbers.Complex):
     # ------------------
     @property
     def zone(self):
+        """Get the Zone for this Number.  Works whether _zone is among the __slots__ or not."""
         try:
             return self._zone
         except AttributeError:
@@ -1325,6 +1311,7 @@ class Number(numbers.Complex):
             return self._zone_from_scratch()
 
     def _zone_refresh(self):
+        """Set the _zone property for this Number, if allowed by __slots__."""
         try:
             # noinspection PyDunderSlots,PyUnresolvedReferences
             self._zone = self._zone_from_scratch()
@@ -1332,6 +1319,7 @@ class Number(numbers.Complex):
             '''Benign, this happens if _zone is missing from __slots__'''
 
     def _zone_from_scratch(self):
+        """Get the Zone for a Number, based on its value."""
         # TODO:  ONLY use the else-tree here.  Move loop to a monkeypatched unit test.
         # SEE:  To monkeypatch pytest, https://docs.pytest.org/en/latest/monkeypatch.html
         # SEE:  To monkeypatch unittest, http://www.voidspace.org.uk/python/mock/
@@ -1345,12 +1333,14 @@ class Number(numbers.Complex):
         return zone_by_tree
 
     def _find_zone_by_loop_scan(self):   # slower than if-else-tree, but enforces Zone value rules
+        """Get the Zone for a Number, by scanning Zone values."""
         for z in Zone.descending_codes:
             if z <= self.raw:
                 return z
         raise RuntimeError("Number._find_zone_by_loop_scan() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
 
     def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
+        """Get the Zone for a Number, using possibly-more-efficient if-clauses."""
         raw = self.raw
         # THANKS:  local variable faster, https://stackoverflow.com/q/12397984/673991
         if raw > Zone.ZERO:
@@ -1405,6 +1395,7 @@ class Number(numbers.Complex):
     # n - Suffix(t) === n.minus_suffix(t)
 
     def is_suffixed(self):
+        """Does this Number have any suffixes?"""
         try:
             return six.indexbytes(self.raw, -1) == Suffix.TERMINATOR
         except IndexError:
@@ -1460,116 +1451,90 @@ class Number(numbers.Complex):
             raise Suffix.NoSuchType("Number {} had no suffix type {:02x}".format(self.qstring(), old_type))
         return new_number
 
-    def get_suffix(self, sought_type):
-        # TODO:  Rename suffix()
-        for suffix in self.suffixes:
-            if suffix.type_ == sought_type:
-                return suffix
-        raise Suffix.NoSuchType("Number {} has no suffix type {:02x}".format(self.qstring(), sought_type))
-
-    def get_suffix_payload(self, sought_type):
-        # TODO:  Default value instead of NoSuchType?
-        # Don't even do this:
-        #    Meh:  n.get_suffix_payload(t)
-        #    Yay:  n.suffix(t).payload()
-        return self.get_suffix(sought_type).payload
-
-    def get_suffix_number(self, sought_type):
-        # TODO:  Default value instead of NoSuchType?
-        #        Or default parameter, which if omitted and the type is missing, raises an exception
-        #        n = n.suffix_number(t, default=None)
-        #        n = n.suffix(t).payload_number(default=None)
-        #        n = n.suffix(t).payload(default=None)  <--  why can't this just return a Number?
-        #        n = n.suffix(t).number(default=None)  <--  don't assume, this is better
-        #                                                   well, it's kinda assuming the "payload" part
-        #                                                   better than assuming the "number" part
-        return self.get_suffix(sought_type).payload_number()
-
-    # def parse_suffixes(self):
-    #     """Parse a Number into its root and suffixes.
-    #
-    #     Return a tuple of two elements
-    #         the root
-    #         a list of suffixes
-    #
-    #     assert \
-    #         (Number(1),    [Suffix(2),     Suffix(3, b'\x4567']) == \
-    #          Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
-    #     """
-    #     # TODO:  Rename as suffixes property and just blow off the unsuffixed part here.
-    #     suffixes = []
-    #     raw_remains = Number(self).raw   # copy of raw, so we can modify it in-place
-    #     while raw_remains:
-    #         last_byte = six.indexbytes(raw_remains, -1)
-    #         if last_byte == Suffix.TERMINATOR:
-    #             try:
-    #                 length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
-    #             except IndexError:
-    #                 raise Suffix.RawError("Invalid suffix, hard length underflow.")
-    #             if length_of_payload_plus_type >= len(raw_remains)-2:
-    #                 # Suffix may neither be larger than raw, nor consume all of it.
-    #                 raise Suffix.RawError("Invalid suffix, soft length underflow.")
-    #             if length_of_payload_plus_type == 0x00:
-    #                 suffixes.insert(0, Suffix())
-    #                 # TODO:  Do we actually want to ignore the empty suffix, even here?
-    #                 #        To kind of enforce it's reliable meaninglessness
-    #             else:
-    #                 try:
-    #                     type_ = six.indexbytes(raw_remains, -3)
-    #                 except IndexError:
-    #                     raise Suffix.RawError("Invalid suffix, fuzzy length underflow.")
-    #                     # NOTE:  fuzzy underflow may be impossible -- eclipsed by soft underflow.
-    #                 payload = raw_remains[-length_of_payload_plus_type-2 : -3]
-    #                 suffixes.insert(0, Suffix(type_, payload))
-    #             raw_remains = raw_remains[0 : -length_of_payload_plus_type-2]
-    #         else:
-    #             break
-    #     return self.from_raw(raw_remains), suffixes
-    #     # TODO:  Refactor parse_suffixes() to be more like parse_root() or vice versa.
-
     @property
     def unsuffixed(self):
         """Get the Number minus all suffixes."""
+
+        # TODO:  Less vacuous name.  Harder to misunderstand, or conflate.  Easier to search for.
+        #        root alternatives:
+        #            unsuffixed
+        #            core
+        #            apex
+        #            base
+        #            crux
+        #            pith   <===
+        #            gist
+        #            stem   <===
+        #            trunk
+        #            pit
+        #        Maybe "suffix" is vacuous and misunderstandable too.  Need a new name for that.
+        #        suffix alternatives:
+        #            pod
+        #            pac
+        #            fix
+        #            extension
+        #            attachment
+        #            augmentation
+        #            aug
+        #            adjoin (not to be confused with adjective, which could be a word thing)
+        #            annex
+        #            accession
+        #            accretion
+        #            ps
+        #            addendum
+        #            amendment
+        #            supplemental
+        #            additive
+        #            extra
+        #            add-on
+        #            spice
+        #            endowment
+        #            boon
+        #            complement
+        #            extra
+        #            perk
+        #            perq   <===
+        #            bonus
+        #            fringe
+        #            lagniappe
+        #            secret passage
+        #            leaf    <===   (leading to "leafless" number)
+        #            branch
+        #            arm
+
         index_unsuffixed_end = len(self.raw)
         for index_unsuffixed_end in self.suffix_indexes_backwards():
             '''Find the FIRST suffix index, i.e. the LAST one backwards.'''
         return Number.from_raw(self.raw[ : index_unsuffixed_end])
 
-        # raw_length = len(self.raw)
-        # index_end = raw_length
-        # if raw_length:
-        #     # NOTE:  The root can be NAN but only if the root is all there is.  I.e. can't suffix NAN.
-        #     while True:
-        #         index_terminator = index_end - 1
-        #         if index_terminator < 0:
-        #             raise Suffix.RawError("Invalid suffix, soft root underflow.")
-        #         maybe_terminator = six.indexbytes(self.raw, index_terminator)
-        #         if maybe_terminator != Suffix.TERMINATOR:
-        #             break
-        #         index_length = index_end - 2
-        #         if index_length < 0:
-        #             raise Suffix.RawError("Invalid suffix, hard root underflow.")
-        #         length = six.indexbytes(self.raw, index_length)
-        #         index_end = index_length - length
-        # return Number.from_raw(self.raw[ : index_end])
-
     @property
     def suffixes(self):
-        """A list Suffix objects, the Number's suffixes in order from left-to-right."""
+        """A list of Suffix objects, the Number's suffixes in order from left-to-right."""
 
         def suffixes_backwards():
+            """Generate the Suffix objects from this Number, right-to-left."""
             last_suffix_index = len(self.raw)
             for suffix_index in self.suffix_indexes_backwards():
                 index_type = last_suffix_index - 3
                 if index_type >= suffix_index:
                     type_ = six.indexbytes(self.raw, index_type)
-                    payload = self.raw[suffix_index : last_suffix_index-3]
+                    payload = self.raw[suffix_index : index_type]
                     yield Suffix(type_, payload)
                 else:
                     yield Suffix()
                 last_suffix_index = suffix_index
 
         return list(reversed(list(suffixes_backwards())))
+
+    def suffix(self, sought_type):
+        """Get suffix by type.  Only sees the first (left-most) suffix of a type."""
+        for suffix in self.suffixes:
+            if suffix.type_ == sought_type:
+                return suffix
+        raise Suffix.NoSuchType("Number {qstring} has no suffix type {sought_type:02x}".format(
+            qstring=self.qstring(),
+            sought_type=sought_type
+        ))
 
     def suffix_indexes_backwards(self):
         """
@@ -1615,7 +1580,6 @@ class Number(numbers.Complex):
     @classmethod
     def _internal_setup(cls):
         """Initialize Number constants after the Number class is defined."""
-
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
         cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)
@@ -1624,7 +1588,7 @@ class Number(numbers.Complex):
         cls.NEGATIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY_NEG)
 
 
-def flatten(things, put_them_where=None):
+def flatten(things, destination_list=None):
     """
     Flatten a nested container into a list.
 
@@ -1633,18 +1597,18 @@ def flatten(things, put_them_where=None):
     """
     # TODO:  Unit test.  Or get rid of it?  Or use it in word.LexMySQL._super_parse()?
     # TODO:  Make a version with no recursion and full yield pass-through.
-    if put_them_where is None:
-        put_them_where = []
+    if destination_list is None:
+        destination_list = []
     for thing in things:
         # TODO:  Use is_iterable(), now in word.py.
         try:
             0 in thing
         except TypeError:
-            put_them_where.append(thing)
+            destination_list.append(thing)
         else:
-            flatten(thing, put_them_where)
-    return put_them_where
-assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,'five'),6],7),8]))
+            flatten(thing, destination_list)
+    return destination_list
+assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,{'five'}),6],7),8]))
 
 
 # noinspection PyProtectedMember
@@ -1958,6 +1922,7 @@ class Suffix(object):
     # SEE:  "...any one of the imaginary components", http://math.stackexchange.com/a/1167326/60679
 
     def __init__(self, type_=None, payload=None):
+        """Suffix constructor.  Given its one-byte type and multi-byte payload.  Both optional."""
         assert isinstance(type_, (int, type(None)))
         self.type_ = type_
         # TODO:  Another name for type -- tired of that underscore
@@ -1997,6 +1962,7 @@ class Suffix(object):
                 )
 
     def __eq__(self, other):
+        """Are suffixes equal?"""
         try:
             other_type = other.type_
             other_payload = other.payload
@@ -2005,12 +1971,14 @@ class Suffix(object):
         return self.type_ == other_type and self.payload == other_payload
 
     def __ne__(self, other):
+        """Are suffixes unequal?"""
         eq_result = self.__eq__(other)
         if eq_result is NotImplemented:
             return NotImplemented
         return not eq_result
 
     def __repr__(self):
+        """Source representation of a suffix."""
         if self.type_ is None:
             return "Suffix()"
         else:
@@ -2020,9 +1988,15 @@ class Suffix(object):
             )
 
     def __hash__(self):
+        """So Suffixes could be keys of a dict."""
         return hash(self.raw)
 
     def qstring(self, underscore=1):
+        """
+        The qstring of a suffix only underscore-separates the payload (if any) from the rest.
+
+        Even if the payload is itself a Number, its parts will not be underscore-separated.
+        """
         whole_suffix_in_hex = hex_from_string(self.raw)
         if underscore > 0 and self.payload:
             payload_hex = whole_suffix_in_hex[ : -self.NUM_OVERHEAD*2]
@@ -2031,14 +2005,13 @@ class Suffix(object):
         else:
             return whole_suffix_in_hex
 
-    def payload_number(self):
-        # TODO:  Rename number()
-        #        What point does a suffix have other than surrendering its payload?
-        #        So then assume the suffix "number" is talking about its payload being interpreted as a Number.
+    @property
+    def number(self):
+        """Interpret the payload as the raw bytes of an embedded Number."""
         return Number.from_raw(self.payload)
 
     class NoSuchType(Exception):
-        """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).get_suffix(0x33)"""
+        """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).suffix(0x33)"""
 
     class PayloadError(TypeError):
         """Suffix(payload=unexpected_type)"""
