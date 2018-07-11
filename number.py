@@ -492,29 +492,30 @@ class Number(numbers.Complex):
     def __hash__(self):
         return hash(self.raw)
 
-    def __pos__( self): return self._unary_op(operator.__pos__)
-    def __neg__( self): return self._unary_op(operator.__neg__)
-    def __abs__( self): return self._unary_op(operator.__abs__)
+    def __pos__(self): return self._unary_op(operator.__pos__)
+    def __neg__(self): return self._unary_op(operator.__neg__)
+    def __abs__(self): return self._unary_op(operator.__abs__)
 
-    def __add__( self, other): return self._binary_op(operator.__add__, self, other)
+    def __add__(self, other): return self._binary_op(operator.__add__, self, other)
     def __radd__(self, other): return self._binary_op(operator.__add__, other, self)
-    def __sub__( self, other): return self._binary_op(operator.__sub__, self, other)
+    def __sub__(self, other): return self._binary_op(operator.__sub__, self, other)
     def __rsub__(self, other): return self._binary_op(operator.__sub__, other, self)
-    def __mul__( self, other): return self._binary_op(operator.__mul__, self, other)
+    def __mul__(self, other): return self._binary_op(operator.__mul__, self, other)
     def __rmul__(self, other): return self._binary_op(operator.__mul__, other, self)
     def __truediv__( self, other): return self._binary_op(operator.__truediv__, self, other)
     def __rtruediv__(self, other): return self._binary_op(operator.__truediv__, other, self)
     def __floordiv__( self, other): return self._binary_op(operator.__floordiv__, self, other)
     def __rfloordiv__(self, other): return self._binary_op(operator.__floordiv__, other, self)
-    def __pow__( self, other): return self._binary_op(operator.__pow__, self, other)
+    def __pow__(self, other): return self._binary_op(operator.__pow__, self, other)
     def __rpow__(self, other): return self._binary_op(operator.__pow__, other, self)
 
     def __div__(self, other):
         """
-        Implement the one-slash division operator for Python 2.
+        Implement the single-slash division operator for Python 2.
 
         This will never be hybrid division. (Hybrid division is true-
-        division with floats, but floor-division with integers).
+        division with floats, but floor-division with integers. That's
+        the way Python 2 handles the single-slash operator.)
 
         Even though we use future division in this source file, a client
         might not.  So a Python 2 client using Number(x) / Number(y)
@@ -522,14 +523,13 @@ class Number(numbers.Complex):
         from __future__ import division.
 
         Otherwise, there would be no sensible way to force a true-
-        division for that client.  To get true-division with native math,
+        division for that client.  To get true-division with native types,
         you make sure one of the operands is a float.  For example, 2/3 is
         zero but 2.0/3 is 0.666...  But Number(2.0)/Number(3) is
         indistinguishable from Number(2)/Number(3).  So in this sense,
         Number behaves slightly more like float than int.  Or you could
         say Number imposes a little Python 3 onto Python 2 users.
         """
-
         return operator.__truediv__(self, other)
 
         # return self._binary_op(operator.__truediv__, self, other)
@@ -627,9 +627,10 @@ class Number(numbers.Complex):
         E.g.  0q7E01 becomes 0q7E00_FF for -1/256.
         """
         if self.zone in ZoneSet.MAYBE_PLATEAU:
-            root, suffixes = self.parse_suffixes()
-            raw_qex = root.qex_raw()
-            raw_qan = root.qan_raw()
+            unsuffixed = self.unsuffixed
+            suffixes = self.suffixes
+            raw_qex = unsuffixed.qex_raw()
+            raw_qan = unsuffixed.qan_raw()
             is_plateau = False
             if len(raw_qan) == 0:
                 is_plateau = True
@@ -730,17 +731,63 @@ class Number(numbers.Complex):
     @property
     def real(self):
         """Return the real part.  Stripped of the imaginary part."""
-        return self.root
+        return self.unsuffixed
 
     @property
     def root(self):
         """Return the part of this Number without any suffixes."""
-        # TODO:  Less vacuous name.  Easy to misunderstand, or conflate.  Hard to search for.  Unsuffixed()?
-        return self.parse_root()
+        # TODO:  Less vacuous name.  Harder to misunderstand, or conflate.  Easier to search for.
+        #        root alternatives:
+        #            unsuffixed
+        #            core
+        #            apex
+        #            base
+        #            crux
+        #            pith   <===
+        #            gist
+        #            stem   <===
+        #            trunk
+        #            pit
+        #        Maybe "suffix" is vacuous and misunderstandable too.  Need a new name for that.
+        #        suffix alternatives:
+        #            pod
+        #            pac
+        #            fix
+        #            extension
+        #            attachment
+        #            augmentation
+        #            aug
+        #            adjoin (not to be confused with adjective, which could be a word thing)
+        #            annex
+        #            accession
+        #            accretion
+        #            ps
+        #            addendum
+        #            amendment
+        #            supplemental
+        #            additive
+        #            extra
+        #            add-on
+        #            spice
+        #            endowment
+        #            boon
+        #            complement
+        #            extra
+        #            perk
+        #            perq   <===
+        #            bonus
+        #            fringe
+        #            lagniappe
+        #            secret passage
+        #            leaf    <===   (leading to "leafless" number)
+        #            branch
+        #            arm
 
-    @property
-    def suffixes(self):
-        return self.parse_suffixes()[1]
+        return self.unsuffixed
+
+    # @property
+    # def suffixes(self):
+    #     return self.parse_suffixes()[1]
 
     @property
     def imag(self):
@@ -973,7 +1020,8 @@ class Number(numbers.Complex):
     # "to" conversions:  Number --> other type
     # ----------------------------------------
     def qstring(self, underscore=1):
-        """Output Number as a qstring:  assert '0q82_01' == Number(1).qstring()
+        """
+        Output Number as a qstring:  assert '0q82_01' == Number(1).qstring()
 
         assert '0q85_12345678' == Number(0x12345678).qstring()
         Qstring is a human-readable form of the raw representation of a qiki number
@@ -989,24 +1037,24 @@ class Number(numbers.Complex):
             return_value = '0q' + self.hex()
         else:
             try:
-                root, suffixes = self.parse_suffixes()
+                unsuffixed = self.unsuffixed
             except Suffix.RawError:
-                root = self
-                suffixes = []
+                unsuffixed = self
                 error_tag = "!?"
-            length = len(root.raw)
+            length = len(unsuffixed.raw)
             if length == 0:
                 offset = 0
             elif six.indexbytes(self.raw, 0) in (0x7E, 0x7F, 0x80, 0x81):
                 offset = 2
             else:
-                offset = 1   # TODO:  ludicrous numbers have bigger offsets (for googolplex it is 64)
-            h = hex_from_string(root.raw)
+                offset = 1
+                # TODO:  ludicrous numbers have bigger offsets (for googolplex it is 64)
+            h = hex_from_string(unsuffixed.raw)
             if length <= offset:
                 return_value = '0q' + h
             else:
-                return_value = '0q' + h[:2*offset] + '_' + h[2*offset:]
-            for suffix in suffixes:
+                return_value = '0q' + h[ : 2*offset] + '_' + h[2*offset : ]
+            for suffix in self.suffixes:
                 return_value += '__'
                 return_value += suffix.qstring(underscore)
         return return_value + error_tag
@@ -1014,8 +1062,10 @@ class Number(numbers.Complex):
     def __int__(self):
         int_by_dictionary = self.__int__by_zone_dictionary()
         assert int_by_dictionary == self.__int__by_zone_ifs(), (
-            "Mismatched int encoding for %s:  dict-method=%s, if-method=%s" % (
-                repr(self), int_by_dictionary, self.__int__by_zone_ifs()
+            "Mismatched int encoding for {r}:  dict-method={d}, if-method={i}".format(
+                r=repr(self),
+                d=int_by_dictionary,
+                i=self.__int__by_zone_ifs(),
             )
         )
         return int_by_dictionary
@@ -1355,10 +1405,11 @@ class Number(numbers.Complex):
     # n - Suffix(t) === n.minus_suffix(t)
 
     def is_suffixed(self):
-        return_value = self.raw[-1:] == byte(Suffix.TERMINATOR)
-        assert return_value == bool(self.suffixes)
-        return return_value
-        # XXX:  This could be much less sneaky if raw were not the primary internal representation.
+        try:
+            return six.indexbytes(self.raw, -1) == Suffix.TERMINATOR
+        except IndexError:
+            return False
+        # XXX:  This could be less sneaky if raw were not the primary internal representation.
         # TODO:  is_suffixed(type)?
 
     def plus_suffix(self, suffix_or_type=None, payload=None):
@@ -1395,13 +1446,12 @@ class Number(numbers.Complex):
     def minus_suffix(self, old_type=None):
         """Make a version of a number without any suffixes of the given type.  This does NOT mutate self."""
         # TODO:  A way to remove just ONE suffix of the given type?
-        # minus_suffix(t) for one, minus_suffixes(t) for all?
-        # minus_suffix(t, global=True) for all?
-        # minus_suffix(t, count=1) for one?
-        root, suffixes = self.parse_suffixes()
-        new_number = root
+        #        minus_suffix(t) for one, minus_suffixes(t) for all?
+        #        minus_suffix(t, global=True) for all?
+        #        minus_suffix(t, count=1) for one?
+        new_number = self.unsuffixed
         any_deleted = False
-        for suffix in suffixes:
+        for suffix in self.suffixes:
             if suffix.type_ == old_type:
                 any_deleted = True
             else:
@@ -1435,68 +1485,122 @@ class Number(numbers.Complex):
         #                                                   better than assuming the "number" part
         return self.get_suffix(sought_type).payload_number()
 
-    def parse_suffixes(self):
-        """Parse a Number into its root and suffixes.
+    # def parse_suffixes(self):
+    #     """Parse a Number into its root and suffixes.
+    #
+    #     Return a tuple of two elements
+    #         the root
+    #         a list of suffixes
+    #
+    #     assert \
+    #         (Number(1),    [Suffix(2),     Suffix(3, b'\x4567']) == \
+    #          Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
+    #     """
+    #     # TODO:  Rename as suffixes property and just blow off the unsuffixed part here.
+    #     suffixes = []
+    #     raw_remains = Number(self).raw   # copy of raw, so we can modify it in-place
+    #     while raw_remains:
+    #         last_byte = six.indexbytes(raw_remains, -1)
+    #         if last_byte == Suffix.TERMINATOR:
+    #             try:
+    #                 length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
+    #             except IndexError:
+    #                 raise Suffix.RawError("Invalid suffix, hard length underflow.")
+    #             if length_of_payload_plus_type >= len(raw_remains)-2:
+    #                 # Suffix may neither be larger than raw, nor consume all of it.
+    #                 raise Suffix.RawError("Invalid suffix, soft length underflow.")
+    #             if length_of_payload_plus_type == 0x00:
+    #                 suffixes.insert(0, Suffix())
+    #                 # TODO:  Do we actually want to ignore the empty suffix, even here?
+    #                 #        To kind of enforce it's reliable meaninglessness
+    #             else:
+    #                 try:
+    #                     type_ = six.indexbytes(raw_remains, -3)
+    #                 except IndexError:
+    #                     raise Suffix.RawError("Invalid suffix, fuzzy length underflow.")
+    #                     # NOTE:  fuzzy underflow may be impossible -- eclipsed by soft underflow.
+    #                 payload = raw_remains[-length_of_payload_plus_type-2 : -3]
+    #                 suffixes.insert(0, Suffix(type_, payload))
+    #             raw_remains = raw_remains[0 : -length_of_payload_plus_type-2]
+    #         else:
+    #             break
+    #     return self.from_raw(raw_remains), suffixes
+    #     # TODO:  Refactor parse_suffixes() to be more like parse_root() or vice versa.
 
-        Return a tuple of two elements
-            the root
-            a list of suffixes
+    @property
+    def unsuffixed(self):
+        """Get the Number minus all suffixes."""
+        index_unsuffixed_end = len(self.raw)
+        for index_unsuffixed_end in self.suffix_indexes_backwards():
+            '''Find the FIRST suffix index, i.e. the LAST one backwards.'''
+        return Number.from_raw(self.raw[ : index_unsuffixed_end])
 
-        assert \
-            (Number(1),    [Suffix(2),     Suffix(3, b'\x4567']) == \
-             Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
-        """
-        # TODO:  Rename as suffixes property and just blow off the unsuffixed part here.
-        suffixes = []
-        raw_remains = Number(self).raw
-        while raw_remains:
-            last_byte = six.indexbytes(raw_remains, -1)
-            if last_byte == Suffix.TERMINATOR:
-                try:
-                    length_of_payload_plus_type = six.indexbytes(raw_remains, -2)
-                except IndexError:
-                    raise Suffix.RawError("Invalid suffix, hard length underflow.")
-                if length_of_payload_plus_type >= len(raw_remains)-2:
-                    # Suffix may neither be larger than raw, nor consume all of it.
-                    raise Suffix.RawError("Invalid suffix, soft length underflow.")
-                if length_of_payload_plus_type == 0x00:
-                    suffixes.insert(0, Suffix())
-                    # TODO:  Do we actually want to ignore the empty suffix, even here?
-                    #        To kind of enforce it's reliable meaninglessness
+        # raw_length = len(self.raw)
+        # index_end = raw_length
+        # if raw_length:
+        #     # NOTE:  The root can be NAN but only if the root is all there is.  I.e. can't suffix NAN.
+        #     while True:
+        #         index_terminator = index_end - 1
+        #         if index_terminator < 0:
+        #             raise Suffix.RawError("Invalid suffix, soft root underflow.")
+        #         maybe_terminator = six.indexbytes(self.raw, index_terminator)
+        #         if maybe_terminator != Suffix.TERMINATOR:
+        #             break
+        #         index_length = index_end - 2
+        #         if index_length < 0:
+        #             raise Suffix.RawError("Invalid suffix, hard root underflow.")
+        #         length = six.indexbytes(self.raw, index_length)
+        #         index_end = index_length - length
+        # return Number.from_raw(self.raw[ : index_end])
+
+    @property
+    def suffixes(self):
+        """A list Suffix objects, the Number's suffixes in order from left-to-right."""
+
+        def suffixes_backwards():
+            last_suffix_index = len(self.raw)
+            for suffix_index in self.suffix_indexes_backwards():
+                index_type = last_suffix_index - 3
+                if index_type >= suffix_index:
+                    type_ = six.indexbytes(self.raw, index_type)
+                    payload = self.raw[suffix_index : last_suffix_index-3]
+                    yield Suffix(type_, payload)
                 else:
-                    try:
-                        type_ = six.indexbytes(raw_remains, -3)
-                    except IndexError:
-                        raise Suffix.RawError("Invalid suffix, fuzzy length underflow.")
-                        # NOTE:  fuzzy underflow may be impossible -- eclipsed by soft underflow.
-                    payload = raw_remains[-length_of_payload_plus_type-2:-3]
-                    suffixes.insert(0, Suffix(type_, payload))
-                raw_remains = raw_remains[0:-length_of_payload_plus_type-2]
-            else:
-                break
-        return self.from_raw(raw_remains), suffixes
-        # TODO:  Refactor parse_suffixes() to be more like parse_root() or vice versa.
+                    yield Suffix()
+                last_suffix_index = suffix_index
 
-    def parse_root(self):
-        """Slightly quicker than parse_suffixes()[0]"""
-        # TODO:  Rename unsuffixed()
-        raw_length = len(self.raw)
-        index_end = raw_length
-        if raw_length:
-            # NOTE:  The root can be NAN but only if the root is all there is.  I.e. can't suffix NAN.
+        return list(reversed(list(suffixes_backwards())))
+
+    def suffix_indexes_backwards(self):
+        """
+        Find the starting indexes of all the suffixes.  Last first, that is right-to-left.
+
+        Returns an iterator of values in range(len(self.raw)).
+        Suffix indexes are in yielded in REVERSE ORDER because we have to parse the terminators
+        and lengths from the right end.
+        """
+        index_end = len(self.raw)
+        if index_end > 0:
+            # NOTE:  This if-test removes the unsuffixed NAN possibility, which is legit of course.
+            #        From now on index_terminator should never underflow,
+            #        because we don't allow NAN to be suffixed.
             while True:
-                index_00 = index_end - 1
-                if index_00 < 0:
-                    raise Suffix.RawError("Invalid suffix, soft root underflow.")
-                zero_tag = six.indexbytes(self.raw, index_00)
-                if zero_tag != Suffix.TERMINATOR:
-                    break
+                index_terminator = index_end - 1
+                if index_terminator < 0:
+                    raise Suffix.RawError("Invalid suffix, cannot suffix NAN.")
+                maybe_terminator = six.indexbytes(self.raw, index_terminator)
+                if maybe_terminator != Suffix.TERMINATOR:
+                    return
                 index_length = index_end - 2
                 if index_length < 0:
-                    raise Suffix.RawError("Invalid suffix, hard root underflow.")
+                    raise Suffix.RawError("Invalid suffix, length underflow.")
+                    # NOTE:  The first byte of raw is a terminator, so there's no room for a length byte.
                 length = six.indexbytes(self.raw, index_length)
                 index_end = index_length - length
-        return Number.from_raw(self.raw[:index_end])
+                if index_end < 0:
+                    raise Suffix.RawError("Invalid suffix, payload overflow.")
+                    # NOTE:  The length indicates a payload that extends beyond the start of the raw byte string.
+                yield index_end
 
 
     # Constants (see Number._internal_setup())
@@ -1856,6 +1960,7 @@ class Suffix(object):
     def __init__(self, type_=None, payload=None):
         assert isinstance(type_, (int, type(None)))
         self.type_ = type_
+        # TODO:  Another name for type -- tired of that underscore
         if payload is None:
             self.payload = b''
         elif isinstance(payload, Number):

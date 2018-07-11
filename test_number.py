@@ -3198,48 +3198,37 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('2233_110300', Suffix(0x11, b'\x22\x33').qstring())
         self.assertEqual('778899_110400', Suffix(type_=0x11, payload=b'\x77\x88\x99').qstring())
 
-    def test_parse_suffixes(self):
-        self.assertEqual((Number(1), []), Number(1).parse_suffixes())
-        self.assertEqual((Number(1), [Suffix()]), Number(1).plus_suffix().parse_suffixes())
-        self.assertEqual((Number(1), [Suffix(3)]), Number(1).plus_suffix(3).parse_suffixes())
-        self.assertEqual(
-            (Number(1.75),    [Suffix(111),     Suffix(222)]),
-             Number(1.75).plus_suffix(111).plus_suffix(222).parse_suffixes()
+    def test_suffixes(self):
+        self.assertEqual([], Number(1).suffixes)
+        self.assertEqual([Suffix()], Number(1).plus_suffix().suffixes)
+        self.assertEqual([Suffix(3)], Number(1).plus_suffix(3).suffixes)
+        self.assertEqual(([Suffix(111), Suffix(222)]), Number(1.75).plus_suffix(111).plus_suffix(222).suffixes
         )
 
-    def test_parse_suffixes_example_in_docstring(self):
-        self.assertEqual(
-            (Number(1),    [Suffix(2),     Suffix(3, b'\x4567')]),
-             Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
-        )
+    # def test_parse_suffixes_example_in_docstring(self):
+    #     self.assertEqual(
+    #         (Number(1),    [Suffix(2),     Suffix(3, b'\x4567')]),
+    #          Number(1).plus_suffix(2).plus_suffix(3, b'\x4567').parse_suffixes()
+    #     )
 
-    def test_parse_multiple_suffixes(self):
-        self.assertEqual(
-            (Number(1),    [Suffix(2),     Suffix(3)]),
-             Number(1).plus_suffix(2).plus_suffix(3).parse_suffixes()
-        )
+    # def test_parse_multiple_suffixes(self):
+    #     self.assertEqual(
+    #                       ([Suffix(2),     Suffix(3)]),
+    #          Number(1).plus_suffix(2).plus_suffix(3).suffixes
+    #     )
 
-    def test_parse_suffixes_payload(self):
-        self.assertEqual(
-            (Number(22.25),    [Suffix(123, b'')]),
-             Number(22.25).plus_suffix(123, b'').parse_suffixes()
-        )
-        self.assertEqual(
-            (Number(22.25),    [Suffix(123, b' ')]),
-            Number( 22.25).plus_suffix(123, b' ').parse_suffixes()
-        )
-        self.assertEqual(
-            (Number(22.25),    [Suffix(123, b'\xAA\xBB\xCC')]),
-             Number(22.25).plus_suffix(123, b'\xAA\xBB\xCC').parse_suffixes()
-        )
+    def test_suffixes_payload(self):
+        self.assertEqual([Suffix(123, b'')], Number(22.25).plus_suffix(123, b'').suffixes)
+        self.assertEqual([Suffix(123, b' ')], Number( 22.25).plus_suffix(123, b' ').suffixes)
+        self.assertEqual([Suffix(123, b'\xAA\xBB\xCC')], Number(22.25).plus_suffix(123, b'\xAA\xBB\xCC').suffixes)
 
-    def test_parse_suffixes_is_passive(self):
-        """Make sure x.parse_suffixes() does not modify x."""
+    def test_suffixes_is_passive(self):
+        """Make sure x.suffixes does not modify x."""
         n_original = Number(1.75).plus_suffix(111).plus_suffix(222)
         nbytes_original = len(n_original.raw)
         n = Number(n_original)
 
-        _,_ = n.parse_suffixes()
+        _ = n.suffixes
 
         self.assertEqual(n_original, n)
         self.assertEqual(nbytes_original, len(n.raw))
@@ -3262,22 +3251,25 @@ class NumberSuffixTests(NumberTests):
             #     Well 0q82_01000400!? 1.00006103516
             #     Well 0q82_01000300!? 1.00004577637
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                n.parse_suffixes()
+                list(n.suffix_indexes_backwards())
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                n.parse_root()
+                _ = n.suffixes
+            with self.assertRaisesRegex(Suffix.RawError, message_fragment):
+                _ = n.unsuffixed
 
         def good_to_parse(n):
-            n.parse_suffixes()
-            n.parse_root()
+            list(n.suffix_indexes_backwards())
+            _ = n.suffixes
+            _ = n.unsuffixed
 
-        bad_to_parse(Number('0q00'), "hard")   # Where's the length byte?
-        bad_to_parse(Number('0q__0000'), "soft")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__220100'), "soft")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__334455220400'), "soft")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q82_01__9900'), "soft")     # Suffix length "underflow"
-        bad_to_parse(Number('0q82_01__000500'), "soft")
-        bad_to_parse(Number('0q82_01__000400'), "soft")   # Suffix underflows one byte off the left edge.
-        bad_to_parse(Number('0q82_01__000300'), "soft")   # Looks like a suffixed Number.NAN.
+        bad_to_parse(Number('0q00'), "length underflow")   # Where's the length byte?
+        bad_to_parse(Number('0q__0000'), "NAN")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__220100'), "NAN")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q__334455220400'), "NAN")   # Can't suffix Number.NAN
+        bad_to_parse(Number('0q82_01__9900'), "payload overflow")     # Suffix length "underflow"
+        bad_to_parse(Number('0q82_01__000500'), "payload overflow")
+        bad_to_parse(Number('0q82_01__000400'), "payload overflow")   # Suffix underflows one byte off the left edge.
+        bad_to_parse(Number('0q82_01__000300'), "NAN")   # Looks like a suffixed Number.NAN.
 
         good_to_parse(Number('0q82_01__000200'))   # Actually parsed as 0q82__01000200
         good_to_parse(Number('0q82_01__000100'))
@@ -3335,11 +3327,11 @@ class NumberSuffixTests(NumberTests):
 
     def test_suffix_number_parse(self):
         n = Number(99).plus_suffix(0x11, Number(356))
-        (idn, suffixes) = n.parse_suffixes()
+        suffixes = n.suffixes
         self.assertEqual(1, len(suffixes))
         suffix = suffixes[0]
-        self.assertIs(type(idn), Number)
         self.assertIs(type(suffix), Suffix)
+        self.assertEqual(0x11, suffix.type_)
         self.assertEqual(Number(356), suffix.payload_number())
 
     def test_suffixes_1(self):
@@ -3404,7 +3396,6 @@ class NumberSuffixTests(NumberTests):
         self.assertTrue(Number(22).plus_suffix(0x11, b'abcd').is_suffixed())
         self.assertTrue(Number(22).plus_suffix(0x11, Number(42)).is_suffixed())
         self.assertFalse(Number(22).is_suffixed())
-        # noinspection PyUnresolvedReferences
         self.assertFalse(Number.NAN.is_suffixed())
 
     def test_suffix_float(self):
@@ -3419,14 +3410,54 @@ class NumberSuffixTests(NumberTests):
         suffixed_word = Number(42).plus_suffix(Suffix.Type.TEST)
         self.assertEqual(Number(42), suffixed_word.root)
 
-    def test_parse_root(self):
-        def assert_root_consistent(n):
-            self.assertEqual(n.parse_root(), n.parse_suffixes()[0])
-        assert_root_consistent(Number('0q'))
-        assert_root_consistent(Number('0q82_10'))
-        assert_root_consistent(Number('0q82_10__0000'))
-        assert_root_consistent(Number('0q82_10__FFFFFF_7F0400'))
-        assert_root_consistent(Number('0q82_10__123456_7F0400'))
+    # def test_parse_root(self):
+    #     def assert_root_consistent(n):
+    #         self.assertEqual(n.parse_root(), n.parse_suffixes()[0])
+    #     assert_root_consistent(Number('0q'))
+    #     assert_root_consistent(Number('0q82_10'))
+    #     assert_root_consistent(Number('0q82_10__0000'))
+    #     assert_root_consistent(Number('0q82_10__FFFFFF_7F0400'))
+    #     assert_root_consistent(Number('0q82_10__123456_7F0400'))
+
+    def test_suffix_indexes_backwards(self):
+        self.assertEqual(    [], list(Number('0q').suffix_indexes_backwards()))
+        self.assertEqual(    [], list(Number('0q82_10').suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__0000').suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__FFFFFF_7F0400').suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__123456_7F0400').suffix_indexes_backwards()))
+        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__0000').suffix_indexes_backwards()))
+        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__789ABC_7F0400').suffix_indexes_backwards()))
+        self.assertEqual([4, 2], list(Number('0q82_10__0000__789ABC_7F0400').suffix_indexes_backwards()))
+
+    def test_suffix_indexes_backwards_NAN(self):
+        with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
+            list(Number('0q__0000').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
+            list(Number('0q__123456_7F0400').suffix_indexes_backwards())
+
+    def test_suffix_indexes_backwards_overflow(self):
+        self.assertEqual([1], list(Number('0q80__0000').suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__7F0100').suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__12_7F0200').suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__1234_7F0300').suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__123456_7F0400').suffix_indexes_backwards()))
+        with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
+            list(Number('0q__80123456_7F0500').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
+            list(Number('0q80__123456_7F0600').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
+            list(Number('0q80__123456_7F0700').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
+            list(Number('0q80__123456_7F8800').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
+            list(Number('0q80__123456_7FFF00').suffix_indexes_backwards())
+
+    def test_suffix_indexes_backwards_underflow(self):
+        self.assertEqual([1], list(Number('0q80__0000').suffix_indexes_backwards()))
+        with self.assertRaisesRegex(Suffix.RawError, r'length underflow'):
+            list(Number('0q__00').suffix_indexes_backwards())
+        with self.assertRaisesRegex(Suffix.RawError, r'length underflow'):
+            list(Number('0q__00__123456_7F0400').suffix_indexes_backwards())
 
 
 # noinspection SpellCheckingInspection

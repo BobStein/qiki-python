@@ -994,8 +994,9 @@ class Listing(Word):
     def _parse_listing_idn(cls, idn):
         """Return (meta_idn, index) or raise NotAListing."""
         try:
-            identifier, suffixes = idn.parse_suffixes()
-        except AttributeError:
+            identifier = idn.unsuffixed
+            suffixes = idn.suffixes
+        except (AttributeError, Suffix.RawError):
             raise cls.NotAListing("Not a Number: " + type(idn).__name__)
         if len(suffixes) != 1:
             raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())

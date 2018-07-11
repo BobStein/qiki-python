@@ -2123,7 +2123,9 @@ class Word0052ListingInternalsTests(WordListingTests):
 
     def test_listing_instance_from_idn_not_listing(self):
         chad = self.Student(2)
-        (listing_class_idn, suffixes) = chad.idn.parse_suffixes()
+        # (listing_class_idn, suffixes) = chad.idn.parse_suffixes()
+        listing_class_idn = chad.idn.unsuffixed
+        suffixes = chad.idn.suffixes
         not_a_listing_idn = qiki.Number(listing_class_idn + 666)
         not_a_listing_idn.plus_suffix(suffixes[0])
         with self.assertRaises(qiki.Listing.NotAListing):
