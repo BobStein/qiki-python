@@ -22,6 +22,38 @@ LUDICROUS_NUMBER_SUPPORT = False   # True => to and from int and float.
                                    # False => invalid values, or raise LudicrousNotImplemented
 
 
+class NumberAlternate(Number):
+    """
+    This derived class will be tested here, in the place of Number.
+
+    It implements some alternative methods, and makes sure they behave the same as the standard methods.
+    """
+
+    def zone_alternative_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
+        """Get the Zone for a Number, by scanning Zone values."""
+        for z in Zone.descending_codes:
+            if z <= self.raw:
+                return z
+        raise RuntimeError("zone_alternative_by_loop() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
+
+    @property
+    def zone(self):
+        """Try both methods for computing zone.  Make sure they agree."""
+        zone_original = super(NumberAlternate, self).zone
+        zone_alternate = self.zone_alternative_by_loop()
+        assert zone_alternate == zone_original, \
+            "Mismatched zone determination for {qstring}:  if-method {if_answer}, loop-method {loop_answer}".format(
+                qstring=self.qstring(),
+                if_answer=Zone.name_from_code[zone_original],
+                loop_answer=Zone.name_from_code[zone_alternate],
+            )
+
+        return zone_original
+
+NumberOriginal = Number
+Number = NumberAlternate
+
+
 class NumberTests(unittest.TestCase):
 
     def assertFloatSame(self, x1, x2):
@@ -1807,8 +1839,10 @@ class NumberBasicTests(NumberTests):
         expected_sizes = (
             28,   # Windows 7, 64-bit desktop, Python 2.7.9-12
             32,   # Windows 7, 64-bit desktop, Python 3.5.1-2
+            40,   # Windows 7, 64-bit desktop, Python 2.7.12 after hardcoding __slots__ to _raw, _zone
             56,   # Windows 7, 64-bit laptop, Python 2.7.12, 3.5.2
             64,   # macOS 10, 64-bit macbook, Python 2.7.10
+            72,   # Windows 7, 64-bit desktop, Python 3.6 after hardcoding __slots__ to _raw, _zone
         )  # depends on Number.__slots__ containing _zone or not
         self.assertIn(sys.getsizeof(Number('0q')), expected_sizes)
         self.assertIn(sys.getsizeof(Number('0q80')), expected_sizes)
@@ -2912,16 +2946,25 @@ class NumberPickleTests(NumberTests):
     """
 
     def test_pickle_protocol_0_class(self):
-        self.assertEqual(pickle.dumps(Number), py23(
-            b'cnumber\n'
-            b'Number\n'
-            b'p0\n'
-            b'.',                  # Python 2.X
+        self.assertEqual(
+            pickle.dumps(Number).decode('latin-1'),
+            py23(
+                b'ctest_number\n'
+                b'NumberAlternate\n'
+                b'p0\n'
+                b'.',                  # Python 2.X
 
-            b'\x80\x03cnumber\n'   # Python 3.X
-            b'Number\n'
-            b'q\x00.',
-        ))
+                b'\x80\x03ctest_number\n'   # Python 3.X
+                b'NumberAlternate\n'
+                b'q\x00.',
+            ).decode('latin-1')
+        )
+        # NOTE:  The latin-1 decode is not required for the equal comparison.  It's required if
+        #        the comparison fails, and the values must be displayed.
+        # NOTE:  It's no mystery why NumberAlternate appeared in place of Number when that
+        #        class was derived.  It is a mystery why cnumber changed to ctest_number.
+        # NOTE:  Another mystery is why a failure of comparison still generates another exception
+        #        within that exception.  Possibly on the decode('latin-1').
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
@@ -2929,32 +2972,42 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(                    b'\x82\x03#\xd7\n=p\xa3\xe0',            x314.raw)
         self.assertEqual(py23( "",  "b") +  "'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw))
         self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode('ascii'))
-        self.assertEqual(pickle.dumps(x314), py23(
-            b'ccopy_reg\n'
-            b'_reconstructor\n'
-            b'p0\n'
-            b'(cnumber\n'
-            b'Number\n'
-            b'p1\n'
-            b'c__builtin__\n'
-            b'object\n'
-            b'p2\n'
-            b'Ntp3\n'
-            b'Rp4\n'
-            b'S' + repr(x314.raw).encode('ascii') + b'\n'
-            b'p5\n'
-            b'b.',                 # Python 2.X
+        self.assertEqual(
+            pickle.dumps(x314).decode('latin-1'),
+            py23(
+                b'ccopy_reg\n'
+                b'_reconstructor\n'
+                b'p0\n'
+                b'(ctest_number\n'
+                b'NumberAlternate\n'
+                b'p1\n'
+                b'c__builtin__\n'
+                b'object\n'
+                b'p2\n'
+                b'Ntp3\n'
+                b'Rp4\n'
+                b'S' + repr(x314.raw).encode('ascii') + b'\n'
+                b'p5\n'
+                b'b.',                 # Python 2.X
 
-            b'\x80\x03cnumber\n'   # Python 3.X
-            b'Number\n'
-            b'q\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'
-        ))
+                b'\x80\x03ctest_number\n'   # Python 3.X
+                b'NumberAlternate\n'
+                b'q\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'
+            ).decode('latin-1')
+        )
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
 
     def test_pickle_protocol_2_class(self):
-        self.assertEqual(pickle.dumps(Number, 2), b'\x80\x02cnumber\nNumber\nq\x00.')
+        self.assertEqual(
+            pickle.dumps(Number, 2),
+            (
+                b'\x80\x02ctest_number\n'
+                b'NumberAlternate\n'
+                b'q\x00.'
+            )
+        )
 
     def test_pickle_protocol_2_instance(self):
         x314 = Number(3.14)
@@ -2962,17 +3015,20 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(x314.raw, b'\x82\x03\x23' b'\xd7\x0a\x3d\x70' b'\xa3' b'\xe0')
         x314_raw_utf8 =        b'\xc2\x82\x03\x23\xc3\x97\x0a\x3d\x70\xc2\xa3\xc3\xa0'
 
-        self.assertEqual(pickle.dumps(x314, 2), py23(
-            b'\x80\x02cnumber\n'
-            b'Number\n'
-            b'q\x00)\x81q\x01U\t' + x314.raw + b'q\x02b.',   # Python 2.X
+        self.assertEqual(
+            pickle.dumps(x314, 2).decode('latin-1'),
+            py23(
+                b'\x80\x02ctest_number\n'
+                b'NumberAlternate\n'
+                b'q\x00)\x81q\x01U\t' + x314.raw + b'q\x02b.',   # Python 2.X
 
-            b'\x80\x02cnumber\n'                             # Python 3.X
-            b'Number\n'
-            b'q\x00)\x81q\x01c_codecs\n'
-            b'encode\n'
-            b'q\x02X\r\x00\x00\x00' + x314_raw_utf8 + b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
-        ))
+                b'\x80\x02ctest_number\n'                             # Python 3.X
+                b'NumberAlternate\n'
+                b'q\x00)\x81q\x01c_codecs\n'
+                b'encode\n'
+                b'q\x02X\r\x00\x00\x00' + x314_raw_utf8 + b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
+            ).decode('latin-1')
+        )
 
         # print(repr(pickle.dumps(x314, 2)))
         # PY2:  '\x80\x02cnumber\nNumber\nq\x00)\x81q\x01U\t\x82\x03#\xd7\n=p\xa3\xe0q\x02b.'
@@ -3378,10 +3434,10 @@ class NumberSuffixTests(NumberTests):
         )
 
     def test_suffix_extract_number(self):
-        self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
-        self.assertEqual(Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
-        self.assertEqual(       -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
-        self.assertIs(       Number, type(Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number))
+        self.assertEqual(Number(88),       Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
+        self.assertEqual( Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
+        self.assertEqual(        -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
+        self.assertIs(NumberOriginal, type(Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number))
 
     def test_suffix_extract_number_missing(self):
         self.assertEqual(Number(88), Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)

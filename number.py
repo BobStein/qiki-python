@@ -23,7 +23,6 @@ import six
 
 
 # TODO:  Move big comment sections to docstrings.
-# TODO:  qantissa --> qan
 
 
 class Zone(object):
@@ -166,7 +165,7 @@ class Number(numbers.Complex):
     like an exponent. 01 is the qan, like a mantissa.
     """
     __slots__ = ('_raw', '_zone')
-    # NOTE:  Remove '_zone' from the __slots__ for slightly more frugal memory, slower speed
+    # NOTE:  Remove _zone from __slots__ for slightly more frugal memory, slower speed
 
     def __init__(self, *args, **kwargs):   # content=None, qigits=None, normalize=False):
         """
@@ -336,7 +335,7 @@ class Number(numbers.Complex):
         assert(isinstance(value, six.binary_type))
         # noinspection PyAttributeOutsideInit
         self._raw = value
-        self._zone_refresh()
+        self._zone_setter()
 
     def __getstate__(self):
         """For the 'pickle' package, object serialization."""
@@ -548,10 +547,10 @@ class Number(numbers.Complex):
 
     def _unary_op(self, op):
         """One-input operator - fob off on int or float or complex math."""
-        n = Number(self)
+        n = type(self)(self)
         if n.is_complex():
             # noinspection PyTypeChecker
-            return Number(op(complex(n)))
+            return type(self)(op(complex(n)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
             # return Number(op(n.__complex__()))
@@ -562,18 +561,18 @@ class Number(numbers.Complex):
             int_is_better_than_float = False
 
         if int_is_better_than_float:
-            return Number(op(int(n)))
+            return type(self)(op(int(n)))
         else:
-            return Number(op(float(n)))
+            return type(self)(op(float(n)))
 
     @classmethod
     def _binary_op(cls, op, input_left, input_right):
         """Two-input operator - fob off on int or float or complex math."""
-        n1 = Number(input_left)
-        n2 = Number(input_right)
+        n1 = cls(input_left)
+        n2 = cls(input_right)
         if n1.is_complex() or n2.is_complex():
             # noinspection PyTypeChecker
-            return Number(op(complex(n1), complex(n2)))
+            return cls(op(complex(n1), complex(n2)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
             # return Number(op(n1.__complex__(), n2.__complex__()))
@@ -584,9 +583,9 @@ class Number(numbers.Complex):
             int_better_than_float = False
 
         if int_better_than_float:
-            return Number(op(int(n1), int(n2)))
+            return cls(op(int(n1), int(n2)))
         else:
-            return Number(op(float(n1), float(n2)))
+            return cls(op(float(n1), float(n2)))
 
     def _normalize_all(self):
         """
@@ -720,7 +719,7 @@ class Number(numbers.Complex):
 
     def _inc_raw_via_integer(self):
         """Add one by fobbing off on int."""
-        return Number(int(self) + 1).raw
+        return type(self)(int(self) + 1).raw
 
     @property
     def real(self):
@@ -735,9 +734,9 @@ class Number(numbers.Complex):
     def imag(self):
         """Imaginary part, of this seamlessly complex number."""
         try:
-            return self.suffix(Suffix.Type.IMAGINARY).number
+            return type(self)(self.suffix(Suffix.Type.IMAGINARY).number)
         except Suffix.NoSuchType:
-            return self.ZERO
+            return type(self)(self.ZERO)
 
     def conjugate(self):
         """Complex conjugate.  a + bj --> a - bj"""
@@ -1304,46 +1303,28 @@ class Number(numbers.Complex):
     # ------------------
     @property
     def zone(self):
-        """Get the Zone for this Number.  Works whether _zone is among the __slots__ or not."""
+        """Get the Zone code for this Number.  Works whether _zone is among the __slots__ or not."""
         try:
             return self._zone
         except AttributeError:
             '''Benign, this happens if _zone is missing from __slots__'''
-            return self._zone_from_scratch()
+            return self._zone_from_raw(self.raw)
 
-    def _zone_refresh(self):
+    def _zone_setter(self):
         """Set the _zone property for this Number, if allowed by __slots__."""
         try:
-            # noinspection PyDunderSlots,PyUnresolvedReferences
-            self._zone = self._zone_from_scratch()
+            self._zone = self._zone_from_raw(self.raw)
         except AttributeError:
             '''Benign, this happens if _zone is missing from __slots__'''
 
-    def _zone_from_scratch(self):
-        """Get the Zone for a Number, based on its value."""
-        # TODO:  ONLY use the else-tree here.  Move loop to a monkeypatched unit test.
-        # SEE:  To monkeypatch pytest, https://docs.pytest.org/en/latest/monkeypatch.html
-        # SEE:  To monkeypatch unittest, http://www.voidspace.org.uk/python/mock/
-        zone_by_tree = self._find_zone_by_if_else_tree()
-        assert zone_by_tree == self._find_zone_by_loop_scan(), \
-            "Mismatched zone determination for %s:  if-tree=%s, loop-scan=%s" % (
-                repr(self),
-                Zone.name_from_code[zone_by_tree],
-                Zone.name_from_code[self._find_zone_by_loop_scan()]
-            )
-        return zone_by_tree
+    @staticmethod
+    def _zone_from_raw(raw):
+        """
+        Compute the Zone code for a Number, based on its raw value.
 
-    def _find_zone_by_loop_scan(self):   # slower than if-else-tree, but enforces Zone value rules
-        """Get the Zone for a Number, by scanning Zone values."""
-        for z in Zone.descending_codes:
-            if z <= self.raw:
-                return z
-        raise RuntimeError("Number._find_zone_by_loop_scan() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
-
-    def _find_zone_by_if_else_tree(self):   # likely faster than the loop-scan, for most values
-        """Get the Zone for a Number, using possibly-more-efficient if-clauses."""
-        raw = self.raw
-        # THANKS:  local variable faster, https://stackoverflow.com/q/12397984/673991
+        Uses a vaguely binary tree of comparisons of raw byte strings.
+        At most 4 comparisons.  Common numbers have 2 or 3 comparisons.
+        """
         if raw > Zone.ZERO:
             if raw >= Zone.POSITIVE:
                 if raw >= Zone.LUDICROUS_LARGE:
@@ -1507,7 +1488,7 @@ class Number(numbers.Complex):
         index_unsuffixed_end = len(self.raw)
         for index_unsuffixed_end in self.suffix_indexes_backwards():
             '''Find the FIRST suffix index, i.e. the LAST one backwards.'''
-        return Number.from_raw(self.raw[ : index_unsuffixed_end])
+        return self.from_raw(self.raw[ : index_unsuffixed_end])
 
     @property
     def suffixes(self):
