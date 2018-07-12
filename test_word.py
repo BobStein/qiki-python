@@ -55,8 +55,9 @@ except ImportError:
     sys.exit(1)
 
 
-# W_TO_MAKE_A_LEX = qiki.LexMemory   # \ pick
-HOW_TO_MAKE_A_LEX = qiki.LexMySQL    # / one
+HOW_TO_MAKE_A_LEX = qiki.LexMemory   # \ pick
+# HOW_TO_MAKE_A_LEX = qiki.LexMySQL    # / one
+
 LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
                                       # Set this to True to manually examine the database after running it.
                                       # If True, you may want to make RANDOMIZE_DATABASE_TABLE False.
@@ -67,153 +68,171 @@ RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
 print("Python version", sys.version)
-print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
-print("MySQL Client version", subprocess.Popen(
-    'mysql --version',
-    shell=True,
-    stdout=subprocess.PIPE
-).stdout.read().strip().decode('ascii'))
-# SEE:  MySQL Server version, InternalWordTests.test_000_show_version()
+if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
+    print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
+    print("MySQL Client version", subprocess.Popen(
+        'mysql --version',
+        shell=True,
+        stdout=subprocess.PIPE
+    ).stdout.read().strip().decode('ascii'))
+    # SEE:  MySQL Server version, InternalWordTests.test_001_show_version() (after connected)
 
 
-# For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
-# while a project was loaded with another secure.credentials.  Hence the following noinspection.
-# The correct package imports when run however.
-# noinspection PyUnresolvedReferences
-class SafeNameTests(unittest.TestCase):
-    def test_table_name_at_creation_good(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
+    # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
+    # while a project was loaded with another secure.credentials.  Hence the following noinspection.
+    # The correct package imports when run however.
+    # noinspection PyUnresolvedReferences
+    class SafeNameTests(unittest.TestCase):
 
-        def good_table_name(name):
-            credentials['table'] = name
+        # noinspection PyMethodMayBeStatic
+        def test_001_show_version(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
             lex = qiki.LexMySQL(**credentials)
-            self.assertEqual('verb', lex['define'].obj.txt)
+            print("MySQL Server version", lex.server_version())
             lex.uninstall_to_scratch()
             lex.disconnect()
 
-        good_table_name('word_with_no_funny_business')
-        good_table_name('word')
-        good_table_name('w')
+        def test_table_name_at_creation_good(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
 
-    def test_table_name_at_creation_bad(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
+            def good_table_name(name):
+                credentials['table'] = name
+                lex = qiki.LexMySQL(**credentials)
+                self.assertEqual('verb', lex['define'].obj.txt)
+                lex.uninstall_to_scratch()
+                lex.disconnect()
 
-        def bad_table_name(name):
-            credentials['table'] = name
+            good_table_name('word_with_no_funny_business')
+            good_table_name('word')
+            good_table_name('w')
+
+        def test_table_name_at_creation_bad(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
+
+            def bad_table_name(name):
+                credentials['table'] = name
+                with self.assertRaises(qiki.LexMySQL.IllegalTableName):
+                    qiki.LexMySQL(**credentials)
+
+            bad_table_name('')
+            bad_table_name('word_with_backtick_`_oops')
+            bad_table_name('word_with_single_quote_\'_oops')
+            bad_table_name('word_with_double_quote_\"_oops')
+            bad_table_name('word_ending_in_backslash_oops_\\')
+            bad_table_name('word with spaces oops')
+
+        def test_engine_name_good(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
+
+            # 2018.0712 - long hang on test 14 of 255.
+            # Restarting the MySQL server got it unstuck, but it just keeps
+            # happening now.  So something is effed up.
+            # After implementing LexMemory and switching (clumsily) back and forth
+            # to LexMySQL.
+            # Then specifically was trying to get (groan) show_version to work.
+            # Oh!  It was failure to lex.disconnect() from another test.
+
+            def good_engine_name(engine_name):
+                credentials['engine'] = engine_name
+                lex = qiki.LexMySQL(**credentials)
+                self.assertEqual('verb', lex['define'].obj.txt)
+                lex.uninstall_to_scratch()
+                lex.disconnect()
+
+            good_engine_name('MEMORY')
+            good_engine_name('InnoDB')
+
+        def test_engine_name_bad(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
+
+            def bad_engine_name(name):
+                credentials['table'] = 'word_for_engine_name_test'
+                credentials['engine'] = name
+                with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
+                    qiki.LexMySQL(**credentials)
+                    # Why did this break once (a few times in a row) for 3 of these bad engine names?
+                    # Seemed to fix itself after a few hours.  Or switching python versions.
+
+            bad_engine_name('MEMORY_oops_\'')
+            bad_engine_name('MEMORY_oops_\"')
+            bad_engine_name('MEMORY_oops_`')
+            bad_engine_name('MEMORY_oops_\\')
+            bad_engine_name('MEMORY oops')
+
+        def test_engine_name_bad_explicit_install(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
+
+            def bad_engine_name(name):
+                credentials['table'] = 'word_for_engine_name_test_explicit_install'
+                lex = qiki.LexMySQL(**credentials)
+                lex.uninstall_to_scratch()
+                lex._engine = name
+                with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
+                    lex.install_from_scratch()
+                lex.disconnect()
+
+            bad_engine_name('MEMORY_backtick_`_oops')
+            bad_engine_name('MEMORY_quote_\'_oops')
+            bad_engine_name('MEMORY_quote_\"_oops')
+
+        def test_table_name_later_bad(self):
+            credentials = secure.credentials.for_unit_testing_database.copy()
+            credentials['table'] = 'innocent_table_name_to_start_with'
+            lex = qiki.LexMySQL(**credentials)
+            self.assertEqual('verb', lex['define'].obj.txt)
+
+            lex._table = 'evil_table_name_later_`\'_\"_oops_\\"'
             with self.assertRaises(qiki.LexMySQL.IllegalTableName):
-                qiki.LexMySQL(**credentials)
-
-        bad_table_name('')
-        bad_table_name('word_with_backtick_`_oops')
-        bad_table_name('word_with_single_quote_\'_oops')
-        bad_table_name('word_with_double_quote_\"_oops')
-        bad_table_name('word_ending_in_backslash_oops_\\')
-        bad_table_name('word with spaces oops')
-
-    def test_engine_name_good(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
-
-        def good_engine_name(engine_name):
-            credentials['engine'] = engine_name
-            lex = qiki.LexMySQL(**credentials)
-            self.assertEqual('verb', lex['define'].obj.txt)
+                self.assertEqual('verb', lex['define'].obj.txt)
+            lex._table = 'innocent_table_name_to_start_with'
             lex.uninstall_to_scratch()
             lex.disconnect()
 
-        good_engine_name('MEMORY')
-        good_engine_name('InnoDB')
 
-    def test_engine_name_bad(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
+    # noinspection PyUnresolvedReferences
+    class LexErrorTests(unittest.TestCase):
+        """Try to generate common errors with instatiating a Lex."""
 
-        def bad_engine_name(name):
-            credentials['table'] = 'word_for_engine_name_test'
-            credentials['engine'] = name
-            with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
+        def test_bad_password(self):
+            """
+            Example of the entire bad-password exception message:
+
+            1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
+            """
+            credentials = secure.credentials.for_unit_testing_database.copy()
+            credentials['password'] = 'wrong'
+            # noinspection SpellCheckingInspection,SpellCheckingInspection
+            with six.assertRaisesRegex(self, qiki.Lex.ConnectError, r'Access denied'):
+                # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
                 qiki.LexMySQL(**credentials)
-                # Why did this break once (a few times in a row) for 3 of these bad engine names?
-                # Seemed to fix itself after a few hours.  Or switching python versions.
+                # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
+                # EXAMPLE:   (appears every time testing Word 3.5 or 3.6)
+                #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
+                #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 59546),
+                #        raddr=('127.0.0.1', 33073)>
+                # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
+                #        sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
 
-        bad_engine_name('MEMORY_oops_\'')
-        bad_engine_name('MEMORY_oops_\"')
-        bad_engine_name('MEMORY_oops_`')
-        bad_engine_name('MEMORY_oops_\\')
-        bad_engine_name('MEMORY oops')
+        def test_two_lex(self):
+            lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+            max_start = lex1.max_idn()
+            lex1.define(lex1.noun(), u'borg')
+            self.assertEqual(max_start+1, lex1.max_idn())
+            lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+            self.assertEqual(max_start+1, lex2.max_idn())
 
-    def test_engine_name_bad_explicit_install(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
+            # lex2.uninstall_to_scratch()   # Why does this cause infinite hang?
+            lex2.disconnect()
+            lex1.uninstall_to_scratch()
+            lex1.disconnect()
 
-        def bad_engine_name(name):
-            credentials['table'] = 'word_for_engine_name_test_explicit_install'
-            lex = qiki.LexMySQL(**credentials)
-            lex.uninstall_to_scratch()
-            lex._engine = name
-            with self.assertRaises(qiki.LexMySQL.IllegalEngineName):
-                lex.install_from_scratch()
+        def test_connection_neglect(self):
+            """Test automatic reconnection of the Lex."""
+            lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
+            self.assertEqual(1, lex.noun(u'noun').num)
+            lex._simulate_connection_neglect()
+            self.assertEqual(1, lex.noun(u'noun').num)
             lex.disconnect()
-
-        bad_engine_name('MEMORY_backtick_`_oops')
-        bad_engine_name('MEMORY_quote_\'_oops')
-        bad_engine_name('MEMORY_quote_\"_oops')
-
-    def test_table_name_later_bad(self):
-        credentials = secure.credentials.for_unit_testing_database.copy()
-        credentials['table'] = 'innocent_table_name_to_start_with'
-        lex = qiki.LexMySQL(**credentials)
-        self.assertEqual('verb', lex['define'].obj.txt)
-
-        lex._table = 'evil_table_name_later_`\'_\"_oops_\\"'
-        with self.assertRaises(qiki.LexMySQL.IllegalTableName):
-            self.assertEqual('verb', lex['define'].obj.txt)
-        lex._table = 'innocent_table_name_to_start_with'
-        lex.uninstall_to_scratch()
-        lex.disconnect()
-
-
-# noinspection PyUnresolvedReferences
-class LexErrorTests(unittest.TestCase):
-    """Try to generate common errors with instatiating a Lex."""
-
-    def test_bad_password(self):
-        """
-        Example of the entire bad-password exception message:
-
-        1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
-        """
-        credentials = secure.credentials.for_unit_testing_database.copy()
-        credentials['password'] = 'wrong'
-        # noinspection SpellCheckingInspection,SpellCheckingInspection
-        with six.assertRaisesRegex(self, qiki.Lex.ConnectError, r'Access denied'):
-            # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
-            qiki.LexMySQL(**credentials)
-            # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
-            # EXAMPLE:   (appears every time testing Word 3.5 or 3.6)
-            #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
-            #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 59546),
-            #        raddr=('127.0.0.1', 33073)>
-            # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
-            #        sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
-
-    def test_two_lex(self):
-        lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-        max_start = lex1.max_idn()
-        lex1.define(lex1.noun(), u'borg')
-        self.assertEqual(max_start+1, lex1.max_idn())
-        lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-        self.assertEqual(max_start+1, lex2.max_idn())
-
-        # lex2.uninstall_to_scratch()   # Why does this cause infinite hang?
-        lex2.disconnect()
-        lex1.uninstall_to_scratch()
-        lex1.disconnect()
-
-    def test_connection_neglect(self):
-        """Test automatic reconnection of the Lex."""
-        lex = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-        self.assertEqual(1, lex.noun(u'noun').num)
-        lex._simulate_connection_neglect()
-        self.assertEqual(1, lex.noun(u'noun').num)
-        lex.disconnect()
 
 
 # noinspection PyUnresolvedReferences
@@ -434,11 +453,12 @@ class WordExoticTests(WordTests):
         self.assertEqual(u'courage',  w.txt)
 
 
-class InternalWordTests(WordTests):
+class AardvarkInternalWordTests(WordTests):
     """Test the WordTests class itself."""
 
-    def test_000_show_version(self):
-        print("\nMySQL Server version", self.lex.server_version())
+    # noinspection PyMethodMayBeStatic
+    def test_000_line_feed(self):
+        print("\n")
         # NOTE:  Start with LF because all the other tests print an unterminated "."
 
     def test_assertNoNewWord(self):
@@ -525,16 +545,25 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(1, int(n))
 
     def test_01a_lex(self):
-        self.assertEqual(self.lex._IDN_LEX,   self.lex.idn)
-        self.assertEqual(self.lex,            self.lex.sbj)
-        self.assertEqual(self.lex[u'define'], self.lex.vrb)
-        self.assertEqual(self.lex[u'agent'],  self.lex.obj)
-        self.assertEqual(qiki.Number(1),      self.lex.num)
-        self.assertEqual(u'lex',              self.lex.txt)
-        self.assertSensibleWhen(              self.lex.whn)
+        self.assertEqual(self.lex._IDN_LEX,    self.lex.idn)
+        self.assertEqual(self.lex,             self.lex.sbj)
+        self.assertEqual(self.lex._IDN_DEFINE, self.lex.vrb.idn)
+        self.assertEqual(self.lex._IDN_AGENT,  self.lex.obj.idn)
+        self.assertEqual(qiki.Number(1),       self.lex.num)
+        self.assertEqual(u'lex',               self.lex.txt)
+        self.assertSensibleWhen(               self.lex.whn)
         self.assertTrue(self.lex.is_lex())
 
-    def test_01b_lex_getter(self):
+    def test_01b_lex_by_definition(self):
+        self.assertEqual(self.lex,             self.lex[u'lex'])
+        self.assertIs   (self.lex,             self.lex[u'lex'])
+        self.assertEqual(self.lex._IDN_LEX,    self.lex[u'lex'].idn)
+        self.assertEqual(self.lex._IDN_DEFINE, self.lex[u'define'].idn)
+        self.assertEqual(self.lex._IDN_NOUN,   self.lex[u'noun'].idn)
+        self.assertEqual(self.lex._IDN_VERB,   self.lex[u'verb'].idn)
+        self.assertEqual(self.lex._IDN_AGENT,  self.lex[u'agent'].idn)
+
+    def test_01c_lex_getter(self):
         define = self.lex[u'define']
         self.assertTrue(define.exists())
         self.assertEqual(define.idn,     qiki.Word._IDN_DEFINE)
@@ -544,7 +573,7 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(define.num,     qiki.Number(1))
         self.assertEqual(define.txt,     u'define')
 
-    def test_01c_lex_bum_getter(self):
+    def test_01d_lex_bum_getter(self):
         nonword = self.lex[u'word that does not exist']
         self.assertFalse(nonword.exists())
         self.assertTrue(nonword.idn.is_nan())
@@ -571,7 +600,7 @@ class Word0011FirstTests(WordTests):
         self.assertTripleEqual(u'noun', six.text_type(self.lex[u'noun']))
 
     def test_02c_repr(self):
-        self.assertEqual(u"Word(u'noun')", repr(self.lex[u'noun']))
+        self.assertEqual(u"Word('noun')", repr(self.lex[u'noun']))
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
@@ -1616,7 +1645,7 @@ class Word0030MoreTests(WordTests):
         suffixed_lex_idn = lex.idn.plus_suffix(3)
         # FIXME:  Crap, this USED to mutate lex.idn!!
         self.assertEqual(lex.idn, self.lex._IDN_LEX)
-        self.assertEqual(suffixed_lex_idn, qiki.Number('0q82_05__030100'))
+        self.assertEqual(suffixed_lex_idn, qiki.Number('0q80__030100'))
 
     # def test_verb_paren_object(self):
     #     """An orphan verb can spawn a sentence.
@@ -2105,11 +2134,11 @@ class Word0052ListingInternalsTests(WordListingTests):
         chad = self.Student(2)
         # Serious assumption:  5 words were defined before lex.noun('listing').
         # But this helps to demonstrate Listing meta_word and instance idn contents.
-        self.assertEqual('0q82_06', self.listing.idn.qstring())
-        self.assertEqual('0q82_07', self.Student.meta_word.idn.qstring())   # Number(7)
-        self.assertEqual('0q82_07__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
-        self.assertEqual('0q82_08', self.SubStudent.meta_word.idn.qstring())
-        self.assertEqual('0q82_09', self.AnotherListing.meta_word.idn.qstring())
+        self.assertEqual('0q82_05', self.listing.idn.qstring())
+        self.assertEqual('0q82_06', self.Student.meta_word.idn.qstring())   # Number(7)
+        self.assertEqual('0q82_06__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
+        self.assertEqual('0q82_07', self.SubStudent.meta_word.idn.qstring())
+        self.assertEqual('0q82_08', self.AnotherListing.meta_word.idn.qstring())
 
     def test_listing_instance_from_idn(self):
         chad = self.Student(2)
@@ -2455,9 +2484,9 @@ class Word0070FindTests(WordTests):
     #     self.assertGreater(idns[0], idns[-1])
 
     def test_find_words_sql(self):
-        words = self.lex.find_words(idn_order='ASC')
+        words = self.lex.find_words(idn_ascending=True)
         self.assertLess(words[0].idn, words[-1].idn)
-        words = self.lex.find_words(idn_order='DESC')
+        words = self.lex.find_words(idn_ascending=False)
         self.assertGreater(words[0].idn, words[-1].idn)
 
     def test_find_idn(self):
@@ -2491,11 +2520,10 @@ class Word0070FindTests(WordTests):
             self.lex.find_last(obj=self.curry)
 
 
-# noinspection SqlDialectInspection
-class WordQoolbarTests(WordTests):
+class WordQoolbarSetup(WordTests):
 
     def setUp(self):
-        super(WordQoolbarTests, self).setUp()
+        super(WordQoolbarSetup, self).setUp()
 
         self.qoolbar = qiki.QoolbarSimple(self.lex)
         self.qool = self.lex.verb(u'qool')
@@ -2558,6 +2586,9 @@ class WordQoolbarTests(WordTests):
         """
         self.display_all_word_descriptions()
 
+
+class WordQoolbarTests(WordQoolbarSetup):
+
     def test_get_all_qool_verbs(self):
         """Make sure the qool verbs were found."""
         self.assertEqual({self.like.idn, self.delete.idn}, set(self.qool_idns))
@@ -2588,89 +2619,6 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(qool_uses[0].num, qiki.Number(10))
         self.assertEqual(qool_uses[1].obj, self.zigzags)
         self.assertEqual(qool_uses[1].num, qiki.Number(1))
-
-    def test_super_select_idn(self):
-        self.assertEqual([{'txt': u'define'},], list(self.lex.super_select(
-            'SELECT txt FROM',
-            self.lex.table,
-            'WHERE idn =',
-            qiki.Word._IDN_DEFINE
-        )))
-
-    def test_super_select_word(self):
-        define_word = self.lex[u'define']
-        self.assertEqual([{'txt': u'define'},], list(self.lex.super_select(
-            'SELECT txt FROM',
-            self.lex.table,
-            'WHERE idn =',
-            define_word
-        )))
-
-    def test_super_select_txt(self):
-        self.assertEqual([{'idn': qiki.Word._IDN_DEFINE},], list(self.lex.super_select(
-            'SELECT idn FROM',
-            self.lex.table,
-            'WHERE txt =',
-            qiki.Text(u'define')
-        )))
-
-    def test_super_select_with_none(self):
-        """To concatenate two strings of literal SQL code, intersperse a None."""
-        self.assertEqual([{'txt': u'define'}], list(self.lex.super_select(
-            'SELECT txt', None, 'FROM',
-            self.lex.table,
-            'WHERE', None, 'idn =',
-            qiki.Word._IDN_DEFINE
-        )))
-
-    def test_super_select_string_concatenate_alternatives(self):
-        """Showcase of all the valid ways one might concatenate strings with super_select().
-
-        That is, strings that make up SQL.  Not the content of fields, e.g. txt."""
-        def good_super_select(*args):
-            self.assertEqual([{'txt':u'define'}], list(self.lex.super_select(*args)))
-
-        def bad_super_select(*args):
-            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-                list(self.lex.super_select(*args))
-        txt = 'txt'
-
-        good_super_select('SELECT          txt          FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        good_super_select('SELECT '       'txt'       ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        good_super_select('SELECT '   +   'txt'   +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        good_super_select('SELECT', None, 'txt', None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        good_super_select('SELECT '   +    txt    +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        good_super_select('SELECT', None,  txt , None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-
-        bad_super_select( 'SELECT',       'txt',       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-        bad_super_select( 'SELECT',        txt ,       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-
-    def test_super_select_string_string(self):
-        """Concatenating two literal strings is an error.
-
-        This avoids confusion between literal strings, table names, and txt fields."""
-        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            list(self.lex.super_select('string', 'string', self.lex.table))
-        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            list(self.lex.super_select(self.lex.table, 'string', 'string'))
-        self.lex.super_select('SELECT * FROM', self.lex.table)
-
-        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            list(self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define'))
-        with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
-            list(self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define'))
-        self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text(u'define'))
-
-    def test_super_select_null(self):
-        self.assertEqual([{'x': None}], list(self.lex.super_select('SELECT NULL as x')))
-        self.assertEqual([{'x': None}], list(self.lex.super_select('SELECT', None, 'NULL as x')))
-
-    def test_super_select_type_error(self):
-        class ExoticType(object):
-            pass
-
-        with self.assertRaises(qiki.LexMySQL.SuperSelectTypeError):
-            list(self.lex.super_select(ExoticType))
 
     def test_lex_from_idn(self):
         word = self.lex.spawn()
@@ -2761,164 +2709,6 @@ class WordQoolbarTests(WordTests):
         self.assertEqual(self.zigzags.num, word.num)
         self.assertEqual(self.zigzags.txt, word.txt)
         self.assertEqual(self.zigzags.whn, word.whn)
-
-    def test_lex_table_not_writable(self):
-        with self.assertRaises(AttributeError):
-            # noinspection PyPropertyAccess
-            self.lex.table = 'something'
-
-    # def test_wrong_word_method_infinity(self):
-    #     word = self.lex[u'noun']
-    #     with self.assertRaises(qiki.Word.NoSuchAttribute):
-    #         # noinspection PyStatementEffect
-    #         word.no_such_attribute
-    #     with self.assertRaises(qiki.Word.NoSuchAttribute):
-    #         word.no_such_method()
-
-    # def test_wrong_lex_method_infinity(self):
-    #     with self.assertRaises(qiki.Word.NoSuchAttribute):
-    #         # noinspection PyStatementEffect
-    #         self.lex.no_such_attribute
-    #     with self.assertRaises(qiki.Word.NoSuchAttribute):
-    #         self.lex.no_such_method()
-
-    def test_super_select_idn_list(self):
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM', self.lex.table,
-            'WHERE idn IN (', [
-                self.anna.idn,
-                self.bart.idn
-            ], ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_word_list(self):
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM', self.lex.table,
-            'WHERE idn IN (', [
-                self.anna,
-                self.bart
-            ], ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_idn_tuple(self):
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM',self.lex.table,
-            'WHERE idn IN (', (
-                self.anna.idn,
-                self.bart.idn
-            ), ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_word_tuple(self):
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM', self.lex.table,
-            'WHERE idn IN (', (
-                self.anna,
-                self.bart
-            ), ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_mixed_tuple(self):
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM', self.lex.table,
-            'WHERE idn IN (', (
-                self.anna,
-                self.bart.idn
-            ), ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_idn_set(self):
-        set_of_idns = {
-            self.anna.idn,
-            self.bart.idn
-        }
-        assert type(set_of_idns) is set
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM',self.lex.table,
-            'WHERE idn IN (', set_of_idns, ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_word_set(self):
-        set_of_words = {
-            self.anna,
-            self.bart
-        }
-        assert type(set_of_words) is set
-        anna_and_bart = list(self.lex.super_select(
-            'SELECT txt FROM',self.lex.table,
-            'WHERE idn IN (', set_of_words, ')'
-        ))
-        self.assertEqual([
-            {'txt': u'anna'},
-            {'txt': u'bart'},
-        ], anna_and_bart)
-
-    def test_super_select_join(self):
-        likings = list(self.lex.super_select(
-            'SELECT '
-                'w.idn AS idn, '
-                'qool.idn AS qool_idn, '
-                'qool.num AS qool_num '
-            'FROM', self.lex.table, 'AS w '
-            'JOIN', self.lex.table, 'AS qool '
-                'ON qool.obj = w.idn '
-                    'AND qool.vrb =', self.like,
-            'ORDER BY w.idn, qool.idn ASC',
-            debug=False
-            # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
-            # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
-            # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
-            # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
-        ))
-        self.assertEqual([
-            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn, 'qool_num': self.anna_like_youtube.num},
-            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
-            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
-        ], likings)
-
-    def test_super_select_join_qool_list(self):
-        likings = list(self.lex.super_select(
-            'SELECT '
-                'w.idn AS idn, '
-                'qool.idn AS qool_idn, '
-                'qool.num AS qool_num '
-            'FROM', self.lex.table, 'AS w '
-            'JOIN', self.lex.table, 'AS qool '
-                'ON qool.obj = w.idn '
-                    'AND qool.vrb IN (', self.qool_idns, ') '
-            'ORDER BY w.idn, qool.idn ASC',
-            debug=False
-        ))
-        self.assertEqual([
-            {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn,   'qool_num': self.anna_like_youtube.num},
-            {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn,   'qool_num': self.bart_like_youtube.num},
-            {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn,   'qool_num': self.anna_like_zigzags.num},
-            {'idn': self.zigzags.idn, 'qool_idn': self.bart_delete_zigzags.idn, 'qool_num': self.bart_delete_zigzags.num},
-        ], likings)
 
     def test_find_words(self):
         nouns = self.lex.find_words(obj=self.lex.noun())
@@ -3059,6 +2849,237 @@ class WordQoolbarTests(WordTests):
         youtube_word = youtube_words[0]
         youtube_jbo = youtube_word.jbo
         self.assertEqual({self.anna_like_youtube, self.bart_like_youtube}, set(youtube_jbo))
+
+
+if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
+
+    class WordSuperSelectTest(WordQoolbarSetup):
+
+        def test_lex_table_not_writable(self):
+            with self.assertRaises(AttributeError):
+                # noinspection PyPropertyAccess
+                self.lex.table = 'something'
+
+        def test_super_select_idn(self):
+            self.assertEqual([{'txt': u'define'},], list(self.lex.super_select(
+                'SELECT txt FROM',
+                self.lex.table,
+                'WHERE idn =',
+                qiki.Word._IDN_DEFINE
+            )))
+
+        def test_super_select_word(self):
+            define_word = self.lex[u'define']
+            self.assertEqual([{'txt': u'define'},], list(self.lex.super_select(
+                'SELECT txt FROM',
+                self.lex.table,
+                'WHERE idn =',
+                define_word
+            )))
+
+        def test_super_select_txt(self):
+            self.assertEqual([{'idn': qiki.Word._IDN_DEFINE},], list(self.lex.super_select(
+                'SELECT idn FROM',
+                self.lex.table,
+                'WHERE txt =',
+                qiki.Text(u'define')
+            )))
+
+        def test_super_select_with_none(self):
+            """To concatenate two strings of literal SQL code, intersperse a None."""
+            self.assertEqual([{'txt': u'define'}], list(self.lex.super_select(
+                'SELECT txt', None, 'FROM',
+                self.lex.table,
+                'WHERE', None, 'idn =',
+                qiki.Word._IDN_DEFINE
+            )))
+
+        def test_super_select_string_concatenate_alternatives(self):
+            """Showcase of all the valid ways one might concatenate strings with super_select().
+
+            That is, strings that make up SQL.  Not the content of fields, e.g. txt."""
+            def good_super_select(*args):
+                self.assertEqual([{'txt':u'define'}], list(self.lex.super_select(*args)))
+
+            def bad_super_select(*args):
+                with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                    list(self.lex.super_select(*args))
+            txt = 'txt'
+
+            good_super_select('SELECT          txt          FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT '       'txt'       ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT '   +   'txt'   +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT', None, 'txt', None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT '   +    txt    +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT', None,  txt , None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+
+            bad_super_select( 'SELECT',       'txt',       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            bad_super_select( 'SELECT',        txt ,       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+
+        def test_super_select_string_string(self):
+            """Concatenating two literal strings is an error.
+
+            This avoids confusion between literal strings, table names, and txt fields."""
+            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                list(self.lex.super_select('string', 'string', self.lex.table))
+            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                list(self.lex.super_select(self.lex.table, 'string', 'string'))
+            self.lex.super_select('SELECT * FROM', self.lex.table)
+
+            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                list(self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define'))
+            with self.assertRaises(qiki.LexMySQL.SuperSelectStringString):
+                list(self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', 'define'))
+            self.lex.super_select('SELECT * FROM', self.lex.table, 'WHERE txt=', qiki.Text(u'define'))
+
+        def test_super_select_null(self):
+            self.assertEqual([{'x': None}], list(self.lex.super_select('SELECT NULL as x')))
+            self.assertEqual([{'x': None}], list(self.lex.super_select('SELECT', None, 'NULL as x')))
+
+        def test_super_select_type_error(self):
+            class ExoticType(object):
+                pass
+
+            with self.assertRaises(qiki.LexMySQL.SuperSelectTypeError):
+                list(self.lex.super_select(ExoticType))
+
+        def test_super_select_idn_list(self):
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM', self.lex.table,
+                'WHERE idn IN (', [
+                    self.anna.idn,
+                    self.bart.idn
+                ], ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_word_list(self):
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM', self.lex.table,
+                'WHERE idn IN (', [
+                    self.anna,
+                    self.bart
+                ], ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_idn_tuple(self):
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM',self.lex.table,
+                'WHERE idn IN (', (
+                    self.anna.idn,
+                    self.bart.idn
+                ), ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_word_tuple(self):
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM', self.lex.table,
+                'WHERE idn IN (', (
+                    self.anna,
+                    self.bart
+                ), ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_mixed_tuple(self):
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM', self.lex.table,
+                'WHERE idn IN (', (
+                    self.anna,
+                    self.bart.idn
+                ), ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_idn_set(self):
+            set_of_idns = {
+                self.anna.idn,
+                self.bart.idn
+            }
+            assert type(set_of_idns) is set
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM',self.lex.table,
+                'WHERE idn IN (', set_of_idns, ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_word_set(self):
+            set_of_words = {
+                self.anna,
+                self.bart
+            }
+            assert type(set_of_words) is set
+            anna_and_bart = list(self.lex.super_select(
+                'SELECT txt FROM',self.lex.table,
+                'WHERE idn IN (', set_of_words, ')'
+            ))
+            self.assertEqual([
+                {'txt': u'anna'},
+                {'txt': u'bart'},
+            ], anna_and_bart)
+
+        def test_super_select_join(self):
+            likings = list(self.lex.super_select(
+                'SELECT '
+                    'w.idn AS idn, '
+                    'qool.idn AS qool_idn, '
+                    'qool.num AS qool_num '
+                'FROM', self.lex.table, 'AS w '
+                'JOIN', self.lex.table, 'AS qool '
+                    'ON qool.obj = w.idn '
+                        'AND qool.vrb =', self.like,
+                'ORDER BY w.idn, qool.idn ASC',
+                debug=False
+                # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
+                # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
+                # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
+                # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
+            ))
+            self.assertEqual([
+                {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn, 'qool_num': self.anna_like_youtube.num},
+                {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn, 'qool_num': self.bart_like_youtube.num},
+                {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn, 'qool_num': self.anna_like_zigzags.num},
+            ], likings)
+
+        def test_super_select_join_qool_list(self):
+            likings = list(self.lex.super_select(
+                'SELECT '
+                    'w.idn AS idn, '
+                    'qool.idn AS qool_idn, '
+                    'qool.num AS qool_num '
+                'FROM', self.lex.table, 'AS w '
+                'JOIN', self.lex.table, 'AS qool '
+                    'ON qool.obj = w.idn '
+                        'AND qool.vrb IN (', self.qool_idns, ') '
+                'ORDER BY w.idn, qool.idn ASC',
+                debug=False
+            ))
+            self.assertEqual([
+                {'idn': self.youtube.idn, 'qool_idn': self.anna_like_youtube.idn,   'qool_num': self.anna_like_youtube.num},
+                {'idn': self.youtube.idn, 'qool_idn': self.bart_like_youtube.idn,   'qool_num': self.bart_like_youtube.num},
+                {'idn': self.zigzags.idn, 'qool_idn': self.anna_like_zigzags.idn,   'qool_num': self.anna_like_zigzags.num},
+                {'idn': self.zigzags.idn, 'qool_idn': self.bart_delete_zigzags.idn, 'qool_num': self.bart_delete_zigzags.num},
+            ], likings)
 
 
 

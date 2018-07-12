@@ -28,6 +28,7 @@ class NumberAlternate(Number):
 
     It implements some alternate methods, and makes sure they behave the same as the standard methods.
     """
+    # TODO:  "Behave the same" should mean equal return values OR raising the same exceptions.
 
     @property
     def zone(self):

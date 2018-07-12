@@ -15,7 +15,7 @@ import mysql.connector
 # TODO:  Move mysql stuff to lex_mysql.py?
 import six
 
-from number import Number, Suffix
+from number import Number, Suffix, type_name
 
 
 # noinspection PyAttributeOutsideInit
@@ -41,10 +41,8 @@ class Word(object):
     :type vrb: Number | instancemethod
     :type obj: Number | Word
     :type num: Number
-    :type txt: Unicode in either Python 2 or 3
+    :type txt: Unicode string in either Python 2 or 3
     :type lex: Lex
-
-    Note:  any_word_instance.txt is always Unicode
     """
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
@@ -67,17 +65,11 @@ class Word(object):
                 whn=None,
             )
         else:
-            typename = type(content).__name__
-            if typename == 'instance':
-                typename = content.__class__.__name__
-            if typename in ('str', 'bytes', 'bytearray'):
-                etc = " -- use unicode instead"
-            else:
-                etc = ""
+            need_unicode = type_name(content) in ('str', 'bytes', 'bytearray')
             raise TypeError("{outer}({inner}) is not supported{etc}".format(
-                outer=type(self).__name__,
-                inner=typename,
-                etc=etc,
+                outer=type_name(self),
+                inner=type_name(content),
+                etc=" -- use unicode instead" if need_unicode else ""
             ))
 
     def _inchoate(self, idn):
@@ -90,7 +82,7 @@ class Word(object):
         All that is known about an inchoate word is its idn.
         Maybe that's all we ever need to know about it.
         But, if almost anything else is asked of it, then the word is made choate.
-        Such as:
+        For example, getting these properties requires the word to become choate first:
             word.sbj
             word.vrb
             word.vrb
@@ -100,13 +92,13 @@ class Word(object):
             word.exists()
 
         The following also make a word choate, and they also do so implicitly
-        because they use one of the above members:
+        because they use one of the above properties:
             str(word)
             repr(word)
             hasattr(word, 'txt')
             ...a lot more
 
-        But these actions do not make a word choate.  If it was inchoate it stays so:
+        But the following actions do not make a word choate.  If it was inchoate it stays so:
             word.idn
             word.lex
             hash(word)
@@ -124,11 +116,9 @@ class Word(object):
         in a way that's almost as resource-efficient as a list of idns.
         """
         # DONE:  Refactor _is_inchoate property to check for the existence of self._fields instead.
-        # CAUTION:  But Word(content=None) does populate self._fields, and Listing relies on that,
-        # AND expects to instantiate to an inchoate word, so that needs to be refactored too.
+        # CAUTION:  But Word(content=None) is a choate word.  Because it populates self._fields.
+        #           Listing relies on all this so it may need to be refactored.
         self._idn = idn
-        # self._is_inchoate = True
-        # assert self.lex is not None   # Nope, lex == None if you:  x = ListingSubclass(index)
 
     def _choate(self):
         """
@@ -139,12 +129,16 @@ class Word(object):
         This in preparation to use one of its properties, sbj, vrb, obj, txt, num, whn.
         """
         if self._is_inchoate:
-            # del self._is_inchoate
-            # self._fields = dict()
             self._from_idn(self._idn)
 
     def exists(self):
-        """"Does this word exist?  Is it stored in a Lex?"""
+        """"
+        Does this word exist?  Is it stored in a Lex?
+
+        This is a bigger question than being choate.
+        Choate is more a concept of what we know about the word so far.
+        Exist is more a concept of what the world manifests about the word.
+        """
         # TODO:  What about Listing words?
         self._choate()
         return hasattr(self, '_exists') and self._exists   # WTF is not hasattr() enough?
@@ -154,51 +148,19 @@ class Word(object):
         self._exists = True
 
     # Hard-code the idns of the fundamental words.
+    _IDN_LEX    = Number(0)
     _IDN_DEFINE = Number(1)
     _IDN_NOUN   = Number(2)
     _IDN_VERB   = Number(3)
     _IDN_AGENT  = Number(4)
-    _IDN_LEX    = Number(5)
-    # FIXME:  Renumber idns due to Lex.__crazy_idea_define_lex_first__?
 
-    _IDN_MAX_FIXED = Number(5)
+    _IDN_MAX_FIXED = Number(4)
 
-    # class NoSuchAttribute(AttributeError):
-    #     pass
-
-    # class NoSuchKwarg(TypeError):
-    #     pass
-
-    # class MissingObj(TypeError):
-    #     pass
-
-    # def __getattr__(self, attribute_name):
-    #     # # TODO:  Make this all less smelly.  Comments and error messages included.  This one especially.
-    #     # if attribute_name.startswith('_'):
-    #     #     # TODO:  What about ('_word_before_the_dot', '_fields')
-    #     #     # return None
-    #         if attribute_name in ('_exists',):
-    #             return None
-    #         raise AttributeError("Verbs starting with underscore cannot use the subject.verb syntax: " + attribute_name)
-    #     # # if attribute_name in ('whn',):
-    #     # #     self._choate()
-    #     # #     # if self._fields is None:
-    #     # #     #     return None
-    #     # #     #     # XXX:  More pythonic to raise AttributeError
-    #     # #     try:
-    #     # #         return self._fields[attribute_name]
-    #     # #     except KeyError:   # Why do I not need AttributeError here too for _fields?
-    #     # #         return None
-    #     # #         # XXX:  More pythonic to raise AttributeError
-    #     # # if attribute_name == 'do_not_call_in_templates':
-    #     # #     # THANKS:  for this Django flag, maybe http://stackoverflow.com/a/21711308/673991
-    #     # #     return True
-    #     #
-    #     # raise AttributeError("This word has no ''{}'' member".format(attribute_name))
+    # NOTE:  lex and define words may be very common and benefit from a short idn (0q80 and 0q82)
 
     @property
     def _is_inchoate(self):
-        return None if hasattr(self, '_fields') else True
+        return not hasattr(self, '_fields')
 
     @property
     def sbj(self):
@@ -270,7 +232,7 @@ class Word(object):
         # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
 
         assert isinstance(obj, Word)
-        assert Text.is_valid(txt), "define() txt cannot be a {}".format(type(txt).__name__)
+        assert Text.is_valid(txt), "define() txt cannot be a {}".format(type_name(txt))
 
         # How to handle "duplications"
 
@@ -295,8 +257,8 @@ class Word(object):
         return new_word
 
     def said(self, vrb, obj):
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
         existing_word = self.spawn(
             sbj=self,
             vrb=vrb,
@@ -331,8 +293,8 @@ class Word(object):
         # TODO:  rewrite this docstring
         # TODO:  say()?
 
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type(vrb).__name__)
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type(obj).__name__)
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
         if isinstance(txt, numbers.Number) or Text.is_valid(num):
             # TODO:  Why `or` not `and`?
             (txt, num) = (num, txt)
@@ -344,10 +306,10 @@ class Word(object):
         txt = txt if txt is not None else u''
 
         if not isinstance(num, numbers.Number):
-            raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type(num).__name__))
+            raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type_name(num)))
 
         if not Text.is_valid(txt):
-            raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type(txt).__name__))
+            raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type_name(txt)))
 
         new_word = self.spawn(
             sbj=self,
@@ -478,27 +440,6 @@ class Word(object):
         """
         assert isinstance(idn, Number)
         assert not idn.is_suffixed()
-        # if idn.is_suffixed():
-        #     try:
-        #         listed_instance = Listing.instance_from_idn(idn)
-        #     except Listing.NotAListing:
-        #         raise self.NotAWord("Not a Word identifier (Number, but wrong suffix): " + idn.qstring())
-        #     else:
-        #         assert listed_instance.exists()
-        #         self._fields = dict(txt=listed_instance.txt)
-        #         self._now_it_exists()
-        #         # TODO:  This was a fudge. Word(suffixed idn) should return a Listing instance
-        #         # i.e. something like self = listed_instance
-        #         # or self.__class__ = Listing subclass
-        #         # SEE:  http://stackoverflow.com/a/3209240/673991
-        #         # Or maybe the only Word() caller, spawn() should do this dynamic typing.
-        #         # But that would mean a listing index could never be inchoate.
-        #         # Is not that desirable?  Putting off.
-        #
-        #
-        #
-        # else:
-
         self._idn = idn
         self.lex.populate_word_from_idn(self, idn)
 
@@ -510,20 +451,11 @@ class Word(object):
             self._fields = dict(txt=Text(txt))
 
     def _from_word(self, other):
-        # if other.is_lex():
-        #     raise ValueError("Lex is a singleton, so it cannot be copied.")
-        #     # TODO:  Explain why this should be.
-        #     # TODO:  Resolve inconsistency:  spawn(lex.idn) will clone lex
-        #     # And this ability may be needed anyway in the murk of LexMySQL.__init__()
         assert isinstance(other, Word)   # Instead of type(self)
         self.lex = other.lex
         # noinspection PyProtectedMember
         if other._is_inchoate:
             self._inchoate(other.idn)
-            # # noinspection PyProtectedMember
-            # self._idn         = other._idn
-            # # noinspection PyProtectedMember
-            # self._is_inchoate = other._is_inchoate
         else:
             assert other.exists()
             self._from_idn(other.idn)
@@ -533,7 +465,12 @@ class Word(object):
         assert isinstance(self.sbj, Word)
         assert isinstance(self.vrb, Word)
         assert isinstance(self.obj, Word)
-        self.lex.populate_word_from_sbj_vrb_obj(self, self.sbj, self.vrb, self.obj)
+        self.lex.populate_word_from_sbj_vrb_obj(
+            self,
+            self.sbj,
+            self.vrb,
+            self.obj
+        )
 
     def _from_sbj_vrb_obj_num_txt(self):
         """Construct a word by looking up its subject-verb-object and its num and txt."""
@@ -562,9 +499,9 @@ class Word(object):
     def populate_from_word(self, word):
         word_dict = dict(
             idn=word.idn,
-            sbj=word.sbj,
-            vrb=word.vrb,
-            obj=word.obj,
+            sbj=word.sbj.idn,
+            vrb=word.vrb.idn,
+            obj=word.obj.idn,
             num=word.num,
             txt=word.txt,
             whn=word.whn,
@@ -573,7 +510,7 @@ class Word(object):
 
     def populate_from_row(self, row, prefix=''):
         assert isinstance(row[prefix + 'idn'], Number)
-        assert isinstance(row[prefix + 'sbj'], Number)
+        assert isinstance(row[prefix + 'sbj'], Number), type_name(row[prefix + 'sbj'])
         assert isinstance(row[prefix + 'vrb'], Number)
         assert isinstance(row[prefix + 'obj'], Number)
         assert isinstance(row[prefix + 'num'], Number)
@@ -669,7 +606,7 @@ class Word(object):
     def __repr__(self):
         if self.exists():
             if self.is_defined() and self.txt:
-                return "Word(u'{}')".format(self.txt)
+                return "Word('{}')".format(self.txt)
             else:
                 return "Word({})".format(int(self.idn))
         elif (
@@ -688,10 +625,14 @@ class Word(object):
             ))
         else:
             try:
-                repr_idn = repr(int(self.idn))
+                idn_int = repr(int(self.idn))
             except ValueError:
-                repr_idn = repr(self.idn)
-            return "Word(in a strange state, idn {})".format(repr_idn)
+                if self.txt:
+                    return "Word(undefined {})".format(repr(self.txt))
+                else:
+                    return "Word(in a strange state, idn {})".format(repr(self.idn))
+            else:
+                return "Word(in a strange state, idn {})".format(idn_int)
 
     def __str__(self):
         if hasattr(self, 'txt'):
@@ -724,15 +665,16 @@ class Word(object):
         try:
             return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) will not modify w.idn.
                                    # TODO:  but then what about w.sbj.add_suffix(n), etc.?
+                                   #        (But there's no more add_suffix, only new-number-generating plus_suffix)
                                    # So this passing through Number() is a bad idea.
-                                   # Plus this makes x.idn fundamentally differ from x._idn, burdening debug.
+                                   # Plus this makes x.idn a different object from x._idn, burdening debug.
         except AttributeError:
             return Number.NAN
 
     @idn.setter
     def idn(self, value):
         raise AttributeError("Cannot set a Word's idn.")
-    # TODO:  Omit this?
+    # TODO:  Omit this?  Does this happen for free anyway?
 
     def save(self, override_idn=None):
         if override_idn is not None:
@@ -752,12 +694,6 @@ class Word(object):
         assert isinstance(self.idn, Number)
         self.lex.insert_word(self)
 
-    class DefineDuplicateException(Exception):
-        pass
-
-    class NonVerbUndefinedAsFunctionException(TypeError):
-        pass
-
 
 class SubjectedVerb(object):
     # TODO:  Move this to inside Word?
@@ -765,8 +701,10 @@ class SubjectedVerb(object):
     This is the currying intermediary, the "x" in x = s(v) and x[o].  Thus allowing:  s(v)[o].
 
     So this is the Python-object that is "returned" when you "call" a subject and pass it a verb.
-    In that function call (which becomes an instantiation of this class)
-    modifiers can be inserted in the form of args and kwargs.
+    In that function call, which is actually the constructor for this class,
+    other parameters (besides the verb) can be passed in the form of args and kwargs to modify the instance.
+    Those modifiers are txt and num in flexible order.  Oh wait are they?
+    Maybe they're just num_add and use_already.
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
@@ -839,10 +777,23 @@ class SubjectedVerb(object):
 # noinspection PyAttributeOutsideInit
 class Listing(Word):
     # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
+    # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
+
+    """
+    Listing was born of the need for a qiki Word to refer to data stored somewhere by index.
+
+    For example, a database record with integer id.
+    A suffixed word refers to both the storage and the record.  They each have an idn.
+    A composite idn contains both:  Number(idn_storage, Suffix(Suffix.Type.LISTING, idn_record))
+
+    idn_storage is the idn of a Word in the system Lex, corresponding to the listing.
+    idn_record doesn't mean anything to qiki, just to the storage system.
+    """
+
     meta_word = None   # This class variable is a Word associated with a Listing subclass.
                        # It is assigned by install().
-                       # listing_subclass.meta_word.idn is an unsuffixed qiki.Number.
-                       # If x is an instance of a listing_subclass, then x.idn is a suffixed qiki.Number.
+                       # ListingSubclass.meta_word.idn is an unsuffixed qiki.Number.
+                       # If x is an instance of a ListingSubclass, then x.idn is a suffixed qiki.Number.
                        # The unsuffixed part of x.idn is its class's meta_word.idn.
                        # I.e. x.idn.unsuffixed == x.meta_word.idn
                        # See examples in test_example_idn().
@@ -854,19 +805,20 @@ class Listing(Word):
     def __init__(self, index, lex=None):
         """
         self.index - The index is an integer or Number that's opaque to qiki.
-                     It is unique to whatever is represented by the Listing derived class (LDC) instance.
-                     (So two LDC instances with the same index can be said to be equal.
-                     Just as two Words with the same idns are equal.  Which in fact they also are.)
-                     It is passed to the LDC constructor, and to it's lookup() method.
+                     It is unique to whatever is represented by the ListingSubclass instance.
+                     (So two ListingSubclass instances with the same index can be said to be equal.
+                     Just as two words with the same idns are equal.  Which in fact they also are.)
+                     This index is passed to the ListingSubclass constructor, and to it's lookup() method.
         self.idn - The identifier is a suffixed number:
-                   unsuffixed part - meta_idn for the LDC, the idn of the meta_word that defined the LDC
+                   unsuffixed part - meta_idn for the ListingSubclass,
+                                     the idn of the meta_word that defined the ListingSubclass
                    suffix type - Type.LISTING
                    suffix payload - the index
         """
         assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         assert self.meta_word is not None, (
             "Class {c} must be installed with its meta_word before it can be instantiated".format(
-                c=type(self).__name__
+                c=type_name(self)
             )
         )
         self.index = Number(index)
@@ -875,7 +827,7 @@ class Listing(Word):
             lex = self.meta_word.lex
         super(Listing, self).__init__(lex=lex)
 
-        idn = Number(self.meta_word.idn).plus_suffix(self.SUFFIX_TYPE, self.index)
+        idn = Number(self.meta_word.idn, Suffix(self.SUFFIX_TYPE, self.index))
         # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
         # Did that morph a class property into an instance property?!?
 
@@ -925,11 +877,11 @@ class Listing(Word):
     @classmethod
     def install(cls, meta_word):
         """
-        Associate the derived class with a word in the lex that represents the class.
-        That class word should already exist, and it will (probably) have no suffix.
-        The class word's idn will be the unsuffixed part of the idn for all instances of the class.
-        Each instance will have a unique suffix,
-        automatically created each time the class is instantiated with a unique index.
+        ListingSubclass.meta_word is a word in the lex that represents the subclass.
+        That meta-word should already exist, and it will (probably) have no suffix.
+        The meta-word's idn will be the unsuffixed part of the idn for all instances of the subclass.
+        Each instance idn will have a unique suffix, whose payload is the index for that instance.
+        This suffixed word is conceptually created each time the class is instantiated with a unique index.
 
         This must be called before any instantiations.
         """
@@ -950,7 +902,7 @@ class Listing(Word):
     def instance_from_idn(cls, idn):
         """
         Turn a suffixed Number identifier into a (word) instance of some subclass of Listing.
-        The ListingSubclass constructor is like an instance_from_index()
+        The ListingSubclass constructor is like an instance_from_index() converter.
 
         So it's a double-lookup.
         First we look up which class this idn is for.
@@ -995,7 +947,7 @@ class Listing(Word):
         try:
             return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
         except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
-            raise cls.NotAListing("Not a Listing identifier: " + type(idn).__name__ + " - " + six.text_type(e))
+            raise cls.NotAListing("Not a Listing identifier: " + type_name(idn) + " - " + six.text_type(e))
 
         # try:
         #     identifier = idn.unsuffixed
@@ -1083,16 +1035,10 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         if existing_word.idn == self.idn:
             return self   # lex is a singleton, i.e. assert lex[lex] is lex
             # TODO:  Explain, why is this important?
+            #        Why is the Lex's word for the Lex itself only instantiated once.
+            #        And why aren't other words in the Lex also a singleton.,
         else:
             return existing_word
-
-    class SuperIdentifier(six.text_type):
-        """Identifier in an SQL super-query that could go in `back-ticks`."""
-        pass
-
-    # noinspection PyClassHasNoInit
-    class TableName(SuperIdentifier):
-        pass
 
     class NotFound(Exception):
         pass
@@ -1173,7 +1119,7 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
             raise TypeError(
                 "word_from_word_or_number({}) is not supported, "
                 "only Word or Number.".format(
-                    type(x).__name__,
+                    type_name(x),
                 )
             )
 
@@ -1204,16 +1150,45 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
     def max_idn(self):
         raise NotImplementedError()
 
+    def server_version(self):
+        return "(not implemented)"
+
+    def uninstall_to_scratch(self):
+        raise NotImplementedError()
+
+    def disconnect(self):
+        raise NotImplementedError()
+
+    def find_last(self, **kwargs):
+        # TODO:  In LexMySQL, limit find_words() to latest using sql LIMIT.
+        bunch = self.find_words(**kwargs)
+        try:
+            return bunch[-1]
+        except IndexError:
+            raise self.NotFound
+
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
 
+# import json
+#
+#
+# class WordEncoder(json.JSONEncoder):
+#     def default(self, o):
+#         if isinstance(o, Word):
+#             return repr(o)
+#         else:
+#             return super(WordEncoder, self).default(o)
+
+
 class LexMemory(Lex):
-    def __init__(self):
+    def __init__(self, **_):
         self.lex = self
         super(LexMemory, self).__init__(self._IDN_LEX, lex=self)
         # self._choate()
         if not self.exists():
-            self.words = [None]
+            self.words = []
+            # NOTE:  Assume zero-starting idns
             self._install_all_seminal_words()
         assert self.exists()
         assert self.is_lex()
@@ -1231,9 +1206,18 @@ class LexMemory(Lex):
         # assert word.idn == self.max_idn(), repr(word.idn) + ", " + repr(self.max_idn())
         # TODO:  Suspend this assert for seminal words?
         word.whn = Number(time.time())
+
         self.words.append(word)
+        # print("Words", json.dumps(self.words, indent=4, cls=WordEncoder))
+
         # noinspection PyProtectedMember
         word._now_it_exists()
+
+    def disconnect(self):
+        pass
+
+    def uninstall_to_scratch(self):
+        del self.words
 
     def populate_word_from_idn(self, word, idn):
         try:
@@ -1252,7 +1236,10 @@ class LexMemory(Lex):
 
     def populate_word_from_definition(self, word, define_txt):
         for word_source in self.words:
-            if word_source.vrb == Word._IDN_DEFINE and word_source.txt == Text(define_txt):
+            if (
+                idn_from_word_or_number(word_source.vrb) == Word._IDN_DEFINE and
+                word_source.txt == Text(define_txt)
+            ):
                 word.populate_from_word(word_source)
                 return True
         return False
@@ -1298,14 +1285,54 @@ class LexMemory(Lex):
     def find_words(
         self,
         idn=None,
+        sbj=None,
         vrb=None,
         obj=None,
+        idn_ascending=True,
+        jbo_ascending=True,
         jbo_vrb=(),
         obj_group=False,
         jbo_strictly=False,
         debug=False
     ):
-        return
+        # TODO:  Implement obj_group here, and test it in unit tests.
+        found_words = []
+        for word_source in self.words if idn_ascending else reversed(self.words):
+            hit = True
+            if idn is not None and word_source.idn != idn_from_word_or_number(idn):
+                # TODO:  Why does word_match(word_source.idn, idn) fail in one test?
+                hit = False
+            if sbj is not None and not word_match(word_source.sbj, sbj):
+                hit = False
+            if vrb is not None and not word_match(word_source.vrb, vrb):
+                hit = False
+            if obj is not None and not word_match(word_source.obj, obj):
+                hit = False
+            if hit:
+                found_words.append(word_source)
+
+        if jbo_vrb:
+            restricted_found_words = []
+            for found_word in found_words:
+                jbo = []
+                for other_word in self.words:
+                    if word_match(other_word.obj, found_word.idn) and word_match(other_word.vrb, jbo_vrb):
+                        jbo.append(other_word)
+                new_word = self[found_word]
+                new_word.jbo = jbo
+                # FIXME:  Whoa this could add a jbo to the in-memory lex object couldn't it!
+                #         Same bug exists with LexMySQL instance maybe!
+                #         Maybe this is a reason NOT to enforce a lex being a singleton.
+                #         Or if this bug does NOT happen
+                #             it blows a hole in the idea lex ever was a singleton.
+                #             I don't see where Word._from_word() enforces that.
+                # TODO:  Test whether lex[lex] is lex -- Oh it is in test_08_lex_square_lex
+
+                if jbo or not jbo_strictly:
+                    restricted_found_words.append(new_word)
+            return restricted_found_words
+        else:
+            return found_words
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
@@ -1590,14 +1617,6 @@ class LexMySQL(Lex):
                 assert False, "Cannot populate from unexpected extra rows."
             return True
 
-    def find_last(self, **kwargs):
-        bunch = self.find_words(**kwargs)
-        # TODO:  Limit find_words() to latest using sql LIMIT.
-        try:
-            return bunch[-1]
-        except IndexError:
-            raise self.NotFound
-
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
 
@@ -1607,8 +1626,8 @@ class LexMySQL(Lex):
         sbj=None,
         vrb=None,
         obj=None,
-        idn_order='ASC',
-        jbo_order='ASC',
+        idn_ascending=True,
+        jbo_ascending=True,
         jbo_vrb=(),
         obj_group=False,
         jbo_strictly=False,
@@ -1630,7 +1649,7 @@ class LexMySQL(Lex):
         will probably need two passes on it anyway.
 
         The order of words is chronological.
-        idn_order='DESC' for reverse-chronological.
+        idn_ascending=False for reverse-chronological.
         The order of jbo words is always chronological.
 
         obj_group=True to collapse by obj.
@@ -1646,10 +1665,10 @@ class LexMySQL(Lex):
         assert isinstance(sbj, (Number, Word, type(None)))
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None)))
-        assert idn_order in ('ASC', 'DESC')
-        assert jbo_order in ('ASC', 'DESC')
-        assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type(jbo_vrb).__name__
+        assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type_name(jbo_vrb)
         assert hasattr(jbo_vrb, '__iter__')
+        idn_order = 'ASC' if idn_ascending else 'DESC'
+        jbo_order = 'ASC' if jbo_ascending else 'DESC'
         query_args = [
             'SELECT '
             'w.obj AS obj, '   # NOTE:  Avoid 
@@ -1776,13 +1795,19 @@ class LexMySQL(Lex):
     class SuperSelectStringString(TypeError):
         pass
 
+    class SuperIdentifier(six.text_type):
+        """Identifier in an SQL super-query that could go in `back-ticks`."""
+
+    class TableName(SuperIdentifier):
+        """Name of a MySQL table in a super-query"""
+
     def _super_parse(self, *query_args, **kwargs):
         """
         Build a prepared statement query from a list of sql statement fragments
         interleaved with data parameters.
 
         Return a tuple of the two parameters for cursor.execute(),
-        Namely (query, parameters) where query is a string with ?'s.
+        Namely (query, parameters) where query is a string with ? placeholders.
         """
         # TODO:  Recursive query_args?
         # So super_select(*args) === super_select(args) === super_select([args]) etc.
@@ -1795,9 +1820,9 @@ class LexMySQL(Lex):
         for index, (arg_previous, arg_next) in enumerate(zip(query_args[:-1], query_args[1:])):
             if (
                     isinstance(arg_previous, six.string_types) and
-                not isinstance(arg_previous, (Text, Lex.SuperIdentifier)) and
+                not isinstance(arg_previous, (Text, self.SuperIdentifier)) and
                     isinstance(arg_next, six.string_types) and
-                not isinstance(arg_next, (Text, Lex.SuperIdentifier))
+                not isinstance(arg_next, (Text, self.SuperIdentifier))
             ):
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments should not be strings.  " +
@@ -1823,7 +1848,7 @@ class LexMySQL(Lex):
             if isinstance(query_arg, Text):
                 query += '?'
                 parameters.append(query_arg.unicode())
-            elif isinstance(query_arg, Lex.SuperIdentifier):
+            elif isinstance(query_arg, self.SuperIdentifier):
                 query += '`' + six.text_type(query_arg) + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
                 query += query_arg
@@ -1836,6 +1861,8 @@ class LexMySQL(Lex):
             # elif isinstance(query_arg, (list, tuple, set)):
             # TODO:  Dictionary for INSERT or UPDATE syntax SET c=z, c=z, c=z, ...
             elif is_iterable(query_arg):
+                # TODO:  query_arg should probably be passed through list() here, so
+                #        that a generated iterable could be supported.
                 query += ','.join(['?']*len(query_arg))
                 try:
                     parameters += self._parametric_forms(query_arg)
@@ -1847,15 +1874,19 @@ class LexMySQL(Lex):
                             what=str(e)
                         )
                     )
-                # TODO: make these embedded iterables recursive
+                # TODO: make these embedded iterables recursive.  Or flatten query_args.
             elif query_arg is None:
-                pass
+                '''
+                None is ignored.  This is useful if you want consecutive plaintext query_args,
+                which would otherwise raise a SuperSelectStringString exception.  
+                Intersperse None instead.
+                '''
             else:
                 raise self.SuperSelectTypeError(
                     "super_select() argument {index_one_based} of {n} type {type} is not supported.".format(
                         index_one_based=index_zero_based+1,
                         n=len(query_args),
-                        type=type(query_arg).__name__
+                        type=type_name(query_arg)
                     )
                 )
             query += ' '
@@ -1873,7 +1904,7 @@ class LexMySQL(Lex):
             return cursor.fetchone()
 
     class QueryError(Exception):
-        """super_query() had a MySQL exception.  Report the query."""
+        """super_query() had a MySQL exception.  Report the query string along with the error message."""
 
     def super_query(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
@@ -1932,7 +1963,7 @@ class LexMySQL(Lex):
             elif isinstance(sub_arg, Word):
                 yield sub_arg.idn.raw
             else:
-                raise TypeError("contains a " + type(sub_arg).__name__)
+                raise TypeError("contains a " + type_name(sub_arg))
 
     # def words_from_idns(self, idns):
     #     # TODO:  Generator?  Is this even used anywhere??
@@ -1987,9 +2018,21 @@ def idn_from_word_or_number(x):
         raise TypeError(
             "idn_from_word_or_number({}) is not supported, "
             "only Word or Number.".format(
-                type(x).__name__,
+                type_name(x),
             )
         )
+
+
+def word_match(word_1, word_or_words_2):
+    """Actually they can be idns too."""
+    # assert not is_iterable(word_1)
+    if is_iterable(word_or_words_2):
+        for word_2 in word_or_words_2:
+            if word_match(word_1, word_2):
+                return True
+        return False
+    else:
+        return idn_from_word_or_number(word_1) == idn_from_word_or_number(word_or_words_2)
 
 
 def is_iterable(x):
@@ -2076,7 +2119,7 @@ class Text(six.text_type):
         else:
             raise TypeError("Text({value} type {type}) is not supported".format(
                 value=repr(the_string),
-                type=type(the_string).__name__
+                type=type_name(the_string)
             ))
 
     @classmethod

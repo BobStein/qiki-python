@@ -1927,7 +1927,7 @@ class Suffix(object):
 
     def qstring(self, underscore=1):
         """
-        The qstring of a suffix only underscore-separates the payload (if any) from the rest.
+        The qstring of a suffix only underscore-separates the payload (if any) from the overhead.
 
         Even if the payload is itself a Number, its parts will not be underscore-separated.
         """
@@ -2188,7 +2188,7 @@ def type_name(x):
     """
     the_type_name = type(x).__name__
     if the_type_name == 'instance':
-        return x.__class__.__name__
+        the_type_name = x.__class__.__name__
     return the_type_name
 assert 'int' == type_name(3)
 assert 'list' == type_name([])
@@ -2206,7 +2206,6 @@ assert 'function' == type_name(type_name)
 #     versus 0q81FF_028F5C28F5C28F60 for ~0.0100000000000000002, 10 bytes, as close as float gets to 0.01
 
 # TODO:  decimal.Decimal
-# TODO:  complex
 # TODO:  Numpy types
 # SEE:  http://docs.scipy.org/doc/numpy/user/basics.types.html
 # TODO:  other Numpy compatibilities?
@@ -2576,3 +2575,5 @@ assert 'function' == type_name(type_name)
 # In a way the existing Suffix scheme is already a right-lengthed export, with payload-type-length-00
 
 # TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity there.
+# TODO:  Are Numbers immutable after __init__() is done or not?
+#        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
