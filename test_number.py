@@ -2302,10 +2302,9 @@ class NumberIsTests(NumberTests):
         self.assertTrue (Number('0q8A_01').is_whole())
         self.assertTrue (Number('0q8A_01').is_whole())
         self.assertTrue (Number('0q8A_010000000000000001').is_whole())
-        self.assertTrue (Number('0q8A_0100000000000000010000').is_whole())
+        self.assertTrue (Number('0q8A_010000000000000001').is_whole())
         self.assertFalse(Number('0q8A_0100000000000000010001').is_whole())
         self.assertFalse(Number('0q8A_01000000000000000180').is_whole())
-        self.assertTrue (Number('0q8A_01000000000000000200').is_whole())
         self.assertTrue (Number('0q8A_010000000000000002').is_whole())
 
         self.assertEqual(Number('0q8A_01'), 2**64)
@@ -3539,6 +3538,20 @@ class NumberSuffixTests(NumberTests):
             list(Number('0q__00').suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'length underflow'):
             list(Number('0q__00__123456_7F0400').suffix_indexes_backwards())
+
+    def test_suffix_affecting_float(self):
+        self.assertEqual(42.0, float(Number(42)))
+        self.assertEqual(42.0, float(Number(42, Suffix(Suffix.Type.TEST))))
+        self.assertEqual(42.0, float(Number(42, Suffix(Suffix.Type.TEST, Number(100)))))
+
+    def test_suffix_affecting_int(self):
+        self.assertEqual(42, int(Number(42)))
+        self.assertEqual(42, int(Number(42, Suffix(Suffix.Type.TEST))))
+        self.assertEqual(42, int(Number(42, Suffix(Suffix.Type.TEST, Number(100)))))
+
+        self.assertEqual(65536, int(Number(65536)))
+        self.assertEqual(65536, int(Number(65536, Suffix(Suffix.Type.TEST))))
+        self.assertEqual(65536, int(Number(65536, Suffix(Suffix.Type.TEST, Number(100)))))
 
 
 # noinspection SpellCheckingInspection

@@ -228,6 +228,8 @@ class Number(numbers.Complex):
             self._from_complex(content)
         elif content is None:
             self.raw = self.RAW_NAN
+            assert not args_list
+            # NOTE:  Avoid suffixing NAN.
         else:
             raise self.ConstructorTypeError("{outer}({inner}) is not supported".format(
                 outer=type_name(self),
@@ -1015,13 +1017,18 @@ class Number(numbers.Complex):
         return return_value + error_tag
 
     def __int__(self):
-        """To an integer."""
-        int_by_dictionary = self.__int__by_zone_dictionary()
-        assert int_by_dictionary == self.__int__by_zone_ifs(), (
+        """
+        To an integer.
+
+        Only the unsuffixed part is converted, otherwise suffix bytes
+        might get interpreted as part of the qan value.
+        """
+        int_by_dictionary = self._int_by_zone_dictionary()
+        assert int_by_dictionary == self._int_by_zone_ifs(), (
             "Mismatched int encoding for {r}:  dict-method={d}, if-method={i}".format(
                 r=repr(self),
                 d=int_by_dictionary,
-                i=self.__int__by_zone_ifs(),
+                i=self._int_by_zone_ifs(),
             )
         )
         return int_by_dictionary
@@ -1036,11 +1043,11 @@ class Number(numbers.Complex):
         """To a complex number."""
         return complex(float(self.real), float(self.imag))
 
-    def __int__by_zone_dictionary(self):
+    def _int_by_zone_dictionary(self):
         """To an integer, using a dictionary keyed by Zone."""
-        return self.__int__zone_dict[self.zone](self)
+        return self._int_zone_dict[self.zone](self)
 
-    __int__zone_dict =  {
+    _int_zone_dict =  {
         Zone.TRANSFINITE:         lambda self: self._int_cant_be_positive_infinity(),
         Zone.LUDICROUS_LARGE:     lambda self: self._to_int_positive(),
         Zone.POSITIVE:            lambda self: self._to_int_positive(),
@@ -1057,7 +1064,7 @@ class Number(numbers.Complex):
         Zone.NAN:                 lambda self: self._int_cant_be_nan(),
     }
 
-    def __int__by_zone_ifs(self):
+    def _int_by_zone_ifs(self):
         """To an integer, using exhaustive if-clauses."""
         if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
         elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
@@ -1106,22 +1113,16 @@ class Number(numbers.Complex):
 
     def __float__(self):
         """To a floating point number."""
-        try:
-            is_complex = self.is_complex()
-            unsuffixed = self.unsuffixed
-        except Suffix.RawError:
-            is_complex = False
-            unsuffixed = self
-        if is_complex:
+        if self.is_complex():
             raise TypeError(
                 "{} has an imaginary part, "
                 "use float(n.real) or complex(n) "
                 "instead of float(n)".format(self.qstring())
             )
-        float_by_dictionary = unsuffixed.__float__by_zone_dictionary()
-        assert floats_really_same(float_by_dictionary, unsuffixed.__float__by_zone_ifs()), (
+        float_by_dictionary = self.__float__by_zone_dictionary()
+        assert floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
             "Mismatched float encoding for %s:  dict-method=%s, if-method=%s" % (
-                repr(unsuffixed), float_by_dictionary, unsuffixed.__float__by_zone_ifs()
+                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
             )
         )
         return float_by_dictionary
@@ -1199,15 +1200,17 @@ class Number(numbers.Complex):
     def qan_raw(self, max_qigits=None):
         """The qan in raw, base-256 bytes."""
         # TODO:  unit test
+        unsuffixed_raw = self.unsuffixed.raw
+        offset = self.qan_offset()
         if max_qigits is None:
-            return self.raw[self.qan_offset() : ]
+            return unsuffixed_raw[offset : ]
         else:
-            offset = self.qan_offset()
-            return self.raw[offset : offset + max_qigits]
+            return unsuffixed_raw[offset : offset + max_qigits]
 
 
     def qex_raw(self):
         """The qex in raw bytes"""
+        # TODO:  Any way in the world a suffix can impinge upon the qex the way it can upon the qan?  On the zone?!
         # TODO:  unit test
         return self.raw[ : self.qan_offset()]
 
@@ -1232,7 +1235,7 @@ class Number(numbers.Complex):
 
     def qex_int(self):
         """
-        The base-256 exponent.
+        The base-256 exponent.  Interpreting qan in the range [0...0.99609375)
 
          2 for [    256...65536)
          1 for [      1...256)
@@ -1247,6 +1250,9 @@ class Number(numbers.Complex):
             qex = encoder(self)
         except IndexError:
             # TODO:  Unit test this branch.
+            #        It may not be possible without breaking the .zone() method,
+            #        because Zone.POSITIVE must have at least one byte,
+            #        and Zone.FRACTIONAL must have at least two.
             raise self.QexValueError("qex broken for {}".format(repr(self)))
         return qex
 
@@ -1404,6 +1410,7 @@ class Number(numbers.Complex):
             return False
         # XXX:  This could be less sneaky if raw were not the primary internal representation.
         # TODO:  is_suffixed(type)?
+        # TODO:  Monkeypatch test all Numbers, that is_suffixed() === not empty(suffixes()), etc.
 
     def plus_suffix(self, suffix_or_type=None, payload=None):
         """
