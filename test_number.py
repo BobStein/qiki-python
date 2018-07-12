@@ -391,44 +391,44 @@ class NumberBasicTests(NumberTests):
 
     def test_qantissa_max_qigits(self):
         qstring =     '0q82_112233445566778899AABBCCDDEEFF'
-        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qantissa())
-        self.assertEqual((0x112233445566778899AABBCCDD    , 13), Number(qstring).qantissa(max_qigits=13))
-        self.assertEqual((0x112233445566778899AABBCCDDEE  , 14), Number(qstring).qantissa(max_qigits=14))
-        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qantissa(max_qigits=15))
-        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qantissa(max_qigits=16))
+        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qan_int_len())
+        self.assertEqual((0x112233445566778899AABBCCDD    , 13), Number(qstring).qan_int_len(max_qigits=13))
+        self.assertEqual((0x112233445566778899AABBCCDDEE  , 14), Number(qstring).qan_int_len(max_qigits=14))
+        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qan_int_len(max_qigits=15))
+        self.assertEqual((0x112233445566778899AABBCCDDEEFF, 15), Number(qstring).qan_int_len(max_qigits=16))
 
     def test_qantissa_positive(self):
-        self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
-        self.assertEqual((0x03E8,2), Number('0q83_03E8').qantissa())
-        self.assertEqual((0x0101,2), Number('0q83_0101').qantissa())
-        self.assertEqual((  0x01,1), Number('0q83_01').qantissa())
-        self.assertEqual((  0x00,0), Number('0q83').qantissa())
-        self.assertEqual((  0xFF,1), Number('0q82_FF').qantissa())
-        self.assertEqual((  0xFA,1), Number('0q7D_FA').qantissa())
+        self.assertEqual((0x03E8,2), Number('0q83_03E8').qan_int_len())
+        self.assertEqual((0x03E8,2), Number('0q83_03E8').qan_int_len())
+        self.assertEqual((0x0101,2), Number('0q83_0101').qan_int_len())
+        self.assertEqual((  0x01,1), Number('0q83_01').qan_int_len())
+        self.assertEqual((  0x00,0), Number('0q83').qan_int_len())
+        self.assertEqual((  0xFF,1), Number('0q82_FF').qan_int_len())
+        self.assertEqual((  0xFA,1), Number('0q7D_FA').qan_int_len())
 
     def test_qantissa_negative(self):
-        self.assertEqual((0xFE,1), Number('0q7D_FE').qantissa())
-        self.assertEqual((0x01,1), Number('0q7D_01').qantissa())
-        self.assertEqual((0xFEFFFFFA,4), Number('0q7A_FEFFFFFA').qantissa())
-        self.assertEqual((0x00000001,4), Number('0q7A_00000001').qantissa())
+        self.assertEqual((0xFE,1), Number('0q7D_FE').qan_int_len())
+        self.assertEqual((0x01,1), Number('0q7D_01').qan_int_len())
+        self.assertEqual((0xFEFFFFFA,4), Number('0q7A_FEFFFFFA').qan_int_len())
+        self.assertEqual((0x00000001,4), Number('0q7A_00000001').qan_int_len())
 
     def test_qantissa_fractional(self):
-        self.assertEqual(  (0x80,1), Number('0q81FF_80').qantissa())
-        self.assertEqual(  (0x40,1), Number('0q81FF_40').qantissa())
-        self.assertEqual((0x4220,2), Number('0q81FF_4220').qantissa())
+        self.assertEqual(  (0x80,1), Number('0q81FF_80').qan_int_len())
+        self.assertEqual(  (0x40,1), Number('0q81FF_40').qan_int_len())
+        self.assertEqual((0x4220,2), Number('0q81FF_4220').qan_int_len())
 
     def test_qantissa_fractional_neg(self):
-        self.assertEqual(  (0x01,1), Number('0q7E00_01').qantissa())
-        self.assertEqual(  (0x80,1), Number('0q7E00_80').qantissa())
-        self.assertEqual(  (0xC0,1), Number('0q7E00_C0').qantissa())
-        self.assertEqual(  (0xFF,1), Number('0q7E00_FF').qantissa())
-        self.assertEqual(  (0xFF,1), Number('0q7E01_FF').qantissa())
-        self.assertEqual((0xFF80,2), Number('0q7E01_FF80').qantissa())
+        self.assertEqual(  (0x01,1), Number('0q7E00_01').qan_int_len())
+        self.assertEqual(  (0x80,1), Number('0q7E00_80').qan_int_len())
+        self.assertEqual(  (0xC0,1), Number('0q7E00_C0').qan_int_len())
+        self.assertEqual(  (0xFF,1), Number('0q7E00_FF').qan_int_len())
+        self.assertEqual(  (0xFF,1), Number('0q7E01_FF').qan_int_len())
+        self.assertEqual((0xFF80,2), Number('0q7E01_FF80').qan_int_len())
 
     def test_qantissa_unsupported(self):
         number_has_no_qantissa = Number(0)
         with self.assertRaises(Number.QanValueError):
-            number_has_no_qantissa.qantissa()
+            number_has_no_qantissa.qan_int_len()
 
     def test_qexponent_unsupported(self):
         number_has_no_qexponent = Number(0)

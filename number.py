@@ -354,6 +354,9 @@ class Number(numbers.Complex):
 
     def __repr__(self):
         """Handle repr(Number(x))"""
+        # TODO:  Alternative repr() for suffixed numbers, e.g.
+        #        assert "Number('0q80__7E0100')"       == repr(Number(0, Suffix(Suffix.Type.TEST)))
+        #        assert "Number('0q80', Suffix(TEST))" == repr2(Number(0, Suffix(Suffix.Type.TEST)))
         return "Number('{}')".format(self.qstring())
 
     def __str__(self):
@@ -682,12 +685,12 @@ class Number(numbers.Complex):
     def is_whole(self):
         """Is the number an integer?"""
         if self.zone in ZoneSet.WHOLE_MAYBE:
-            (qan, qanlength) = self.qantissa()
-            qexp = self.qexponent() - qanlength
+            (qan_int, qan_len) = self.qan_int_len()
+            qexp = self.qexponent() - qan_len
             if qexp >= 0:
                 return True
             else:
-                if qan % exp256(-qexp) == 0:
+                if qan_int % exp256(-qexp) == 0:
                     return True
                 else:
                     return False
@@ -974,17 +977,16 @@ class Number(numbers.Complex):
     # ----------------------------------------
     def qstring(self, underscore=1):
         """
-        Output Number as a qstring:  assert '0q82_01' == Number(1).qstring()
+        Output Number as a qstring.  0q82_2A for Number(42)
 
+        assert '0q82_01' == Number(1).qstring()
+        assert '0q82_2A' == Number(42).qstring()
         assert '0q85_12345678' == Number(0x12345678).qstring()
+
         Qstring is a human-readable form of the raw representation of a qiki number
         Similar to 0x12AB for hexadecimal
         Except q for x, underscores optional, and of course the value interpretation differs.
         """
-        # DONE:  double-underscore 1-deep suffixes.  E.g. 0x82_01__8202_7F0300
-        # TODO:  triple-underscore 2-deep suffixes?  E.g. 0x82_01___8202__8203_7F0300_7F0800
-        # TODO:    quad-underscore 3-deep suffixes?  E.g. 0x82_01____8202___8203__8204_7F0300_7F0800_7F0D00
-        # TODO:  Alternative repr() for suffixed numbers, where calling-parens coincide with nesting depth.
         error_tag = ""
         if underscore == 0:
             return_value = '0q' + self.hex()
@@ -1085,15 +1087,15 @@ class Number(numbers.Complex):
     def _to_int_positive(self):
         """To a positive integer."""
         n = self.normalized()
-        (qan, qanlength) = n.qantissa()
-        qexp = n.qexponent() - qanlength
-        return shift_leftward(qan, qexp*8)
+        (qan_int, qan_len) = n.qan_int_len()
+        qexp = n.qexponent() - qan_len
+        return shift_leftward(qan_int, qexp*8)
 
     def _to_int_negative(self):
         """To a negative integer."""
-        (qan,qanlength) = self.qantissa()
-        qexp = self.qexponent() - qanlength
-        qan_negative = qan - exp256(qanlength)
+        (qan_int, qan_len) = self.qan_int_len()
+        qexp = self.qexponent() - qan_len
+        qan_negative = qan_int - exp256(qan_len)
         the_int = shift_leftward(qan_negative, qexp*8)
         if qexp < 0:
             extraneous_mask = exp256(-qexp) - 1
@@ -1167,32 +1169,33 @@ class Number(numbers.Complex):
             qexp = self.qexponent()
         except ValueError:
             return 0.0
-        (qan, qanlength) = self.qantissa(max_qigits=self.QIGITS_PRECISION_DEFAULT + 2)
+        (qan_int, qan_len) = self.qan_int_len(max_qigits=self.QIGITS_PRECISION_DEFAULT + 2)
         # NOTE:  The +2 gives slightly less inaccurate rounding on e.g. 0q82_01000000000000280001
         if self.raw < self.RAW_ZERO:
-            qan -= exp256(qanlength)
-            if qanlength > 0 and qan >= - exp256(qanlength-1):
-                (qan, qanlength) = (-1,1)
+            qan_int -= exp256(qan_len)
+            if qan_len > 0 and qan_int >= - exp256(qan_len-1):
+                (qan_int, qan_len) = (-1, 1)
         else:
-            if qanlength == 0 or qan <=  exp256(qanlength-1):
-                (qan, qanlength) = (1,1)
-        exponent_base_2 = 8 * (qexp-qanlength)
-        return math.ldexp(float(qan), exponent_base_2)
+            if qan_len == 0 or qan_int <=  exp256(qan_len-1):
+                (qan_int, qan_len) = (1, 1)
+        exponent_base_2 = 8 * (qexp - qan_len)
+        return math.ldexp(float(qan_int), exponent_base_2)
 
-    def qantissa(self, max_qigits=None):
-        """Extract the base-256 significand value in its integer form.
+    def qan_int_len(self, max_qigits=None):
+        # TODO:  Rename qan_int_len
+        """Extract the base-256 significand in integer form.  And its length.
 
-        That is, return a tuple of the integer qan, and the number of qigits it contains.
+        That is, return a tuple of the integer form of the qan, and the number of qigits it contains.
 
-        max_qigits limits how much of raw is looked at.  (None means no limit.)
+        max_qigits limits how many qigits.  (None means no limit.)
 
-        Returns a tuple:  (integer value of significand, number of qigits)
-        The number of qigits is the amount stored in the qantissa,
-        and is unrelated to the location of the radix point.
+        The number of qigits may be up to the number of bytes in the raw qan.
+        It is unrelated to the location of the radix point,
+        which may be between any qigits, and may be outside the qan integer.
         """
         raw_qan = self.qan_raw(max_qigits=max_qigits)
-        number_qantissa = unpack_big_integer(raw_qan)
-        return tuple((number_qantissa, len(raw_qan)))
+        qan_int = unpack_big_integer(raw_qan)
+        return tuple((qan_int, len(raw_qan)))
 
     def qan_raw(self, max_qigits=None):
         """The qan in raw, base-256 bytes."""
@@ -1215,18 +1218,18 @@ class Number(numbers.Complex):
         try:
             qan_offset = self.__qan_offset_dict[self.zone]
         except KeyError:
-            raise self.QanValueError("qantissa() not defined for %s" % repr(self))
+            raise self.QanValueError("qan not defined for {qstring}".format(qstring=self.qstring()))
         return qan_offset
 
     class QanValueError(ValueError):
-        """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qantissa()"""
+        """Qan for an unsupported zone raises this.  Trivial cases too, e.g. Number.ZERO.qan_int_len()"""
 
     __qan_offset_dict = {
         Zone.POSITIVE:       1,
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
-    }   # TODO:  ludicrous numbers should have a qantissa() too (offset 2^N)
+    }   # TODO:  ludicrous numbers will have a qan too (offset 2^N)
 
     def qexponent(self):
         """
@@ -2291,7 +2294,7 @@ assert 'function' == type_name(type_name)
 # TODO:  change raw from str/bytes to bytearray?
 # SEE:  http://ze.phyr.us/bytearray/
 # TODO:  raise subclass of built-in exceptions
-# TODO:  combine qantissa() and qexponent() into _unpack() that extracts all three pieces
+# TODO:  combine qantissa()'s pair and qexponent() into _unpack() that extracts all three pieces
 # (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should (continue to) be '0q'
