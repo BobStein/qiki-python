@@ -2575,4 +2575,4 @@ assert 'function' == type_name(type_name)
 # k and y are kinda rotated versions.  u/n and m/w are kinda rotated pairs too.
 # In a way the existing Suffix scheme is already a right-lengthed export, with payload-type-length-00
 
-# TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity.
+# TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity there.
