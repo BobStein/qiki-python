@@ -26,36 +26,35 @@ class NumberAlternate(Number):
     """
     This derived class will be tested here, in the place of Number.
 
-    It implements some alternative methods, and makes sure they behave the same as the standard methods.
+    It implements some alternate methods, and makes sure they behave the same as the standard methods.
     """
 
     @property
     def zone(self):
         """Try both methods for computing zone.  Make sure they agree."""
         zone_original = super(NumberAlternate, self).zone
-        zone_alternate = self.zone_alternative_by_loop()
+        zone_alternate = self.zone_alternate_by_loop()
         assert zone_alternate == zone_original, \
             "Mismatched zone determination for {qstring}:  if-method {if_answer}, loop-method {loop_answer}".format(
                 qstring=self.qstring(),
                 if_answer=Zone.name_from_code[zone_original],
                 loop_answer=Zone.name_from_code[zone_alternate],
             )
-
         return zone_original
 
-    def zone_alternative_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
+    def zone_alternate_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
         """Get the Zone for a Number, by scanning Zone values."""
         for z in Zone.descending_codes:
             if z <= self.raw:
                 return z
-        raise RuntimeError("zone_alternative_by_loop() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
+        raise RuntimeError("zone_alternate_by_loop() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
 
 
 
     def __int__(self):
         """Try both methods for converting to int.  Make sure they agree."""
         int_original = super(NumberAlternate, self).__int__()
-        int_alternate = self._int_alternative_by_ifs()
+        int_alternate = self._int_alternate_by_ifs()
         assert int_alternate == int_original, (
             "Mismatched int conversion for {qstring}:  dict-method {dict_answer}, if-method {if_answer}".format(
                 qstring=self.qstring(),
@@ -65,7 +64,7 @@ class NumberAlternate(Number):
         )
         return int_original
 
-    def _int_alternative_by_ifs(self):
+    def _int_alternate_by_ifs(self):
         """Convert to an integer, using exhaustive if-clauses."""
         if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
         elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
@@ -79,7 +78,7 @@ class NumberAlternate(Number):
     def __float__(self):
         """Try both methods for converting to float.  Make sure they agree."""
         float_original = super(NumberAlternate, self).__float__()
-        float_alternate = self._float_alternative_by_ifs()
+        float_alternate = self._float_alternate_by_ifs()
         assert floats_really_same(float_alternate, float_original), (
             "Mismatched float conversion for {qstring}:  dict-method {dict_answer}, if-method {if_answer}".format(
                 qstring=self.qstring(),
@@ -89,7 +88,7 @@ class NumberAlternate(Number):
         )
         return float_original
 
-    def _float_alternative_by_ifs(self):
+    def _float_alternate_by_ifs(self):
         """To a floating point number, using exhaustive if-clauses."""
         _zone = self.zone
         if _zone in ZoneSet.REASONABLY_NONZERO:
@@ -104,6 +103,37 @@ class NumberAlternate(Number):
             return float('-inf')
         else:
             return float('nan')
+
+
+
+    def is_suffixed(self):
+        """Try all methods for determining whether the number has any suffixes.  Make sure they agree."""
+        is_suffixed_original = super(NumberAlternate, self).is_suffixed()
+        is_suffixed_alternate_1 = self._is_suffixed_alternate_1()
+        is_suffixed_alternate_2 = self._is_suffixed_alternate_2()
+        assert is_suffixed_alternate_1 == is_suffixed_alternate_2 == is_suffixed_original, (
+            "Mismatched is_suffixed for {qstring}:  "
+            "terminator-method {terminator_answer}, "
+            "parsing-method {parsing_answer}, "
+            "suffixes-method {suffixes_answer}".format(
+                qstring=self.qstring(),
+                terminator_answer=is_suffixed_original,
+                parsing_answer=is_suffixed_alternate_1,
+                suffixes_answer=is_suffixed_alternate_2,
+            )
+        )
+        return is_suffixed_original
+
+    def _is_suffixed_alternate_1(self):
+        try:
+            next(self._suffix_indexes_backwards())
+        except StopIteration:
+            return False
+        else:
+            return True
+
+    def _is_suffixed_alternate_2(self):
+        return len(self.suffixes) != 0
 
 
 NumberOriginal = Number
@@ -3428,14 +3458,14 @@ class NumberSuffixTests(NumberTests):
             #     Well 0q82_01000400!? 1.00006103516
             #     Well 0q82_01000300!? 1.00004577637
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                list(n.suffix_indexes_backwards())
+                list(n._suffix_indexes_backwards())
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
                 _ = n.suffixes
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
                 _ = n.unsuffixed
 
         def good_to_parse(n):
-            list(n.suffix_indexes_backwards())
+            list(n._suffix_indexes_backwards())
             _ = n.suffixes
             _ = n.unsuffixed
 
@@ -3490,7 +3520,7 @@ class NumberSuffixTests(NumberTests):
         )
 
     def test_suffix_extract_number(self):
-        self.assertEqual(Number(88),       Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
+        self.assertEqual( Number(88),      Number(1).plus_suffix(0x11, Number(88)).suffix(0x11).number)
         self.assertEqual( Number(-123.75), Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
         self.assertEqual(        -123.75 , Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number)
         self.assertIs(NumberOriginal, type(Number(1).plus_suffix(0x11, Number(-123.75)).suffix(0x11).number))
@@ -3611,45 +3641,45 @@ class NumberSuffixTests(NumberTests):
     #     assert_root_consistent(Number('0q82_10__FFFFFF_7F0400'))
     #     assert_root_consistent(Number('0q82_10__123456_7F0400'))
 
-    def test_suffix_indexes_backwards(self):
-        self.assertEqual(    [], list(Number('0q').suffix_indexes_backwards()))
-        self.assertEqual(    [], list(Number('0q82_10').suffix_indexes_backwards()))
-        self.assertEqual(   [2], list(Number('0q82_10__0000').suffix_indexes_backwards()))
-        self.assertEqual(   [2], list(Number('0q82_10__FFFFFF_7F0400').suffix_indexes_backwards()))
-        self.assertEqual(   [2], list(Number('0q82_10__123456_7F0400').suffix_indexes_backwards()))
-        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__0000').suffix_indexes_backwards()))
-        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__789ABC_7F0400').suffix_indexes_backwards()))
-        self.assertEqual([4, 2], list(Number('0q82_10__0000__789ABC_7F0400').suffix_indexes_backwards()))
+    def test__suffix_indexes_backwards(self):
+        self.assertEqual(    [], list(Number('0q')._suffix_indexes_backwards()))
+        self.assertEqual(    [], list(Number('0q82_10')._suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__0000')._suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__FFFFFF_7F0400')._suffix_indexes_backwards()))
+        self.assertEqual(   [2], list(Number('0q82_10__123456_7F0400')._suffix_indexes_backwards()))
+        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__0000')._suffix_indexes_backwards()))
+        self.assertEqual([8, 2], list(Number('0q82_10__123456_7F0400__789ABC_7F0400')._suffix_indexes_backwards()))
+        self.assertEqual([4, 2], list(Number('0q82_10__0000__789ABC_7F0400')._suffix_indexes_backwards()))
 
-    def test_suffix_indexes_backwards_NAN(self):
+    def test__suffix_indexes_backwards_NAN(self):
         with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
-            list(Number('0q__0000').suffix_indexes_backwards())
+            list(Number('0q__0000')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
-            list(Number('0q__123456_7F0400').suffix_indexes_backwards())
+            list(Number('0q__123456_7F0400')._suffix_indexes_backwards())
 
-    def test_suffix_indexes_backwards_overflow(self):
-        self.assertEqual([1], list(Number('0q80__0000').suffix_indexes_backwards()))
-        self.assertEqual([1], list(Number('0q80__7F0100').suffix_indexes_backwards()))
-        self.assertEqual([1], list(Number('0q80__12_7F0200').suffix_indexes_backwards()))
-        self.assertEqual([1], list(Number('0q80__1234_7F0300').suffix_indexes_backwards()))
-        self.assertEqual([1], list(Number('0q80__123456_7F0400').suffix_indexes_backwards()))
+    def test__suffix_indexes_backwards_overflow(self):
+        self.assertEqual([1], list(Number('0q80__0000')._suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__7F0100')._suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__12_7F0200')._suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__1234_7F0300')._suffix_indexes_backwards()))
+        self.assertEqual([1], list(Number('0q80__123456_7F0400')._suffix_indexes_backwards()))
         with self.assertRaisesRegex(Suffix.RawError, r'NAN'):
-            list(Number('0q__80123456_7F0500').suffix_indexes_backwards())
+            list(Number('0q__80123456_7F0500')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
-            list(Number('0q80__123456_7F0600').suffix_indexes_backwards())
+            list(Number('0q80__123456_7F0600')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
-            list(Number('0q80__123456_7F0700').suffix_indexes_backwards())
+            list(Number('0q80__123456_7F0700')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
-            list(Number('0q80__123456_7F8800').suffix_indexes_backwards())
+            list(Number('0q80__123456_7F8800')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'payload overflow'):
-            list(Number('0q80__123456_7FFF00').suffix_indexes_backwards())
+            list(Number('0q80__123456_7FFF00')._suffix_indexes_backwards())
 
-    def test_suffix_indexes_backwards_underflow(self):
-        self.assertEqual([1], list(Number('0q80__0000').suffix_indexes_backwards()))
+    def test__suffix_indexes_backwards_underflow(self):
+        self.assertEqual([1], list(Number('0q80__0000')._suffix_indexes_backwards()))
         with self.assertRaisesRegex(Suffix.RawError, r'length underflow'):
-            list(Number('0q__00').suffix_indexes_backwards())
+            list(Number('0q__00')._suffix_indexes_backwards())
         with self.assertRaisesRegex(Suffix.RawError, r'length underflow'):
-            list(Number('0q__00__123456_7F0400').suffix_indexes_backwards())
+            list(Number('0q__00__123456_7F0400')._suffix_indexes_backwards())
 
     def test_suffix_affecting_float(self):
         self.assertEqual(42.0, float(Number(42)))

@@ -1331,11 +1331,11 @@ class Number(numbers.Complex):
         """Does this Number have any suffixes?"""
         try:
             return six.indexbytes(self.raw, -1) == Suffix.TERMINATOR
+            # NOTE:  This would be less sneaky if the internal representation kept suffixes in a list.
         except IndexError:
+            '''Well it has no bytes at all.  So no.'''
             return False
-        # XXX:  This could be less sneaky if raw were not the primary internal representation.
         # TODO:  is_suffixed(type)?
-        # TODO:  Monkeypatch test all Numbers, that is_suffixed() === not empty(suffixes()), etc.
 
     def plus_suffix(self, suffix_or_type=None, payload=None):
         """
@@ -1384,6 +1384,16 @@ class Number(numbers.Complex):
         if not any_deleted:
             raise Suffix.NoSuchType("Number {} had no suffix type {:02x}".format(self.qstring(), old_type))
         return new_number
+
+    def suffix(self, sought_type):
+        """Get suffix by type.  Only sees the first (left-most) suffix of a type."""
+        for suffix in self.suffixes:
+            if suffix.type_ == sought_type:
+                return suffix
+        raise Suffix.NoSuchType("Number {qstring} has no suffix type {sought_type:02x}".format(
+            qstring=self.qstring(),
+            sought_type=sought_type
+        ))
 
     @property
     def unsuffixed(self):
@@ -1437,7 +1447,7 @@ class Number(numbers.Complex):
         #            arm
 
         index_unsuffixed_end = len(self.raw)
-        for index_unsuffixed_end in self.suffix_indexes_backwards():
+        for index_unsuffixed_end in self._suffix_indexes_backwards():
             '''Find the FIRST suffix index, i.e. the LAST one backwards.'''
         return self.from_raw(self.raw[ : index_unsuffixed_end])
 
@@ -1448,7 +1458,7 @@ class Number(numbers.Complex):
         def suffixes_backwards():
             """Generate the Suffix objects from this Number, right-to-left."""
             last_suffix_index = len(self.raw)
-            for suffix_index in self.suffix_indexes_backwards():
+            for suffix_index in self._suffix_indexes_backwards():
                 index_type = last_suffix_index - 3
                 if index_type >= suffix_index:
                     type_ = six.indexbytes(self.raw, index_type)
@@ -1460,17 +1470,7 @@ class Number(numbers.Complex):
 
         return list(reversed(list(suffixes_backwards())))
 
-    def suffix(self, sought_type):
-        """Get suffix by type.  Only sees the first (left-most) suffix of a type."""
-        for suffix in self.suffixes:
-            if suffix.type_ == sought_type:
-                return suffix
-        raise Suffix.NoSuchType("Number {qstring} has no suffix type {sought_type:02x}".format(
-            qstring=self.qstring(),
-            sought_type=sought_type
-        ))
-
-    def suffix_indexes_backwards(self):
+    def _suffix_indexes_backwards(self):
         """
         Find the starting indexes of all the suffixes.  Last first, that is right-to-left.
 
@@ -2574,3 +2574,5 @@ assert 'function' == type_name(type_name)
 # s and z are mirrors in almost all fonts and styles.
 # k and y are kinda rotated versions.  u/n and m/w are kinda rotated pairs too.
 # In a way the existing Suffix scheme is already a right-lengthed export, with payload-type-length-00
+
+# TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity.
