@@ -686,11 +686,11 @@ class Number(numbers.Complex):
         """Is the number an integer?"""
         if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan_int, qan_len) = self.qan_int_len()
-            qexp = self.qexponent() - qan_len
-            if qexp >= 0:
+            qex = self.qex_int() - qan_len
+            if qex >= 0:
                 return True
             else:
-                if qan_int % exp256(-qexp) == 0:
+                if qan_int % exp256(-qex) == 0:
                     return True
                 else:
                     return False
@@ -889,7 +889,7 @@ class Number(numbers.Complex):
         The big zone-based if-statement in this function reveals the following conversion in its lambdas:
             qex <-- base 256 exponent
 
-        Contrast __qexponent_encode_dict().
+        Contrast _qex_encoder().
         Example:  assert '0q82_01' == Number(1.0).qstring()
         Example:  assert '0q82_03243F6A8885A3' == Number(math.pi).qstring()
 
@@ -1088,20 +1088,20 @@ class Number(numbers.Complex):
         """To a positive integer."""
         n = self.normalized()
         (qan_int, qan_len) = n.qan_int_len()
-        qexp = n.qexponent() - qan_len
-        return shift_leftward(qan_int, qexp*8)
+        qex = n.qex_int() - qan_len
+        return shift_leftward(qan_int, qex*8)
 
     def _to_int_negative(self):
         """To a negative integer."""
         (qan_int, qan_len) = self.qan_int_len()
-        qexp = self.qexponent() - qan_len
+        qex = self.qex_int() - qan_len
         qan_negative = qan_int - exp256(qan_len)
-        the_int = shift_leftward(qan_negative, qexp*8)
-        if qexp < 0:
-            extraneous_mask = exp256(-qexp) - 1
+        the_int = shift_leftward(qan_negative, qex*8)
+        if qex < 0:
+            extraneous_mask = exp256(-qex) - 1
             extraneous = qan_negative & extraneous_mask
             if extraneous != 0:
-                the_int += 1   # XXX:  a more graceful way to floor to 0 instead of to -inf
+                the_int += 1   # XXX:  Find a more graceful way to floor to 0 instead of to -inf
         return the_int
 
     def __float__(self):
@@ -1166,7 +1166,7 @@ class Number(numbers.Complex):
     def _to_float(self):
         """To a reasonable, nonzero floating point number."""
         try:
-            qexp = self.qexponent()
+            qex = self.qex_int()
         except ValueError:
             return 0.0
         (qan_int, qan_len) = self.qan_int_len(max_qigits=self.QIGITS_PRECISION_DEFAULT + 2)
@@ -1178,11 +1178,10 @@ class Number(numbers.Complex):
         else:
             if qan_len == 0 or qan_int <=  exp256(qan_len-1):
                 (qan_int, qan_len) = (1, 1)
-        exponent_base_2 = 8 * (qexp - qan_len)
+        exponent_base_2 = 8 * (qex - qan_len)
         return math.ldexp(float(qan_int), exponent_base_2)
 
     def qan_int_len(self, max_qigits=None):
-        # TODO:  Rename qan_int_len
         """Extract the base-256 significand in integer form.  And its length.
 
         That is, return a tuple of the integer form of the qan, and the number of qigits it contains.
@@ -1231,7 +1230,7 @@ class Number(numbers.Complex):
         Zone.NEGATIVE:       1,
     }   # TODO:  ludicrous numbers will have a qan too (offset 2^N)
 
-    def qexponent(self):
+    def qex_int(self):
         """
         The base-256 exponent.
 
@@ -1241,24 +1240,24 @@ class Number(numbers.Complex):
         -1 for [1/65536...1/256)
         """
         try:
-            encoder = self.__qexponent_encode_dict[self.zone]
+            encoder = self._qex_encoder[self.zone]
         except KeyError:
-            raise self.QexValueError("qexponent() not defined for {}".format(repr(self)))
+            raise self.QexValueError("qex not defined for {}".format(repr(self)))
         try:
             qex = encoder(self)
         except IndexError:
             # TODO:  Unit test this branch.
-            raise self.QexValueError("qexponent() broken for {}".format(repr(self)))
+            raise self.QexValueError("qex broken for {}".format(repr(self)))
         return qex
 
     class QexValueError(ValueError):
-        """There is no qex for some zones, e.g. Number.ZERO.qexponent()"""
+        """There is no qex for some zones, e.g. Number.ZERO.qex_int()"""
 
     # The following dictionary reveals this conversion in its lambdas:
     #     base 256 exponent <-- qex
     #
     # Contrast _from_float().
-    __qexponent_encode_dict = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+    _qex_encoder = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
         Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
@@ -2294,7 +2293,6 @@ assert 'function' == type_name(type_name)
 # TODO:  change raw from str/bytes to bytearray?
 # SEE:  http://ze.phyr.us/bytearray/
 # TODO:  raise subclass of built-in exceptions
-# TODO:  combine qantissa()'s pair and qexponent() into _unpack() that extracts all three pieces
 # (qex, qan, qan_length)
 # TODO:  _pack() opposite of _unpack() -- and use it in _from_float(), _from_int()
 # TODO:  str(Number('0q80')) should be '0'.  str(Number.NAN) should (continue to) be '0q'

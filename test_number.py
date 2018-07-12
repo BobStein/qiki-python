@@ -433,48 +433,48 @@ class NumberBasicTests(NumberTests):
     def test_qexponent_unsupported(self):
         number_has_no_qexponent = Number(0)
         with self.assertRaises(Number.QexValueError):
-            number_has_no_qexponent.qexponent()
+            number_has_no_qexponent.qex_int()
 
     def test_qexponent_positive(self):
-        self.assertEqual(1, Number('0q82_01').qexponent())
-        self.assertEqual(1, Number('0q82_01000001').qexponent())
-        self.assertEqual(1, Number('0q82_02').qexponent())
-        self.assertEqual(1, Number('0q82_FF').qexponent())
-        self.assertEqual(2, Number('0q83_01').qexponent())
-        self.assertEqual(3, Number('0q84_01').qexponent())
-        self.assertEqual(4, Number('0q85_01').qexponent())
-        self.assertEqual(5, Number('0q86_01').qexponent())
-        self.assertEqual(6, Number('0q87_01').qexponent())
-        self.assertEqual(124, Number('0qFD_01').qexponent())
-        self.assertEqual(125, Number('0qFE_01').qexponent())
+        self.assertEqual(1, Number('0q82_01').qex_int())
+        self.assertEqual(1, Number('0q82_01000001').qex_int())
+        self.assertEqual(1, Number('0q82_02').qex_int())
+        self.assertEqual(1, Number('0q82_FF').qex_int())
+        self.assertEqual(2, Number('0q83_01').qex_int())
+        self.assertEqual(3, Number('0q84_01').qex_int())
+        self.assertEqual(4, Number('0q85_01').qex_int())
+        self.assertEqual(5, Number('0q86_01').qex_int())
+        self.assertEqual(6, Number('0q87_01').qex_int())
+        self.assertEqual(124, Number('0qFD_01').qex_int())
+        self.assertEqual(125, Number('0qFE_01').qex_int())
 
     def test_qexponent_negative(self):
-        self.assertEqual(6, Number('0q78').qexponent())
-        self.assertEqual(5, Number('0q79').qexponent())
-        self.assertEqual(4, Number('0q7A').qexponent())
-        self.assertEqual(3, Number('0q7B').qexponent())
-        self.assertEqual(2, Number('0q7C').qexponent())
-        self.assertEqual(1, Number('0q7D').qexponent())
+        self.assertEqual(6, Number('0q78').qex_int())
+        self.assertEqual(5, Number('0q79').qex_int())
+        self.assertEqual(4, Number('0q7A').qex_int())
+        self.assertEqual(3, Number('0q7B').qex_int())
+        self.assertEqual(2, Number('0q7C').qex_int())
+        self.assertEqual(1, Number('0q7D').qex_int())
 
-        self.assertEqual(125, Number('0q01').qexponent())
-        self.assertEqual(124, Number('0q02').qexponent())
+        self.assertEqual(125, Number('0q01').qex_int())
+        self.assertEqual(124, Number('0q02').qex_int())
 
     def test_qexponent_fractional(self):
-        self.assertEqual(   0, Number('0q81FF_80').qexponent())
-        self.assertEqual(   0, Number('0q81FF_01').qexponent())
-        self.assertEqual(  -1, Number('0q81FE_01').qexponent())
-        self.assertEqual(  -2, Number('0q81FD_01').qexponent())
-        self.assertEqual(-123, Number('0q8184_01').qexponent())
-        self.assertEqual(-124, Number('0q8183_01').qexponent())
+        self.assertEqual(   0, Number('0q81FF_80').qex_int())
+        self.assertEqual(   0, Number('0q81FF_01').qex_int())
+        self.assertEqual(  -1, Number('0q81FE_01').qex_int())
+        self.assertEqual(  -2, Number('0q81FD_01').qex_int())
+        self.assertEqual(-123, Number('0q8184_01').qex_int())
+        self.assertEqual(-124, Number('0q8183_01').qex_int())
 
     def test_qexponent_fractional_neg(self):
-        self.assertEqual(   0, Number('0q7E00_01').qexponent())   # -.996
-        self.assertEqual(   0, Number('0q7E00_80').qexponent())   # -.5
-        self.assertEqual(   0, Number('0q7E00_FF').qexponent())   # -.004
-        self.assertEqual(  -1, Number('0q7E01_FF').qexponent())
-        self.assertEqual(  -2, Number('0q7E02_FF').qexponent())
-        self.assertEqual(-123, Number('0q7E7B_FF').qexponent())
-        self.assertEqual(-124, Number('0q7E7C_FF').qexponent())
+        self.assertEqual(   0, Number('0q7E00_01').qex_int())   # -.996
+        self.assertEqual(   0, Number('0q7E00_80').qex_int())   # -.5
+        self.assertEqual(   0, Number('0q7E00_FF').qex_int())   # -.004
+        self.assertEqual(  -1, Number('0q7E01_FF').qex_int())
+        self.assertEqual(  -2, Number('0q7E02_FF').qex_int())
+        self.assertEqual(-123, Number('0q7E7B_FF').qex_int())
+        self.assertEqual(-124, Number('0q7E7C_FF').qex_int())
 
     def test_alias_one(self):
         """
