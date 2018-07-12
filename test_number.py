@@ -641,6 +641,62 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF', normalize=True).qstring())
         self.assertEqual('0q7D_FF',         Number('0q7D_FFDEADBEEF').normalized().qstring())
 
+    def test_normalize_plateau_suffixed(self):
+        self.assertEqual('0q83_01__7E0100', Number('0q83', Suffix(Suffix.Type.TEST)).normalized().qstring())
+        self.assertEqual('0q82_01__7E0100', Number('0q82', Suffix(Suffix.Type.TEST)).normalized().qstring())
+        self.assertEqual('0q81FF_01__7E0100', Number('0q81FF_00BEEF', Suffix(Suffix.Type.TEST)).normalized().qstring())
+        self.assertEqual('0q7E00_FF__7E0100', Number('0q7E00_FFBEEF', Suffix(Suffix.Type.TEST)).normalized().qstring())
+        self.assertEqual('0q7D_FF__7E0100', Number('0q7E', Suffix(Suffix.Type.TEST)).normalized().qstring())
+        self.assertEqual('0q7C_FF__7E0100', Number('0q7D', Suffix(Suffix.Type.TEST)).normalized().qstring())
+
+    def test_normalize_imaginary(self):
+        n = Number(42, Suffix(Suffix.Type.IMAGINARY, Number(10)))
+        self.assertEqual('0q82_2A__820A_690300', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A__820A_690300', n.qstring())
+
+        n = Number(42, Suffix(Suffix.Type.IMAGINARY, Number(0)))
+        self.assertEqual('0q82_2A__80_690200', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A', n.qstring())
+
+        n = Number(
+            42,
+            Suffix(Suffix.Type.IMAGINARY, Number(10)),
+            Suffix(Suffix.Type.IMAGINARY, Number(10))
+        )
+        self.assertEqual('0q82_2A__820A_690300__820A_690300', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A__820A_690300__820A_690300', n.qstring())
+
+        n = Number(
+            42,
+            Suffix(Suffix.Type.IMAGINARY, Number(10)),
+            Suffix(Suffix.Type.IMAGINARY, Number(0))
+        )
+        self.assertEqual('0q82_2A__820A_690300__80_690200', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A__820A_690300__80_690200', n.qstring())
+
+        n = Number(
+            42,
+            Suffix(Suffix.Type.IMAGINARY, Number(0)),
+            Suffix(Suffix.Type.IMAGINARY, Number(10))
+        )
+        self.assertEqual('0q82_2A__80_690200__820A_690300', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A__80_690200__820A_690300', n.qstring())
+
+        n = Number(
+            42,
+            Suffix(Suffix.Type.IMAGINARY, Number(0)),
+            Suffix(Suffix.Type.IMAGINARY, Number(0))
+        )
+        self.assertEqual('0q82_2A__80_690200__80_690200', n.qstring())
+        n._normalize_imaginary()
+        self.assertEqual('0q82_2A', n.qstring())
+
+
     def test_int_plateau(self):
         self.assertEqual(65536, int(Number('0q84_01')))
         self.assertEqual(65536, int(Number('0q84')))
@@ -2944,16 +3000,16 @@ class NumberSuffixTests(NumberTests):
     # the value returned by float(), and not break tests here when it's implemented.)
 
     def test_plus_suffix_type(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix.Type.TEST))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.Type.TEST)))
 
     def test_plus_suffix_type_by_class(self):
-        self.assertEqual(Number('0q82_01__7E0100'), Number(1).plus_suffix(Suffix(Suffix.Type.TEST)))
+        self.assertEqual(Number('0q82_01__7E0100'), Number(1, Suffix(Suffix.Type.TEST)))
 
     def test_plus_suffix_type_and_payload(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix.Type.TEST, b'\x88'))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1, Suffix(Suffix.Type.TEST, b'\x88')))
 
     def test_plus_suffix_type_and_payload_by_class(self):
-        self.assertEqual(Number('0q82_01__887E0200'), Number(1).plus_suffix(Suffix(Suffix.Type.TEST, b'\x88')))
+        self.assertEqual(Number('0q82_01__887E0200'), Number(1, Suffix(Suffix.Type.TEST, b'\x88')))
 
     def test_qstring_empty(self):
         """Make sure trailing 00s in qstring literal are not stripped."""
@@ -2962,13 +3018,13 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual('0q82012233110300', Number('0q82_01__2233_110300').qstring(underscore=0))
 
     def test_plus_suffix_empty(self):
-        self.assertEqual(Number('0q82_01__0000'), Number(1).plus_suffix())
+        self.assertEqual(Number('0q82_01__0000'), Number(1, Suffix()))
 
     def test_plus_suffix_payload(self):
-        self.assertEqual(Number('0q82_01__3456_120300'), Number(1).plus_suffix(0x12, b'\x34\x56'))
+        self.assertEqual(Number('0q82_01__3456_120300'), Number(1, Suffix(0x12, b'\x34\x56')))
 
     def test_plus_suffix_qstring(self):
-        self.assertEqual('0q8201030100', Number(1).plus_suffix(0x03).qstring(underscore=0))
+        self.assertEqual('0q8201030100', Number(1, Suffix(0x03)).qstring(underscore=0))
         self.assertEqual('0q82_01__030100', Number(1).plus_suffix(0x03).qstring())
 
     def test_plus_suffix_qstring_empty(self):
@@ -3406,10 +3462,10 @@ class NumberSuffixTests(NumberTests):
             nan.plus_suffix(0x11, b'abcd')
 
     def test_is_suffixed(self):
-        self.assertTrue(Number(22).plus_suffix().is_suffixed())
-        self.assertTrue(Number(22).plus_suffix(0x11).is_suffixed())
-        self.assertTrue(Number(22).plus_suffix(0x11, b'abcd').is_suffixed())
-        self.assertTrue(Number(22).plus_suffix(0x11, Number(42)).is_suffixed())
+        self.assertTrue(Number(22, Suffix()).is_suffixed())
+        self.assertTrue(Number(22, Suffix(0x11)).is_suffixed())
+        self.assertTrue(Number(22, Suffix(0x11, b'abcd')).is_suffixed())
+        self.assertTrue(Number(22, Suffix(0x11, Number(42))).is_suffixed())
         self.assertFalse(Number(22).is_suffixed())
         self.assertFalse(Number.NAN.is_suffixed())
 
@@ -4041,8 +4097,10 @@ class PythonTests(NumberTests):
         """Do Python integers and assertEqual handle googol with finesse?
 
         See also test_unittest_equality()."""
-        googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-        googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        googol        = int('100000000000000000000000000000000000000000000000000'
+                             '00000000000000000000000000000000000000000000000000')
+        googol_plus_1 = int('100000000000000000000000000000000000000000000000000'
+                             '00000000000000000000000000000000000000000000000001')
         self.assertEqual   (googol       , googol)
         self.assertNotEqual(googol       , googol_plus_1)
         self.assertNotEqual(googol_plus_1, googol)
@@ -4052,8 +4110,10 @@ class PythonTests(NumberTests):
         """Do Python integers and the == operator handle googol with finesse?
 
         See also test_op_equality()."""
-        googol        = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-        googol_plus_1 = 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        googol        = int('100000000000000000000000000000000000000000000000000'
+                             '00000000000000000000000000000000000000000000000000')
+        googol_plus_1 = int('100000000000000000000000000000000000000000000000000'
+                             '00000000000000000000000000000000000000000000000001')
         self.assertTrue (googol        == googol)
         self.assertFalse(googol        == googol_plus_1)
         self.assertFalse(googol_plus_1 == googol)
@@ -4111,3 +4171,9 @@ def py23(if2, if3_or_greater):
 if __name__ == '__main__':
     import unittest
     unittest.main()
+
+
+# TODO:  Why does this appear sometimes after OK:
+#        ##teamcity[testSuiteFinished timestamp='2018-07-11T19:44:11.171'
+#        locationHint='python<D:\PyCharmProjects\qiki-python>://test_number'
+#        name='test_number' nodeId='1' parentNodeId='0']

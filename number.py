@@ -601,23 +601,19 @@ class Number(numbers.Complex):
 
     def _normalize_imaginary(self):
         """
-        Eliminate imaginary suffix if it is zero.
+        Eliminate imaginary suffix if it is zero.  Change in-place, does not return anything.
 
         So e.g. 1+0j == 1
 
-        We do not check self.imag == self.ZERO because that may try to subtract a missing suffix.
+        Don't check self.imag == self.ZERO because that may try to subtract a suffix that isn't there.
+
+        Check all imaginary suffixes. If any nonzero, leave them all alone.
+        This might one day help support quaternary numbers that have three imaginary suffixes.
         """
-        # TODO:  Multiple imaginary suffixes should check them all, or only remove the zero ones?
-        #        But then, caution, quaternary numbers stored as three imaginary suffixes could
-        #        get flummoxed if any of the first two imaginary suffixes were zero.
-        try:
-            imaginary_part = self.suffix(Suffix.Type.IMAGINARY).number
-        except Suffix.NoSuchType:
-            """No imaginary suffix, nothing to normalize away."""
-        else:
-            if imaginary_part == self.ZERO:
-                new_number = self.minus_suffix(Suffix.Type.IMAGINARY)
-                self.raw = new_number.raw
+        imaginaries = [suffix.number for suffix in self.suffixes if suffix.type_ == Suffix.Type.IMAGINARY]
+        all_imaginaries_zero = all(imaginary == self.ZERO for imaginary in imaginaries)
+        if imaginaries and all_imaginaries_zero:
+            self.raw = self.minus_suffix(Suffix.Type.IMAGINARY).raw
 
     def _normalize_plateau(self):
         """
@@ -649,10 +645,10 @@ class Number(numbers.Complex):
                     if raw_qan[0:1] == b'\xFF':
                         is_plateau = True
                         self.raw = raw_qex + b'\xFF'
-            if is_plateau:
+            if is_plateau and suffixes:
+                # NOTE:  A Number with suffixes whose unsuffixed part needed plateau-normalizing
                 for suffix in suffixes:
                     self.raw = self.plus_suffix(suffix).raw
-                    # TODO:  Test this branch (on a number with suffixes)
 
     def normalized(self):
         """
