@@ -29,13 +29,6 @@ class NumberAlternate(Number):
     It implements some alternative methods, and makes sure they behave the same as the standard methods.
     """
 
-    def zone_alternative_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
-        """Get the Zone for a Number, by scanning Zone values."""
-        for z in Zone.descending_codes:
-            if z <= self.raw:
-                return z
-        raise RuntimeError("zone_alternative_by_loop() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
-
     @property
     def zone(self):
         """Try both methods for computing zone.  Make sure they agree."""
@@ -49,6 +42,38 @@ class NumberAlternate(Number):
             )
 
         return zone_original
+
+    def zone_alternative_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
+        """Get the Zone for a Number, by scanning Zone values."""
+        for z in Zone.descending_codes:
+            if z <= self.raw:
+                return z
+        raise RuntimeError("zone_alternative_by_loop() fell through?!  '{}' < Zone.NAN!".format(repr(self)))
+
+
+
+    def __int__(self):
+        """Try both methods for converting to int.  Make sure they agree."""
+        int_original = super(NumberAlternate, self).__int__()
+        int_alternate = self._int_alternative_by_ifs()
+        assert int_alternate == int_original, (
+            "Mismatched int conversion for {qstring}:  dict-method {dict_answer}, if-method {if_answer}".format(
+                qstring=self.qstring(),
+                dict_answer=int_original,
+                if_answer=int_alternate,
+            )
+        )
+        return int_original
+
+    def _int_alternative_by_ifs(self):
+        """Convert to an integer, using exhaustive if-clauses."""
+        if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
+        elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
+        elif Zone.FRACTIONAL_NEG       <= self.raw:  return 0
+        elif Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
+        elif Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
+        else:                                        return self._int_cant_be_nan()
+
 
 NumberOriginal = Number
 Number = NumberAlternate

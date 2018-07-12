@@ -1009,34 +1009,7 @@ class Number(numbers.Complex):
         return return_value + error_tag
 
     def __int__(self):
-        """
-        To an integer.
-
-        Only the unsuffixed part is converted, otherwise suffix bytes
-        might get interpreted as part of the qan value.
-        """
-        int_by_dictionary = self._int_by_zone_dictionary()
-        assert int_by_dictionary == self._int_by_zone_ifs(), (
-            "Mismatched int encoding for {r}:  dict-method={d}, if-method={i}".format(
-                r=repr(self),
-                d=int_by_dictionary,
-                i=self._int_by_zone_ifs(),
-            )
-        )
-        return int_by_dictionary
-
-    if six.PY2:
-        def __long__(self):
-            """To a long int."""
-            # noinspection PyCompatibility,PyUnresolvedReferences
-            return long(self.__int__())
-
-    def __complex__(self):
-        """To a complex number."""
-        return complex(float(self.real), float(self.imag))
-
-    def _int_by_zone_dictionary(self):
-        """To an integer, using a dictionary keyed by Zone."""
+        """Convert to an integer."""
         return self._int_zone_dict[self.zone](self)
 
     _int_zone_dict =  {
@@ -1055,15 +1028,6 @@ class Number(numbers.Complex):
         Zone.TRANSFINITE_NEG:     lambda self: self._int_cant_be_negative_infinity(),
         Zone.NAN:                 lambda self: self._int_cant_be_nan(),
     }
-
-    def _int_by_zone_ifs(self):
-        """To an integer, using exhaustive if-clauses."""
-        if   Zone.TRANSFINITE          <= self.raw:  return self._int_cant_be_positive_infinity()
-        elif Zone.POSITIVE             <= self.raw:  return self._to_int_positive()
-        elif Zone.FRACTIONAL_NEG       <= self.raw:  return 0
-        elif Zone.LUDICROUS_LARGE_NEG  <= self.raw:  return self._to_int_negative()
-        elif Zone.NAN                  <  self.raw:  return self._int_cant_be_negative_infinity()
-        else:                                        return self._int_cant_be_nan()
 
     @classmethod
     def _int_cant_be_positive_infinity(cls):
@@ -1084,7 +1048,12 @@ class Number(numbers.Complex):
         raise ValueError("Not-A-Number cannot be represented by integers.")
 
     def _to_int_positive(self):
-        """To a positive integer."""
+        """
+        To a positive integer.
+
+        Only the unsuffixed part is converted, otherwise suffix bytes
+        might get interpreted as part of the qan value.
+        """
         n = self.normalized()
         (qan_int, qan_len) = n.qan_int_len()
         qex = n.qex_int() - qan_len
@@ -1102,6 +1071,16 @@ class Number(numbers.Complex):
             if extraneous != 0:
                 the_int += 1   # XXX:  Find a more graceful way to floor to 0 instead of to -inf
         return the_int
+
+    if six.PY2:
+        def __long__(self):
+            """To a long int."""
+            # noinspection PyCompatibility,PyUnresolvedReferences
+            return long(self.__int__())
+
+    def __complex__(self):
+        """To a complex number."""
+        return complex(float(self.real), float(self.imag))
 
     def __float__(self):
         """To a floating point number."""
