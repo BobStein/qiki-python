@@ -22,12 +22,6 @@ import struct
 import six
 
 
-class SlotsOptimized(object):
-    """Option for Number class."""
-    FOR_MEMORY = False
-    FOR_SPEED = True
-
-
 # TODO:  Move big comment sections to docstrings.
 # TODO:  qantissa --> qan
 
@@ -147,10 +141,11 @@ class Number(numbers.Complex):
       -2.5 == Number('0q7D_FD80')
 
     Some exotic numbers:
-                       pi - 0q82_03243F6A8885A3 (53-bit IEEE double precision version of pi)
+                       pi - 0q82_03243F6A8885A3
+                            (53-bit IEEE double precision version of pi)
                        pi - 0q82_03243F6A8885A308D313198A2E03707344A409382229
                             9F31D0082EFA98EC4E6C89452821E638D01377BE54
-                            (338 bits of pi, about 100 decimal digits)
+                            (338-bit version of pi, about 100 decimal digits)
                    googol - 0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7C
                             AAB24308A82E8F10 (exactly 10^100)
         negative infinity - 0q00_7F (aleph-zero)
@@ -170,10 +165,8 @@ class Number(numbers.Complex):
     The qiki Number one is internally represented as two bytes b'\x82\x01'.  82 is the qex,
     like an exponent. 01 is the qan, like a mantissa.
     """
-    if SlotsOptimized.FOR_MEMORY:
-        __slots__ = ('__raw', )
-    elif SlotsOptimized.FOR_SPEED:
-        __slots__ = ('__raw', '_zone')
+    __slots__ = ('_raw', '_zone')
+    # NOTE:  Remove '_zone' from the __slots__ for slightly more frugal memory, slower speed
 
     def __init__(self, *args, **kwargs):   # content=None, qigits=None, normalize=False):
         """
@@ -243,7 +236,7 @@ class Number(numbers.Complex):
             else:
                 raise self.ConstructorSuffixError("Expecting suffixes, not a '{}'".format(type_name(suffix)))
 
-        assert(isinstance(self.__raw, six.binary_type))
+        assert(isinstance(self._raw, six.binary_type))
         if normalize:
             self._normalize_all()
 
@@ -333,7 +326,7 @@ class Number(numbers.Complex):
 
         Implemented as a property so that Number._zone (if there's a slot for it) can be computed in tandem.
         """
-        return self.__raw
+        return self._raw
 
     @raw.setter
     def raw(self, value):
@@ -342,7 +335,7 @@ class Number(numbers.Complex):
         # Would making Number immutable avoid common ref bugs, e.g. def f(n=Number(0)):  n += 1 ...
         assert(isinstance(value, six.binary_type))
         # noinspection PyAttributeOutsideInit
-        self.__raw = value
+        self._raw = value
         self._zone_refresh()
 
     def __getstate__(self):
@@ -439,7 +432,7 @@ class Number(numbers.Complex):
     #
     # The options...
     # (By the way, I went with Option one.)
-    # Option one:  different __raw values, complicated interpretation of them in __eq__() et al.
+    # Option one:  different _raw values, complicated interpretation of them in __eq__() et al.
     #     If going this way, equality might compare Number.raw_normalized().
     #     DONE:  0q82__FF0100 == 0q82_01__FF0100
     #     Obviously different suffix contents matter:  0q80__FF0100 != 0q80__110100
@@ -597,7 +590,7 @@ class Number(numbers.Complex):
 
     def _normalize_all(self):
         """
-        Eliminate redundancies in the internal __raw string.
+        Eliminate redundancies in the internal _raw string.
 
         This operates in-place, modifying self.  So there are no return values.
         """
