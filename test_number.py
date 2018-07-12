@@ -75,6 +75,37 @@ class NumberAlternate(Number):
         else:                                        return self._int_cant_be_nan()
 
 
+
+    def __float__(self):
+        """Try both methods for converting to float.  Make sure they agree."""
+        float_original = super(NumberAlternate, self).__float__()
+        float_alternate = self._float_alternative_by_ifs()
+        assert floats_really_same(float_alternate, float_original), (
+            "Mismatched float conversion for {qstring}:  dict-method {dict_answer}, if-method {if_answer}".format(
+                qstring=self.qstring(),
+                dict_answer=float_original,
+                if_answer=float_alternate,
+            )
+        )
+        return float_original
+
+    def _float_alternative_by_ifs(self):
+        """To a floating point number, using exhaustive if-clauses."""
+        _zone = self.zone
+        if _zone in ZoneSet.REASONABLY_NONZERO:
+            return self._to_float()
+        elif _zone in ZoneSet.ESSENTIALLY_NONNEGATIVE_ZERO:
+            return 0.0
+        elif _zone in ZoneSet.ESSENTIALLY_NEGATIVE_ZERO:
+            return -0.0
+        elif _zone in (Zone.TRANSFINITE, Zone.LUDICROUS_LARGE):
+            return float('+inf')
+        elif _zone in (Zone.TRANSFINITE_NEG, Zone.LUDICROUS_LARGE_NEG):
+            return float('-inf')
+        else:
+            return float('nan')
+
+
 NumberOriginal = Number
 Number = NumberAlternate
 

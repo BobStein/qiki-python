@@ -1085,24 +1085,12 @@ class Number(numbers.Complex):
     def __float__(self):
         """To a floating point number."""
         if self.is_complex():
-            raise TypeError(
-                "{} has an imaginary part, "
-                "use float(n.real) or complex(n) "
-                "instead of float(n)".format(self.qstring())
-            )
-        float_by_dictionary = self.__float__by_zone_dictionary()
-        assert floats_really_same(float_by_dictionary, self.__float__by_zone_ifs()), (
-            "Mismatched float encoding for %s:  dict-method=%s, if-method=%s" % (
-                repr(self), float_by_dictionary, self.__float__by_zone_ifs()
-            )
-        )
-        return float_by_dictionary
+            raise TypeError("{} has an imaginary part, use float(n.real) or complex(n) instead of float(n)".format(
+                self.qstring()
+            ))
+        return self._float_zone_dict[self.zone](self)
 
-    def __float__by_zone_dictionary(self):
-        """To a floating point number, using a dictionary keyed by Zone."""
-        return self.__float__zone_dict[self.zone](self)
-
-    __float__zone_dict =  {
+    _float_zone_dict =  {
         Zone.TRANSFINITE:         lambda self: float('+inf'),
         Zone.LUDICROUS_LARGE:     lambda self: float('+inf'),
         Zone.POSITIVE:            lambda self: self._to_float(),
@@ -1118,22 +1106,6 @@ class Number(numbers.Complex):
         Zone.TRANSFINITE_NEG:     lambda self: float('-inf'),
         Zone.NAN:                 lambda self: float('nan')
     }
-
-    def __float__by_zone_ifs(self):
-        """To an floating point number, using exhaustive if-clauses."""
-        _zone = self.zone
-        if _zone in ZoneSet.REASONABLY_NONZERO:
-            return self._to_float()
-        elif _zone in ZoneSet.ESSENTIALLY_NONNEGATIVE_ZERO:
-            return 0.0
-        elif _zone in ZoneSet.ESSENTIALLY_NEGATIVE_ZERO:
-            return -0.0
-        elif _zone in (Zone.TRANSFINITE, Zone.LUDICROUS_LARGE):
-            return float('+inf')
-        elif _zone in (Zone.TRANSFINITE_NEG, Zone.LUDICROUS_LARGE_NEG):
-            return float('-inf')
-        else:
-            return float('nan')
 
     def _to_float(self):
         """To a reasonable, nonzero floating point number."""
