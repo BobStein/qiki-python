@@ -131,6 +131,7 @@ class Word(object):
         if self._is_inchoate:
             self._from_idn(self._idn)
 
+    # TODO:  @property?
     def exists(self):
         """"
         Does this word exist?  Is it stored in a Lex?
@@ -417,7 +418,6 @@ class Word(object):
         #         # if len(pieces) == 2 and pieces[1].
         #
         # assert hasattr(self, 'lex')
-        # # XXX:  Why did PY2 need this to be a b'lex'?!  And why does it not now??
         # # Otherwise hasattr(): attribute name must be string
         # assert isinstance(self.lex, Lex)
         # kwargs['lex'] = self.lex
@@ -442,6 +442,7 @@ class Word(object):
         assert not idn.is_suffixed()
         self._idn = idn
         self.lex.populate_word_from_idn(self, idn)
+        # NOTE:  If this returned True, it already populate_from_word() and so the word now exists()
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -744,16 +745,16 @@ class SubjectedVerb(object):
                         txt = num_or_txt
                         txt_count += 1
                     else:
-                        raise Word.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
+                        raise self._subjected.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
             else:
-                raise Word.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
+                raise self._subjected.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
             if num_count > 1:
-                raise Word.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
+                raise self._subjected.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
                     n=num_count,
                     arg=repr(num_and_or_txt)
                 ))
             if txt_count > 1:
-                raise Word.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
+                raise self._subjected.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
                     n=txt_count,
                     arg=repr(num_and_or_txt)
                 ))
@@ -1034,11 +1035,38 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
 
         if existing_word.idn == self.idn:
             return self   # lex is a singleton, i.e. assert lex[lex] is lex
-            # TODO:  Explain, why is this important?
-            #        Why is the Lex's word for the Lex itself only instantiated once.
-            #        And why aren't other words in the Lex also a singleton.,
-        else:
-            return existing_word
+
+        # TODO:  Explain, why is this important?
+        #        Why is the Lex's word for the Lex itself only instantiated once.
+        #        And why aren't other words in the Lex also a singleton.,
+        # Ok, one reason it makes sense is only a LexMySQL instantiated object (which is also a Word)
+        # can perform database actions like .find_words() or .populate_word_from_idn().
+        # There should be only one instance of a Lex for a given lex.
+        # Otherwise there'd be multiple connections or shared connections and chaos would reign.
+        # But is there any problem with there being a Word('lex') that isn't a Lex?
+        # Equal but not identical.  Not so weird.
+        # You couldn't do any lex-like things to Word('lex').
+        # Maybe the lesson here is that Lex should not derive Word at all.
+        # Possibly go further and make Lex the metaclass of Word.
+        # Is that just abstraction-confusion?  Lex is really a CONTAINER of Words.
+        # Maybe lex should be a class object of Word.  And it should point to
+        # whatever generates words.
+        #
+        #     class MyWord(Word):
+        #         lex = LexMySQL(**my_credentials)
+        #
+        # Now, because all word instances must know their lex.
+        # And a lex instance must know it's word_class.
+        # Then Word.__new__ could tell its lex what class it is:
+        #
+        #         def __new__(cls, *, **):
+        #             cls.lex.word_class = cls
+        #             return super(Word, cls).__new__(cls, *, **)
+        #
+        # This means every instantiation of a new Word does this.
+        # But that means the lex doesn't know its word_class until a word is instantiated.  Sheesh.
+
+        return existing_word
 
     class NotFound(Exception):
         pass
@@ -1319,6 +1347,7 @@ class LexMemory(Lex):
                     if word_match(other_word.obj, found_word.idn) and word_match(other_word.vrb, jbo_vrb):
                         jbo.append(other_word)
                 new_word = self[found_word]
+                assert new_word is not found_word
                 new_word.jbo = jbo
                 # FIXME:  Whoa this could add a jbo to the in-memory lex object couldn't it!
                 #         Same bug exists with LexMySQL instance maybe!
@@ -1730,6 +1759,7 @@ class LexMySQL(Lex):
             if word is None or row['idn'] != word.idn:
                 word = self[None]
                 word.populate_from_row(row)
+                # NOTE:  This violates the singleton lex object idea!
                 word.jbo = []
                 words.append(word)   # To be continued, we may append to word.jbo later.
                 # So yield would not work here -- because word continues to be modified after

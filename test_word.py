@@ -67,7 +67,12 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
-print("Python version", sys.version)
+print(
+    "Python version",
+    ".".join(str(x) for x in sys.version_info),
+    "using",
+    HOW_TO_MAKE_A_LEX.__name__
+)
 if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
     print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
     print("MySQL Client version", subprocess.Popen(
@@ -2845,13 +2850,59 @@ class WordQoolbarTests(WordQoolbarSetup):
     #     }, nums)
 
     def test_qoolbar_jbo(self):
+        self.assertFalse(hasattr(self.youtube, 'jbo'))
         youtube_words = self.lex.find_words(idn=self.youtube, jbo_vrb=self.qoolbar.get_verbs())
+        self.assertFalse(hasattr(self.youtube, 'jbo'))
+
         youtube_word = youtube_words[0]
         youtube_jbo = youtube_word.jbo
+
         self.assertEqual({self.anna_like_youtube, self.bart_like_youtube}, set(youtube_jbo))
 
+        self.assertEqual(self.youtube, youtube_word)
+        self.assertIsNot(self.youtube, youtube_word, "Whoa, youtube is a singleton.")
+
+    def test_lex_jbo(self):
+        """
+        Test for the find_words() jbo lex bug.
+
+        find_words() returns a list of words.  The jbo_vrb parameter makes each of those words contain
+        a jbo property, a list of words whose object is each found word.
+        This tests for a bug where the self.lex singleton object gets a jbo stuck on it
+        as a side effect.
+        """
+        self.anna(self.like)[self.lex] = 1,"strangely enough"
+        self.bart(self.like)[self.lex] = -1,"not really at all"
+        # print("Lex members", self.lex.__dict__)
+        # EXAMPLE:
+        #     Lex members {'lex': Word('lex'), '_idn': Number('0q80'), 'words': [Word('lex'), Word('define'),
+        #     Word('noun'), Word('verb'), Word('agent'), Word('qool'), Word('iconify'), Word('delete'), Word(8),
+        #     Word(9), Word('like'), Word(11), Word(12), Word('anna'), Word('bart'), Word('youtube'),
+        #     Word('zigzags'), Word(17), Word(18), Word(19), Word(20), Word(21), Word(22)], '_exists': True,
+        #     '_fields': {'sbj': Word('lex'), 'vrb': Word('define'), 'obj': Word('agent'),
+        #     'num': Number('0q82_01'), 'txt': 'lex', 'whn': Number('0q85_5B494F5CFC3758')},
+        #     '_noun': Word('noun'), '_verb': Word('verb')}
+        self.assertFalse(hasattr(self.lex, 'jbo'))
+        lex_words = self.lex.find_words(idn=self.lex, jbo_vrb=[self.like])
+        self.assertEqual(
+            {
+                self.anna(self.like)[self.lex],
+                self.bart(self.like)[self.lex]
+            },
+            set(lex_words[0].jbo)
+        )
+        self.assertFalse(hasattr(self.lex, 'jbo'), "Whoops, lex has a .jbo property!?!")
+
+    def test_lex_singleton_found(self):
+        lexes_found = self.lex.find_words(idn=self.lex)
+        self.assertEqual(1, len(lexes_found))
+        lex_found = lexes_found[0]
+        self.assertEqual(self.lex.idn, lex_found.idn)
+        self.assertEqual(self.lex, lex_found)
+        self.assertIs(self.lex, lex_found, "Whoa, lex returned by find_words() is not a singleton.")
 
 if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
+
 
     class WordSuperSelectTest(WordQoolbarSetup):
 
