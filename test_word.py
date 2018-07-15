@@ -44,7 +44,7 @@ except ImportError:
         You also need an empty secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
 
-        In MySQL you only need to create the database:  (LexMySQL will create the table.)
+        In MySQL you only need to create the database:  LexMySQL will create the table.
 
             CREATE DATABASE `database`;
             GRANT CREATE, INSERT, SELECT, DROP 
@@ -75,11 +75,18 @@ print(
 )
 if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
     print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
-    print("MySQL Client version", subprocess.Popen(
-        'mysql --version',
-        shell=True,
-        stdout=subprocess.PIPE
-    ).stdout.read().strip().decode('ascii'))
+    print(
+        "MySQL Client version {}\n".format(
+            # TODO:  Why do we need a \n here?  Doesn't print() do that automatically??
+            subprocess.Popen(
+                'mysql --version',
+                shell=True,
+                stdout=subprocess.PIPE
+            ).stdout.read()
+            # ).stdout.read().strip().decode('ascii')
+            # TODO:  Explain why we used to strip and decode?
+        )
+    )
     # SEE:  MySQL Server version, InternalWordTests.test_001_show_version() (after connected)
 
 
@@ -461,10 +468,10 @@ class WordExoticTests(WordTests):
 class AardvarkInternalWordTests(WordTests):
     """Test the WordTests class itself."""
 
-    # noinspection PyMethodMayBeStatic
-    def test_000_line_feed(self):
-        print("\n")
-        # NOTE:  Start with LF because all the other tests print an unterminated "."
+    # # noinspection PyMethodMayBeStatic
+    # def test_000_line_feed(self):
+    #     print()
+    #     # NOTE:  Start with LF because all the other tests print an unterminated "."
 
     def test_assertNoNewWord(self):
         with self.assertNoNewWord():
@@ -504,9 +511,9 @@ class AardvarkInternalWordTests(WordTests):
     def test_missing_from_lex_name(self):
         bogus_word = self.lex['bogus nonexistent name']
         self.assertFalse(bogus_word.exists())
-        legit_word = self.lex[qiki.Lex._IDN_DEFINE]   # Lex[idn] is good
+        legit_word = self.lex[qiki.Lex.IDN_DEFINE]   # Lex[idn] is good
         self.assertTrue(legit_word.exists())
-        bogus_word = self.lex[qiki.Lex._IDN_DEFINE.qstring()]   # Lex[idn.qstring()] is bad
+        bogus_word = self.lex[qiki.Lex.IDN_DEFINE.qstring()]   # Lex[idn.qstring()] is bad
         self.assertFalse(bogus_word.exists())
 
     def test_assert_triple_equal(self):
@@ -550,10 +557,10 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(1, int(n))
 
     def test_01a_lex(self):
-        self.assertEqual(self.lex._IDN_LEX,    self.lex.idn)
+        self.assertEqual(self.lex.IDN_LEX,    self.lex.idn)
         self.assertEqual(self.lex,             self.lex.sbj)
-        self.assertEqual(self.lex._IDN_DEFINE, self.lex.vrb.idn)
-        self.assertEqual(self.lex._IDN_AGENT,  self.lex.obj.idn)
+        self.assertEqual(self.lex.IDN_DEFINE, self.lex.vrb.idn)
+        self.assertEqual(self.lex.IDN_AGENT,  self.lex.obj.idn)
         self.assertEqual(qiki.Number(1),       self.lex.num)
         self.assertEqual(u'lex',               self.lex.txt)
         self.assertSensibleWhen(               self.lex.whn)
@@ -561,20 +568,20 @@ class Word0011FirstTests(WordTests):
 
     def test_01b_lex_by_definition(self):
         self.assertEqual(self.lex,             self.lex[u'lex'])
-        self.assertIs   (self.lex,             self.lex[u'lex'])
-        self.assertEqual(self.lex._IDN_LEX,    self.lex[u'lex'].idn)
-        self.assertEqual(self.lex._IDN_DEFINE, self.lex[u'define'].idn)
-        self.assertEqual(self.lex._IDN_NOUN,   self.lex[u'noun'].idn)
-        self.assertEqual(self.lex._IDN_VERB,   self.lex[u'verb'].idn)
-        self.assertEqual(self.lex._IDN_AGENT,  self.lex[u'agent'].idn)
+        # self.assertIs   (self.lex,             self.lex[u'lex'])   NOPE
+        self.assertEqual(self.lex.IDN_LEX,    self.lex[u'lex'].idn)
+        self.assertEqual(self.lex.IDN_DEFINE, self.lex[u'define'].idn)
+        self.assertEqual(self.lex.IDN_NOUN,   self.lex[u'noun'].idn)
+        self.assertEqual(self.lex.IDN_VERB,   self.lex[u'verb'].idn)
+        self.assertEqual(self.lex.IDN_AGENT,  self.lex[u'agent'].idn)
 
     def test_01c_lex_getter(self):
         define = self.lex[u'define']
         self.assertTrue(define.exists())
-        self.assertEqual(define.idn,     qiki.Word._IDN_DEFINE)
-        self.assertEqual(define.sbj.idn, qiki.Word._IDN_LEX)
-        self.assertEqual(define.vrb.idn, qiki.Word._IDN_DEFINE)
-        self.assertEqual(define.obj.idn, qiki.Word._IDN_VERB)
+        self.assertEqual(define.idn,     qiki.Lex.IDN_DEFINE)
+        self.assertEqual(define.sbj.idn, qiki.Lex.IDN_LEX)
+        self.assertEqual(define.vrb.idn, qiki.Lex.IDN_DEFINE)
+        self.assertEqual(define.obj.idn, qiki.Lex.IDN_VERB)
         self.assertEqual(define.num,     qiki.Number(1))
         self.assertEqual(define.txt,     u'define')
 
@@ -608,12 +615,12 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(u"Word('noun')", repr(self.lex[u'noun']))
 
     def test_03a_max_idn_fixed(self):
-        self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
+        self.assertEqual(qiki.Lex.IDN_MAX_FIXED, self.lex.max_idn())
 
     def test_03b_max_idn(self):
-        self.assertEqual(qiki.Word._IDN_MAX_FIXED, self.lex.max_idn())
+        self.assertEqual(qiki.Lex.IDN_MAX_FIXED, self.lex.max_idn())
         self.lex.verb(u'splurge')
-        self.assertEqual(qiki.Word._IDN_MAX_FIXED + 1, self.lex.max_idn())
+        self.assertEqual(qiki.Lex.IDN_MAX_FIXED + 1, self.lex.max_idn())
 
     def test_03c_noun_spawn(self):
         noun = self.lex[u'noun']
@@ -782,7 +789,7 @@ class Word0011FirstTests(WordTests):
         lex1 = self.lex
         lex2 = self.lex[u'lex']
         self.assertEqual(lex1, lex2)
-        self.assertIs(lex1, lex2)   # Why does this work?
+        # self.assertIs(lex1, lex2)   # Why does this work?  It doesn't any more!
 
     def test_09e_idn_constructor_does_not_enforce_lex_singleton(self):
         lex_by_idn = self.lex.spawn(self.lex.idn)
@@ -826,12 +833,12 @@ class Word0011FirstTests(WordTests):
     #         qiki.Word(self.lex)
 
     def test_10a_word_by_lex_idn(self):
-        agent = self.lex[qiki.Word._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertEqual(agent.txt, u'agent')
 
     def test_10b_word_by_lex_txt(self):
         agent = self.lex[u'agent']
-        self.assertEqual(agent.idn, qiki.Word._IDN_AGENT)
+        self.assertEqual(agent.idn, qiki.Lex.IDN_AGENT)
 
     def test_11a_noun_inserted(self):
         new_word = self.lex.noun(u'something')
@@ -980,25 +987,25 @@ class Word0011FirstTests(WordTests):
 
     def test_17a_inchoate(self):
         """A word constructed by its idn is inchoate."""
-        w = self.lex[qiki.Lex._IDN_DEFINE]
+        w = self.lex[qiki.Lex.IDN_DEFINE]
         self.assertTrue(w._is_inchoate, "How can idn define be choate? " + repr(w))
 
     def test_17b_choate(self):
         """A word that tries to use one of its parts becomes choate."""
-        w = self.lex[qiki.Lex._IDN_DEFINE]
+        w = self.lex[qiki.Lex.IDN_DEFINE]
         self.assertEqual(self.lex, w.sbj)
         self.assertFalse(w._is_inchoate)
 
     def test_17c_inchoate_copy_constructor(self):
         """The Word(Word) copy constructor copies the inchoate-ness."""
-        w1 = self.lex[qiki.Lex._IDN_DEFINE]
+        w1 = self.lex[qiki.Lex.IDN_DEFINE]
         w2 = self.lex[w1]
         self.assertTrue(w1._is_inchoate)   # Tests the source didn't BECOME choate by copying.
         self.assertTrue(w2._is_inchoate)   # Tests the destination is also inchoate.
 
     def test_17d_choate_copy_constructor(self):
         """The Word(Word) copy constructor copies the choate-ness."""
-        w1 = self.lex[qiki.Lex._IDN_DEFINE]
+        w1 = self.lex[qiki.Lex.IDN_DEFINE]
         # noinspection PyStatementEffect
         w1.sbj
         w2 = self.lex[w1]
@@ -1006,38 +1013,38 @@ class Word0011FirstTests(WordTests):
         self.assertFalse(w2._is_inchoate)
 
     def test_17e_inchoate_txt(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertEqual(u"agent", agent.txt)
         self.assertFalse(agent._is_inchoate)
 
     def test_17e_inchoate_str(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertIn(u"agent", str(agent))
         self.assertFalse(agent._is_inchoate)
 
     def test_17f_inchoate_hasattr(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertTrue(hasattr(agent, 'txt'))
         self.assertFalse(agent._is_inchoate)
 
     def test_17g_inchoate_idn(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
-        self.assertEqual(qiki.Lex._IDN_AGENT, agent.idn)
+        self.assertEqual(qiki.Lex.IDN_AGENT, agent.idn)
         self.assertTrue(agent._is_inchoate)
 
     def test_17h_inchoate_hash(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertIsInstance(hash(agent), int)
         self.assertTrue(agent._is_inchoate)
 
     def test_17i_inchoate_hash(self):
-        agent1 = self.lex[qiki.Lex._IDN_AGENT]
-        agent2 = self.lex[qiki.Lex._IDN_AGENT]
+        agent1 = self.lex[qiki.Lex.IDN_AGENT]
+        agent2 = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent1._is_inchoate)
         self.assertTrue(agent2._is_inchoate)
         self.assertTrue(agent1 == agent2)
@@ -1045,7 +1052,7 @@ class Word0011FirstTests(WordTests):
         self.assertTrue(agent2._is_inchoate)
 
     def test_17j_inchoate_copy(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertIn(u"agent", agent.txt)
         self.assertFalse(agent._is_inchoate)
@@ -1055,12 +1062,12 @@ class Word0011FirstTests(WordTests):
 
         self.assertFalse(agent._is_inchoate)
         self.assertIsNot(agent, agent2)
-        self.assertEqual(qiki.Lex._IDN_AGENT, agent.idn)
-        self.assertEqual(qiki.Lex._IDN_AGENT, agent2.idn)
+        self.assertEqual(qiki.Lex.IDN_AGENT, agent.idn)
+        self.assertEqual(qiki.Lex.IDN_AGENT, agent2.idn)
         self.assertEqual(agent, agent2)
 
     def test_17k_inchoate_lex(self):
-        agent = self.lex[qiki.Lex._IDN_AGENT]
+        agent = self.lex[qiki.Lex.IDN_AGENT]
         self.assertTrue(agent._is_inchoate)
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
@@ -1082,8 +1089,8 @@ class Word0012Utilities(WordTests):
 
     def test_idn_from_word_or_number(self):
         agent = self.lex[u'agent']
-        self.assertEqual(qiki.Word._IDN_AGENT, idn_from_word_or_number(agent.idn))
-        self.assertEqual(qiki.Word._IDN_AGENT, idn_from_word_or_number(agent))
+        self.assertEqual(qiki.Lex.IDN_AGENT, idn_from_word_or_number(agent.idn))
+        self.assertEqual(qiki.Lex.IDN_AGENT, idn_from_word_or_number(agent))
         with self.assertRaises(TypeError):
             idn_from_word_or_number('')
         with self.assertRaises(TypeError):
@@ -1348,9 +1355,9 @@ class Word0013Brackets(WordTests):
         with self.assertNoNewWord():
             self.art(self.got, use_already=True)[self.lek] = 2, u"two"
 
-    def test_08_lex_square_lex(self):
-        """Lex is a singleton when indexing itself."""
-        self.assertIs(self.lex[self.lex], self.lex)
+    # def test_08_lex_square_lex(self):   NOPE
+    #     """Lex is a singleton when indexing itself."""
+    #     self.assertIs(self.lex[self.lex], self.lex)
 
 
 class WordUnicode(WordTests):
@@ -1461,7 +1468,7 @@ class Word0030MoreTests(WordTests):
         """Detects word names in a sentence description.
 
         Detects a bug where Word.description() showed all the parts as their idn.qstring()."""
-        description = self.lex[qiki.Lex._IDN_AGENT].description()
+        description = self.lex[qiki.Lex.IDN_AGENT].description()
         self.assertIn('lex', description)
         self.assertIn('define', description)
         self.assertIn('noun', description)
@@ -1624,32 +1631,40 @@ class Word0030MoreTests(WordTests):
     #         liking(bart)
 
     def test_lex_is_lex(self):
-        """Various ways a lex is a singleton, with it's lex."""
+        """Various ways a lex is OR ISN'T a singleton, with it's lex."""
         sys1 = self.lex
         sys2 = self.lex[u'lex']
-        sys3 = self.lex[u'lex'][u'lex'][u'lex']
-        sys4 = self.lex[u'lex'].lex[u'lex'].lex.lex.lex[u'lex'][u'lex'][u'lex']
+        sys3 = self.lex[u'lex'].lex
+        sys4 = self.lex[u'lex'].lex[u'lex']
+        sys5 = self.lex[u'lex'].lex[u'lex'].lex
+
+        with self.assertRaises(TypeError):
+            '''The plain jane word lex cannot spawn words.'''
+            _ = self.lex[u'lex'][u'lex']
+
         self.assertEqual(sys1.idn, sys2.idn)
         self.assertEqual(sys1.idn, sys3.idn)
         self.assertEqual(sys1.idn, sys4.idn)
-        self.assertIs(sys1, sys2)
+        self.assertEqual(sys1.idn, sys5.idn)
+        self.assertIsNot(sys1, sys2)
         self.assertIs(sys1, sys3)
-        self.assertIs(sys1, sys4)
+        self.assertIsNot(sys1, sys4)
+        self.assertIs(sys1, sys5)
 
     def test_idn_setting_not_allowed(self):
         lex = self.lex[u'lex']
-        self.assertEqual(lex.idn, self.lex._IDN_LEX)
+        self.assertEqual(lex.idn, self.lex.IDN_LEX)
         with self.assertRaises(AttributeError):
             lex.idn = 999
-        self.assertEqual(lex.idn, self.lex._IDN_LEX)
+        self.assertEqual(lex.idn, self.lex.IDN_LEX)
 
     def test_idn_suffix(self):
         """Make sure adding a suffix to the lex's idn does not modify lex.idn."""
         lex = self.lex[u'lex']
-        self.assertEqual(lex.idn, self.lex._IDN_LEX)
+        self.assertEqual(lex.idn, self.lex.IDN_LEX)
         suffixed_lex_idn = lex.idn.plus_suffix(3)
         # FIXME:  Crap, this USED to mutate lex.idn!!
-        self.assertEqual(lex.idn, self.lex._IDN_LEX)
+        self.assertEqual(lex.idn, self.lex.IDN_LEX)
         self.assertEqual(suffixed_lex_idn, qiki.Number('0q80__030100'))
 
     # def test_verb_paren_object(self):
@@ -1722,10 +1737,10 @@ class Word0030MoreTests(WordTests):
 
     def test_lex_number(self):
         agent_by_txt = self.lex[u'agent']
-        agent_by_idn = self.lex[qiki.Word._IDN_AGENT]
+        agent_by_idn = self.lex[qiki.Lex.IDN_AGENT]
         self.assertEqual(agent_by_txt, agent_by_idn)
         self.assertEqual(u'agent', agent_by_idn.txt)
-        self.assertEqual(qiki.Word._IDN_AGENT, agent_by_txt.idn)
+        self.assertEqual(qiki.Lex.IDN_AGENT, agent_by_txt.idn)
 
     def test_num_explicit(self):
         anna = self.lex.define(u'agent', u'anna')
@@ -1774,7 +1789,7 @@ class Word0030MoreTests(WordTests):
             eve.said(clap, alf)
 
     # def test_missing_lex_getter(self):
-    #     self.assertEqual(qiki.Lex._IDN_DEFINE, self.lex[u'define'].idn)
+    #     self.assertEqual(qiki.Lex.IDN_DEFINE, self.lex[u'define'].idn)
     #     with self.assertRaises(qiki.Word.NotExist):
     #         self.lex[u'defibrillator']
 
@@ -2002,7 +2017,7 @@ class Word0051ListingBasicTests(WordListingTests):
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
         self.assertTrue(blessed_name_too.exists())
-        self.assertEqual(blessed_name_too.sbj.idn, qiki.Word._IDN_LEX)
+        self.assertEqual(blessed_name_too.sbj.idn, qiki.Lex.IDN_LEX)
         self.assertEqual(blessed_name_too.vrb, bless)
         self.assertEqual(blessed_name_too.obj, archie)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
@@ -2026,7 +2041,7 @@ class Word0051ListingBasicTests(WordListingTests):
 
         blessed_name_too = self.lex.spawn(blessed_name.idn)
         self.assertTrue(blessed_name_too.exists())
-        self.assertEqual(blessed_name_too.sbj.idn, qiki.Word._IDN_LEX)
+        self.assertEqual(blessed_name_too.sbj.idn, qiki.Lex.IDN_LEX)
         self.assertEqual(blessed_name_too.vrb, bless)
         self.assertEqual(blessed_name_too.obj, archie)
         self.assertEqual(blessed_name_too.num, qiki.Number(666))
@@ -2495,11 +2510,11 @@ class Word0070FindTests(WordTests):
         self.assertGreater(words[0].idn, words[-1].idn)
 
     def test_find_idn(self):
-        lex_by_idn = self.lex.find_words(idn=qiki.Word._IDN_LEX)
+        lex_by_idn = self.lex.find_words(idn=qiki.Lex.IDN_LEX)
         self.assertEqual(1, len(lex_by_idn))
         self.assertEqual(u"lex", lex_by_idn[0].txt)
 
-        # lex_by_idn = self.lex.find_idns(idn=qiki.Word._IDN_LEX)
+        # lex_by_idn = self.lex.find_idns(idn=qiki.Lex.IDN_LEX)
         # self.assertEqual(1, len(lex_by_idn))
         # self.assertEqual(self.lex.idn, lex_by_idn[0])
 
@@ -2899,7 +2914,7 @@ class WordQoolbarTests(WordQoolbarSetup):
         lex_found = lexes_found[0]
         self.assertEqual(self.lex.idn, lex_found.idn)
         self.assertEqual(self.lex, lex_found)
-        self.assertIs(self.lex, lex_found, "Whoa, lex returned by find_words() is not a singleton.")
+        self.assertIsNot(self.lex, lex_found, "Whoa, lex returned by find_words() is a singleton.")
 
 if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
 
@@ -2916,7 +2931,7 @@ if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
                 'SELECT txt FROM',
                 self.lex.table,
                 'WHERE idn =',
-                qiki.Word._IDN_DEFINE
+                qiki.Lex.IDN_DEFINE
             )))
 
         def test_super_select_word(self):
@@ -2929,7 +2944,7 @@ if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
             )))
 
         def test_super_select_txt(self):
-            self.assertEqual([{'idn': qiki.Word._IDN_DEFINE},], list(self.lex.super_select(
+            self.assertEqual([{'idn': qiki.Lex.IDN_DEFINE},], list(self.lex.super_select(
                 'SELECT idn FROM',
                 self.lex.table,
                 'WHERE txt =',
@@ -2942,7 +2957,7 @@ if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
                 'SELECT txt', None, 'FROM',
                 self.lex.table,
                 'WHERE', None, 'idn =',
-                qiki.Word._IDN_DEFINE
+                qiki.Lex.IDN_DEFINE
             )))
 
         def test_super_select_string_concatenate_alternatives(self):
@@ -2957,15 +2972,15 @@ if HOW_TO_MAKE_A_LEX is qiki.LexMySQL:
                     list(self.lex.super_select(*args))
             txt = 'txt'
 
-            good_super_select('SELECT          txt          FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            good_super_select('SELECT '       'txt'       ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            good_super_select('SELECT '   +   'txt'   +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            good_super_select('SELECT', None, 'txt', None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            good_super_select('SELECT '   +    txt    +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            good_super_select('SELECT', None,  txt , None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            good_super_select('SELECT          txt          FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            good_super_select('SELECT '       'txt'       ' FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            good_super_select('SELECT '   +   'txt'   +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            good_super_select('SELECT', None, 'txt', None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            good_super_select('SELECT '   +    txt    +   ' FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            good_super_select('SELECT', None,  txt , None, 'FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
 
-            bad_super_select( 'SELECT',       'txt',       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
-            bad_super_select( 'SELECT',        txt ,       'FROM', self.lex.table, 'WHERE idn=',qiki.Word._IDN_DEFINE)
+            bad_super_select( 'SELECT',       'txt',       'FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
+            bad_super_select( 'SELECT',        txt ,       'FROM', self.lex.table, 'WHERE idn=',qiki.Lex.IDN_DEFINE)
 
         def test_super_select_string_string(self):
             """Concatenating two literal strings is an error.

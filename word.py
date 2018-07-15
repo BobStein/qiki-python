@@ -42,12 +42,15 @@ class Word(object):
     :type obj: Number | Word
     :type num: Number
     :type txt: Unicode string in either Python 2 or 3
-    :type lex: Lex
     """
 
-    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None, lex=None):
-        assert isinstance(lex, (Lex, type(None)))
-        self.lex = lex
+    @property
+    def lex(self):
+        raise NotImplementedError()
+
+    def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
+        # assert isinstance(lex, (Lex, type(None)))
+        # self.lex = lex
         if Text.is_valid(content):   # e.g. Word('agent')
             self._from_definition(content)
         elif isinstance(content, Number):   # Word(idn)
@@ -147,15 +150,6 @@ class Word(object):
     def _now_it_exists(self):
         """Declare that a word "exists"."""
         self._exists = True
-
-    # Hard-code the idns of the fundamental words.
-    _IDN_LEX    = Number(0)
-    _IDN_DEFINE = Number(1)
-    _IDN_NOUN   = Number(2)
-    _IDN_VERB   = Number(3)
-    _IDN_AGENT  = Number(4)
-
-    _IDN_MAX_FIXED = Number(4)
 
     # NOTE:  lex and define words may be very common and benefit from a short idn (0q80 and 0q82)
 
@@ -382,8 +376,8 @@ class Word(object):
         # XXX:  Why did PY2 need this to be a b'lex'?!  And why does it not now??
         # Otherwise hasattr(): attribute name must be string
         assert isinstance(self.lex, Lex)
-        kwargs['lex'] = self.lex
-        return Word(*args, **kwargs)
+        # kwargs['lex'] = self.lex
+        return type(self)(*args, **kwargs)
         # NOTE:  This should be the only call to the Word constructor.
         # (Except of course from derived class constructors that call their super().)
         # Enforce?  Refactor somehow?
@@ -452,8 +446,11 @@ class Word(object):
             self._fields = dict(txt=Text(txt))
 
     def _from_word(self, other):
-        assert isinstance(other, Word)   # Instead of type(self)
-        self.lex = other.lex
+        assert isinstance(other, Word)   # Not necessarily type(self)
+        assert self.lex == other.lex
+        assert self.lex is other.lex
+        assert isinstance(self, other.lex.word_class)
+        assert isinstance(other, self.lex.word_class)
         # noinspection PyProtectedMember
         if other._is_inchoate:
             self._inchoate(other.idn)
@@ -538,7 +535,7 @@ class Word(object):
             return False
         if not hasattr(self, 'vrb'):
             return False
-        if self.vrb.idn != self._IDN_DEFINE:
+        if self.vrb.idn != self.lex.IDN_DEFINE:
             return False
         if self.obj == word:
             return True
@@ -559,7 +556,7 @@ class Word(object):
 
     def is_define(self):
         """Is this word the one and only verb (whose txt is) 'define'."""
-        return self.idn == self._IDN_DEFINE
+        return self.idn == self.lex.IDN_DEFINE
 
     def is_defined(self):
         """
@@ -567,25 +564,27 @@ class Word(object):
 
         That is, whether the sentence that creates it uses the verb 'define'.
         """
-        return self.vrb.idn == self._IDN_DEFINE
+        return self.vrb.idn == self.lex.IDN_DEFINE
 
     def is_noun(self):
-        return self.idn == self._IDN_NOUN
+        return self.idn == self.lex.IDN_NOUN
 
     def is_verb(self):
         """
         Not to be confused with is_a_verb().
 
         is_a_verb() -- is this word in a []-(define)-[verb] sentence, recursively.
-        is_verb() -- is this the one-and-only "verb" word, i.e. [lex]-(define)-[noun]"verb", i.e. id == _IDN_VERB
+        is_verb() -- is this the one-and-only "verb" word,
+                     i.e. [lex](define, "verb")[noun],
+                     i.e. idn == IDN_VERB
         """
-        return self.idn == self._IDN_VERB
+        return self.idn == self.lex.IDN_VERB
 
     def is_agent(self):
-        return self.idn == self._IDN_AGENT
+        return self.idn == self.lex.IDN_AGENT
 
-    def is_lex(self):
-        return isinstance(self, Lex) and self.exists() and self.idn == self._IDN_LEX
+    # def is_lex(self):
+    #     return isinstance(self, Lex) and self.exists() and self.idn == self.lex.IDN_LEX
 
     def description(self):
         return u"[{sbj}]({vrb}{maybe_num}{maybe_txt})[{obj}]".format(
@@ -776,7 +775,7 @@ class SubjectedVerb(object):
 
 
 # noinspection PyAttributeOutsideInit
-class Listing(Word):
+class Listing(object):
     # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
     # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
 
@@ -826,14 +825,14 @@ class Listing(Word):
 
         if lex is None:
             lex = self.meta_word.lex
-        super(Listing, self).__init__(lex=lex)
+        super(Listing, self).__init__()
 
         idn = Number(self.meta_word.idn, Suffix(self.SUFFIX_TYPE, self.index))
         # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
         # Did that morph a class property into an instance property?!?
 
-        self._inchoate(idn)
-        self.__is_inchoate = True
+        # self._inchoate(idn)
+        # self.__is_inchoate = True
 
         # self.lookup(self.index, self.lookup_callback)
         # self.lex = self.meta_word.lex
@@ -873,7 +872,7 @@ class Listing(Word):
             num=num,
             txt=Text(txt)
         )
-        self._now_it_exists()
+        # self._now_it_exists()
 
     @classmethod
     def install(cls, meta_word):
@@ -987,23 +986,23 @@ class ListingNotInstalled(Listing):
     # noinspection PyMissingConstructor
     def __init__(self, idn):
         self.index = None
-        self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
+        # self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
 
-    def _choate(self):
-        assert self.idn.is_suffixed()
-        raise Listing.NotAListing(
-            "Listing identifier {idn} has meta_idn {meta_idn} "
-            "which was not installed to a class.".format(
-                idn=self.idn,
-                meta_idn=self.idn.unsuffixed,
-            )
-        )
+    # def _choate(self):
+    #     assert self.idn.is_suffixed()
+    #     raise Listing.NotAListing(
+    #         "Listing identifier {idn} has meta_idn {meta_idn} "
+    #         "which was not installed to a class.".format(
+    #             idn=self.idn,
+    #             meta_idn=self.idn.unsuffixed,
+    #         )
+    #     )
 
     def lookup(self, index, callback):
         raise self.NotAListing
 
 
-class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
+class Lex(object):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
                     #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
                     #                     Diary, Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
                     # Eventually, this will encapsulate other word repositories
@@ -1015,6 +1014,18 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
                     #     class Sentence(Word)?
                     # Make Lex formally an abstract base class
 
+    def __init__(self, **kwargs):
+        super(Lex, self).__init__()   # Blow off (**kwargs)
+        word_class = kwargs.pop('word_class', None)
+        if word_class is None:
+
+            class WordDerivedJustForThisLex(Word):
+                lex = None
+
+            word_class = WordDerivedJustForThisLex
+        self.word_class = word_class
+        self.word_class.lex = self
+
     def __getitem__(self, item):
         """
         Square-bracket Word instantiation.
@@ -1024,7 +1035,7 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
             lex[txt]  (for a definition)
             lex[word]  (for copy construction)
         """
-        existing_word = self.spawn(item)
+        existing_word = self._lex.spawn(item)
         # if not existing_word.exists():
         #     raise self.NotExist
         # No, because inchoate words become choate by virtue of calling .exists().
@@ -1033,8 +1044,8 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
         #     at this point, whether the word exists or not.
 
-        if existing_word.idn == self.idn:
-            return self   # lex is a singleton, i.e. assert lex[lex] is lex
+        # if existing_word.idn == self.idn:
+        #     return self   # lex is a singleton, i.e. assert lex[lex] is lex
 
         # TODO:  Explain, why is this important?
         #        Why is the Lex's word for the Lex itself only instantiated once.
@@ -1053,18 +1064,9 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         # whatever generates words.
         #
         #     class MyWord(Word):
-        #         lex = LexMySQL(**my_credentials)
+        #         pass
         #
-        # Now, because all word instances must know their lex.
-        # And a lex instance must know it's word_class.
-        # Then Word.__new__ could tell its lex what class it is:
-        #
-        #         def __new__(cls, *, **):
-        #             cls.lex.word_class = cls
-        #             return super(Word, cls).__new__(cls, *, **)
-        #
-        # This means every instantiation of a new Word does this.
-        # But that means the lex doesn't know its word_class until a word is instantiated.  Sheesh.
+        #     MyWord.lex = LexMySQL(**my_credentials, word_class=MyWord)
 
         return existing_word
 
@@ -1074,46 +1076,55 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
     class ConnectError(Exception):
         pass
 
+    # Hard-code the idns of the fundamental words.
+    IDN_LEX    = Number(0)
+    IDN_DEFINE = Number(1)
+    IDN_NOUN   = Number(2)
+    IDN_VERB   = Number(3)
+    IDN_AGENT  = Number(4)
+
+    IDN_MAX_FIXED = Number(4)
+
     def _install_all_seminal_words(self):
         """
         Insert the five fundamental sentences into the Lex database.
         Each sentence uses verbs and nouns defined in some of the other seminal sentences.
 
         The five seminal sentences:
+              lex = lex.define(agent, 'lex')
                     lex.define(verb, 'define')
              noun = lex.define(noun, 'noun')
              verb = lex.define(noun, 'verb')
             agent = lex.define(noun, 'agent')
-                    lex.define(agent, 'lex')
 
         At least that's how they'd be defined if forward references were not a problem.
         """
         def seminal_word(_idn, _obj, _txt):
             """Subject is always 'lex'.  Verb is always 'define'."""
-            word = self.spawn(_idn)
+            word = self._lex.spawn(_idn)
             if not word.exists():
                 self._install_one_seminal_word(_idn, _obj, _txt)
-                word = self.spawn(_idn)
+                word = self._lex.spawn(_idn)
             assert word.exists()
 
         __crazy_idea_define_lex_first__ = True
-        # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word._IDN_LEX
+        # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word.IDN_LEX
         if __crazy_idea_define_lex_first__:
                                                                         # forward, reflexive references
-            seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 2,1    0,+1,+4
-            seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 1,1   -1, 0,+2
-            seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
-            seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
-            seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
+            seminal_word(self.IDN_LEX,    self.IDN_AGENT, u'lex')     # 2,1    0,+1,+4
+            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 1,1   -1, 0,+2
+            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
+            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
+            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
                                                                         # ---
                                                                         # 3,3
         else:
                                                                         # forward, reflexive references
-            seminal_word(self._IDN_DEFINE, self._IDN_VERB,  u'define')  # 2,1   +4, 0,+2
-            seminal_word(self._IDN_NOUN,   self._IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
-            seminal_word(self._IDN_VERB,   self._IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
-            seminal_word(self._IDN_AGENT,  self._IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
-            seminal_word(self._IDN_LEX,    self._IDN_AGENT, u'lex')     # 0,1    0,-4,-1
+            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 2,1   +4, 0,+2
+            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
+            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
+            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
+            seminal_word(self.IDN_LEX,    self.IDN_AGENT, u'lex')     # 0,1    0,-4,-1
                                                                         # ---
                                                                         # 5,3
 
@@ -1122,15 +1133,15 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
                                     # Why should from_idn() cause lex to "exist" if it "did not" already?
                                     # Could lex just start out inchoate and that would take care of this??!??
 
-        self._from_idn(self._IDN_LEX)
+        # self._from_idn(self.IDN_LEX)
 
-        assert self.exists()
-        assert self.is_lex()
+        # assert self.exists()
+        # assert self.is_lex()
 
     def _install_one_seminal_word(self, _idn, _obj, _txt):
-        word = self.spawn(
-            sbj=self._IDN_LEX,
-            vrb=self._IDN_DEFINE,
+        word = self._lex.spawn(
+            sbj=self.IDN_LEX,
+            vrb=self.IDN_DEFINE,
             obj=_obj,
             num=Number(1),
             txt=_txt,
@@ -1141,7 +1152,7 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
         if isinstance(x, Word):
             return x
         elif isinstance(x, Number):
-            return self.spawn(x)
+            return self._lex.spawn(x)
             # return Word(x, lex=self)
         else:
             raise TypeError(
@@ -1210,24 +1221,30 @@ class Lex(Word):    # rename candidates:  Site, Book, Server, Domain, Dictionary
 
 
 class LexMemory(Lex):
-    def __init__(self, **_):
-        self.lex = self
-        super(LexMemory, self).__init__(self._IDN_LEX, lex=self)
+    def __init__(self, **kwargs):
+        # self.lex = self
+        super(LexMemory, self).__init__(**kwargs)
+        # TODO:  new_lex_memory = LexMemory(old_lex_memory)?
         # self._choate()
-        if not self.exists():
-            self.words = []
-            # NOTE:  Assume zero-starting idns
-            self._install_all_seminal_words()
-        assert self.exists()
-        assert self.is_lex()
-        self._noun = self.words[int(Word._IDN_NOUN)]
-        self._verb = self.words[int(Word._IDN_VERB)]
+        # if not self.exists():
 
-    def exists(self):
-        if hasattr(self, 'words'):
-            return super(LexMemory, self).exists()
-        else:
-            return False
+        self.words = []
+        # NOTE:  Assume zero-starting idns
+
+        self._lex = self.word_class(self.IDN_LEX)
+
+        self._install_all_seminal_words()
+        # assert self.exists()
+        # assert self.is_lex()
+        self._lex = self.words[int(self.IDN_LEX)]
+        self._noun = self.words[int(self.IDN_NOUN)]
+        self._verb = self.words[int(self.IDN_VERB)]
+
+    # def exists(self):
+    #     if hasattr(self, 'words'):
+    #         return super(LexMemory, self).exists()
+    #     else:
+    #         return False
 
     def insert_word(self, word):
         assert not word.idn.is_nan()
@@ -1265,7 +1282,7 @@ class LexMemory(Lex):
     def populate_word_from_definition(self, word, define_txt):
         for word_source in self.words:
             if (
-                idn_from_word_or_number(word_source.vrb) == Word._IDN_DEFINE and
+                idn_from_word_or_number(word_source.vrb) == self.IDN_DEFINE and
                 word_source.txt == Text(define_txt)
             ):
                 word.populate_from_word(word_source)
@@ -1296,13 +1313,13 @@ class LexMemory(Lex):
         if name is None:
             return self._noun
         else:
-            return self.define(self._noun, name)
+            return self._lex.define(self._noun, name)
 
     def verb(self, name=None):
         if name is None:
             return self._verb
         else:
-            return self.define(self._verb, name)
+            return self._lex.define(self._verb, name)
 
     def max_idn(self):
         try:
@@ -1379,6 +1396,9 @@ class LexMySQL(Lex):
             engine - MySQL ENGINE, defaults to InnoDB
             txt_type - MySQL type of txt, defaults to VARCHAR(10000)
         """
+
+        super(LexMySQL, self).__init__(**kwargs)
+
         language = kwargs.pop('language')
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
@@ -1396,12 +1416,12 @@ class LexMySQL(Lex):
             self._connection = mysql.connector.connect(**kwargs)
         except mysql.connector.ProgrammingError as exception:
             raise self.ConnectError(str(exception))
-        self.lex = self
-        self.last_inserted_whn = None
-
-        super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
+        # self.lex = self
+        # self.last_inserted_whn = None
+        self._lex = self[self.IDN_LEX]
         try:
-            self._choate()   # Get the word out of this Lex that represents the Lex itself.
+            # noinspection PyProtectedMember
+            self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
         except self.SelectError as exception:   # was mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"Table .* doesn't exist", exception_message):
@@ -1409,23 +1429,23 @@ class LexMySQL(Lex):
                 self.install_from_scratch()
                 # TODO:  Do not super() twice -- cuz it's not D.R.Y.
                 # TODO:  Do not install in unit tests if we're about to uninstall.
-                super(LexMySQL, self).__init__(self._IDN_LEX, lex=self)
+                super(LexMySQL, self).__init__(self.IDN_LEX, lex=self)
             else:
                 raise self.ConnectError(str(exception))
 
         if not self.exists():
             self._install_all_seminal_words()
 
-        self._noun = self[self._IDN_NOUN]
-        self._verb = self[self._IDN_VERB]
+        self._noun = self[self.IDN_NOUN]
+        self._verb = self[self.IDN_VERB]
 
-        assert self.exists(), self.__dict__
-        # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
-        # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
+        # assert self.exists(), self.__dict__
+        # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
+        # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
 
         self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         # THANKS:  http://stackoverflow.com/a/27390024/673991
-        assert self.is_lex()
+        # assert self.is_lex()
         assert self._connection.is_connected()
 
     def __del__(self):
@@ -1601,7 +1621,7 @@ class LexMySQL(Lex):
     def populate_word_from_definition(self, word, define_txt):
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
-            'WHERE vrb =', Word._IDN_DEFINE,
+            'WHERE vrb =', self.IDN_DEFINE,
             'AND txt =', Text(define_txt),
             'ORDER BY `idn` ASC LIMIT 1'   # select the EARLIEST definition, so it's the most universal.
         )
