@@ -583,8 +583,9 @@ class Word(object):
     def is_agent(self):
         return self.idn == self.lex.IDN_AGENT
 
-    # def is_lex(self):
-    #     return isinstance(self, Lex) and self.exists() and self.idn == self.lex.IDN_LEX
+    def is_lex(self):
+        # return isinstance(self, Lex) and self.exists() and self.idn == self.lex.IDN_LEX
+        return self.exists() and self.idn == self.lex.IDN_LEX
 
     def description(self):
         return u"[{sbj}]({vrb}{maybe_num}{maybe_txt})[{obj}]".format(
@@ -769,8 +770,13 @@ class SubjectedVerb(object):
             w = lex[s](v)[o]
 
         Specifically, the right-most square-bracket operator.
+
+        So o can be:
+            an object word
+            idn of an object
+            txt of a defined object
         """
-        objected = item
+        objected = self._subjected.lex[item]
         return self._subjected.said(self._verbed, objected)
 
 
@@ -1002,18 +1008,35 @@ class ListingNotInstalled(Listing):
         raise self.NotAListing
 
 
-class Lex(object):    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
-                    #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
-                    #                     Diary, Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
-                    # Eventually, this will encapsulate other word repositories
-                    # Or should it simply be a sibling of e.g. Listing (List)?
-                    # This could encapsulate the idea of a container of sbj-vrb-obj words
-                    #     a sentence that defines a word.
-                    # Yeesh, should Word be an abstract base class, and derived classes
-                    #     have sbj,vrb,obj members, and other derivations that don't?
-                    #     class Sentence(Word)?
-                    # Make Lex formally an abstract base class
+class Lex(object):
+    # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
+    #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
+    #                     Diary, Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
+    # Eventually, this will encapsulate other word repositories
+    # Or should it simply be a sibling of e.g. Listing (List)?
+    # This could encapsulate the idea of a container of sbj-vrb-obj words
+    #     a sentence that defines a word.
+    # Yeesh, should Word be an abstract base class, and derived classes
+    #     have sbj,vrb,obj members, and other derivations that don't?
+    #     class Sentence(Word)?
+    # Make Lex formally an abstract base class
 
+    """
+    Abstract base class for Word collector and factory.
+
+    Instantiate a derived class of Lex for a database or other collection of word definitions.
+    The word_class property is the class of words unique to this Lex instance.
+                            If one is not supplied to this constructor,
+                            as in LexSubClass(word_class=WordSubClass),
+                            then such a class will be created for you.
+    The _lex property is a bit mind-bending.
+                      It is the word in the lex that's an abstraction for the lex.
+                      See each lex needs a way to refer to itself.  Just as it can refer to another lex.
+                      That reference is usually in the sbj or obj of a word in the lex.
+                      If `lex` is an instance of a Lex subclass,
+                      Then lex._lex is an instance of the word that represents that lex.
+                      lex._lex is an instance of lex.word_class
+    """
     def __init__(self, **kwargs):
         super(Lex, self).__init__()   # Blow off (**kwargs)
         word_class = kwargs.pop('word_class', None)
@@ -1025,6 +1048,8 @@ class Lex(object):    # rename candidates:  Site, Book, Server, Domain, Dictiona
             word_class = WordDerivedJustForThisLex
         self.word_class = word_class
         self.word_class.lex = self
+        self._lex = None
+
 
     def __getitem__(self, item):
         """
@@ -1354,7 +1379,7 @@ class LexMemory(Lex):
             if obj is not None and not word_match(word_source.obj, obj):
                 hit = False
             if hit:
-                found_words.append(word_source)
+                found_words.append(self[word_source])   # copy constructor
 
         if jbo_vrb:
             restricted_found_words = []
@@ -1363,8 +1388,10 @@ class LexMemory(Lex):
                 for other_word in self.words:
                     if word_match(other_word.obj, found_word.idn) and word_match(other_word.vrb, jbo_vrb):
                         jbo.append(other_word)
+
                 new_word = self[found_word]
                 assert new_word is not found_word
+
                 new_word.jbo = jbo
                 # FIXME:  Whoa this could add a jbo to the in-memory lex object couldn't it!
                 #         Same bug exists with LexMySQL instance maybe!
@@ -2225,12 +2252,12 @@ class QoolbarSimple(Qoolbar):
         iconify = self.lex.verb(u'iconify')
 
         delete = self.lex.verb(u'delete')
-        self.lex(qool, use_already=True)[delete] = 1
-        self.lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
+        self.lex._lex(qool, use_already=True)[delete] = 1
+        self.lex._lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
 
         like = self.lex.verb(u'like')
-        self.lex(qool, use_already=True)[like] = 1
-        self.lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
+        self.lex._lex(qool, use_already=True)[like] = 1
+        self.lex._lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
 
     def get_verbs_new(self, debug=False):
         qool_verbs = self.lex.find_words(
