@@ -204,10 +204,9 @@ class Word(object):
     class NotExist(Exception):
         pass
 
-    def __call__(self, *args, **kwargs):
-        """subject(verb)"""
-        that = SubjectedVerb(self, *args, **kwargs)
-        return that
+    def __call__(self, vrb, *args, **kwargs):
+        """subject(verb, ...)"""
+        return SubjectedVerb(self, vrb, *args, **kwargs)
 
     def define(self, obj, txt):
         """
@@ -248,10 +247,12 @@ class Word(object):
         possibly_existing_word = self.spawn(txt)
         if possibly_existing_word.exists():
             return possibly_existing_word
-        new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
+        # new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
+        new_word = self(vrb=self.lex[u'define'], txt=txt)[obj]
         return new_word
 
     def said(self, vrb, obj):
+        # TODO:  Move to LexSentence
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
         existing_word = self.spawn(
@@ -363,9 +364,9 @@ class Word(object):
             pass
         else:
             try:
-                return Listing.instance_from_idn(idn)
-            except Listing.NotAListingRightNow:
-                return ListingNotInstalled(idn)   # args[0] is a listing, but its class was not installed
+                return Listing.word_from_idn(idn)
+            # except Listing.NotAListingRightNow:
+            #     return ListingNotInstalled(idn)   # args[0] is a listing, but its class was not installed
             except Listing.NotAListing:
                 pass                              # args[0] is not a listing word
 
@@ -385,7 +386,7 @@ class Word(object):
         # via the derived class Lex (e.g. LexMySQL).)
 
         #     else:
-        #         return listing_class.instance_from_idn(args[0].idn)
+        #         return listing_class.word_from_idn(args[0].idn)
         # else:
         #     kwargs['lex'] = self.lex
         #     return Word(*args, **kwargs)
@@ -395,7 +396,7 @@ class Word(object):
         #     if idn.is_suffixed():
         #         try:
         #             listing_class = Listing.class_from_listing_idn(idn)
-        #             # TODO:  Instead, listed_instance = Listing.instance_from_idn(idn)
+        #             # TODO:  Instead, listed_instance = Listing.word_from_idn(idn)
         #         except Listing.NotAListing:   # as e:
         #             return ListingNotInstalled(idn)
         #             # raise self.NotAWord("Listing identifier {q} exception: {e}".format(
@@ -404,8 +405,8 @@ class Word(object):
         #             # ))
         #         else:
         #             assert issubclass(listing_class, Listing), repr(listing_class)
-        #             return listing_class.instance_from_idn(idn)
-        #             # _, hack_index = Listing._parse_listing_idn(idn)
+        #             return listing_class.word_from_idn(idn)
+        #             # _, hack_index = Listing._parse_compound_idn(idn)
         #             # return listing_class(hack_index)
         #         # pieces = idn.parse_suffixes()
         #         # assert len(pieces) == 1 or isinstance(pieces[1], Suffix)
@@ -433,7 +434,7 @@ class Word(object):
         :type idn: Number
         """
         assert isinstance(idn, Number)
-        assert not idn.is_suffixed()
+        # assert not idn.is_suffixed()
         self._idn = idn
         self.lex.populate_word_from_idn(self, idn)
         # NOTE:  If this returned True, it already populate_from_word() and so the word now exists()
@@ -524,6 +525,16 @@ class Word(object):
             txt=row[prefix + 'txt'],
             whn=row[prefix + 'whn'],
         )
+
+    def populate_from_num_txt(self, num, txt):
+        assert isinstance(txt, Text)
+        assert isinstance(num, Number)
+        self._now_it_exists()
+        self._fields = dict(
+            num=num,
+            txt=txt,
+        )
+
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
@@ -697,7 +708,7 @@ class Word(object):
 
 
 class SubjectedVerb(object):
-    # TODO:  Move this to inside Word?
+    # TODO:  Move this to inside Word?  Or LexSentence!??
     """
     This is the currying intermediary, the "x" in x = s(v) and x[o].  Thus allowing:  s(v)[o].
 
@@ -709,8 +720,8 @@ class SubjectedVerb(object):
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
-        self._verbed = self._subjected.spawn(vrb)   # TODO:  Move to ... (?)
-        self._args = args
+        self._verbed = self._subjected.lex.root_lex()[vrb]   # TODO:  Move to ... (?)
+        self._args = list(args)
         self._kwargs = kwargs
 
     def __setitem__(self, key, value):
@@ -758,8 +769,16 @@ class SubjectedVerb(object):
                     n=txt_count,
                     arg=repr(num_and_or_txt)
                 ))
-
-        self._subjected.says(self._verbed, objected, num, txt, *self._args, **self._kwargs)
+        root_lex = self._subjected.lex.root_lex()
+        root_lex.create_word(
+            sbj=self._subjected,
+            vrb=self._verbed,
+            obj=objected,
+            num=num,
+            txt=txt,
+            *self._args,
+            **self._kwargs
+        )
 
     def __getitem__(self, item):
         """
@@ -775,13 +794,126 @@ class SubjectedVerb(object):
             an object word
             idn of an object
             txt of a defined object
+
+        This also handles the creation of a new word (the C in CRUD).
+
+            w = lex[s](v, t, n)[o]
+
+        Without the assignment there may be a warning about code having no effect.
         """
-        objected = self._subjected.lex[item]
-        return self._subjected.said(self._verbed, objected)
+        objected = self._subjected.lex.root_lex()[item]
+        if self._args or self._kwargs:
+            num, txt = self.extract_txt_num(self._args, self._kwargs)
+            self._kwargs.pop('txt', None)
+            self._kwargs.pop('num', None)
+            # return self._subjected.says(self._verbed, objected, num=num, txt=txt, **self._kwargs)
+            root_lex = self._subjected.lex.root_lex()
+            return root_lex.create_word(
+                sbj=self._subjected,
+                vrb=self._verbed,
+                obj=objected,
+                num=num,
+                txt=txt,
+                *self._args,
+                **self._kwargs
+            )
+        else:
+            return self._subjected.said(self._verbed, objected)
+
+    @classmethod
+    def extract_txt_num(cls, args, kwargs):
+        def type_code(x):
+            return 'n' if isinstance(x, numbers.Number) else 't' if Text.is_valid(x) else 'x'
+
+        a = ''.join(type_code(arg) for arg in args)
+        t = 'txt' in kwargs
+        n = 'num' in kwargs
+
+        def type_failure():
+            return TypeError("Expecting a num and a txt, not {} {} {} {} {}".format(repr(args), repr(kwargs), a, t, n))
+
+        if   a == ''   and not t and not n:  r = '',            1
+        elif a == 'n'  and not t and not n:  r = '',            args[0]       ; del args[0]
+        elif a == 't'  and not t and not n:  r = args[0],       1             ; del args[0]
+        elif a == ''   and     t and not n:  r = kwargs['txt'], 1             ; del kwargs['txt']
+        elif a == ''   and not t and     n:  r = '',            kwargs['num'] ; del kwargs['num']
+        elif a == 'tn' and not t and not n:  r = args[0],       args[1]       ; del args[0:2]
+        elif a == 'nt' and not t and not n:  r = args[1],       args[0]       ; del args[0:2]
+        elif a == 't'  and not t and     n:  r = args[0],       kwargs['num'] ; del args[0]; del kwargs['num']
+        elif a == 'n'  and     t and not n:  r = kwargs['txt'], args[0]       ; del kwargs['txt']; del args[0]
+        elif a == ''   and     t and     n:  r = kwargs['txt'], kwargs['num'] ; del kwargs['txt']; del kwargs['num']
+        else:
+            raise type_failure()
+
+        try:
+            r = Text(r[0]),  Number(r[1])
+        except ValueError:
+            raise type_failure()
+
+        return r
 
 
-# noinspection PyAttributeOutsideInit
-class Listing(object):
+class Lex(object):
+    meta_word = None
+
+    def __init__(self, word_class=None, **_):
+        super(Lex, self).__init__()
+        # NOTE:  Blow off unused kwargs here, which might be sql credentials.
+        #        Guess we do this here so sql credentials could contain word_class=Something.
+        if word_class is None:
+
+            class WordDerivedJustForThisLex(Word):
+                lex = None
+
+            word_class = WordDerivedJustForThisLex
+        self.word_class = word_class
+        self.word_class.lex = self
+        self.meta_word = None
+
+
+    def __getitem__(self, item):
+        """
+        Square-bracket Word instantiation.
+
+        This gets called when you do any of these
+            lex[idn]
+            lex[txt]  (for a definition)
+            lex[word]  (for copy construction)
+        """
+        return self.word_class(item)
+
+    class NotFound(Exception):
+        pass
+
+    def root_lex(self):
+        if self.meta_word is None:
+            return self
+        elif self.meta_word.lex is self:
+            return self
+        else:
+            return self.meta_word.lex.root_lex()
+
+    def word_from_word_or_number(self, x):
+        return self.root_lex()[x]
+
+        # if isinstance(x, Word):
+        #     return x
+        # elif isinstance(x, Number):
+        #     return self._lex.spawn(x)
+        #     # return Word(x, lex=self)
+        # else:
+        #     raise TypeError(
+        #         "word_from_word_or_number({}) is not supported, "
+        #         "only Word or Number.".format(
+        #             type_name(x),
+        #         )
+        #     )
+
+    def populate_word_from_idn(self, word, idn):
+        raise NotImplementedError()
+
+
+class Listing(Lex):
     # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
     # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
 
@@ -796,19 +928,19 @@ class Listing(object):
     idn_record doesn't mean anything to qiki, just to the storage system.
     """
 
-    meta_word = None   # This class variable is a Word associated with a Listing subclass.
-                       # It is assigned by install().
-                       # ListingSubclass.meta_word.idn is an unsuffixed qiki.Number.
-                       # If x is an instance of a ListingSubclass, then x.idn is a suffixed qiki.Number.
-                       # The unsuffixed part of x.idn is its class's meta_word.idn.
-                       # I.e. x.idn.unsuffixed == x.meta_word.idn
-                       # See examples in test_example_idn().
-                       # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
-    class_dictionary = dict()   # Master list of derived classes, indexed by meta_word.idn
+    # meta_word = None   # This class variable is a Word associated with a Listing subclass.
+    #                    # It is assigned by install().
+    #                    # ListingSubclass.meta_word.idn is an unsuffixed qiki.Number.
+    #                    # If x is an instance of a ListingSubclass, then x.idn is a suffixed qiki.Number.
+    #                    # The unsuffixed part of x.idn is its class's meta_word.idn.
+    #                    # I.e. x.idn.unsuffixed == x.meta_word.idn
+    #                    # See examples in test_example_idn().
+    #                    # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
+    listing_dictionary = dict()   # Table of Listing instances, indexed by meta_word.idn
 
     SUFFIX_TYPE = Suffix.Type.LISTING
 
-    def __init__(self, index, lex=None):
+    def __init__(self, meta_word, word_class=None, **kwargs):
         """
         self.index - The index is an integer or Number that's opaque to qiki.
                      It is unique to whatever is represented by the ListingSubclass instance.
@@ -821,21 +953,44 @@ class Listing(object):
                    suffix type - Type.LISTING
                    suffix payload - the index
         """
-        assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
-        assert self.meta_word is not None, (
-            "Class {c} must be installed with its meta_word before it can be instantiated".format(
-                c=type_name(self)
-            )
-        )
-        self.index = Number(index)
 
-        if lex is None:
-            lex = self.meta_word.lex
-        super(Listing, self).__init__()
+        if word_class is None:
 
-        idn = Number(self.meta_word.idn, Suffix(self.SUFFIX_TYPE, self.index))
-        # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
-        # Did that morph a class property into an instance property?!?
+            class WordDerivedJustForThisListing(Word):
+                lex = None
+
+                @property
+                def index(self):
+                    return self.idn.suffix(Suffix.Type.LISTING).number
+
+                # def __call__(self, vrb, *a, **k):
+                #     return SubjectedVerb(self.idn, vrb, *a, **k)
+
+
+            word_class = WordDerivedJustForThisListing
+
+        super(Listing, self).__init__(word_class, **kwargs)
+        assert isinstance(meta_word, Word)
+        assert not isinstance(meta_word, self.word_class)   # meta_word is NOT a listing word,
+                                                            # that's self-referentially nuts
+        self.listing_dictionary[meta_word.idn] = self
+        self.meta_word = meta_word
+
+        # assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
+        # assert self.meta_word is not None, (
+        #     "Class {c} must be installed with its meta_word before it can be instantiated".format(
+        #         c=type_name(self)
+        #     )
+        # )
+        # self.index = Number(index)
+        #
+        # if lex is None:
+        #     lex = self.meta_word.lex
+        # super(Listing, self).__init__()
+        #
+        # idn = Number(self.meta_word.idn, Suffix(self.SUFFIX_TYPE, self.index))
+        # # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
+        # # Did that morph a class property into an instance property?!?
 
         # self._inchoate(idn)
         # self.__is_inchoate = True
@@ -843,59 +998,74 @@ class Listing(object):
         # self.lookup(self.index, self.lookup_callback)
         # self.lex = self.meta_word.lex
 
-    @property
-    def _is_inchoate(self):
-        # TODO:  Instead override base class property with a member boolean self._is_inchoate?
-        #        Otherwise, self._is_choate is better than self.__is_inchoate, avoiding double-underscore.
-        return self.__is_inchoate
+    # @property
+    # def _is_inchoate(self):
+    #     # TODO:  Instead override base class property with a member boolean self._is_inchoate?
+    #     #        Otherwise, self._is_choate is better than self.__is_inchoate, avoiding double-underscore.
+    #     return self.__is_inchoate
 
-    def _from_idn(self, idn):
-        assert idn.is_suffixed()
-        assert idn.unsuffixed == self.meta_word.idn
-        assert idn.suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
-        self.lookup(self.index, self.lookup_callback)
-        self.__is_inchoate = False
+    # def _from_idn(self, idn):
+    #     assert idn.is_suffixed()
+    #     assert idn.unsuffixed == self.meta_word.idn
+    #     assert idn.suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
+    #     self.lookup(self.index, self.lookup_callback)
+    #     self.__is_inchoate = False
 
     # TODO:  @abstractmethod
     # TODO:  No parameters for lookup()?  Do not pass index, and just return txt and num?
     # Or was the callback some kind of async feature, in case looking up took a while?
     # Because I'm doubtful that would work anyway.
-    def lookup(self, index, callback):
+    def lookup(self, index):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
-        # THANKS:  Pseudo-abstract method, http://stackoverflow.com/a/4383103/673991
+        # THANKS:  Classic abstract method, http://stackoverflow.com/a/4383103/673991
 
-    def lookup_callback(self, txt, num):
-        # Another case where txt comes before num, the exception.
-        # XXX:  Wait, WHY does lookup need a callback?  Can it just RETURN (txt, num)??
-        # It could even return a flexible tuple (n), (t), (n,t), (t,n), dict(num=n, txt=t)
-        # Oh wait, there's that pesky fact that the word should not "exist" until num,txt are populated.
-        # But maybe lookup should populate those fields instead.
-        # The lookup's caller could check that they were populated, then call _now_it_exists()
-        # Listing is just a burbling cauldron of refactoring need.
-        # self.num = num
-        # self.txt = Text(txt)
-        self._fields = dict(
-            num=num,
-            txt=Text(txt)
-        )
-        # self._now_it_exists()
+    def __getitem__(self, index):
+        # (txt, num) = self.lookup(index)
+        # word = self.word_class(txt=txt, num=num)
+        # word._idn = composite_idn
+        composite_idn = Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
+        word = self.word_class(composite_idn)
+        # noinspection PyProtectedMember
+        # word._now_it_exists()
+        return word
 
-    @classmethod
-    def install(cls, meta_word):
-        """
-        ListingSubclass.meta_word is a word in the lex that represents the subclass.
-        That meta-word should already exist, and it will (probably) have no suffix.
-        The meta-word's idn will be the unsuffixed part of the idn for all instances of the subclass.
-        Each instance idn will have a unique suffix, whose payload is the index for that instance.
-        This suffixed word is conceptually created each time the class is instantiated with a unique index.
+    def populate_word_from_idn(self, word, idn):
+        _, index = self._parse_compound_idn(idn)
+        (txt, num) = self.lookup(index)
+        word.populate_from_num_txt(Number(num), Text(txt))
 
-        This must be called before any instantiations.
-        """
-        assert isinstance(meta_word, Word)
-        assert isinstance(meta_word.idn, Number)
-        # TODO:  Make sure if already defined that it's the same class.
-        cls.class_dictionary[meta_word.idn] = cls
-        cls.meta_word = meta_word
+    # def lookup_callback(self, txt, num):
+    #     # Another case where txt comes before num, the exception.
+    #     # XXX:  Wait, WHY does lookup need a callback?  Can it just RETURN (txt, num)??
+    #     # It could even return a flexible tuple (n), (t), (n,t), (t,n), dict(num=n, txt=t)
+    #     # Oh wait, there's that pesky fact that the word should not "exist" until num,txt are populated.
+    #     # But maybe lookup should populate those fields instead.
+    #     # The lookup's caller could check that they were populated, then call _now_it_exists()
+    #     # Listing is just a burbling cauldron of refactoring need.
+    #     # self.num = num
+    #     # self.txt = Text(txt)
+    #     self._fields = dict(
+    #         num=num,
+    #         txt=Text(txt)
+    #     )
+    #     # self._now_it_exists()
+
+    # @classmethod
+    # def install(cls, meta_word):
+    #     """
+    #     ListingSubclass.meta_word is a word in the lex that represents the subclass.
+    #     That meta-word should already exist, and it will (probably) have no suffix.
+    #     The meta-word's idn will be the unsuffixed part of the idn for all instances of the subclass.
+    #     Each instance idn will have a unique suffix, whose payload is the index for that instance.
+    #     This suffixed word is conceptually created each time the class is instantiated with a unique index.
+    #
+    #     This must be called before any instantiations.
+    #     """
+    #     assert isinstance(meta_word, Word)
+    #     assert isinstance(meta_word.idn, Number)
+    #     # TODO:  Make sure if already defined that it's the same class.
+    #     cls.class_dictionary[meta_word.idn] = cls
+    #     cls.meta_word = meta_word
 
     class NotAListing(Exception):
         pass
@@ -905,7 +1075,7 @@ class Listing(object):
         pass
 
     @classmethod
-    def instance_from_idn(cls, idn):
+    def word_from_idn(cls, idn):
         """
         Turn a suffixed Number identifier into a (word) instance of some subclass of Listing.
         The ListingSubclass constructor is like an instance_from_index() converter.
@@ -924,32 +1094,34 @@ class Listing(object):
         # assert isinstance(identifier, Number)
         # assert isinstance(suffix, Suffix)
 
-        meta_idn, index = cls._parse_listing_idn(idn)
-        listing_subclass = cls.class_from_meta_idn(meta_idn)
-        listed_instance = listing_subclass(index)
+        meta_idn, index = cls._parse_compound_idn(idn)
+        listing = cls.listing_from_meta_idn(meta_idn)
+        listed_instance = listing[index]
         # TODO:  Support non-Number suffix payloads?  The Listing index must now be a Number.
         return listed_instance
 
-    @classmethod
-    def class_from_listing_idn(cls, idn):
-        meta_idn, index = cls._parse_listing_idn(idn)
-        listing_subclass = cls.class_from_meta_idn(meta_idn)
-        return listing_subclass
+    # @classmethod
+    # def listing_from_idn(cls, idn):
+    #     """"""
+    #     meta_idn, index = cls._parse_compound_idn(idn)
+    #     listing_subclass = cls.listing_from_meta_idn(meta_idn)
+    #     return listing_subclass
 
     @classmethod
-    def class_from_meta_idn(cls, meta_idn):
-        # print(repr(cls.class_dictionary))
+    def listing_from_meta_idn(cls, meta_idn):
+        """Listing subclass instance, from the listing's meta-idn."""
+        # print(repr(cls.listing_dictionary))
         try:
-            listing_subclass = cls.class_dictionary[meta_idn]
+            listing = cls.listing_dictionary[meta_idn]
         except KeyError:
             raise cls.NotAListingRightNow("Not an installed Listing class identifier: " + meta_idn.qstring())
-        assert issubclass(listing_subclass, cls), repr(listing_subclass) + " is not a subclass of " + repr(cls)
-        assert listing_subclass.meta_word.idn == meta_idn
-        return listing_subclass
+        assert isinstance(listing, cls), repr(listing) + " is not a subclass of " + repr(cls)
+        assert listing.meta_word.idn == meta_idn
+        return listing
 
     @classmethod
-    def _parse_listing_idn(cls, idn):
-        """Return (meta_idn, index) or raise NotAListing."""
+    def _parse_compound_idn(cls, idn):
+        """Return (meta_idn, index) from a listing word's idn.  Or raise NotAListing."""
         try:
             return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
         except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
@@ -972,43 +1144,40 @@ class Listing(object):
         # index = suffix.payload_number()
         # return meta_idn, index
 
-    class NotFound(Exception):
-        pass
+
+# class ListingNotInstalled(Listing):
+#     """
+#     Smelly class where spawn() can dump uninstalled Listings.
+#
+#     To defer raising NotAWord until it becomes choate.
+#     So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
+#     And exceptions are raised only if those words try to become choate.
+#     All this so we do not have to install obsolete listing classes,
+#     but we can still instantiate the no-longer-used words that refer to them.
+#     """
+#     # noinspection PyUnresolvedReferences
+#     meta_idn = Number.NAN
+#
+#     # noinspection PyMissingConstructor
+#     def __init__(self, idn):
+#         self.index = None
+#         # self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
+#
+#     # def _choate(self):
+#     #     assert self.idn.is_suffixed()
+#     #     raise Listing.NotAListing(
+#     #         "Listing identifier {idn} has meta_idn {meta_idn} "
+#     #         "which was not installed to a class.".format(
+#     #             idn=self.idn,
+#     #             meta_idn=self.idn.unsuffixed,
+#     #         )
+#     #     )
+#
+#     def lookup(self, index, callback):
+#         raise self.NotAListing
 
 
-class ListingNotInstalled(Listing):
-    """
-    Smelly class where spawn() can dump uninstalled Listings.
-
-    To defer raising NotAWord until it becomes choate.
-    So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
-    And exceptions are raised only if those words try to become choate.
-    All this so we do not have to install obsolete listing classes,
-    but we can still instantiate the no-longer-used words that refer to them.
-    """
-    # noinspection PyUnresolvedReferences
-    meta_idn = Number.NAN
-
-    # noinspection PyMissingConstructor
-    def __init__(self, idn):
-        self.index = None
-        # self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
-
-    # def _choate(self):
-    #     assert self.idn.is_suffixed()
-    #     raise Listing.NotAListing(
-    #         "Listing identifier {idn} has meta_idn {meta_idn} "
-    #         "which was not installed to a class.".format(
-    #             idn=self.idn,
-    #             meta_idn=self.idn.unsuffixed,
-    #         )
-    #     )
-
-    def lookup(self, index, callback):
-        raise self.NotAListing
-
-
-class Lex(object):
+class LexSentence(Lex):
     # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
     #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
     #                     Diary, Heap, Midden, Scribe, Stow (but it's a verb), Stowage,
@@ -1037,17 +1206,12 @@ class Lex(object):
                       Then lex._lex is an instance of the word that represents that lex.
                       lex._lex is an instance of lex.word_class
     """
+
+    def populate_word_from_idn(self, word, idn):
+        raise NotImplementedError
+
     def __init__(self, **kwargs):
-        super(Lex, self).__init__()   # Blow off (**kwargs)
-        word_class = kwargs.pop('word_class', None)
-        if word_class is None:
-
-            class WordDerivedJustForThisLex(Word):
-                lex = None
-
-            word_class = WordDerivedJustForThisLex
-        self.word_class = word_class
-        self.word_class.lex = self
+        super(LexSentence, self).__init__(**kwargs)
         self._lex = None
 
 
@@ -1060,7 +1224,11 @@ class Lex(object):
             lex[txt]  (for a definition)
             lex[word]  (for copy construction)
         """
+
         existing_word = self._lex.spawn(item)
+        # existing_word = self.word_class(item)
+        # Oops can't use word_class here. The class depends on the item. That's what spawn does.
+
         # if not existing_word.exists():
         #     raise self.NotExist
         # No, because inchoate words become choate by virtue of calling .exists().
@@ -1095,9 +1263,6 @@ class Lex(object):
 
         return existing_word
 
-    class NotFound(Exception):
-        pass
-
     class ConnectError(Exception):
         pass
 
@@ -1109,6 +1274,9 @@ class Lex(object):
     IDN_AGENT  = Number(4)
 
     IDN_MAX_FIXED = Number(4)
+
+    # TODO:  Why did this start at 1 before?
+    # TODO:  Why does this start at 0 now?
 
     def _install_all_seminal_words(self):
         """
@@ -1173,24 +1341,7 @@ class Lex(object):
         )
         word.save(override_idn=_idn)
 
-    def word_from_word_or_number(self, x):
-        if isinstance(x, Word):
-            return x
-        elif isinstance(x, Number):
-            return self._lex.spawn(x)
-            # return Word(x, lex=self)
-        else:
-            raise TypeError(
-                "word_from_word_or_number({}) is not supported, "
-                "only Word or Number.".format(
-                    type_name(x),
-                )
-            )
-
     def insert_word(self, word):
-        raise NotImplementedError()
-
-    def populate_word_from_idn(self, word, idn):
         raise NotImplementedError()
 
     def populate_word_from_definition(self, word, define_txt):
@@ -1231,6 +1382,73 @@ class Lex(object):
         except IndexError:
             raise self.NotFound
 
+    class CreateWordError(Exception):
+        """LexSentence.create_word() argument error."""
+
+    def create_word(self, sbj, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
+        """
+        Construct a new sentence from a 3-word subject-verb-object.
+        """
+        assert isinstance(sbj, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(sbj))
+        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
+        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
+        if isinstance(txt, numbers.Number) or Text.is_valid(num):
+            # TODO:  Why `or` not `and`?
+            (txt, num) = (num, txt)
+
+        if num is not None and num_add is not None:
+            raise self.CreateWordError("Word.says() cannot specify both num and num_add.")
+
+        num = num if num is not None else 1
+        txt = txt if txt is not None else u''
+
+        if not isinstance(num, numbers.Number):
+            raise self.CreateWordError("Wrong type for Word.says(num={})".format(type_name(num)))
+
+        if not Text.is_valid(txt):
+            raise self.CreateWordError("Wrong type for Word.says(txt={})".format(type_name(txt)))
+
+        new_word = self.word_class(
+            sbj=sbj,
+            vrb=vrb,
+            obj=obj,
+            num=Number(num),
+            txt=txt
+        )
+        if num_add is not None:
+            assert isinstance(num_add, numbers.Number)
+            self.populate_word_from_sbj_vrb_obj(new_word, sbj, vrb, obj)
+            if new_word.exists():
+                # noinspection PyProtectedMember
+                new_word._fields['num'] += Number(num_add)
+            else:
+                # noinspection PyProtectedMember
+                new_word._fields['num'] = Number(num_add)
+            new_word.save()
+        elif use_already:
+            old_word = self.word_class(
+                sbj=sbj,
+                vrb=vrb,
+                obj=obj
+            )
+            self.populate_word_from_sbj_vrb_obj(old_word, sbj, vrb, obj)
+            if not old_word.exists():
+                new_word.save()
+            elif old_word.txt != new_word.txt or old_word.num != new_word.num:
+                new_word.save()
+            else:
+                # There was an identical sentence already.  Fetch it so new_word.exists().
+                # This is the only path through create_word() where no new sentence is created.
+                # new_word._from_sbj_vrb_obj_num_txt()
+                self.populate_word_from_sbj_vrb_obj_num_txt(new_word, sbj, vrb, obj, Number(num), txt)
+                assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
+                    old=old_word.idn.qstring(),
+                    new=new_word.idn.qstring()
+                )
+        else:
+            new_word.save()
+        return new_word
+
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
 
@@ -1245,7 +1463,7 @@ class Lex(object):
 #             return super(WordEncoder, self).default(o)
 
 
-class LexMemory(Lex):
+class LexMemory(LexSentence):
     def __init__(self, **kwargs):
         # self.lex = self
         super(LexMemory, self).__init__(**kwargs)
@@ -1409,7 +1627,7 @@ class LexMemory(Lex):
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-class LexMySQL(Lex):
+class LexMySQL(LexSentence):
     """
     Store a Lex in a MySQL table.
     """
@@ -1445,7 +1663,7 @@ class LexMySQL(Lex):
             raise self.ConnectError(str(exception))
         # self.lex = self
         # self.last_inserted_whn = None
-        self._lex = self[self.IDN_LEX]
+        self._lex = self.word_class(self.IDN_LEX)
         try:
             # noinspection PyProtectedMember
             self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
@@ -1456,13 +1674,15 @@ class LexMySQL(Lex):
                 self.install_from_scratch()
                 # TODO:  Do not super() twice -- cuz it's not D.R.Y.
                 # TODO:  Do not install in unit tests if we're about to uninstall.
-                super(LexMySQL, self).__init__(self.IDN_LEX, lex=self)
+                super(LexMySQL, self).__init__()
+                self._lex = self.word_class(self.IDN_LEX)   # because base constructor sets it to None
             else:
                 raise self.ConnectError(str(exception))
 
-        if not self.exists():
+        if self._lex is None or not self._lex.exists():
             self._install_all_seminal_words()
 
+        self._lex = self[self.IDN_LEX]
         self._noun = self[self.IDN_NOUN]
         self._verb = self[self.IDN_VERB]
 
@@ -1497,13 +1717,13 @@ class LexMySQL(Lex):
         if name is None:
             return self._noun
         else:
-            return self.define(self._noun, name)
+            return self._lex.define(self._noun, name)
 
     def verb(self, name=None):
         if name is None:
             return self._verb
         else:
-            return self.define(self._verb, name)
+            return self._lex.define(self._verb, name)
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
@@ -2242,7 +2462,7 @@ class Qoolbar(object):
 class QoolbarSimple(Qoolbar):
     def __init__(self, lex):
         # TODO:  __init__(self, qool, iconify)
-        assert isinstance(lex, Lex)
+        assert isinstance(lex, LexSentence)
         self.lex = lex
         self.say_initial_verbs()
         # TODO:  Cache get_verbs().

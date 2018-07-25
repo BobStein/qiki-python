@@ -18,6 +18,7 @@ from number import Number
 from number import Suffix
 from word import Word
 from word import Lex
+from word import LexSentence
 from word import LexMemory
 from word import LexMySQL
 from word import Listing
@@ -28,6 +29,7 @@ __all__ = [
     'Number',
     'Word',
     'Lex',
+    'LexSentence',
     'LexMemory',
     'LexMySQL',
     'Listing',
