@@ -944,7 +944,7 @@ class Lex(object):
         if idn.is_suffixed():
             try:
                 lex = root_lex.mesa_lexes[idn.unsuffixed]
-                # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.  Allowing nexted lexes.
+                # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.  Allowing nested lexes.
             except KeyError:
                 raise Lex.NotFound("{q} unsuffixed is not a meta-word".format(q=repr(idn)))
             return lex[idn.suffix(lex.suffix_type).number]
@@ -2554,12 +2554,26 @@ class QoolbarSimple(Qoolbar):
         iconify = self.lex.verb(u'iconify')
 
         delete = self.lex.verb(u'delete')
-        self.lex._lex(qool, use_already=True)[delete] = 1
-        self.lex._lex(iconify, use_already=True)[delete] = 16, u'http://tool.qiki.info/icon/delete_16.png'
+        self.lex.create_word(
+            sbj=self.lex['lex'], vrb=qool, obj=delete,
+            use_already=True
+        )
+        self.lex.create_word(
+            sbj=self.lex['lex'], vrb=iconify, obj=delete,
+            use_already=True,
+            num=16, txt=u'http://tool.qiki.info/icon/delete_16.png'
+        )
 
         like = self.lex.verb(u'like')
-        self.lex._lex(qool, use_already=True)[like] = 1
-        self.lex._lex(iconify, use_already=True)[like] = 16, u'http://tool.qiki.info/icon/thumbsup_16.png'
+        self.lex.create_word(
+            sbj=self.lex['lex'], vrb=qool, obj=like,
+            use_already=True
+        )
+        self.lex.create_word(
+            sbj=self.lex['lex'], vrb=iconify, obj=like,
+            use_already=True,
+            num=16, txt=u'http://tool.qiki.info/icon/thumbsup_16.png'
+        )
 
     def get_verbs_new(self, debug=False):
         qool_verbs = self.lex.find_words(

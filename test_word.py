@@ -8,7 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 import inspect
-import json
 import mysql.connector
 import operator
 import subprocess
@@ -1122,27 +1121,30 @@ class Word0011FirstTests(WordTests):
             self.assertTripleEqual(_unicode, txt.unicode())
             self.assertTripleEqual(_utf8, txt.utf8())
 
-        example(b'ascii'.decode('utf-8'), u'ascii', b'ascii')
+        example(six.b('ascii').decode('utf-8'), u'ascii', b'ascii')
         example(u'ascii',                 u'ascii', b'ascii')
 
         example(unicodedata.lookup('latin small letter a with ring above') +
                           u'ring', u'\U000000E5ring', b'\xC3\xA5ring')
         example(         u'åring', u'\U000000E5ring', b'\xC3\xA5ring')
         example(u'\U000000E5ring', u'\U000000E5ring', b'\xC3\xA5ring')
-        example(  b'\xC3\xA5ring'.decode('utf-8'),
+        # noinspection PyUnresolvedReferences
+        example(                                      b'\xC3\xA5ring'.decode('utf-8'),
                                    u'\U000000E5ring', b'\xC3\xA5ring')
 
         example(unicodedata.lookup('greek small letter mu') +
                           u'icro', u'\U000003BCicro', b'\xCE\xBCicro')
         example(         u'μicro', u'\U000003BCicro', b'\xCE\xBCicro')
         example(u'\U000003BCicro', u'\U000003BCicro', b'\xCE\xBCicro')
-        example(  b'\xCE\xBCicro'.decode('utf-8'),
+        # noinspection PyUnresolvedReferences
+        example(                                      b'\xCE\xBCicro'.decode('utf-8'),
                                    u'\U000003BCicro', b'\xCE\xBCicro')
 
         example(unicodedata.lookup('tetragram for aggravation') +
                                   u'noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
         example(        u'\U0001D351noid', u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
-        example(  b'\xF0\x9D\x8D\x91noid'.decode('utf-8'),
+        # noinspection PyUnresolvedReferences
+        example(                                              b'\xF0\x9D\x8D\x91noid'.decode('utf-8'),
                                            u'\U0001D351noid', b'\xF0\x9D\x8D\x91noid')
 
     def test_14a_word_text(self):
@@ -1167,10 +1169,10 @@ class Word0011FirstTests(WordTests):
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-        works_as_txt(b'apple'.decode('utf-8'))
+        works_as_txt(six.b('apple').decode('utf-8'))
         works_as_txt(bytearray('apple', 'utf-8').decode('utf-8'))
         works_as_txt(u'apple')
-        works_as_txt(qiki.Text(b'apple'.decode('utf-8')))
+        works_as_txt(qiki.Text(six.b('apple').decode('utf-8')))
         works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
 
@@ -3243,6 +3245,8 @@ class WordQoolbarTests(WordQoolbarSetup):
 if LEX_CLASS is qiki.LexMySQL:
 
 
+    # NOTE:  The following ignores lex.mysql_methods() when LEX_CLASS is LexMemory
+    # noinspection PyUnresolvedReferences
     class WordSuperSelectTest(WordQoolbarSetup):
 
         def test_lex_table_not_writable(self):
