@@ -51,13 +51,13 @@ class Word(object):
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
         # assert isinstance(lex, (Lex, type(None)))
         # self.lex = lex
-        if Text.is_valid(content):   # e.g. Word('agent')
+        if Text.is_valid(content):          # Word('agent')
             self._from_definition(content)
         elif isinstance(content, Number):   # Word(idn)
             self._inchoate(content)
-        elif isinstance(content, Word):   # Word(another_word)
+        elif isinstance(content, Word):     # Word(another_word)
             self._from_word(content)
-        elif content is None:   # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
+        elif content is None:               # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
             self._fields = dict(
                 sbj=None if sbj is None else self.lex.word_from_word_or_number(sbj),
@@ -266,86 +266,95 @@ class Word(object):
         return existing_word
 
     def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
-        """
-        Construct a new sentence from a 3-word subject-verb-object.
-
-        Subject is self.
-
-        use_already makes a difference if the same word with the same num and txt
-        exists already AND is the newest word with that sbj-vrb-obj combination.
-        In that case no new sentence is created, the old one is returned.
-
-        Either num or num_add may be specified.
-
-        Differences between Word.sentence() and Word.spawn():
-            sentence takes a Word-triple, spawn takes an idn-triple.
-            sentence saves the new word.
-            spawn can take in idn or other ways to indicate an existing word.
-        Differences between Word.sentence() and Word.define():
-            sentence takes a Word-triple,
-            define takes only one word for the object (sbj and vrb are implied)
-            sentence requires an explicit num, define defaults to 1
-        """
-        # TODO:  rewrite this docstring
-        # TODO:  say()?
-
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
-        if isinstance(txt, numbers.Number) or Text.is_valid(num):
-            # TODO:  Why `or` not `and`?
-            (txt, num) = (num, txt)
-
-        if num is not None and num_add is not None:
-            raise self.SentenceArgs("Word.says() cannot specify both num and num_add.")
-
-        num = num if num is not None else 1
-        txt = txt if txt is not None else u''
-
-        if not isinstance(num, numbers.Number):
-            raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type_name(num)))
-
-        if not Text.is_valid(txt):
-            raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type_name(txt)))
-
-        new_word = self.spawn(
+        return self.lex.create_word(
             sbj=self,
             vrb=vrb,
             obj=obj,
-            num=Number(num),
-            txt=txt
+            num=num,
+            txt=txt,
+            num_add=num_add,
+            use_already=use_already,
         )
-        if num_add is not None:
-            new_word._from_sbj_vrb_obj()
-            assert isinstance(num_add, numbers.Number)
-            if new_word.exists():
-                # noinspection PyProtectedMember
-                new_word._fields['num'] += Number(num_add)
-            else:
-                # noinspection PyProtectedMember
-                new_word._fields['num'] = Number(num_add)
-            new_word.save()
-        elif use_already:
-            old_word = self.spawn(
-                sbj=self,
-                vrb=vrb,
-                obj=obj
-            )
-            old_word._from_sbj_vrb_obj()
-            if not old_word.exists():
-                new_word.save()
-            elif old_word.txt != new_word.txt or old_word.num != new_word.num:
-                new_word.save()
-            else:
-                # There was an identical sentence already.  Fetch it so new_word.exists().
-                # This is the only path through says() where no new sentence is created.
-                new_word._from_sbj_vrb_obj_num_txt()
-                assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
-                    old=old_word.idn.qstring(),
-                    new=new_word.idn.qstring()
-                )
-        else:
-            new_word.save()
-        return new_word
+        # """
+        # Construct a new sentence from a 3-word subject-verb-object.
+        #
+        # Subject is self.
+        #
+        # use_already makes a difference if the same word with the same num and txt
+        # exists already AND is the newest word with that sbj-vrb-obj combination.
+        # In that case no new sentence is created, the old one is returned.
+        #
+        # Either num or num_add may be specified.
+        #
+        # Differences between Word.sentence() and Word.spawn():
+        #     sentence takes a Word-triple, spawn takes an idn-triple.
+        #     sentence saves the new word.
+        #     spawn can take in idn or other ways to indicate an existing word.
+        # Differences between Word.sentence() and Word.define():
+        #     sentence takes a Word-triple,
+        #     define takes only one word for the object (sbj and vrb are implied)
+        #     sentence requires an explicit num, define defaults to 1
+        # """
+        # # TODO:  rewrite this docstring
+        # # TODO:  say()?
+        #
+        # assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
+        # assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
+        # if isinstance(txt, numbers.Number) or Text.is_valid(num):
+        #     # TODO:  Why `or` not `and`?
+        #     (txt, num) = (num, txt)
+        #
+        # if num is not None and num_add is not None:
+        #     raise self.SentenceArgs("Word.says() cannot specify both num and num_add.")
+        #
+        # num = num if num is not None else 1
+        # txt = txt if txt is not None else u''
+        #
+        # if not isinstance(num, numbers.Number):
+        #     raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type_name(num)))
+        #
+        # if not Text.is_valid(txt):
+        #     raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type_name(txt)))
+        #
+        # new_word = self.spawn(
+        #     sbj=self,
+        #     vrb=vrb,
+        #     obj=obj,
+        #     num=Number(num),
+        #     txt=txt
+        # )
+        # if num_add is not None:
+        #     new_word._from_sbj_vrb_obj()
+        #     assert isinstance(num_add, numbers.Number)
+        #     if new_word.exists():
+        #         # noinspection PyProtectedMember
+        #         new_word._fields['num'] += Number(num_add)
+        #     else:
+        #         # noinspection PyProtectedMember
+        #         new_word._fields['num'] = Number(num_add)
+        #     new_word.save()
+        # elif use_already:
+        #     old_word = self.spawn(
+        #         sbj=self,
+        #         vrb=vrb,
+        #         obj=obj
+        #     )
+        #     old_word._from_sbj_vrb_obj()
+        #     if not old_word.exists():
+        #         new_word.save()
+        #     elif old_word.txt != new_word.txt or old_word.num != new_word.num:
+        #         new_word.save()
+        #     else:
+        #         # There was an identical sentence already.  Fetch it so new_word.exists().
+        #         # This is the only path through says() where no new sentence is created.
+        #         new_word._from_sbj_vrb_obj_num_txt()
+        #         assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
+        #             old=old_word.idn.qstring(),
+        #             new=new_word.idn.qstring()
+        #         )
+        # else:
+        #     new_word.save()
+        # return new_word
 
     class SentenceArgs(TypeError):
         """Arguments to Word.says() (or intended for Word.says()) are wrong."""
@@ -575,7 +584,7 @@ class Word(object):
 
         That is, whether the sentence that creates it uses the verb 'define'.
         """
-        return self.vrb.idn == self.lex.IDN_DEFINE
+        return self.vrb is not None and self.vrb.idn == self.lex.IDN_DEFINE
 
     def is_noun(self):
         return self.idn == self.lex.IDN_NOUN
@@ -822,6 +831,13 @@ class SubjectedVerb(object):
 
     @classmethod
     def extract_txt_num(cls, args, kwargs):
+        """
+        Pop num and/or txt from arguments.
+
+        Expects args as a list so it can be modified.
+        """
+        # TODO:  It was silly to expect args to be a list.  Only kwargs can have extra parameters.
+        #        If this function doesn't generate an exception, then it used up all the args anyway.
         def type_code(x):
             return 'n' if isinstance(x, numbers.Number) else 't' if Text.is_valid(x) else 'x'
 
@@ -854,12 +870,13 @@ class SubjectedVerb(object):
 
 
 class Lex(object):
-    meta_word = None
+    # meta_word = None
 
-    def __init__(self, word_class=None, **_):
+    def __init__(self, meta_word=None, word_class=None, **_):
         super(Lex, self).__init__()
         # NOTE:  Blow off unused kwargs here, which might be sql credentials.
         #        Guess we do this here so sql credentials could contain word_class=Something.
+
         if word_class is None:
 
             class WordDerivedJustForThisLex(Word):
@@ -868,8 +885,29 @@ class Lex(object):
             word_class = WordDerivedJustForThisLex
         self.word_class = word_class
         self.word_class.lex = self
-        self.meta_word = None
+        self.meta_word = meta_word
+        self.mesa_lexes = dict()
+        # SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
+        root_lex = self.root_lex()
+        if meta_word in root_lex.mesa_lexes:
+            raise self.LexMetaError(
+                "Meta Word {this_word} already used for {that_class}. "
+                "Not available for this {this_class}".format(
+                    this_word=repr(meta_word),
+                    that_class=repr(root_lex.mesa_lexes[meta_word]),
+                    this_class=repr(self)
+                )
+            )
+        key = None if meta_word is None else meta_word.idn
+        root_lex.mesa_lexes[key] = self
+        self.suffix_type = None
 
+    class LexMetaError(TypeError):
+        """Something is wrong with Lex meta words, e.g. two sub-lexes use the same meta word."""
+
+    def __repr__(self):
+        meta_word_report = "" if self.meta_word is None else " " + repr(self.meta_word)
+        return type_name(self) + meta_word_report
 
     def __getitem__(self, item):
         """
@@ -888,13 +926,30 @@ class Lex(object):
     def root_lex(self):
         if self.meta_word is None:
             return self
-        elif self.meta_word.lex is self:
+        if self.meta_word.lex is None:
+            return self
+        elif self.meta_word.lex is self or self.meta_word.lex.root_lex is self.root_lex:
+            # NOTE:  This kind of self-reference should never happen.  Avoid infinite loop anyway.
             return self
         else:
             return self.meta_word.lex.root_lex()
 
     def word_from_word_or_number(self, x):
         return self.root_lex()[x]
+
+    def read_word(self, idn_or_word):
+        idn = idn_from_word_or_number(idn_or_word)
+        root_lex = self.root_lex()
+
+        if idn.is_suffixed():
+            try:
+                lex = root_lex.mesa_lexes[idn.unsuffixed]
+                # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.  Allowing nexted lexes.
+            except KeyError:
+                raise Lex.NotFound("{q} unsuffixed is not a meta-word".format(q=repr(idn)))
+            return lex[idn.suffix(lex.suffix_type).number]
+        else:
+            return root_lex[idn]
 
         # if isinstance(x, Word):
         #     return x
@@ -969,12 +1024,13 @@ class Listing(Lex):
 
             word_class = WordDerivedJustForThisListing
 
-        super(Listing, self).__init__(word_class, **kwargs)
+        super(Listing, self).__init__(meta_word=meta_word, word_class=word_class, **kwargs)
         assert isinstance(meta_word, Word)
         assert not isinstance(meta_word, self.word_class)   # meta_word is NOT a listing word,
                                                             # that's self-referentially nuts
         self.listing_dictionary[meta_word.idn] = self
         self.meta_word = meta_word
+        self.suffix_type = Suffix.Type.LISTING
 
         # assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         # assert self.meta_word is not None, (
@@ -1070,9 +1126,9 @@ class Listing(Lex):
     class NotAListing(Exception):
         pass
 
-    # noinspection PyClassHasNoInit
-    class NotAListingRightNow(NotAListing):
-        pass
+    # # noinspection PyClassHasNoInit
+    # class NotAListingRightNow(NotAListing):
+    #     pass
 
     @classmethod
     def word_from_idn(cls, idn):
@@ -1114,7 +1170,7 @@ class Listing(Lex):
         try:
             listing = cls.listing_dictionary[meta_idn]
         except KeyError:
-            raise cls.NotAListingRightNow("Not an installed Listing class identifier: " + meta_idn.qstring())
+            raise cls.NotAListing("Not a meta_word for any listing: " + meta_idn.qstring())
         assert isinstance(listing, cls), repr(listing) + " is not a subclass of " + repr(cls)
         assert listing.meta_word.idn == meta_idn
         return listing
@@ -1397,23 +1453,31 @@ class LexSentence(Lex):
             (txt, num) = (num, txt)
 
         if num is not None and num_add is not None:
-            raise self.CreateWordError("Word.says() cannot specify both num and num_add.")
+            raise self.CreateWordError("{self_type}.create_word() cannot specify both num and num_add.".format(
+                self_type=type_name(self),
+            ))
 
         num = num if num is not None else 1
         txt = txt if txt is not None else u''
 
         if not isinstance(num, numbers.Number):
-            raise self.CreateWordError("Wrong type for Word.says(num={})".format(type_name(num)))
-
+            # TODO:  Allow q-strings for num.  I.e. raise this exception on Number(num) error.
+            raise self.CreateWordError("Wrong type for {self_type}.create_word(num={num_type})".format(
+                self_type=type_name(self),
+                num_type=type_name(num),
+            ))
         if not Text.is_valid(txt):
-            raise self.CreateWordError("Wrong type for Word.says(txt={})".format(type_name(txt)))
+            raise self.CreateWordError("Wrong type for {self_type}.create_word(txt={txt_type})".format(
+                self_type=type_name(self),
+                txt_type=type_name(txt),
+            ))
 
         new_word = self.word_class(
             sbj=sbj,
             vrb=vrb,
             obj=obj,
             num=Number(num),
-            txt=txt
+            txt=txt,
         )
         if num_add is not None:
             assert isinstance(num_add, numbers.Number)
@@ -1642,13 +1706,11 @@ class LexMySQL(LexSentence):
             txt_type - MySQL type of txt, defaults to VARCHAR(10000)
         """
 
-        super(LexMySQL, self).__init__(**kwargs)
-
         language = kwargs.pop('language')
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
-        default_txt_type = 'VARCHAR(10000)' if self._engine.upper() == 'MEMORY' else 'TEXT'
+        default_txt_type = 'VARCHAR(10000)'   if self._engine.upper() == 'MEMORY' else   'TEXT'
         # VARCHAR(65536):  ProgrammingError: 1074 (42000): Column length too big for column 'txt'
         #                  (max = 16383); use BLOB or TEXT instead
         # VARCHAR(16383):  ProgrammingError: 1118 (42000): Row size too large. The maximum row size
@@ -1657,8 +1719,14 @@ class LexMySQL(LexSentence):
         #                  TEXT or BLOBs
         # SEE:  VARCHAR versus TEXT, https://stackoverflow.com/a/2023513/673991
         self._txt_type = kwargs.pop('txt_type', default_txt_type)
+
+        kwargs_sql = { k: v for k, v in kwargs.items() if k     in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
+        kwargs_etc = { k: v for k, v in kwargs.items() if k not in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
+
+        super(LexMySQL, self).__init__(**kwargs_etc)
+
         try:
-            self._connection = mysql.connector.connect(**kwargs)
+            self._connection = mysql.connector.connect(**kwargs_sql)
         except mysql.connector.ProgrammingError as exception:
             raise self.ConnectError(str(exception))
         # self.lex = self
@@ -1674,7 +1742,7 @@ class LexMySQL(LexSentence):
                 self.install_from_scratch()
                 # TODO:  Do not super() twice -- cuz it's not D.R.Y.
                 # TODO:  Do not install in unit tests if we're about to uninstall.
-                super(LexMySQL, self).__init__()
+                super(LexMySQL, self).__init__(**kwargs_etc)
                 self._lex = self.word_class(self.IDN_LEX)   # because base constructor sets it to None
             else:
                 raise self.ConnectError(str(exception))
@@ -1694,6 +1762,20 @@ class LexMySQL(LexSentence):
         # THANKS:  http://stackoverflow.com/a/27390024/673991
         # assert self.is_lex()
         assert self._connection.is_connected()
+
+    APPROVED_MYSQL_CONNECT_ARGUMENTS = {
+        'user',
+        'password',
+        'database',
+        'host',
+        'port',
+        'charset',
+        'collation',
+        'ssl_ca',
+        'ssl_cert',
+        'ssl_key',
+    }
+    # SEE:  https://dev.mysql.com/doc/connector-python/en/connector-python-connectargs.html
 
     def __del__(self):
         # noinspection SpellCheckingInspection

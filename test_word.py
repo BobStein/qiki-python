@@ -7,6 +7,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import inspect
+import json
 import mysql.connector
 import operator
 import subprocess
@@ -272,7 +274,12 @@ class WordTests(unittest.TestCase):
             self.lex.uninstall_to_scratch()
         self.lex.disconnect()
 
-    def display_all_word_descriptions(self):
+    def lex_report(self):
+
+        print()
+        print("lex_report <--", inspect.stack()[1][3])
+        print()
+
         histogram = {}
 
         def count(i):
@@ -294,6 +301,55 @@ class WordTests(unittest.TestCase):
         print()
         for idn, quantity in histogram_high_to_low:
             print(quantity, unicodedata.lookup('dot operator'), repr(self.lex[idn]))
+
+        print()
+        print("Mesa lexes")
+        for key, lex in self.lex.mesa_lexes.items():
+            if key is None:
+                print("    None: {class_}".format(
+                    class_=type_name(lex),
+                ))
+            else:
+                print("    {key}: {instance} -- {class_}".format(
+                    key=key.qstring(),
+                    instance=self.lex[key].txt,
+                    class_=type_name(lex),
+                ))
+            # if key is None:
+            #     key_report = "None"
+            # else:
+            #     key_report = "{idn} {txt}".format(
+            #         idn=key.idn,
+            #         txt=key.txt,
+            #     )
+            # print("    " + key_report + ":", type_name(lex))
+
+        # EXAMPLE:
+        #
+        # lex_report <-- test_singleton_class_dictionary
+        #
+        # 0 [lex](define, 'lex')[agent]
+        # 1 [lex](define, 'define')[verb]
+        # 2 [lex](define, 'noun')[noun]
+        # 3 [lex](define, 'verb')[noun]
+        # 4 [lex](define, 'agent')[noun]
+        # 5 [lex](define, 'listing')[noun]
+        # 6 [lex](define, 'student roster')[listing]
+        # 7 [lex](define, 'sub_student')[noun]
+        # 8 [lex](define, 'another_listing')[noun]
+        #
+        # 9 ⋅ Word('lex')
+        # 9 ⋅ Word('define')
+        # 6 ⋅ Word('noun')
+        # 1 ⋅ Word('agent')
+        # 1 ⋅ Word('verb')
+        # 1 ⋅ Word('listing')
+        #
+        # Mesa lexes
+        #     None: LexMySQL
+        #     0q82_06 student roster: StudentRoster
+        #     0q82_07 sub_student: SubStudent
+        #     0q82_08 another_listing: AnotherListing
 
     def show_txt_in_utf8(self, idn):
         word = self.lex[idn]
@@ -369,16 +425,20 @@ class WordDemoTests(WordTests):
 
     # noinspection PyUnusedLocal
     def test_syntaxes(self):
-        lex = self.lex._lex
-        s = lex.define(u'agent', u's')
-        v = lex.define(u'verb', u'v')
-        o = self.lex._lex.define(u'noun', u'o')
+        lex = self.lex
+        s = lex._lex.define(u'agent', u's')
+        v = lex._lex.define(u'verb', u'v')
+        o = lex._lex.define(u'noun', u'o')
         t = u'some text'
         n = qiki.Number(42)
 
-        # Deleters
+        # Deleters, the zero way
         s(v)[o] = 0
-        s.says(v,o,0)
+        lex.create_word(s,v,o,0)
+
+        # Deleters, the NAN way
+        s(v)[o] = qiki.Number.NAN
+        lex.create_word(s,v,o,qiki.Number.NAN)
 
         # Setters
         s(v)[o] = n,t
@@ -390,18 +450,18 @@ class WordDemoTests(WordTests):
         # s = v,o,n,t
         # lex[s] = v,o,n,t
         # lex[s][v] = o,n,t
-        self.lex[s](v)[o] = n,t
-        self.lex[s](v)[o] = t,n
-        self.lex[s](v)[o] = n
-        self.lex[s](v)[o] = t
-        self.lex[s](v)[o] = 1
-        self.lex[s](v)[o] = ''
-        s.says(vrb=v, obj=o, num=n, txt=t)
-        s.says(v, o, n, t)
-        s.says(v, o, t, n)
-        s.says(v, o, n)
-        s.says(v, o, t)
-        s.says(v, o)
+        lex[s](v)[o] = n,t
+        lex[s](v)[o] = t,n
+        lex[s](v)[o] = n
+        lex[s](v)[o] = t
+        lex[s](v)[o] = 1
+        lex[s](v)[o] = ''
+        lex.create_word(sbj=s, vrb=v, obj=o, num=n, txt=t)
+        lex.create_word(s, v, o, n, t)
+        lex.create_word(s, v, o, t, n)
+        lex.create_word(s, v, o, n)
+        lex.create_word(s, v, o, t)
+        lex.create_word(s, v, o)
         # s.v(o, n)
         # s.v(o, n, t)
         # s.v(o, num=n)
@@ -412,7 +472,7 @@ class WordDemoTests(WordTests):
         s.define(o, t)
 
         # Getters (but not setters)
-        w = self.lex[s](v)[o]
+        w = lex[s](v)[o]
         w = s(v)[o]
         w = s.said(v, o)
 
@@ -430,8 +490,8 @@ class WordDemoTests(WordTests):
         # s(v)[o] |= 1 ???
         s(v, use_already=True)[o] = 1;  w = s(v)[o]
         s(v, use_already=True)[o] = n,t;  w = s(v)[o]
-        w = s.says(v, o, n, t, use_already=True)
-        w = s.says(v, o, use_already=True)
+        w = lex.create_word(s, v, o, n, t, use_already=True)
+        w = lex.create_word(s, v, o, use_already=True)
         # w = s.v(o, n, use_already=True)
         # w = s.v(o, n, t, use_already=True)
         w = s(v, n, t)[o]
@@ -439,32 +499,40 @@ class WordDemoTests(WordTests):
 
         # Set and get the object.
         s(v)[o] = n,t; w = s(v)[o]
-        w = s.says(v, o, n, t)
+        w = lex.create_word(s, v, o, n, t)
 
         # Delta if it exists already.  Setter if it does not.
         # s(v)[o] += n   TODO, but how?
         # s(v, num_add=n)[o]   TODO?
-        s.says(v, o, num_add=n)
+        lex.create_word(s, v, o, num_add=n)
         # s.v(o, num_add=n)
 
 
 class WordExoticTests(WordTests):
 
-    def test_square_circle_square(self):
+    def test_square_circle_square_assignment(self):
         subject_ = self.lex._lex.define(u'agent', u'subject_')
         verb_    = self.lex.verb(u'verb_')
         object_  = self.lex.noun(u'object_')
+
         with self.assertNewWord():
-
-            # DONE:  w = subject_.says(vrb=verb_, obj=object_, num=42, txt=u"courage")
-
-            # GONE:  w = subject_.verb_(object_, 42, u"courage")
-
             subject_(verb_)[object_] = 42, u"courage"
             w = subject_(verb_)[object_]
 
-            # TODO:  w = self.lex[subject_](verb_, num=42, txt=u"courage")[object_]
-            # TODO:  w = self.lex[subject_](verb)[object_]
+        self.assertEqual(u'subject_', w.sbj.txt)
+        self.assertEqual(u'verb_',    w.vrb.txt)
+        self.assertEqual(u'object_',  w.obj.txt)
+        self.assertEqual(u'object_',  w.obj.txt)
+        self.assertEqual(42,          w.num)
+        self.assertEqual(u'courage',  w.txt)
+
+    def test_square_circle_square_parameters(self):
+        subject_ = self.lex._lex.define(u'agent', u'subject_')
+        verb_    = self.lex.verb(u'verb_')
+        object_  = self.lex.noun(u'object_')
+
+        with self.assertNewWord():
+            w = self.lex[subject_](verb_, num=42, txt=u"courage")[object_]
 
         self.assertEqual(u'subject_', w.sbj.txt)
         self.assertEqual(u'verb_',    w.vrb.txt)
@@ -482,7 +550,7 @@ class WordExoticTests(WordTests):
             self.assertEqual([], args_list)
             self.assertEqual({}, kwargs)
 
-        extract_test(('', 1), )
+        extract_test((   '',  1), )
 
         extract_test(('foo',  1), 'foo')
         extract_test(('foo',  1), txt='foo')
@@ -765,7 +833,6 @@ class Word0011FirstTests(WordTests):
         thing = self.lex._lex.define(u'noun', u'thing')
         self.assertTrue(thing.exists())
         self.assertEqual(u'thing', thing.txt)
-        self.display_all_word_descriptions()
 
     def test_03e_noun_spawn_crazier_syntax(self):
         self.lex['lex']('define')['noun'] = 'thing',42
@@ -1096,7 +1163,7 @@ class Word0011FirstTests(WordTests):
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-            word = s.says(vrb=v, obj=o, num=1, txt=txt)
+            word = self.lex.create_word(sbj=s, vrb=v, obj=o, num=1, txt=txt)
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
@@ -2049,31 +2116,31 @@ class Word0040SentenceTests(WordTests):
         self.assertGoodSentence(self.sam.says(self.vet, self.orb, 42, txt=u'x'), 42, u'x')
 
     def test_sentence_02c_wrong_type(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, some_type))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, some_type, 1))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, some_type, u''))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, 1, some_type))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'', some_type))
 
     def test_sentence_02d_ambiguous_type(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, 42, 42))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'x', u'x'))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'x', txt=u'x'))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'x', u'0q80'))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'0q80', u'x'))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'x', u'0x80'))
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.assertGoodSentence(self.sam.says(self.vet, self.orb, u'0x80', u'x'))
 
     def test_sentence_by_idn(self):
@@ -2119,17 +2186,17 @@ class Word0040SentenceTests(WordTests):
         self.assertLessEqual(w2.whn, w3.whn)
     #
     # def test_sentence_bad_positional(self):
-    #     with self.assertRaises(qiki.Word.SentenceArgs):
+    #     with self.assertRaises(qiki.LexSentence.CreateWordError):
     #         self.lex.says(self.sam, self.vet, self.orb, 1, u'')
-    #     with self.assertRaises(qiki.Word.SentenceArgs):
+    #     with self.assertRaises(qiki.LexSentence.CreateWordError):
     #         self.lex.says(self.sam, self.vet, self.orb, 1)
-    #     with self.assertRaises(qiki.Word.SentenceArgs):
+    #     with self.assertRaises(qiki.LexSentence.CreateWordError):
     #         self.lex.says(self.sam, self.vet, self.orb)
-    #     with self.assertRaises(qiki.Word.SentenceArgs):
+    #     with self.assertRaises(qiki.LexSentence.CreateWordError):
     #         self.lex.says()
 
     def test_sentence_bad_args(self):
-        # with self.assertRaises(qiki.Word.SentenceArgs):
+        # with self.assertRaises(qiki.LexSentence.CreateWordError):
         with self.assertRaises(TypeError):
             self.sam.says(vrb=self.vet, obj=self.orb, no_such_arg=0)
 
@@ -2141,17 +2208,17 @@ class Word0040SentenceTests(WordTests):
         self.assertGoodSentence(self.sam.says(vrb=self.vet, obj=self.orb, num=8, num_add=None, txt=u'x'), 8, u'x')
 
     def test_sentence_conflict_num_num_add(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.sam.says(vrb=self.vet, obj=self.orb, num=99, num_add=-99)
 
     def test_call_conflict_num_num_add(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.sam.says(self.vet, self.orb, num=99, num_add=-99)
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(qiki.LexSentence.CreateWordError):
             self.sam.says(self.vet, self.orb, 99, num_add=-99)
-        # with self.assertRaises(qiki.Word.SentenceArgs):
+        # with self.assertRaises(qiki.LexSentence.CreateWordError):
         #     self.sam.says(self.vet, self.orb, 99, num=-99)
-        # with self.assertRaises(qiki.Word.SentenceArgs):
+        # with self.assertRaises(qiki.LexSentence.CreateWordError):
         #     self.sam.says(self.vet, self.orb, 99, num=-99, num_add=999999)
 
 
@@ -2211,6 +2278,7 @@ class Word0051ListingBasicTests(WordListingTests):
     def test_listing_suffix(self):
         chad = self.student_roster[qiki.Number(2)]
         self.assertIsInstance(chad, self.student_roster.word_class)
+        self.assertEqual('WordDerivedJustForThisListing', type_name(chad))
 
         meta_idn = self.student_roster.meta_word.idn
         suffix = qiki.Suffix(qiki.Suffix.Type.LISTING, qiki.Number(2))
@@ -2345,7 +2413,7 @@ class Word0051ListingBasicTests(WordListingTests):
     #     self.assertEqual(chad1, chad2)
 
 
-class Word0052ListingInternalsTests(WordListingTests):
+class Word0052ListingMultipleTests(WordListingTests):
 
     class SubStudent(WordListingTests.StudentRoster):
         pass
@@ -2356,12 +2424,13 @@ class Word0052ListingInternalsTests(WordListingTests):
             raise self.NotFound
 
     def setUp(self):
-        super(Word0052ListingInternalsTests, self).setUp()
+        super(Word0052ListingMultipleTests, self).setUp()
         self.sub_student = self.SubStudent(meta_word=self.lex.noun(u'sub_student'), grades={})
         self.another_listing = self.AnotherListing(meta_word=self.lex.noun(u'another_listing'))
         # TODO:  Shouldn't these be ...define(listing, u'blah') instead of plain nouns?
 
     def test_singleton_class_dictionary(self):
+        self.lex_report()
         self.assertIs(qiki.Listing.listing_dictionary, self.student_roster.listing_dictionary)
         self.assertIs(qiki.Listing.listing_dictionary, self.sub_student.listing_dictionary)
         self.assertIs(qiki.Listing.listing_dictionary, self.another_listing.listing_dictionary)
@@ -2444,10 +2513,12 @@ class Word0052ListingInternalsTests(WordListingTests):
         chad_listing_idn = chad.idn.unsuffixed
         chad_listing = qiki.Listing.listing_from_meta_idn(chad_listing_idn)
 
-        self.assertEqual(self.student_roster, chad_listing)
-        self.assertNotEqual(qiki.Listing, chad_listing)
+        self.assertEqual(   self.student_roster, chad_listing)
+        self.assertIs(      self.student_roster, chad_listing)
 
-        self.assertIs(chad_listing, self.student_roster)
+        self.assertNotEqual(qiki.Listing,        chad_listing)
+        self.assertIsNot(   qiki.Listing,        chad_listing)
+
         self.assertTrue(isinstance(chad_listing, qiki.Listing))
 
     def test_listing_instance_from_class_has_a_lex(self):
@@ -2556,6 +2627,29 @@ class Word0052ListingInternalsTests(WordListingTests):
     #     not_a_listing_idn = qiki.Number(11+22j)
     #     with self.assertRaises(qiki.Listing.NotAListing):
     #         qiki.Listing.listing_from_idn(not_a_listing_idn)
+
+    def test_read_word_base_lex(self):
+        chad1 = self.student_roster[2]
+        self.assertEqual("0q82_06__8202_1D0300", chad1.idn.qstring())
+        self.assertTrue(chad1.idn.is_suffixed())
+
+        chad2 = self.lex.read_word(chad1.idn)
+        self.assertEqual("0q82_06__8202_1D0300", chad2.idn.qstring())
+        self.assertEqual(chad1, chad2)
+
+    def test_read_word_listing(self):
+        chad1 = self.student_roster[2]
+        self.assertTrue(chad1.idn.is_suffixed())
+
+        chad2 = self.student_roster.read_word(chad1.idn)
+        self.assertEqual(chad1, chad2)
+
+    def test_read_word_another_listing(self):
+        chad1 = self.student_roster[2]
+        self.assertTrue(chad1.idn.is_suffixed())
+
+        chad2 = self.another_listing.read_word(chad1.idn)
+        self.assertEqual(chad1, chad2)
 
 
 class Word0060UseAlready(WordTests):
@@ -2796,7 +2890,7 @@ class WordQoolbarSetup(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
-    def disable_test_display_all_word_descriptions(self):
+    def disable_test_lex_report(self):
         """
         1 [lex](define, u'define')[verb]
         2 [lex](define, u'noun')[noun]
@@ -2834,7 +2928,7 @@ class WordQoolbarSetup(WordTests):
         2 ⋅ Word(u'youtube')
         2 ⋅ Word(u'zigzags')
         """
-        self.display_all_word_descriptions()
+        self.lex_report()
 
 
 class WordQoolbarTests(WordQoolbarSetup):

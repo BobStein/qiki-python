@@ -29,6 +29,7 @@ class NumberAlternate(Number):
     It implements some alternate methods, and makes sure they behave the same as the standard methods.
     """
     # TODO:  "Behave the same" should mean equal return values OR raising the same exceptions.
+    # TODO:  Retain a list of all the values that pass through here, for future consistency checks.
 
     @property
     def zone(self):
@@ -43,8 +44,12 @@ class NumberAlternate(Number):
             )
         return zone_original
 
-    def zone_alternate_by_loop(self):   # slower than if-else-tree, but enforces Zone value rules
-        """Get the Zone for a Number, by scanning Zone values."""
+    def zone_alternate_by_loop(self):   #
+        """
+        Get the Zone for a Number, by scanning Zone values.
+
+        Slower than if-else-tree, but takes advantage of -- and enforces -- actual values of Zone enumeration.
+        """
         for z in Zone.descending_codes:
             if z <= self.raw:
                 return z
@@ -3059,6 +3064,7 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(                    b'\x82\x03#\xd7\n=p\xa3\xe0',            x314.raw)
         self.assertEqual(py23( "",  "b") +  "'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw))
         self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode('ascii'))
+        # noinspection PyTypeChecker
         self.assertEqual(
             pickle.dumps(x314).decode('latin-1'),
             py23(
@@ -3075,7 +3081,7 @@ class NumberPickleTests(NumberTests):
                 b'Rp4\n'
                 b'S' + repr(x314.raw).encode('ascii') + b'\n'
                 b'p5\n'
-                b'b.',                 # Python 2.X
+                b'b.',                      # Python 2.X
 
                 b'\x80\x03ctest_number\n'   # Python 3.X
                 b'NumberAlternate\n'
@@ -3109,7 +3115,7 @@ class NumberPickleTests(NumberTests):
                 b'NumberAlternate\n'
                 b'q\x00)\x81q\x01U\t' + x314.raw + b'q\x02b.',   # Python 2.X
 
-                b'\x80\x02ctest_number\n'                             # Python 3.X
+                b'\x80\x02ctest_number\n'                        # Python 3.X
                 b'NumberAlternate\n'
                 b'q\x00)\x81q\x01c_codecs\n'
                 b'encode\n'
@@ -3695,6 +3701,43 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(65536, int(Number(65536)))
         self.assertEqual(65536, int(Number(65536, Suffix(Suffix.Type.TEST))))
         self.assertEqual(65536, int(Number(65536, Suffix(Suffix.Type.TEST, Number(100)))))
+
+    def test_amalgamated_suffix(self):
+        """
+        Amalgamation:  #1 of the 2 methods of suffix nesting:  adding a suffix onto a suffixed number.
+
+        Sithin this method there could be two conceptual sub-methods depending on which suffix is
+        conceptually thought of as inner and which outer.
+             Number(Number(core, Suffix(inner)), Suffix(outer))   <-- 1a. probably this one
+             Number(core, Suffix(inner), Suffix(outer))           <-- 1a. equivalent to this
+                                                                          Because core+inner stands alone
+                                                                          and outer can be added later
+
+             Number(core, Suffix(outer), Suffix(inner))           <-- 1b. harder to imagine
+             ...or something
+        """
+        n1 = Number(0x11)
+        self.assertEqual('0q82_11', n1.qstring())
+        n2 = Number(n1, Suffix(Suffix.Type.TEST, Number(0x22)))
+        self.assertEqual('0q82_11__8222_7E0300', n2.qstring())
+        n3 = Number(n2, Suffix(Suffix.Type.TEST, Number(0x33)))
+        self.assertEqual('0q82_11__8222_7E0300__8233_7E0300', n3.qstring())
+        #                      cc    ii           oo              <-- the core, inner, and outer qans.
+
+    def test_embedded_suffix(self):
+        """
+        Embedding:  #2 of the 2 methods of suffix nesting:  ensconcing a suffix into a suffix's payload
+
+        Pretty clear the suffix inside a suffix is the inner suffix.
+        As with nesting method 1a, core+inner could stand alone, with outer added later.
+        """
+        n1 = Number(0x11)
+        self.assertEqual('0q82_11', n1.qstring())
+        n2 = Number(n1, Suffix(Suffix.Type.TEST, Number(0x22)))
+        self.assertEqual('0q82_11__8222_7E0300', n2.qstring())
+        n3 = Number(0x33, Suffix(Suffix.Type.TEST, n2))
+        self.assertEqual('0q82_33__821182227E0300_7E0800', n3.qstring())
+        #                      oo    cc  ii                       <-- the outer, core, and inner qans.
 
 
 # noinspection SpellCheckingInspection
