@@ -2017,19 +2017,7 @@ class Word0030MoreTests(WordTests):
     #         self.lex.blurt()
 
     def test_missing_word_getter(self):
-        alf = self.lex.define(u'agent', u'alf')
-        clap = self.lex.verb(u'clap')
-        eve = self.lex.verb(u'eve')
-        with self.assertNewWord():
-            alf.says(clap, eve, 55)
-        word = alf.said(clap, eve)
-        self.assertEqual(55, word.num)
-        with self.assertRaises(qiki.Word.NotExist):
-            eve.said(clap, alf)
-
-    def test_missing_word_getter_square(self):
-        alf = self.lex['lex']('define', txt='alf')['agent']
-        # alf = self.lex.define('agent', 'alf')
+        alf = self.lex.define('agent', 'alf')
         clap = self.lex.verb('clap')
         eve = self.lex.verb('eve')
         with self.assertNewWord():
@@ -2037,12 +2025,22 @@ class Word0030MoreTests(WordTests):
         word = alf.said(clap, eve)
         self.assertEqual(55, word.num)
         with self.assertRaises(qiki.Word.NotExist):
-            eve.said(clap, alf)
+            _ = eve.said(clap, alf)
+
+    def test_missing_word_getter_square(self):
+        alf = self.lex.define('agent', 'alf')
+        clap = self.lex.verb('clap')
+        eve = self.lex.verb('eve')
+        with self.assertNewWord():
+            alf(clap)[eve] = 55
+        word = alf.said(clap, eve)
+        self.assertEqual(55, word.num)
+        with self.assertRaises(qiki.Word.NotExist):
+            _ = eve(clap)[alf]
 
     # def test_missing_lex_getter(self):
-    #     self.assertEqual(qiki.LexSentence.IDN_DEFINE, self.lex[u'define'].idn)
     #     with self.assertRaises(qiki.Word.NotExist):
-    #         self.lex[u'defibrillator']
+    #         _ = self.lex['defibrillator']
 
 
 class Word0040SentenceTests(WordTests):

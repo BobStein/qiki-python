@@ -254,20 +254,25 @@ class Word(object):
         return new_word
 
     def said(self, vrb, obj):
-        # TODO:  Move to LexSentence
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
-        existing_word = self.spawn(
-            sbj=self,
-            vrb=vrb,
-            obj=obj
-        )
-        existing_word._from_sbj_vrb_obj()
-        if not existing_word.exists():
-            raise self.NotExist
-        return existing_word
+        return self(vrb)[obj]
+
+        # assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
+        # assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
+        # existing_word = self.spawn(
+        #     sbj=self,
+        #     vrb=vrb,
+        #     obj=obj
+        # )
+        # existing_word._from_sbj_vrb_obj()
+        # if not existing_word.exists():
+        #     raise self.NotExist
+        # return existing_word
 
     def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
+
+        # return self(vrb, *args, **kwargs)[obj]
+        # NOTE:  That way is less aggressive.  With num and txt missing it's a read not a create.
+
         return self.lex.create_word(
             sbj=self,
             vrb=vrb,
@@ -277,6 +282,7 @@ class Word(object):
             num_add=num_add,
             use_already=use_already,
         )
+
         # """
         # Construct a new sentence from a 3-word subject-verb-object.
         #
@@ -837,7 +843,17 @@ class SubjectedVerb(object):
                 **self._kwargs
             )
         else:
-            return self._subjected.said(self._verbed, objected)
+            existing_word = self._subjected.lex.word_class()
+            does_exist = self._subjected.lex.populate_word_from_sbj_vrb_obj(
+                existing_word,
+                sbj=self._subjected,
+                vrb=self._verbed,
+                obj=objected,
+            )
+            if not does_exist:
+                raise self._subjected.NotExist
+            return existing_word
+            # return self._subjected.said(self._verbed, objected)
 
     @classmethod
     def extract_txt_num(cls, args, kwargs):
@@ -1455,13 +1471,13 @@ class LexSentence(Lex):
         if name is None:
             return self._noun
         else:
-            return self._lex.define(self._noun, name)
+            return self.define(self._noun, name)
 
     def verb(self, name=None):
         if name is None:
             return self._verb
         else:
-            return self._lex.define(self._verb, name)
+            return self.define(self._verb, name)
 
     def define(self, obj, txt, sbj=None):
         old_definition = self[txt]
