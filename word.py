@@ -222,7 +222,8 @@ class Word(object):
             lex.define('agent', 'fred')
         """
         if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex['x'])
-            obj = self.spawn(obj)
+            # obj = self.spawn(obj)
+            obj = self.lex.read_word(obj)
         # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
 
         assert isinstance(obj, Word)
@@ -244,7 +245,8 @@ class Word(object):
         # Who cares about num (yet)?  Used to, but now abolished.
 
         # So anyway, this attempts to find the earliest definition by anybody of the same word:
-        possibly_existing_word = self.spawn(txt)
+        # possibly_existing_word = self.spawn(txt)
+        possibly_existing_word = self.lex[txt]
         if possibly_existing_word.exists():
             return possibly_existing_word
         # new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
@@ -365,8 +367,8 @@ class Word(object):
         Construct a Word() using the same lex as another word.
         """
 
-        # if len(args) == 1 and isinstance(args[0], (Number, Word)):
-        #     return self.lex[args[0]]
+        if len(args) == 1 and isinstance(args[0], (Number, Word)):
+            return self.lex.root_lex[args[0]]
 
         try:
             idn = idn_from_word_or_number(args[0])
@@ -506,7 +508,8 @@ class Word(object):
 
         Useful for words as dictionary keys.
         """
-        return self.spawn(self.idn)
+        # return self.spawn(self.idn)
+        return self.lex[self.idn]
 
     def populate_from_word(self, word):
         word_dict = dict(
@@ -531,9 +534,12 @@ class Word(object):
         self._idn = row[prefix + 'idn']
         self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
-            sbj=self.spawn(row[prefix + 'sbj']),
-            vrb=self.spawn(row[prefix + 'vrb']),
-            obj=self.spawn(row[prefix + 'obj']),
+            # sbj=self.spawn(row[prefix + 'sbj']),
+            # vrb=self.spawn(row[prefix + 'vrb']),
+            # obj=self.spawn(row[prefix + 'obj']),
+            sbj=self.lex[row[prefix + 'sbj']],
+            vrb=self.lex[row[prefix + 'vrb']],
+            obj=self.lex[row[prefix + 'obj']],
             num=row[prefix + 'num'],
             txt=row[prefix + 'txt'],
             whn=row[prefix + 'whn'],
@@ -563,7 +569,8 @@ class Word(object):
             return False
         if self.obj == word:
             return True
-        parent = self.spawn(self.obj)
+        # parent = self.spawn(self.obj)
+        parent = self.lex[self.obj]
         if parent.idn == self.idn:
             return False
         return parent.is_a(word, reflexive=reflexive, recursion=recursion-1)
@@ -733,7 +740,7 @@ class SubjectedVerb(object):
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
-        self._verbed = self._subjected.lex.root_lex()[vrb]   # TODO:  Move to ... (?)
+        self._verbed = self._subjected.lex.root_lex[vrb]   # TODO:  Move to ... (?)
         self._args = list(args)
         self._kwargs = kwargs
 
@@ -747,7 +754,8 @@ class SubjectedVerb(object):
 
         Specifically, the assignment combined with the right-most square-bracket operator.
         """
-        objected = self._subjected.spawn(key)
+        # objected = self._subjected.spawn(key)
+        objected = self._subjected.lex.root_lex[key]
         num_and_or_txt = value
         if isinstance(num_and_or_txt, numbers.Number):
             num = num_and_or_txt
@@ -782,8 +790,7 @@ class SubjectedVerb(object):
                     n=txt_count,
                     arg=repr(num_and_or_txt)
                 ))
-        root_lex = self._subjected.lex.root_lex()
-        root_lex.create_word(
+        self._subjected.lex.root_lex.create_word(
             sbj=self._subjected,
             vrb=self._verbed,
             obj=objected,
@@ -814,14 +821,13 @@ class SubjectedVerb(object):
 
         Without the assignment there may be a warning about code having no effect.
         """
-        objected = self._subjected.lex.root_lex()[item]
+        objected = self._subjected.lex.root_lex[item]
         if self._args or self._kwargs:
             num, txt = self.extract_txt_num(self._args, self._kwargs)
             self._kwargs.pop('txt', None)
             self._kwargs.pop('num', None)
             # return self._subjected.says(self._verbed, objected, num=num, txt=txt, **self._kwargs)
-            root_lex = self._subjected.lex.root_lex()
-            return root_lex.create_word(
+            return self._subjected.lex.root_lex.create_word(
                 sbj=self._subjected,
                 vrb=self._verbed,
                 obj=objected,
@@ -877,6 +883,13 @@ class Lex(object):
     # meta_word = None
 
     def __init__(self, meta_word=None, word_class=None, **_):
+        """
+
+        :param meta_word:
+        :type meta_word Word:
+        :param word_class:
+        :param _:
+        """
         super(Lex, self).__init__()
         # NOTE:  Blow off unused kwargs here, which might be sql credentials.
         #        Guess we do this here so sql credentials could contain word_class=Something.
@@ -892,18 +905,18 @@ class Lex(object):
         self.meta_word = meta_word
         self.mesa_lexes = dict()
         # SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
-        root_lex = self.root_lex()
-        if meta_word in root_lex.mesa_lexes:
+        root_lexes = self.root_lex.mesa_lexes
+        if meta_word in root_lexes:
             raise self.LexMetaError(
                 "Meta Word {this_word} already used for {that_class}. "
                 "Not available for this {this_class}".format(
                     this_word=repr(meta_word),
-                    that_class=repr(root_lex.mesa_lexes[meta_word]),
+                    that_class=repr(root_lexes[meta_word]),
                     this_class=repr(self)
                 )
             )
         meta_idn = None if meta_word is None else meta_word.idn
-        root_lex.mesa_lexes[meta_idn] = self
+        root_lexes[meta_idn] = self
 
     class LexMetaError(TypeError):
         """Something is wrong with Lex meta words, e.g. two sub-lexes use the same meta word."""
@@ -925,28 +938,41 @@ class Lex(object):
     class NotFound(Exception):
         pass
 
+    @property
     def root_lex(self):
+        return self._root_lex()
+
+    def _root_lex(self):
         if self.meta_word is None:
             return self
         if self.meta_word.lex is None:
             return self
-        elif self.meta_word.lex is self or self.meta_word.lex.root_lex is self.root_lex:
-            # NOTE:  This kind of self-reference should never happen.  Avoid infinite loop anyway.
-            return self
         else:
-            return self.meta_word.lex.root_lex()
+            # noinspection PyProtectedMember
+            is_potential_infinite_loop = (
+                self.meta_word.lex           is self or
+                self.meta_word.lex._root_lex is self._root_lex
+            )
+            if is_potential_infinite_loop:
+                # NOTE:  This kind of self-reference should never happen.  Avoid infinite loop anyway.
+                raise RuntimeError("{} meta_word refers to itself".format(type_name(self)))
+            else:
+                return self.meta_word.lex.root_lex
 
     def word_from_word_or_number(self, x):
-        return self.root_lex()[x]
+        return self.root_lex[x]
 
-    def read_word(self, idn_or_word):
-        idn = idn_from_word_or_number(idn_or_word)
+    def read_word(self, idn_or_word_or_none):
+        if idn_or_word_or_none is None:
+            return self.word_class(None)
+
+        idn = idn_from_word_or_number(idn_or_word_or_none)
         assert isinstance(idn, Number)
 
         if idn.is_suffixed():
             try:
                 meta_idn, index = Listing.split_compound_idn(idn)
-                lex = self.root_lex().mesa_lexes[meta_idn]
+                lex = self.root_lex.mesa_lexes[meta_idn]
                 # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.
                 #        Allowing nested lexes.
             except (Listing.NotAListing, KeyError):
@@ -956,19 +982,6 @@ class Lex(object):
             return lex.read_word(index)
         else:
             return self.word_class(idn)
-
-        # if isinstance(x, Word):
-        #     return x
-        # elif isinstance(x, Number):
-        #     return self._lex.spawn(x)
-        #     # return Word(x, lex=self)
-        # else:
-        #     raise TypeError(
-        #         "word_from_word_or_number({}) is not supported, "
-        #         "only Word or Number.".format(
-        #             type_name(x),
-        #         )
-        #     )
 
     def populate_word_from_idn(self, word, idn):
         raise NotImplementedError()
@@ -1360,10 +1373,12 @@ class LexSentence(Lex):
         """
         def seminal_word(_idn, _obj, _txt):
             """Subject is always 'lex'.  Verb is always 'define'."""
-            word = self._lex.spawn(_idn)
+            # word = self._lex.spawn(_idn)
+            word = self[_idn]
             if not word.exists():
                 self._install_one_seminal_word(_idn, _obj, _txt)
-                word = self._lex.spawn(_idn)
+                # word = self._lex.spawn(_idn)
+                word = self[_idn]
             assert word.exists()
 
         __crazy_idea_define_lex_first__ = True
@@ -1398,14 +1413,22 @@ class LexSentence(Lex):
         # assert self.is_lex()
 
     def _install_one_seminal_word(self, _idn, _obj, _txt):
-        word = self._lex.spawn(
+        # word = self._lex.spawn(
+        #     sbj=self.IDN_LEX,
+        #     vrb=self.IDN_DEFINE,
+        #     obj=_obj,
+        #     num=Number(1),
+        #     txt=_txt,
+        # )
+        # word.save(override_idn=_idn)
+        self.create_word(
+            override_idn=_idn,
             sbj=self.IDN_LEX,
             vrb=self.IDN_DEFINE,
             obj=_obj,
             num=Number(1),
             txt=_txt,
         )
-        word.save(override_idn=_idn)
 
     def insert_word(self, word):
         raise NotImplementedError()
@@ -1459,7 +1482,15 @@ class LexSentence(Lex):
         else:
             return super(LexSentence, self).read_word(idn_or_txt)
 
-    def create_word(self, sbj, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
+    def create_word(
+        self,
+        sbj, vrb, obj,
+        num=None,
+        txt=None,
+        num_add=None,
+        use_already=False,
+        override_idn=None
+    ):
         """
         Construct a new sentence from a 3-word subject-verb-object.
         """
@@ -1528,7 +1559,7 @@ class LexSentence(Lex):
                     new=new_word.idn.qstring()
                 )
         else:
-            new_word.save()
+            new_word.save(override_idn=override_idn)
         return new_word
 
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?

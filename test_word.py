@@ -1368,60 +1368,6 @@ class Word0012Utilities(WordTests):
     #         to_kwargs(('x',), dict(s='x'), dict(i=[int], s=[str]), dict(i=0, s=''))
 
 
-class Word0014CreateWord(WordTests):
-
-    def setUp(self):
-        super(Word0014CreateWord, self).setUp()
-        self.art = self.lex._lex.define(u'agent', u'art')
-        self.got = self.lex.verb(u'got')
-        self.lek = self.lex.noun(u'lek')
-
-    def test_01(self):
-        with self.assertNewWord():
-            word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
-        self.assertEqual(self.art, word.sbj)
-        self.assertEqual(self.got, word.vrb)
-        self.assertEqual(self.lek, word.obj)
-        self.assertEqual(236, word.num)
-        self.assertEqual("tao", word.txt)
-
-    def test_02_num_add(self):
-        with self.assertNewWord():
-            old_word = self.lex.create_word(self.art, self.got, self.lek, 236)
-        with self.assertNewWord():
-            new_word = self.lex.create_word(self.art, self.got, self.lek, num_add=1)
-        self.assertEqual(self.art, new_word.sbj)
-        self.assertEqual(self.got, new_word.vrb)
-        self.assertEqual(self.lek, new_word.obj)
-        self.assertEqual(237, new_word.num)
-        self.assertEqual(236, old_word.num)
-
-    def test_03_use_already_same(self):
-        with self.assertNewWord():
-            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
-        with self.assertNoNewWord():
-            new_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao", use_already=True)
-        self.assertEqual(new_word.idn, old_word.idn)
-
-    def test_04_use_already_different_num(self):
-        with self.assertNewWord():
-            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
-        with self.assertNewWord():
-            new_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao", use_already=True)
-        self.assertNotEqual(new_word.idn, old_word.idn)
-        self.assertEqual(236, old_word.num)
-        self.assertEqual(744, new_word.num)
-
-    def test_05_use_already_different_txt(self):
-        with self.assertNewWord():
-            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
-        with self.assertNewWord():
-            new_word = self.lex.create_word(self.art, self.got, self.lek, 236, "eta", use_already=True)
-        self.assertNotEqual(new_word.idn, old_word.idn)
-        self.assertEqual("tao", old_word.txt)
-        self.assertEqual("eta", new_word.txt)
-
-
 class Word0013Brackets(WordTests):
 
     def setUp(self):
@@ -1624,6 +1570,62 @@ class Word0013Brackets(WordTests):
     # def test_08_lex_square_lex(self):   NOPE
     #     """Lex is a singleton when indexing itself."""
     #     self.assertIs(self.lex[self.lex], self.lex)
+
+
+class Word0014CreateWord(WordTests):
+
+    def setUp(self):
+        super(Word0014CreateWord, self).setUp()
+        self.art = self.lex._lex.define(u'agent', u'art')
+        self.got = self.lex.verb(u'got')
+        self.lek = self.lex.noun(u'lek')
+
+    def test_01(self):
+        with self.assertNewWord():
+            word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
+        self.assertEqual(self.art, word.sbj)
+        self.assertEqual(self.got, word.vrb)
+        self.assertEqual(self.lek, word.obj)
+        self.assertEqual(236, word.num)
+        self.assertEqual("tao", word.txt)
+
+    def test_02_num_add(self):
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 236)
+        with self.assertNewWord():
+            new_word = self.lex.create_word(self.art, self.got, self.lek, num_add=1)
+        self.assertEqual(self.art, new_word.sbj)
+        self.assertEqual(self.got, new_word.vrb)
+        self.assertEqual(self.lek, new_word.obj)
+        self.assertEqual(237, new_word.num)
+        self.assertEqual(236, old_word.num)
+
+    def test_03_use_already_same(self):
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
+        with self.assertNoNewWord():
+            new_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao", use_already=True)
+        self.assertEqual(new_word.idn, old_word.idn)
+
+    def test_04_use_already_different_num(self):
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
+        with self.assertNewWord():
+            new_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao", use_already=True)
+        self.assertNotEqual(new_word.idn, old_word.idn)
+        self.assertEqual(236, old_word.num)
+        self.assertEqual(744, new_word.num)
+
+    def test_05_use_already_different_txt(self):
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
+        with self.assertNewWord():
+            new_word = self.lex.create_word(self.art, self.got, self.lek, 236, "eta", use_already=True)
+        self.assertNotEqual(new_word.idn, old_word.idn)
+        self.assertEqual("tao", old_word.txt)
+        self.assertEqual("eta", new_word.txt)
+
+    # TODO:  Test Lex.create_word(override_idn) and/or Word.save(override_idn)
 
 
 class WordUnicode(WordTests):
