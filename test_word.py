@@ -1208,20 +1208,21 @@ class Word0011FirstTests(WordTests):
         self.assertFalse(w._is_inchoate)
 
     def test_17c_inchoate_copy_constructor(self):
-        """The Word(Word) copy constructor copies the inchoate-ness."""
+        """The lex[word] copy constructor:  inchoate <-- inchoate"""
         w1 = self.lex[qiki.LexSentence.IDN_DEFINE]
         w2 = self.lex[w1]
         self.assertTrue(w1._is_inchoate)   # Tests the source didn't BECOME choate by copying.
         self.assertTrue(w2._is_inchoate)   # Tests the destination is also inchoate.
 
     def test_17d_choate_copy_constructor(self):
-        """The Word(Word) copy constructor copies the choate-ness."""
+        """The lex[word] copy constructor:  inchoate <-- choate"""
         w1 = self.lex[qiki.LexSentence.IDN_DEFINE]
-        # noinspection PyStatementEffect
-        w1.sbj
-        w2 = self.lex[w1]
+        self.assertTrue(w1._is_inchoate)
+        _ = w1.sbj
         self.assertFalse(w1._is_inchoate)
-        self.assertFalse(w2._is_inchoate)
+
+        w2 = self.lex[w1]
+        self.assertTrue(w2._is_inchoate)
 
     def test_17e_inchoate_txt(self):
         agent = self.lex[qiki.LexSentence.IDN_AGENT]
@@ -2277,10 +2278,18 @@ class WordListingTests(WordTests):
 
 class Word0051ListingBasicTests(WordListingTests):
 
-    def test_listing_suffix(self):
+    def test_listing_word_type(self):
         chad = self.student_roster[qiki.Number(2)]
         self.assertIsInstance(chad, self.student_roster.word_class)
+        self.assertIs(type(chad), self.student_roster.word_class)
         self.assertEqual('WordDerivedJustForThisListing', type_name(chad))
+
+    def test_listing_word_type_unique(self):
+        self.assertIsNot(self.student_roster.word_class, type(self.lex['lex']))
+
+    def test_listing_suffix(self):
+        # TODO:  Simpler, more granular early listing tests.
+        chad = self.student_roster[qiki.Number(2)]
 
         meta_idn = self.student_roster.meta_word.idn
         suffix = qiki.Suffix(qiki.Suffix.Type.LISTING, qiki.Number(2))
@@ -2543,7 +2552,7 @@ class Word0052ListingMultipleTests(WordListingTests):
         """
         Cannot lex[idn] on a bogus idn, one that's suffixed but not with the Listing suffix.
         """
-        with self.assertRaises(qiki.Word.NotAWord):
+        with self.assertRaises(qiki.Lex.NotFound):
             _ = self.lex[qiki.Number(1+2j)]
 
     # def test_uninstalled_listing_instance(self):
@@ -2637,13 +2646,17 @@ class Word0052ListingMultipleTests(WordListingTests):
 
         chad2 = self.lex.read_word(chad1.idn)
         self.assertEqual("0q82_06__8202_1D0300", chad2.idn.qstring())
+
+        self.assertIsNot(chad1, chad2)
         self.assertEqual(chad1, chad2)
 
     def test_read_word_listing(self):
         chad1 = self.student_roster[2]
         self.assertTrue(chad1.idn.is_suffixed())
 
-        chad2 = self.student_roster.read_word(chad1.idn)
+        chad2 = self.student_roster.read_word(2)
+
+        self.assertIsNot(chad1, chad2)
         self.assertEqual(chad1, chad2)
 
     def test_read_word_another_listing(self):
@@ -2651,7 +2664,29 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertTrue(chad1.idn.is_suffixed())
 
         chad2 = self.another_listing.read_word(chad1.idn)
-        self.assertEqual(chad1, chad2)
+
+        self.assertNotEqual(chad1, chad2)
+        # NOTE:  chad2 remains inchoate
+
+    def test_read_word_by_definition(self):
+        """lex.read_word('blah') is the same as lex('blah')."""
+        define1 = self.lex['define']
+        define2 = self.lex.read_word('define')
+        self.assertIsNot(define1, define2)
+        self.assertEqual(define1, define2)
+
+    def test_read_word_by_definition_choate(self):
+        """Words read by definition txt are immediately choate."""
+        define = self.lex.read_word('define')
+        self.assertFalse(define._is_inchoate)
+
+    def test_read_word_by_definition_exists(self):
+        define = self.lex.read_word('define')
+        self.assertTrue(define.exists())
+
+    def test_read_word_by_definition_not_exists(self):
+        gibberish = self.lex.read_word('gibberish')
+        self.assertFalse(gibberish.exists())
 
 
 class Word0060UseAlready(WordTests):

@@ -365,6 +365,9 @@ class Word(object):
         Construct a Word() using the same lex as another word.
         """
 
+        # if len(args) == 1 and isinstance(args[0], (Number, Word)):
+        #     return self.lex[args[0]]
+
         try:
             idn = idn_from_word_or_number(args[0])
         except IndexError:                        # args is empty (kwargs probably is not)
@@ -415,7 +418,7 @@ class Word(object):
         #         else:
         #             assert issubclass(listing_class, Listing), repr(listing_class)
         #             return listing_class.word_from_idn(idn)
-        #             # _, hack_index = Listing._parse_compound_idn(idn)
+        #             # _, hack_index = Listing.split_compound_idn(idn)
         #             # return listing_class(hack_index)
         #         # pieces = idn.parse_suffixes()
         #         # assert len(pieces) == 1 or isinstance(pieces[1], Suffix)
@@ -446,7 +449,8 @@ class Word(object):
         # assert not idn.is_suffixed()
         self._idn = idn
         self.lex.populate_word_from_idn(self, idn)
-        # NOTE:  If this returned True, it already populate_from_word() and so the word now exists()
+        # NOTE:  If this returned True, it already called populate_from_word()
+        #        and so the word now exists()
 
     def _from_definition(self, txt):
         """Construct a Word from its txt, but only when it's a definition."""
@@ -898,9 +902,8 @@ class Lex(object):
                     this_class=repr(self)
                 )
             )
-        key = None if meta_word is None else meta_word.idn
-        root_lex.mesa_lexes[key] = self
-        self.suffix_type = None
+        meta_idn = None if meta_word is None else meta_word.idn
+        root_lex.mesa_lexes[meta_idn] = self
 
     class LexMetaError(TypeError):
         """Something is wrong with Lex meta words, e.g. two sub-lexes use the same meta word."""
@@ -915,10 +918,9 @@ class Lex(object):
 
         This gets called when you do any of these
             lex[idn]
-            lex[txt]  (for a definition)
             lex[word]  (for copy construction)
         """
-        return self.word_class(item)
+        return self.read_word(item)
 
     class NotFound(Exception):
         pass
@@ -939,17 +941,21 @@ class Lex(object):
 
     def read_word(self, idn_or_word):
         idn = idn_from_word_or_number(idn_or_word)
-        root_lex = self.root_lex()
+        assert isinstance(idn, Number)
 
         if idn.is_suffixed():
             try:
-                lex = root_lex.mesa_lexes[idn.unsuffixed]
-                # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.  Allowing nested lexes.
-            except KeyError:
-                raise Lex.NotFound("{q} unsuffixed is not a meta-word".format(q=repr(idn)))
-            return lex[idn.suffix(lex.suffix_type).number]
+                meta_idn, index = Listing.split_compound_idn(idn)
+                lex = self.root_lex().mesa_lexes[meta_idn]
+                # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.
+                #        Allowing nested lexes.
+            except (Listing.NotAListing, KeyError):
+                raise Lex.NotFound("{q} is not a Listing idn".format(
+                    q=idn.qstring(),
+                ))
+            return lex.read_word(index)
         else:
-            return root_lex[idn]
+            return self.word_class(idn)
 
         # if isinstance(x, Word):
         #     return x
@@ -1075,7 +1081,10 @@ class Listing(Lex):
         raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
         # THANKS:  Classic abstract method, http://stackoverflow.com/a/4383103/673991
 
-    def __getitem__(self, index):
+    # def __getitem__(self, index):
+    #     return self.read_word(index)
+
+    def read_word(self, index):
         # (txt, num) = self.lookup(index)
         # word = self.word_class(txt=txt, num=num)
         # word._idn = composite_idn
@@ -1086,7 +1095,7 @@ class Listing(Lex):
         return word
 
     def populate_word_from_idn(self, word, idn):
-        _, index = self._parse_compound_idn(idn)
+        _, index = self.split_compound_idn(idn)
         (txt, num) = self.lookup(index)
         word.populate_from_num_txt(Number(num), Text(txt))
 
@@ -1150,7 +1159,7 @@ class Listing(Lex):
         # assert isinstance(identifier, Number)
         # assert isinstance(suffix, Suffix)
 
-        meta_idn, index = cls._parse_compound_idn(idn)
+        meta_idn, index = cls.split_compound_idn(idn)
         listing = cls.listing_from_meta_idn(meta_idn)
         listed_instance = listing[index]
         # TODO:  Support non-Number suffix payloads?  The Listing index must now be a Number.
@@ -1159,7 +1168,7 @@ class Listing(Lex):
     # @classmethod
     # def listing_from_idn(cls, idn):
     #     """"""
-    #     meta_idn, index = cls._parse_compound_idn(idn)
+    #     meta_idn, index = cls.split_compound_idn(idn)
     #     listing_subclass = cls.listing_from_meta_idn(meta_idn)
     #     return listing_subclass
 
@@ -1176,12 +1185,12 @@ class Listing(Lex):
         return listing
 
     @classmethod
-    def _parse_compound_idn(cls, idn):
+    def split_compound_idn(cls, idn):
         """Return (meta_idn, index) from a listing word's idn.  Or raise NotAListing."""
         try:
             return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
         except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
-            raise cls.NotAListing("Not a Listing identifier: " + type_name(idn) + " - " + six.text_type(e))
+            raise cls.NotAListing("Not a Listing idn: " + type_name(idn) + " - " + six.text_type(e))
 
         # try:
         #     identifier = idn.unsuffixed
@@ -1271,53 +1280,54 @@ class LexSentence(Lex):
         self._lex = None
 
 
-    def __getitem__(self, item):
-        """
-        Square-bracket Word instantiation.
-
-        This is the result of
-            lex[idn]
-            lex[txt]  (for a definition)
-            lex[word]  (for copy construction)
-        """
-
-        existing_word = self._lex.spawn(item)
-        # existing_word = self.word_class(item)
-        # Oops can't use word_class here. The class depends on the item. That's what spawn does.
-
-        # if not existing_word.exists():
-        #     raise self.NotExist
-        # No, because inchoate words become choate by virtue of calling .exists().
-        # And it's just not (yet) the Word way of doing things.
-        #     That is, lots of code asks permission rather than forgiveness.
-        #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
-        #     at this point, whether the word exists or not.
-
-        # if existing_word.idn == self.idn:
-        #     return self   # lex is a singleton, i.e. assert lex[lex] is lex
-
-        # TODO:  Explain, why is this important?
-        #        Why is the Lex's word for the Lex itself only instantiated once.
-        #        And why aren't other words in the Lex also a singleton.,
-        # Ok, one reason it makes sense is only a LexMySQL instantiated object (which is also a Word)
-        # can perform database actions like .find_words() or .populate_word_from_idn().
-        # There should be only one instance of a Lex for a given lex.
-        # Otherwise there'd be multiple connections or shared connections and chaos would reign.
-        # But is there any problem with there being a Word('lex') that isn't a Lex?
-        # Equal but not identical.  Not so weird.
-        # You couldn't do any lex-like things to Word('lex').
-        # Maybe the lesson here is that Lex should not derive Word at all.
-        # Possibly go further and make Lex the metaclass of Word.
-        # Is that just abstraction-confusion?  Lex is really a CONTAINER of Words.
-        # Maybe lex should be a class object of Word.  And it should point to
-        # whatever generates words.
-        #
-        #     class MyWord(Word):
-        #         pass
-        #
-        #     MyWord.lex = LexMySQL(**my_credentials, word_class=MyWord)
-
-        return existing_word
+    # def __getitem__(self, item):
+    #     """
+    #     Square-bracket Word instantiation.
+    #
+    #     This is the result of
+    #         lex[idn]
+    #         lex[txt]  (for a definition)
+    #         lex[word]  (for copy construction)
+    #     """
+    #     return self.read_word(item)
+    #
+    #     existing_word = self._lex.spawn(item)
+    #     # existing_word = self.word_class(item)
+    #     # Oops can't use word_class here. The class depends on the item. That's what spawn does.
+    #
+    #     # if not existing_word.exists():
+    #     #     raise self.NotExist
+    #     # No, because inchoate words become choate by virtue of calling .exists().
+    #     # And it's just not (yet) the Word way of doing things.
+    #     #     That is, lots of code asks permission rather than forgiveness.
+    #     #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
+    #     #     at this point, whether the word exists or not.
+    #
+    #     # if existing_word.idn == self.idn:
+    #     #     return self   # lex is a singleton, i.e. assert lex[lex] is lex
+    #
+    #     # TODO:  Explain, why is this important?
+    #     #        Why is the Lex's word for the Lex itself only instantiated once.
+    #     #        And why aren't other words in the Lex also a singleton.,
+    #     # Ok, one reason it makes sense is only a LexMySQL instantiated object (which is also a Word)
+    #     # can perform database actions like .find_words() or .populate_word_from_idn().
+    #     # There should be only one instance of a Lex for a given lex.
+    #     # Otherwise there'd be multiple connections or shared connections and chaos would reign.
+    #     # But is there any problem with there being a Word('lex') that isn't a Lex?
+    #     # Equal but not identical.  Not so weird.
+    #     # You couldn't do any lex-like things to Word('lex').
+    #     # Maybe the lesson here is that Lex should not derive Word at all.
+    #     # Possibly go further and make Lex the metaclass of Word.
+    #     # Is that just abstraction-confusion?  Lex is really a CONTAINER of Words.
+    #     # Maybe lex should be a class object of Word.  And it should point to
+    #     # whatever generates words.
+    #     #
+    #     #     class MyWord(Word):
+    #     #         pass
+    #     #
+    #     #     MyWord.lex = LexMySQL(**my_credentials, word_class=MyWord)
+    #
+    #     return existing_word
 
     class ConnectError(Exception):
         pass
@@ -1440,6 +1450,14 @@ class LexSentence(Lex):
 
     class CreateWordError(Exception):
         """LexSentence.create_word() argument error."""
+
+    def read_word(self, idn_or_txt):
+        if Text.is_valid(idn_or_txt):
+            word = self.word_class(txt=idn_or_txt)
+            self.populate_word_from_definition(word, idn_or_txt)
+            return word
+        else:
+            return super(LexSentence, self).read_word(idn_or_txt)
 
     def create_word(self, sbj, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
         """
@@ -1580,16 +1598,10 @@ class LexMemory(LexSentence):
             word.populate_from_word(word_source)
             return True
 
-        # for word_source in self.words:
-        #     if word_source.idn == idn:
-        #         word.populate_from_word(word_source)
-        #         return True
-        # return False
-
     def populate_word_from_definition(self, word, define_txt):
         for word_source in self.words:
             if (
-                idn_from_word_or_number(word_source.vrb) == self.IDN_DEFINE and
+                word_source.vrb.idn == self.IDN_DEFINE and
                 word_source.txt == Text(define_txt)
             ):
                 word.populate_from_word(word_source)
@@ -2253,7 +2265,8 @@ class LexMySQL(LexSentence):
                             what=str(e)
                         )
                     )
-                # TODO: make these embedded iterables recursive.  Or flatten query_args.
+                # TODO:  Make these embedded iterables recursive.  Or flatten query_args.
+                # TODO:  D.R.Y. the above elif clauses and the ones in _parametric_forms())
             elif query_arg is None:
                 '''
                 None is ignored.  This is useful if you want consecutive plaintext query_args,
@@ -2333,7 +2346,12 @@ class LexMySQL(LexSentence):
 
     @staticmethod
     def _parametric_forms(sub_args):
-        """Convert objects into MySQL parameters, ready to be substituted for '?'s."""
+        """
+        Convert objects into the form MySQL expects for its data parameters.
+
+        Return a value that could be passed as the 2nd parameter to cursor.execute().
+        Raises TypeError if sub_args is not iterable, or contains unrecognized objects.
+        """
         for sub_arg in sub_args:
             if isinstance(sub_arg, Text):
                 yield sub_arg.unicode()
@@ -2388,6 +2406,13 @@ class LexMySQL(LexSentence):
 
 
 def idn_from_word_or_number(x):
+    """
+    Helper for functions that take either idn or word.
+
+    :param x:  - an idn or a word
+    :return:   - an idn
+    """
+    # TODO:  Support idn_from_word_or_number(42) !?
     if isinstance(x, Word):
         assert isinstance(x.idn, Number)
         return x.idn
@@ -2403,7 +2428,11 @@ def idn_from_word_or_number(x):
 
 
 def word_match(word_1, word_or_words_2):
-    """Actually they can be idns too."""
+    """
+    Is a word equal to another word (or any of a nested collection of words)?
+
+    Actually they can be idns too.
+    """
     # assert not is_iterable(word_1)
     if is_iterable(word_or_words_2):
         for word_2 in word_or_words_2:
@@ -2494,6 +2523,8 @@ class Text(six.text_type):
     # THANKS:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
     def __new__(cls, the_string):
         if cls.is_valid(the_string):
+            # NOTE:  Unexpected Argument warning started PyCharm 2018.2
+            # noinspection PyArgumentList
             return six.text_type.__new__(cls, the_string)
         else:
             raise TypeError("Text({value} type {type}) is not supported".format(
