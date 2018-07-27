@@ -389,10 +389,10 @@ class WordDemoTests(WordTests):
     # noinspection PyUnusedLocal
     def test_syntaxes(self):
         lex = self.lex
-        s = lex._lex.define(u'agent', u's')
-        v = lex._lex.define(u'verb', u'v')
-        o = lex._lex.define(u'noun', u'o')
-        t = u'some text'
+        s = lex.define('agent', 's')
+        v = lex.define('verb', 'v')
+        o = lex.define('noun', 'o')
+        t = 'some text'
         n = qiki.Number(42)
 
         # Deleters, the zero way
@@ -431,7 +431,7 @@ class WordDemoTests(WordTests):
 
         # Definers
         # s(define)[o] &= t ???
-        s(u'define')[o] = t
+        s('define')[o] = t
         s.define(o, t)
 
         # Getters (but not setters)
@@ -474,7 +474,7 @@ class WordDemoTests(WordTests):
 class WordExoticTests(WordTests):
 
     def test_square_circle_square_assignment(self):
-        subject_ = self.lex._lex.define(u'agent', u'subject_')
+        subject_ = self.lex.define(u'agent', u'subject_')
         verb_    = self.lex.verb(u'verb_')
         object_  = self.lex.noun(u'object_')
 
@@ -490,7 +490,7 @@ class WordExoticTests(WordTests):
         self.assertEqual(u'courage',  w.txt)
 
     def test_square_circle_square_parameters(self):
-        subject_ = self.lex._lex.define(u'agent', u'subject_')
+        subject_ = self.lex.define(u'agent', u'subject_')
         verb_    = self.lex.verb(u'verb_')
         object_  = self.lex.noun(u'object_')
 
@@ -639,7 +639,7 @@ class AardvarkInternalWordTests(WordTests):
                 self._make_one_new_word(u'scratch')
 
     def _make_one_new_word(self, txt):
-        self.lex._lex.define(self.lex[u'noun'], txt)
+        self.lex.define(self.lex[u'noun'], txt)
 
     def test_missing_from_lex_number(self):
         bogus_word = self.lex[qiki.Number(-42)]
@@ -788,12 +788,12 @@ class Word0011FirstTests(WordTests):
         noun = self.lex[u'noun']
         # thing = noun(u'thing')
         # thing = self.lex(noun, u'thing')
-        thing = self.lex._lex.define(noun, u'thing')
+        thing = self.lex.define(noun, u'thing')
         self.assertTrue(thing.exists())
         self.assertEqual(u'thing', thing.txt)
 
     def test_03d_noun_spawn_crazy_syntax(self):
-        thing = self.lex._lex.define(u'noun', u'thing')
+        thing = self.lex.define(u'noun', u'thing')
         self.assertTrue(thing.exists())
         self.assertEqual(u'thing', thing.txt)
 
@@ -807,11 +807,16 @@ class Word0011FirstTests(WordTests):
         self.assertEqual('thing', thing.txt)
         self.assertEqual(42, thing.num)
 
+    def test_03f_lex_define(self):
+        thing = self.lex.define('noun', 'thing')
+        self.assertTrue(thing.exists())
+        self.assertEqual('thing', thing.txt)
+
     def test_04_is_a(self):
         verb = self.lex[u'verb']
         noun = self.lex[u'noun']
-        thing = self.lex._lex.define(noun, u'thing')
-        cosa = self.lex._lex.define(thing, u'cosa')
+        thing = self.lex.define(noun, u'thing')
+        cosa = self.lex.define(thing, u'cosa')
 
         self.assertTrue(verb.is_a(noun))
         self.assertTrue(noun.is_a(noun))
@@ -842,13 +847,13 @@ class Word0011FirstTests(WordTests):
         self.assertTrue(noun.is_a_noun(recursion=2))
         self.assertTrue(noun.is_a_noun(recursion=3))
 
-        child1 = self.lex._lex.define(noun, u'child1')
+        child1 = self.lex.define(noun, u'child1')
         self.assertFalse(child1.is_a_noun(recursion=0))
         self.assertTrue(child1.is_a_noun(recursion=1))
         self.assertTrue(child1.is_a_noun(recursion=2))
         self.assertTrue(child1.is_a_noun(recursion=3))
 
-        child2 = self.lex._lex.define(child1, u'child2')
+        child2 = self.lex.define(child1, u'child2')
         self.assertFalse(child2.is_a_noun(recursion=0))
         self.assertFalse(child2.is_a_noun(recursion=1))
         self.assertTrue(child2.is_a_noun(recursion=2))
@@ -872,23 +877,23 @@ class Word0011FirstTests(WordTests):
 
     def test_05_noun_grandchild(self):
         agent = self.lex[u'agent']
-        human = self.lex._lex.define(agent, u'human')
+        human = self.lex.define(agent, u'human')
         self.assertEqual(u'human', human.txt)
 
     def test_06_noun_great_grandchild(self):
         noun = self.lex[u'noun']
         self.assertTrue(noun.is_noun())
 
-        child = self.lex._lex.define(noun, u'child')
+        child = self.lex.define(noun, u'child')
         self.assertFalse(child.is_noun())
         self.assertTrue(child.obj.is_noun())
 
-        grandchild = self.lex._lex.define(child, u'grandchild')
+        grandchild = self.lex.define(child, u'grandchild')
         self.assertFalse(grandchild.is_noun())
         self.assertFalse(grandchild.obj.is_noun())
         self.assertTrue(grandchild.obj.obj.is_noun())
 
-        greatgrandchild = self.lex._lex.define(grandchild, u'greatgrandchild')
+        greatgrandchild = self.lex.define(grandchild, u'greatgrandchild')
         self.assertFalse(greatgrandchild.is_noun())
         self.assertFalse(greatgrandchild.obj.is_noun())
         self.assertFalse(greatgrandchild.obj.obj.is_noun())
@@ -902,10 +907,10 @@ class Word0011FirstTests(WordTests):
 
     def test_07_is_a_noun_great_great_grandchild(self):
         noun = self.lex[u'noun']
-        child = self.lex._lex.define(noun, u'child')
-        grandchild = self.lex._lex.define(child, u'grandchild')
-        greatgrandchild = self.lex._lex.define(grandchild, u'greatgrandchild')
-        greatgreatgrandchild = self.lex._lex.define(greatgrandchild, u'greatgreatgrandchild')
+        child = self.lex.define(noun, u'child')
+        grandchild = self.lex.define(child, u'grandchild')
+        greatgrandchild = self.lex.define(grandchild, u'greatgrandchild')
+        greatgreatgrandchild = self.lex.define(greatgrandchild, u'greatgreatgrandchild')
         self.assertTrue(noun.is_a_noun())
         self.assertTrue(child.is_a_noun())
         self.assertTrue(grandchild.is_a_noun())
@@ -915,9 +920,9 @@ class Word0011FirstTests(WordTests):
     def test_08_noun_twice(self):
         noun = self.lex[u'noun']
         with self.assertNewWord():
-            thing1 = self.lex._lex.define(noun, u'thing')
+            thing1 = self.lex.define(noun, u'thing')
         with self.assertNoNewWord():
-            thing2 = self.lex._lex.define(noun, u'thing')
+            thing2 = self.lex.define(noun, u'thing')
         self.assertEqual(thing1.idn, thing2.idn)
 
     def test_09a_equality(self):
@@ -1030,8 +1035,8 @@ class Word0011FirstTests(WordTests):
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
     # def test_12a_non_vrb(self):
-    #     # anna = self.lex._lex.define(u'agent', u'anna')
-    #     anna = self.lex._lex.define(u'agent', u'anna')
+    #     # anna = self.lex.define(u'agent', u'anna')
+    #     anna = self.lex.define(u'agent', u'anna')
     #     like = self.lex.verb(u'like')
     #     self.lex.noun(u'yurt')
     #     zarf = self.lex.noun(u'zarf')
@@ -1254,7 +1259,7 @@ class Word0011FirstTests(WordTests):
         punt1 = self.lex._lex.says(define, noun, txt=u'punt')
         punt2 = self.lex._lex.says(define, noun, txt=u'punt')
         self.assertNotEqual(punt1.idn, punt2.idn)
-        punt = self.lex._lex.define(noun, u'punt')
+        punt = self.lex.define(noun, u'punt')
         self.assertEqual(punt.idn, punt1.idn)
 
 
@@ -1336,7 +1341,7 @@ class Word0013Brackets(WordTests):
 
     def setUp(self):
         super(Word0013Brackets, self).setUp()
-        self.art = self.lex._lex.define(u'agent', u'art')
+        self.art = self.lex.define(u'agent', u'art')
         self.got = self.lex.verb(u'got')
         self.lek = self.lex.noun(u'lek')
 
@@ -1540,7 +1545,7 @@ class Word0014CreateWord(WordTests):
 
     def setUp(self):
         super(Word0014CreateWord, self).setUp()
-        self.art = self.lex._lex.define(u'agent', u'art')
+        self.art = self.lex.define(u'agent', u'art')
         self.got = self.lex.verb(u'got')
         self.lek = self.lex.noun(u'lek')
 
@@ -1637,21 +1642,21 @@ class Word0020UnicodeVerb(WordUnicode):
     """Unicode characters in verb names."""
 
     def test_unicode_j_verb_ascii(self):
-        sentence1 = self.lex._lex.define(self.comment, u"remark")
+        sentence1 = self.lex.define(self.comment, u"remark")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"remark", sentence2.txt)
         self.assertTrue(self.lex['remark'].exists())
         self.assertTrue(self.lex['remark'].is_a_verb())
 
     def test_unicode_l_verb_spanish(self):
-        sentence1 = self.lex._lex.define(self.comment, u"comentó")
+        sentence1 = self.lex.define(self.comment, u"comentó")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"comentó", sentence2.txt)
         self.assertTrue(self.lex[u'comentó'].exists())
         self.assertTrue(self.lex[u'comentó'].is_a_verb())
 
     def test_unicode_n_verb_encourage(self):
-        sentence1 = self.lex._lex.define(self.comment, u"enc☺urage")
+        sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"enc☺urage", sentence2.txt)
         self.assertTrue(self.lex['enc☺urage'].is_a_verb())
@@ -1661,7 +1666,7 @@ class Word0020UnicodeVerb(WordUnicode):
     if TEST_ASTRAL_PLANE:
 
         def test_unicode_o_verb_alien_face(self):
-            sentence1 = self.lex._lex.define(self.comment, u"\U0001F47Dlienate")
+            sentence1 = self.lex.define(self.comment, u"\U0001F47Dlienate")
             sentence2 = self.lex[sentence1.idn]
             self.assertEqual(u"\U0001F47Dlienate", sentence2.txt)
             self.assertTrue(self.lex[u'\U0001F47Dlienate'].exists())
@@ -1678,7 +1683,7 @@ class Word0030MoreTests(WordTests):
     #     noun = self.lex[u'noun']
     #     thing1 = noun(u'thing')
     #     thing2 = self.lex.noun(u'thing')
-    #     thing3 = self.lex._lex.define(noun, u'thing')
+    #     thing3 = self.lex.define(noun, u'thing')
     #     self.assertEqual(thing1.idn,           thing2.idn          )
     #     self.assertEqual(thing1.idn,           thing3.idn          )
     #     self.assertEqual(thing1.description(), thing2.description())
@@ -1732,12 +1737,12 @@ class Word0030MoreTests(WordTests):
     def test_verb_use(self):
         """Test that sbj.vrb(obj, num) creates a word.  And sbj.vrb(obj).num reads it back."""
         agent = self.lex[u'agent']
-        human = self.lex._lex.define(agent, u'human')
+        human = self.lex.define(agent, u'human')
         like = self.lex.verb(u'like')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define(human, u'bart')
-        chad = self.lex._lex.define(human, u'chad')
-        dirk = self.lex._lex.define(human, u'dirk')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define(human, u'bart')
+        chad = self.lex.define(human, u'chad')
+        dirk = self.lex.define(human, u'dirk')
         anna.says(like, anna, 1, u"Narcissism.")
         anna.says(like, bart, 8, u"Okay.")
         anna.says(like, chad, 10)
@@ -1755,9 +1760,9 @@ class Word0030MoreTests(WordTests):
 
     def test_verb_use_alt(self):
         """Test that lex.verb can be copied by assignment, and still work."""
-        human = self.lex._lex.define(u'agent', u'human')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define(human, u'bart')
+        human = self.lex.define(u'agent', u'human')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define(human, u'bart')
         verb = self.lex.verb
         like = verb(u'like')
         anna.says(like, bart, 13)
@@ -1765,9 +1770,9 @@ class Word0030MoreTests(WordTests):
 
     def test_verb_txt(self):
         """Test s.v(o, n, txt).  Read with s.v(o).txt"""
-        human = self.lex._lex.define(u'agent', u'human')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define(human, u'bart')
+        human = self.lex.define(u'agent', u'human')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define(human, u'bart')
         like = self.lex.verb(u'like')
         anna.says(like, bart, 5, u"just as friends")
         self.assertEqual(u"just as friends", anna.said(like, bart).txt)
@@ -1778,9 +1783,9 @@ class Word0030MoreTests(WordTests):
 
         The feature that makes this work is something like 'ORDER BY idn DESC LIMIT 1'
         in Lex.populate_word_from_sbj_vrb_obj() via the 'getter' syntax s.said(v,o)"""
-        human = self.lex._lex.define(u'agent', u'human')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define(human, u'bart')
+        human = self.lex.define(u'agent', u'human')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define(human, u'bart')
         like = self.lex.verb(u'like')
 
         with self.assertNewWord():
@@ -1798,9 +1803,9 @@ class Word0030MoreTests(WordTests):
         self.assertEqual(2, anna.said(like, bart).num)
 
     def test_verb_overlay_duplicate(self):
-        human = self.lex._lex.define(u'agent', u'human')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define( human, u'bart')
+        human = self.lex.define(u'agent', u'human')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define( human, u'bart')
         like = self.lex.verb(u'like')
 
 
@@ -1838,9 +1843,9 @@ class Word0030MoreTests(WordTests):
         self.assertTrue(self.lex[u'agent'].is_defined())
         self.assertTrue(self.lex._lex.is_defined())
 
-        human = self.lex._lex.define(u'agent', u'human')
-        anna = self.lex._lex.define(human, u'anna')
-        bart = self.lex._lex.define(human, u'bart')
+        human = self.lex.define(u'agent', u'human')
+        anna = self.lex.define(human, u'anna')
+        bart = self.lex.define(human, u'bart')
         like = self.lex.verb(u'like')
         liking = anna.says(like, bart, 5)
 
@@ -1851,9 +1856,9 @@ class Word0030MoreTests(WordTests):
         self.assertFalse(liking.is_defined())
 
     # def test_non_verb_undefined_as_function_disallowed(self):
-    #     human = self.lex._lex.define(u'agent', u'human')
-    #     anna = self.lex._lex.define(human, u'anna')
-    #     bart = self.lex._lex.define(human, u'bart')
+    #     human = self.lex.define(u'agent', u'human')
+    #     anna = self.lex.define(human, u'anna')
+    #     bart = self.lex.define(human, u'bart')
     #     like = self.lex.verb(u'like')
     #
     #     liking = anna.says(like, bart, 5)
@@ -1933,7 +1938,7 @@ class Word0030MoreTests(WordTests):
 
     def test_define_object_type_string(self):
         """Specify the object of a definition by its txt."""
-        oobleck = self.lex._lex.define(u'verb', u'oobleck')
+        oobleck = self.lex.define(u'verb', u'oobleck')
         self.assertTrue(oobleck.exists())
         self.assertEqual(oobleck.sbj, self.lex._lex)
         self.assertEqual(oobleck.vrb, self.lex[u'define'])
@@ -1951,7 +1956,7 @@ class Word0030MoreTests(WordTests):
     #     self.lex.verb(u'oobleck')
     #     lex_oobleck = self.lex[u'oobleck']   # word from an orphan verb
     #
-    #     xavier = self.lex._lex.define(u'agent', u'xavier')
+    #     xavier = self.lex.define(u'agent', u'xavier')
     #     self.assertNotEqual(xavier, self.lex)
     #     xavier_oobleck = xavier.oobleck   # word from a patronized verb
     #
@@ -1977,7 +1982,7 @@ class Word0030MoreTests(WordTests):
         self.assertEqual(qiki.LexSentence.IDN_AGENT, agent_by_txt.idn)
 
     def test_num_explicit(self):
-        anna = self.lex._lex.define(u'agent', u'anna')
+        anna = self.lex.define(u'agent', u'anna')
         hate = self.lex.verb(u'hate')
         oobleck = self.lex.noun(u'oobleck')
         with self.assertNewWord():
@@ -1990,11 +1995,11 @@ class Word0030MoreTests(WordTests):
     def test_bogus_define_kwarg(self):
         with self.assertRaises(TypeError):
             # noinspection PyArgumentList
-            self.lex._lex.define(not_a_keyword_argument=33)
+            self.lex.define(not_a_keyword_argument=33)
         # TODO:  How to do the following?  Better way than (ick) a wrapper function for define()?
         # with self.assertRaises(qiki.Word.NoSuchKwarg):
         #     # noinspection PyArgumentList
-        #     self.lex._lex.define(not_a_keyword_argument=33)
+        #     self.lex.define(not_a_keyword_argument=33)
 
     # def test_bogus_sentence_kwarg(self):
     #     blurt = self.lex.verb(u'blurt')
@@ -2012,9 +2017,21 @@ class Word0030MoreTests(WordTests):
     #         self.lex.blurt()
 
     def test_missing_word_getter(self):
-        alf = self.lex._lex.define(u'agent', u'alf')
+        alf = self.lex.define(u'agent', u'alf')
         clap = self.lex.verb(u'clap')
         eve = self.lex.verb(u'eve')
+        with self.assertNewWord():
+            alf.says(clap, eve, 55)
+        word = alf.said(clap, eve)
+        self.assertEqual(55, word.num)
+        with self.assertRaises(qiki.Word.NotExist):
+            eve.said(clap, alf)
+
+    def test_missing_word_getter_square(self):
+        alf = self.lex['lex']('define', txt='alf')['agent']
+        # alf = self.lex.define('agent', 'alf')
+        clap = self.lex.verb('clap')
+        eve = self.lex.verb('eve')
         with self.assertNewWord():
             alf.says(clap, eve, 55)
         word = alf.said(clap, eve)
@@ -2032,7 +2049,7 @@ class Word0040SentenceTests(WordTests):
 
     def setUp(self):
         super(Word0040SentenceTests, self).setUp()
-        self.sam = self.lex._lex.define(u'agent', u'sam')
+        self.sam = self.lex.define(u'agent', u'sam')
         self.vet = self.lex.verb(u'vet')
         self.orb = self.lex.noun(u'orb')
 
@@ -2557,7 +2574,7 @@ class Word0052ListingMultipleTests(WordListingTests):
     #     The exception is not raised on instantiation; it happens when/if the word becomes choate.
     #     Unlike a non-listing suffixed word (e.g. complex) this exception is NotAListing.
     #     """
-    #     obsolete_listing_meta_word = self.lex._lex.define(self.listing, 'obsolete listing')
+    #     obsolete_listing_meta_word = self.lex.define(self.listing, 'obsolete listing')
     #
     #     class ObsoleteListing(qiki.Listing):
     #         meta_word = obsolete_listing_meta_word
@@ -2685,7 +2702,7 @@ class Word0060UseAlready(WordTests):
 
     def setUp(self):
         super(Word0060UseAlready, self).setUp()
-        self.narcissus = self.lex._lex.define(u'agent', u'narcissus')
+        self.narcissus = self.lex.define(u'agent', u'narcissus')
         self.like = self.lex.verb(u'like')
 
     # When txt differs
@@ -2741,11 +2758,11 @@ class Word0070FindTests(WordTests):
         self.apple = self.lex.noun(u'apple')
         self.berry = self.lex.noun(u'berry')
         self.curry = self.lex.noun(u'curry')
-        self.macintosh = self.lex._lex.define(u'apple', u'macintosh')
-        self.braburn = self.lex._lex.define(u'apple', u'braburn')
-        self.honeycrisp = self.lex._lex.define(u'apple', u'honeycrisp')
+        self.macintosh = self.lex.define(u'apple', u'macintosh')
+        self.braburn = self.lex.define(u'apple', u'braburn')
+        self.honeycrisp = self.lex.define(u'apple', u'honeycrisp')
         self.crave = self.lex.verb(u'crave')
-        self.fred = self.lex._lex.define(u'agent', u'fred')
+        self.fred = self.lex.define(u'agent', u'fred')
 
         # WordFindTests's lex:
         #
@@ -2906,8 +2923,8 @@ class WordQoolbarSetup(WordTests):
 
         # self.lex.says(self.qool, self.like, qiki.Number(1))
         # self.lex.says(self.qool, self.delete, qiki.Number(1))
-        self.anna = self.lex._lex.define(u'agent', u'anna')
-        self.bart = self.lex._lex.define(u'agent', u'bart')
+        self.anna = self.lex.define(u'agent', u'anna')
+        self.bart = self.lex.define(u'agent', u'bart')
         self.youtube = self.lex.noun(u'youtube')
         self.zigzags = self.lex.noun(u'zigzags')
 

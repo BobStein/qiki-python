@@ -1291,6 +1291,9 @@ class LexSentence(Lex):
     def __init__(self, **kwargs):
         super(LexSentence, self).__init__(**kwargs)
         self._lex = None
+        self._noun = None
+        self._verb = None
+        self._define = None
 
 
     # def __getitem__(self, item):
@@ -1442,11 +1445,32 @@ class LexSentence(Lex):
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
         raise NotImplementedError()
 
+    # def noun(self, name=None):
+    #     raise NotImplementedError()
+    #
+    # def verb(self, name=None):
+    #     raise NotImplementedError()
+
     def noun(self, name=None):
-        raise NotImplementedError()
+        if name is None:
+            return self._noun
+        else:
+            return self._lex.define(self._noun, name)
 
     def verb(self, name=None):
-        raise NotImplementedError()
+        if name is None:
+            return self._verb
+        else:
+            return self._lex.define(self._verb, name)
+
+    def define(self, obj, txt, sbj=None):
+        old_definition = self[txt]
+        if old_definition.exists():
+            return old_definition
+        sbj = sbj or self._lex
+        vrb = self._define
+        obj = self[obj]
+        return self.create_word(sbj=sbj, vrb=vrb, obj=obj, txt=txt)
 
     def find_words(self, **kwargs):
         raise NotImplementedError()
@@ -1595,6 +1619,7 @@ class LexMemory(LexSentence):
         self._lex = self.words[int(self.IDN_LEX)]
         self._noun = self.words[int(self.IDN_NOUN)]
         self._verb = self.words[int(self.IDN_VERB)]
+        self._define = self.words[int(self.IDN_DEFINE)]
 
     # def exists(self):
     #     if hasattr(self, 'words'):
@@ -1658,18 +1683,6 @@ class LexMemory(LexSentence):
                 word.populate_from_word(word_source)
                 return True
         return False
-
-    def noun(self, name=None):
-        if name is None:
-            return self._noun
-        else:
-            return self._lex.define(self._noun, name)
-
-    def verb(self, name=None):
-        if name is None:
-            return self._verb
-        else:
-            return self._lex.define(self._verb, name)
 
     def max_idn(self):
         try:
@@ -1796,6 +1809,7 @@ class LexMySQL(LexSentence):
         self._lex = self[self.IDN_LEX]
         self._noun = self[self.IDN_NOUN]
         self._verb = self[self.IDN_VERB]
+        self._define = self[self.IDN_DEFINE]
 
         # assert self.exists(), self.__dict__
         # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
@@ -1838,17 +1852,17 @@ class LexMySQL(LexSentence):
                 self._connection.close()
             self._connection = None
 
-    def noun(self, name=None):
-        if name is None:
-            return self._noun
-        else:
-            return self._lex.define(self._noun, name)
-
-    def verb(self, name=None):
-        if name is None:
-            return self._verb
-        else:
-            return self._lex.define(self._verb, name)
+    # def noun(self, name=None):
+    #     if name is None:
+    #         return self._noun
+    #     else:
+    #         return self._lex.define(self._noun, name)
+    #
+    # def verb(self, name=None):
+    #     if name is None:
+    #         return self._verb
+    #     else:
+    #         return self._lex.define(self._verb, name)
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
