@@ -3274,6 +3274,7 @@ class WordQoolbarTests(WordQoolbarSetup):
         self.assertEqual(self.lex._lex, lex_found)
         self.assertIsNot(self.lex._lex, lex_found, "Whoa, lex returned by find_words() is a singleton.")
 
+
 if LEX_CLASS is qiki.LexMySQL:
 
 
