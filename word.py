@@ -46,6 +46,11 @@ class Word(object):
 
     @property
     def lex(self):
+        """
+
+        :return: lex
+        :rtype: Lex
+        """
         raise NotImplementedError()
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):

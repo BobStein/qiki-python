@@ -9,7 +9,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import inspect
 import mysql.connector
-import operator
 import subprocess
 import sys
 import time
@@ -276,7 +275,7 @@ class WordTests(unittest.TestCase):
     def lex_report(self):
 
         print()
-        print("lex_report <--", inspect.stack()[1][3])
+        print(inspect.stack()[0][3], "<--", inspect.stack()[1][3])
         print()
 
         histogram = {}
@@ -294,7 +293,7 @@ class WordTests(unittest.TestCase):
             count(word.obj)
             print(int(word.idn), word.description())
 
-        histogram_high_to_low = sorted(histogram.items(), key=operator.itemgetter(1), reverse=True)
+        histogram_high_to_low = sorted(histogram.items(), key=lambda pair: pair[1], reverse=True)
         # THANKS:  Sorting a dictionary by value, http://stackoverflow.com/a/2258273/673991
 
         print()
@@ -314,41 +313,6 @@ class WordTests(unittest.TestCase):
                     instance=self.lex[key].txt,
                     class_=type_name(lex),
                 ))
-            # if key is None:
-            #     key_report = "None"
-            # else:
-            #     key_report = "{idn} {txt}".format(
-            #         idn=key.idn,
-            #         txt=key.txt,
-            #     )
-            # print("    " + key_report + ":", type_name(lex))
-
-        # EXAMPLE:
-        #
-        # lex_report <-- test_singleton_class_dictionary
-        #
-        # 0 [lex](define, 'lex')[agent]
-        # 1 [lex](define, 'define')[verb]
-        # 2 [lex](define, 'noun')[noun]
-        # 3 [lex](define, 'verb')[noun]
-        # 4 [lex](define, 'agent')[noun]
-        # 5 [lex](define, 'listing')[noun]
-        # 6 [lex](define, 'student roster')[listing]
-        # 7 [lex](define, 'sub_student')[noun]
-        # 8 [lex](define, 'another_listing')[noun]
-        #
-        # 9 ⋅ Word('lex')
-        # 9 ⋅ Word('define')
-        # 6 ⋅ Word('noun')
-        # 1 ⋅ Word('agent')
-        # 1 ⋅ Word('verb')
-        # 1 ⋅ Word('listing')
-        #
-        # Mesa lexes
-        #     None: LexMySQL
-        #     0q82_06 student roster: StudentRoster
-        #     0q82_07 sub_student: SubStudent
-        #     0q82_08 another_listing: AnotherListing
 
     def show_txt_in_utf8(self, idn):
         word = self.lex[idn]
@@ -2443,10 +2407,36 @@ class Word0052ListingMultipleTests(WordListingTests):
         # TODO:  Shouldn't these be ...define(listing, u'blah') instead of plain nouns?
 
     def test_singleton_class_dictionary(self):
-        self.lex_report()
         self.assertIs(qiki.Listing.listing_dictionary, self.student_roster.listing_dictionary)
         self.assertIs(qiki.Listing.listing_dictionary, self.sub_student.listing_dictionary)
         self.assertIs(qiki.Listing.listing_dictionary, self.another_listing.listing_dictionary)
+        # self.lex_report()
+        # EXAMPLE:
+        #
+        # lex_report <-- test_singleton_class_dictionary
+        #
+        # 0 [lex](define, 'lex')[agent]
+        # 1 [lex](define, 'define')[verb]
+        # 2 [lex](define, 'noun')[noun]
+        # 3 [lex](define, 'verb')[noun]
+        # 4 [lex](define, 'agent')[noun]
+        # 5 [lex](define, 'listing')[noun]
+        # 6 [lex](define, 'student roster')[listing]
+        # 7 [lex](define, 'sub_student')[noun]
+        # 8 [lex](define, 'another_listing')[noun]
+        #
+        # 9 ⋅ Word('lex')
+        # 9 ⋅ Word('define')
+        # 6 ⋅ Word('noun')
+        # 1 ⋅ Word('agent')
+        # 1 ⋅ Word('verb')
+        # 1 ⋅ Word('listing')
+        #
+        # Mesa lexes
+        #     None: LexMemory
+        #     0q82_06: student roster -- StudentRoster
+        #     0q82_07: sub_student -- SubStudent
+        #     0q82_08: another_listing -- AnotherListing
 
     def test_one_meta_word_per_subclass(self):
         self.assertNotEqual(self.student_roster.meta_word.idn, self.sub_student.meta_word.idn)
@@ -2929,48 +2919,53 @@ class WordQoolbarSetup(WordTests):
         qool_declarations = self.lex.find_words(vrb=self.qool.idn)
         self.qool_idns = [w.obj.idn for w in qool_declarations]
 
-    def disable_test_lex_report(self):
-        """
-        1 [lex](define, u'define')[verb]
-        2 [lex](define, u'noun')[noun]
-        3 [lex](define, u'verb')[noun]
-        4 [lex](define, u'agent')[noun]
-        5 [lex](define, u'lex')[agent]
-        6 [lex](define, u'qool')[verb]
-        7 [lex](define, u'iconify')[verb]
-        8 [lex](define, u'like')[verb]
-        9 [lex](qool)[like]
-        10 [lex](iconify, 16, u'http://tool.qiki.info/icon/thumbsup_16.png')[like]
-        11 [lex](define, u'delete')[verb]
-        12 [lex](qool)[delete]
-        13 [lex](iconify, 16, u'http://tool.qiki.info/icon/delete_16.png')[delete]
-        14 [lex](define, u'anna')[agent]
-        15 [lex](define, u'bart')[agent]
-        16 [lex](define, u'youtube')[noun]
-        17 [lex](define, u'zigzags')[noun]
-        18 [anna](like)[youtube]
-        19 [bart](like, 10)[youtube]
-        20 [anna](like, 2)[zigzags]
-        21 [bart](delete)[zigzags]
-
-        17 ⋅ Word(u'lex')
-        13 ⋅ Word(u'define')
-        5 ⋅ Word(u'noun')
-        5 ⋅ Word(u'verb')
-        5 ⋅ Word(u'like')
-        3 ⋅ Word(u'agent')
-        3 ⋅ Word(u'delete')
-        2 ⋅ Word(u'qool')
-        2 ⋅ Word(u'iconify')
-        2 ⋅ Word(u'anna')
-        2 ⋅ Word(u'bart')
-        2 ⋅ Word(u'youtube')
-        2 ⋅ Word(u'zigzags')
-        """
-        self.lex_report()
-
 
 class WordQoolbarTests(WordQoolbarSetup):
+
+    def disable_test_lex_report(self):
+        """
+        lex_report <-- test_lex_report
+
+        0 [lex](define, 'lex')[agent]
+        1 [lex](define, 'define')[verb]
+        2 [lex](define, 'noun')[noun]
+        3 [lex](define, 'verb')[noun]
+        4 [lex](define, 'agent')[noun]
+        5 [lex](define, 'qool')[verb]
+        6 [lex](define, 'iconify')[verb]
+        7 [lex](define, 'delete')[verb]
+        8 [lex](qool)[delete]
+        9 [lex](iconify, 16, 'http://tool.qiki.info/icon/delete_16.png')[delete]
+        10 [lex](define, 'like')[verb]
+        11 [lex](qool)[like]
+        12 [lex](iconify, 16, 'http://tool.qiki.info/icon/thumbsup_16.png')[like]
+        13 [lex](define, 'anna')[agent]
+        14 [lex](define, 'bart')[agent]
+        15 [lex](define, 'youtube')[noun]
+        16 [lex](define, 'zigzags')[noun]
+        17 [anna](like)[youtube]
+        18 [bart](like, 10)[youtube]
+        19 [anna](like, 2)[zigzags]
+        20 [bart](delete)[zigzags]
+
+        17 ⋅ Word('lex')
+        13 ⋅ Word('define')
+        5 ⋅ Word('verb')
+        5 ⋅ Word('noun')
+        5 ⋅ Word('like')
+        3 ⋅ Word('agent')
+        3 ⋅ Word('delete')
+        2 ⋅ Word('qool')
+        2 ⋅ Word('iconify')
+        2 ⋅ Word('anna')
+        2 ⋅ Word('youtube')
+        2 ⋅ Word('bart')
+        2 ⋅ Word('zigzags')
+
+        Mesa lexes
+            None: LexMemory
+        """
+        self.lex_report()
 
     def test_get_all_qool_verbs(self):
         """Make sure the qool verbs were found."""
