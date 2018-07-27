@@ -271,7 +271,9 @@ class Word(object):
     def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
 
         # return self(vrb, *args, **kwargs)[obj]
-        # NOTE:  That way is less aggressive.  With num and txt missing it's a read not a create.
+        # NOTE:  The above way is not quite aggressive enough.
+        #        If num and txt were missing it would passively find a word by s,v,o,
+        #        as opposed to making a new ('',1) word, as create_word below would do.
 
         return self.lex.create_word(
             sbj=self,
