@@ -41,6 +41,8 @@ except ImportError:
                 password='password',
                 database='database',
                 table=   'word',
+                engine=   'MEMORY',        # About 2x faster unit testing.
+                txt_type= 'VARCHAR(255)',  # Because MEMORY doesn't support TEXT.
             )
 
         You also need an empty secure/__init__.py
@@ -2222,7 +2224,7 @@ class WordListingTests(WordTests):
             except IndexError:
                 raise self.NotFound("There is no student index {}".format(index))
 
-    _lookup_call_count = None   # ... since each test was SetUp()
+    _lookup_call_count = None   # number of lookups since SetUp
 
     # class Student(qiki.Listing):
     #     names_and_grades = [
@@ -2244,8 +2246,10 @@ class WordListingTests(WordTests):
     def setUp(self):
         super(WordListingTests, self).setUp()
         WordListingTests._lookup_call_count = 0
-        self.listing = self.lex['lex']('define', txt='listing')['noun']
-        meta_word = self.lex['lex']('define', txt='student roster')['listing']
+        # self.listing = self.lex['lex']('define', txt='listing')['noun']
+        # meta_word = self.lex['lex']('define', txt='student roster')['listing']
+        self.listing = self.lex.noun('listing')
+        meta_word = self.lex.define(self.listing, 'student roster')
         self.student_roster = self.StudentRoster(
             [
                 (u"Archie", 4.0),
@@ -2405,6 +2409,7 @@ class Word0051ListingBasicTests(WordListingTests):
     #     self.assertEqual(chad1, chad2)
 
 
+
 class Word0052ListingMultipleTests(WordListingTests):
 
     class SubStudent(WordListingTests.StudentRoster):
@@ -2417,7 +2422,7 @@ class Word0052ListingMultipleTests(WordListingTests):
 
     def setUp(self):
         super(Word0052ListingMultipleTests, self).setUp()
-        self.sub_student = self.SubStudent(meta_word=self.lex.noun(u'sub_student'), grades={})
+        self.sub_student = self.SubStudent(meta_word=self.lex.noun(u'sub_student'), grades=[])
         self.another_listing = self.AnotherListing(meta_word=self.lex.noun(u'another_listing'))
         # TODO:  Shouldn't these be ...define(listing, u'blah') instead of plain nouns?
 
@@ -2476,6 +2481,11 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertEqual('0q82_06__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
         self.assertEqual('0q82_07', self.sub_student.meta_word.idn.qstring())
         self.assertEqual('0q82_08', self.another_listing.meta_word.idn.qstring())
+
+    def test_composite_idn(self):
+        self.assertEqual('0q82_06__8222_1D0300', self.student_roster.composite_idn(0x22))
+        self.assertEqual('0q82_06__8233_1D0300', self.student_roster.composite_idn(0x33))
+        self.assertEqual('0q82_06__8244_1D0300', self.student_roster.composite_idn(0x44))
 
     def test_listing_instance_from_idn(self):
         chad = self.student_roster[2]

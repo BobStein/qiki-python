@@ -1109,20 +1109,18 @@ class Listing(Lex):
     # Or was the callback some kind of async feature, in case looking up took a while?
     # Because I'm doubtful that would work anyway.
     def lookup(self, index):
-        raise NotImplementedError("Subclasses of Listing must define a lookup() method.")
+        raise NotImplementedError("Subclass must def lookup(index): return txt, num ")
         # THANKS:  Classic abstract method, http://stackoverflow.com/a/4383103/673991
 
     # def __getitem__(self, index):
     #     return self.read_word(index)
 
+    def composite_idn(self, index):
+        return Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
+
     def read_word(self, index):
-        # (txt, num) = self.lookup(index)
-        # word = self.word_class(txt=txt, num=num)
-        # word._idn = composite_idn
-        composite_idn = Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
-        word = self.word_class(composite_idn)
-        # noinspection PyProtectedMember
-        # word._now_it_exists()
+        word = self.word_class(self.composite_idn(index))
+        assert word._is_inchoate
         return word
 
     def populate_word_from_idn(self, word, idn):

@@ -316,6 +316,11 @@ class Number(numbers.Complex):
     RAW_INFINITY_NEG      = b'\x00\x7F'
     RAW_NAN               = b''
 
+    # TODO:  New warning quandary with PyCharm 2018.2
+    #        RAW_ZERO = b'\x80'        -- ok 2.7, ok 3.5, PyCharm warning: Expected type 'bytes', got 'str' instead)
+    #        RAW_ZERO = six.b('\x80')  -- no 2.7, ok 3.5
+    #        RAW_ZERO = six.b(b'\x80') -- ok 2.7, no 3.5
+
     @property
     def raw(self):
         """
@@ -1851,9 +1856,15 @@ class Suffix(object):
         TEST      = 0x7E   # for unit testing, payload can be anything
 
     # TODO:  math.stackexchange question:  are quaternions a superset of complex numbers?  Does i===i?
+    #        Oh well I think the obvious thing to do is to duck the problem.
+    #        If a number has 3 imaginary suffixes it's a quaternion. If 7 octonion.
+    #        But what to do about split-complex numbers, or dual numbers?  Or biquaternions?
     # SEE:  quaternions from complex, http://math.stackexchange.com/q/1426433/60679
     # SEE:  "k ... same role as ... imaginary", http://math.stackexchange.com/a/1159825/60679
     # SEE:  "...any one of the imaginary components", http://math.stackexchange.com/a/1167326/60679
+    # SEE:  https://math.stackexchange.com/q/1916870/60679
+    #       what is the relation between quaternions and imaginary numbers?
+    #       In particular, Jean Marie's comment "there is no canonical embedding of C in H"
 
     def __init__(self, type_=None, payload=None):
         """Suffix constructor.  Given its one-byte type and multi-byte payload.  Both optional."""
