@@ -59,8 +59,8 @@ except ImportError:
     sys.exit(1)
 
 
-LEX_CLASS = qiki.LexMemory   # \ pick
-# LEX_CLASS = qiki.LexMySQL    # / one
+# LEX_CLASS = qiki.LexMemory   # \ pick
+LEX_CLASS = qiki.LexMySQL    # / one
 
 LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
                                       # Set this to True to manually examine the database after running it.

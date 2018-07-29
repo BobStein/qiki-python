@@ -11,7 +11,12 @@ import numbers
 import re
 import time
 
+# noinspection PyPackageRequirements
 import mysql.connector
+# NOTE:  False alarm from naming of mysql-connector-python-rf
+#        Package containing module 'mysql' is not listed in project requirements
+
+
 # TODO:  Move mysql stuff to lex_mysql.py?
 import six
 
@@ -1602,6 +1607,10 @@ class LexSentence(Lex):
             new_word.save(override_idn=override_idn)
         return new_word
 
+    @classmethod
+    def now(cls):
+        return Number(time.time())
+
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
 
@@ -1647,7 +1656,7 @@ class LexMemory(LexSentence):
         assert not word.idn.is_nan()
         # assert word.idn == self.max_idn(), repr(word.idn) + ", " + repr(self.max_idn())
         # TODO:  Suspend this assert for seminal words?
-        word.whn = Number(time.time())
+        word.whn = self.now()
 
         self.words.append(word)
         # print("Words", json.dumps(self.words, indent=4, cls=WordEncoder))
@@ -1942,7 +1951,7 @@ class LexMySQL(LexSentence):
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
         assert not word.idn.is_nan()
-        whn = Number(time.time())
+        whn = self.now()
         # TODO:  Enforce whn uniqueness?
         # SEE:  https://docs.python.org/2/library/time.html#time.time
         #     "Note that even though the time is always returned as a floating point number,
@@ -2107,6 +2116,7 @@ class LexMySQL(LexSentence):
         jbo_strictly means only words that are the objects of jbo_vrb verbs.
 
         (note 1) If jbo_strictly is true, then jbo_vrb IS restrictive.
+        and words are excluded that would otherwise have an empty jbo.
         """
         if isinstance(jbo_vrb, (Word, Number)):
             jbo_vrb = (jbo_vrb,)
@@ -2608,8 +2618,10 @@ class Text(six.text_type):
         # and call the method from_str()
         # so the constructor is implicitly a from_unicode()
         try:
+            # noinspection PyArgumentList
             return cls(x)   # This works in Python 3.  It raises an exception in Python 2.
         except TypeError:
+            # noinspection PyArgumentList
             return cls(x.decode('utf-8'))   # This happens in Python 2.
 
     def unicode(self):
