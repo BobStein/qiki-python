@@ -4,6 +4,20 @@ C O D I N G   S T Y L E
 
 
 
+Shortest Manifesto
+##################
+Shorten the time from reading to understanding.
+
+
+
+Short Manifesto
+###############
+Brevity is good, clarity is better.
+Names are important.
+Visual patterns are good.
+Interdependencies should be near.
+Speakable English sentences are good.
+
 
 
 PEP8 Amendments
@@ -896,6 +910,7 @@ Counterpoint (why you may prefer to repeat yourself in this example):
 
 Naming
 ======
+...is very important.
 
 2 > 3
 -----
@@ -959,9 +974,15 @@ From PEP8, "Identifiers ... SHOULD use English words wherever feasible."
 Example:  latitude is better than lat
 
 
+It's All A Test
+---------------
+Only an automated code test should be called anything_test_anything.
+Nothing should be called "test" (or "Test" or "TEST").
 
-Brevity is Good; Clarity is Great (BG;CG)
-=========================================
+
+
+Brevity is Good; Clarity is Greater (BG;CG)
+===========================================
 
 
 One Line, One Idea
@@ -988,7 +1009,7 @@ Better:
         y = f(x)
         cache[x] = y
     return y
-Better:
+Better yet:
     if x not in cache:
         cache[x] = f(x)
     return cache[x]
@@ -1081,10 +1102,26 @@ Commit comment
         -m "Added support for utf8mb4"
 
 Code comments should say what the code does, 
-in a "tone of voice" similar to the code itself.
+as if the code itself were speaking.
 Almost in the first person, but omit the subject.
 (Even though code is not written in a spoken language, 
 you want to be fluent enough that it still "speaks" to you.)
 Comments should NOT resemble a human-writer talking to a human reader *about* the code.
 It should resemble the computer voicing what it's doing and why, as it's executing the code.
 (My interpretation of the intent of PEP 257.)
+
+
+
+Units conversions should be isolated
+------------------------------------
+Many sad stories result from unit confusion. 
+Unit conversions should stand out on their own line. 
+Variables should be named with units.
+
+
+
+Interdependencies should be near
+--------------------------------
+Ad hoc variables should be declared as close as possible to where they're used.
+OOP can be a bureaucracy where many functions do little but call another function, in another file.
+MVC is another kind of referential hell.
