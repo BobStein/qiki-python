@@ -390,6 +390,11 @@ class WordDemoTests(WordTests):
 
     # noinspection PyUnusedLocal
     def test_syntaxes(self):
+        """
+        Demonstrate qiki-python:  qiki actions in Python code.
+
+        This doesn't test so much as show off code.
+        """
         lex = self.lex
         s = lex.define('agent', 's')
         v = lex.define('verb', 'v')
@@ -471,6 +476,11 @@ class WordDemoTests(WordTests):
         # s(v, num_add=n)[o]   TODO?
         lex.create_word(s, v, o, num_add=n)
         # s.v(o, num_add=n)
+
+        # NOTE:  Are these more Pythonic?
+        #            s.v(o)
+        #            s.v(o, n, t)
+        #            lex.s.v(o, n, t)
 
 
 class WordExoticTests(WordTests):
