@@ -84,13 +84,13 @@ Yes:
     y = f(
         x1,
         x2,
-        f(y1, y2, y3)
+        g(y1, y2, y3)
     )
 
     y = f(
         x1,
         x2,
-        f(
+        g(
             y1,
             y2,
             y3
@@ -119,7 +119,7 @@ No:
     
 Goes for function call or definition, and members of a literal tuple, list, dict, or set.
 
-This convention is derived from PHP coding standard PSR-2, section 4.6, Method and Function Calls.
+This convention is borrowed from PHP coding standard PSR-2, section 4.6, Method and Function Calls.
 https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md#user-content-46-method-and-function-calls
 
 SEE:  multiline statements in Python, http://stackoverflow.com/a/4172465/673991
@@ -137,13 +137,17 @@ Counterpoint:
 Answer-then-Question
 --------------------
 assertEquals(expected_value, computed_value)
-assert expected_return_value == function(parameter, parameter)
+
+Yes:
+    assert expected_return == f(x, y)
+No:
+    assert f(x, y)) == expected_return
 
 Rationale:  This is the order of use in the wild, so that mental model should be reinforced:
 
-    returned_value = function(parameter, parameter)
+    actual_return = f(x, y)
 
-Counterpoint:  if variable_name == some_value   # (The difference is, variable_name is not being computed here.)
+Counterpoint:  if variable_name == literal_value   # (The difference is, variable_name is not being computed here.)
 
 
 
@@ -175,8 +179,8 @@ Counterpoint:
 
 
 
-Alphabetize imports, within their sections of course
-----------------------------------------------------
+Alphabetize imports, within the three PEP8 sections
+---------------------------------------------------
 No:
     import collections
     import binascii
@@ -199,14 +203,14 @@ Import one module per line
 --------------------------
 Good:
     from django.http import HttpResponse
-    
-from django.http import Http404
+    from django.http import Http404
 
-Not so good:
-    from django.http import HttpResponse
-from, Http404
+Not as good:
+    from django.http import HttpResponse, Http404
 
-
+Rationale:
+    easier to delete, comment-out, etc., and so less error-prone
+    visual repetition is good
 
 
 Double Quotes for Humans, Single Quotes for Machines
