@@ -364,7 +364,6 @@ class WordTests(unittest.TestCase):
 
         with self.assertNewWords(2):
             do_something_that_should_create_exactly_2_new_words()
-
         """
         return self._CheckNewWordCount(self.lex, expected_new_words, message)
 
