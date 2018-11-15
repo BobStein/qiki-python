@@ -1276,6 +1276,10 @@ class Word0011FirstTests(WordTests):
 
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
+    # TODO:  .define(... sbj=)
+    # TODO:  .verb(... sbj=)
+    # TODO:  .create_word(... vrb='define')
+
 
 class Word0012Utilities(WordTests):
 

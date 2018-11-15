@@ -26,7 +26,8 @@ class NumberAlternate(Number):
     """
     This derived class will be tested here, in the place of Number.
 
-    It implements some alternate methods, and makes sure they behave the same as the standard methods.
+    It implements some alternate methods, and makes sure they behave
+    the same as the standard methods.
     """
     # TODO:  "Behave the same" should mean equal return values OR raising the same exceptions.
     # TODO:  Retain a list of all the values that pass through here, for future consistency checks.
@@ -46,9 +47,10 @@ class NumberAlternate(Number):
 
     def zone_alternate_by_loop(self):   #
         """
-        Get the Zone for a Number, by scanning Zone values.
+        Get the Zone for a Number, by sequentially comparing Zone values.
 
-        Slower than if-else-tree, but takes advantage of -- and enforces -- actual values of Zone enumeration.
+        Slower than if-else-tree, but takes advantage of -- and enforces
+        -- actual values of Zone enumeration.
         """
         for z in Zone.descending_codes:
             if z <= self.raw:

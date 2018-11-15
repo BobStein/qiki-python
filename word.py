@@ -1316,7 +1316,6 @@ class LexSentence(Lex):
         self._verb = None
         self._define = None
 
-
     # def __getitem__(self, item):
     #     """
     #     Square-bracket Word instantiation.
@@ -1478,11 +1477,11 @@ class LexSentence(Lex):
         else:
             return self.define(self._noun, name)
 
-    def verb(self, name=None):
+    def verb(self, name=None, sbj=None):
         if name is None:
             return self._verb
         else:
-            return self.define(self._verb, name)
+            return self.define(self._verb, name, sbj=sbj)
 
     def define(self, obj, txt, sbj=None):
         old_definition = self[txt]
@@ -2700,7 +2699,7 @@ class QoolbarSimple(Qoolbar):
                     has_qool = True
                 elif aux.vrb == iconify:
                     last_iconify_url = aux.txt
-            if has_qool and last_iconify_url is not None:
+            if has_qool:   # and last_iconify_url is not None:
                 qool_verb.icon_url = last_iconify_url
                 verbs.append(qool_verb)
                 # yield is not used here because find_word(jbo_vrb) does not handle
