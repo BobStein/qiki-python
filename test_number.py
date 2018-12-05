@@ -2124,6 +2124,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q7C_FEFF', Number(-257).qstring())
 
     def test_from_raw_docstring_example(self):
+        # noinspection PyTypeChecker
         with self.assertRaises((ValueError, Number.ConstructorTypeError)):
             Number(b'\x82\x01')   # Wrong, don't pass raw string to constructor.
         self.assertEqual(Number(1), Number.from_raw(b'\x82\x01'))   # Right, use from_raw() instead.

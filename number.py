@@ -113,15 +113,14 @@ class Zone(object):
     descending_codes = None
 
     @classmethod
-    def _internal_setup(cls):
+    def internal_setup(cls):
         """Initialize Zone properties after the Zone class is otherwise defined."""
 
         cls.name_from_code = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
         cls.descending_codes = sorted(Zone.name_from_code.keys(), reverse=True)
 
 
-# noinspection PyProtectedMember
-Zone._internal_setup()
+Zone.internal_setup()
 assert Zone.name_from_code[Zone.ZERO] == 'ZERO'
 assert Zone.descending_codes[0] == Zone.TRANSFINITE
 assert Zone.descending_codes[13] == Zone.NAN
@@ -182,9 +181,9 @@ class Number(numbers.Complex):
         try:
             content = args_list.pop(0)
         except IndexError:
-            content = kwargs.pop('content', None)
-        qigits = kwargs.pop('qigits', None)
-        normalize = kwargs.pop('normalize', False)
+            content = kwargs.pop(str('content'), None)
+        qigits = kwargs.pop(str('qigits'), None)
+        normalize = kwargs.pop(str('normalize'), False)
 
         assert isinstance(qigits, (int, type(None)))
         assert isinstance(normalize, (int, bool))
@@ -309,17 +308,20 @@ class Number(numbers.Complex):
     # Number.from_qstring() is the only remaining public class method that makes sense.
     # One good reason to put off implementing a Raw class:  resolve Suffix formatting,
     # in case there's a more generic, open, powerful way to encode them, e.g. type field being a Number.
-    RAW_INFINITY          = b'\xFF\x81'
-    RAW_INFINITESIMAL     = b'\x80\x7F'
-    RAW_ZERO              = b'\x80'
-    RAW_INFINITESIMAL_NEG = b'\x7F\x81'
-    RAW_INFINITY_NEG      = b'\x00\x7F'
-    RAW_NAN               = b''
+    RAW_INFINITY          = bytes(b'\xFF\x81')
+    RAW_INFINITESIMAL     = bytes(b'\x80\x7F')
+    RAW_ZERO              = bytes(b'\x80')
+    RAW_INFINITESIMAL_NEG = bytes(b'\x7F\x81')
+    RAW_INFINITY_NEG      = bytes(b'\x00\x7F')
+    RAW_NAN               = bytes(b'')
+
+    # TODO:  Remove bytes() calls when PyCharm stops its boneheaded warnings on b'literal' not being bytes.
 
     # TODO:  New warning quandary with PyCharm 2018.2
     #        RAW_ZERO = b'\x80'        -- ok 2.7, ok 3.5, PyCharm warning: Expected type 'bytes', got 'str' instead)
     #        RAW_ZERO = six.b('\x80')  -- no 2.7, ok 3.5
     #        RAW_ZERO = six.b(b'\x80') -- ok 2.7, no 3.5
+    #        RAW_ZERO = bytes(b'\x80') -- ok 2.7, ok 3.5, and runs. Yippee.  (PyCharm 2018.3)
 
     @property
     def raw(self):
@@ -334,7 +336,7 @@ class Number(numbers.Complex):
 
     @raw.setter
     def raw(self, value):
-        """Set the raw byte-string.  Rare."""
+        """ Set the raw byte-string.  Rare. """
         # TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
         # Would making Number immutable avoid common ref bugs, e.g. def f(n=Number(0)):  n += 1 ...
         assert(isinstance(value, six.binary_type))
@@ -633,20 +635,20 @@ class Number(numbers.Complex):
             if len(raw_qan) == 0:
                 is_plateau = True
                 if self.is_positive():
-                    self.raw = raw_qex + b'\x01'
+                    self.raw = raw_qex + bytes(b'\x01')
                 else:
                     new_qex_lsb = six.indexbytes(raw_qex,-1)
                     new_qex = raw_qex[0:-1] + six.int2byte(new_qex_lsb-1)
-                    self.raw = new_qex + b'\xFF'
+                    self.raw = new_qex + bytes(b'\xFF')
             else:
                 if self.is_positive():
-                    if raw_qan[0:1] == b'\x00':
+                    if raw_qan[0:1] == bytes(b'\x00'):
                         is_plateau = True
-                        self.raw = raw_qex + b'\x01'
+                        self.raw = raw_qex + bytes(b'\x01')
                 else:
-                    if raw_qan[0:1] == b'\xFF':
+                    if raw_qan[0:1] == bytes(b'\xFF'):
                         is_plateau = True
-                        self.raw = raw_qex + b'\xFF'
+                        self.raw = raw_qex + bytes(b'\xFF')
             if is_plateau and suffixes:
                 # NOTE:  A Number with suffixes whose unsuffixed part needed plateau-normalizing
                 for suffix in suffixes:
@@ -908,14 +910,14 @@ class Number(numbers.Complex):
 
         smurf = self.SMALLEST_UNREASONABLE_FLOAT
 
-        if math.isnan(x):  self.raw =           self.RAW_NAN
-        elif x >= smurf:   self.raw =           self._raw_unreasonable_float(x)
-        elif x >=  1.0:    self.raw =           self._raw_from_float(x, lambda e: 0x81 + e, qigits)
-        elif x >   0.0:    self.raw = b'\x81' + self._raw_from_float(x, lambda e: 0xFF + e, qigits)
-        elif x ==  0.0:    self.raw =           self.RAW_ZERO
-        elif x >  -1.0:    self.raw = b'\x7E' + self._raw_from_float(x, lambda e: 0x00 - e, qigits)
-        elif x > -smurf:   self.raw =           self._raw_from_float(x, lambda e: 0x7E - e, qigits)
-        else:              self.raw =           self._raw_unreasonable_float(x)
+        if math.isnan(x):  self.raw =                  self.RAW_NAN
+        elif x >= smurf:   self.raw =                  self._raw_unreasonable_float(x)
+        elif x >=  1.0:    self.raw =                  self._raw_from_float(x, lambda e: 0x81 + e, qigits)
+        elif x >   0.0:    self.raw = bytes(b'\x81') + self._raw_from_float(x, lambda e: 0xFF + e, qigits)
+        elif x ==  0.0:    self.raw =                  self.RAW_ZERO
+        elif x >  -1.0:    self.raw = bytes(b'\x7E') + self._raw_from_float(x, lambda e: 0x00 - e, qigits)
+        elif x > -smurf:   self.raw =                  self._raw_from_float(x, lambda e: 0x7E - e, qigits)
+        else:              self.raw =                  self._raw_unreasonable_float(x)
 
     @classmethod
     def _raw_unreasonable_float(cls, x):
@@ -1507,7 +1509,7 @@ class Number(numbers.Complex):
                 yield index_end
 
 
-    # Constants (see Number._internal_setup())
+    # Constants (see Number.internal_setup())
     # ---------
     NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
     ZERO = None
@@ -1517,7 +1519,7 @@ class Number(numbers.Complex):
     NEGATIVE_INFINITY = None
 
     @classmethod
-    def _internal_setup(cls):
+    def internal_setup(cls):
         """Initialize Number constants after the Number class is defined."""
         cls.NAN = cls(None)
         cls.ZERO = cls(0)
@@ -1551,7 +1553,7 @@ assert [1,2,3,4,'five',6,7,8] == list(flatten([1,(2,[3,(4,{'five'}),6],7),8]))
 
 
 # noinspection PyProtectedMember
-Number._internal_setup()
+Number.internal_setup()
 assert Number.NAN.raw == Number.RAW_NAN
 
 
@@ -1929,7 +1931,8 @@ class Suffix(object):
         else:
             return "Suffix({type_}, b'{payload}')".format(
                 type_=repr(self.type_),
-                payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
+                # payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
+                payload=hex_from_string(self.payload),
             )
 
     def __hash__(self):
@@ -2092,14 +2095,14 @@ assert False is floats_really_same(+0.0, -0.0)
 def left_pad00(the_string, num_bytes):
     """Make a byte-string num_bytes long by padding '\x00' bytes on the left."""
     assert(isinstance(the_string, six.binary_type))
-    return the_string.rjust(num_bytes, b'\x00')
+    return the_string.rjust(num_bytes, bytes(b'\x00'))
 assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
 def right_strip00(the_string):
     """Remove '\x00' bytes from the right end of a byte-string."""
     assert(isinstance(the_string, six.binary_type))
-    return the_string.rstrip(b'\x00')
+    return the_string.rstrip(bytes(b'\x00'))
 assert b'string' == right_strip00(b'string\x00\x00')
 
 
