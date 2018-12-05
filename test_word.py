@@ -1101,7 +1101,7 @@ class Word0011FirstTests(WordTests):
             self.assertTripleEqual(_unicode, txt.unicode())
             self.assertTripleEqual(_utf8, txt.utf8())
 
-        example(six.b('ascii').decode('utf-8'), u'ascii', b'ascii')
+        example(six.b(b'ascii').decode('utf-8'), u'ascii', b'ascii')
         example(u'ascii',                 u'ascii', b'ascii')
 
         example(unicodedata.lookup('latin small letter a with ring above') +
@@ -1149,10 +1149,10 @@ class Word0011FirstTests(WordTests):
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-        works_as_txt(six.b('apple').decode('utf-8'))
+        works_as_txt(six.b(b'apple').decode('utf-8'))
         works_as_txt(bytearray('apple', 'utf-8').decode('utf-8'))
         works_as_txt(u'apple')
-        works_as_txt(qiki.Text(six.b('apple').decode('utf-8')))
+        works_as_txt(qiki.Text(six.b(b'apple').decode('utf-8')))
         works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
 
@@ -3229,14 +3229,25 @@ class WordQoolbarTests(WordQoolbarSetup):
         verbs_new = self.qoolbar.get_verbs_new()
         self.assertEqual(verbs_old, verbs_new)
 
+    def test_qoolbar_verbs_qool_iconify(self):
+        """Verbs that are qool and iconified show up in the qoolbar."""
+        bleep = self.lex.verb(u'bleep')
+        self.lex._lex(self.qool)[bleep] = 1
+        self.lex._lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
+
     def test_qoolbar_verbs_qool_without_iconify(self):
+        """Verbs only need to be qool to show up in the qoolbar."""
         bleep = self.lex.verb(u'bleep')
         self.lex._lex(self.qool)[bleep] = 1
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
 
     def test_qoolbar_verbs_iconify_without_qool(self):
+        """Iconified verbs aren't necessarily qool."""
         bleep = self.lex.verb(u'bleep')
         self.lex._lex(self.iconify)[bleep] = u'http://example.com/bleep.png'
 

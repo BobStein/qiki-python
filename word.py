@@ -2700,6 +2700,8 @@ class QoolbarSimple(Qoolbar):
                 elif aux.vrb == iconify:
                     last_iconify_url = aux.txt
             if has_qool:   # and last_iconify_url is not None:
+                # NOTE:  We used to insist that qool verbs have an icon.
+                # NOTE:  We don't usually catch ourselves using the royal we.
                 qool_verb.icon_url = last_iconify_url
                 verbs.append(qool_verb)
                 # yield is not used here because find_word(jbo_vrb) does not handle
@@ -2722,7 +2724,7 @@ class QoolbarSimple(Qoolbar):
         :rtype: collections.Iterable[dict[string, string]]
         """
         # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
-        # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991
+        # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991++++++
         # Then we would not have to translate verbs to verb_dicts:
         verbs = self.get_verbs(debug)
         for verb in verbs:
