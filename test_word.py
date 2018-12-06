@@ -78,6 +78,7 @@ print(
     LEX_CLASS.__name__,
     "\n",   # TODO:  Why do we need a \n here (in LexMemory mode)?
 )
+# EXAMPLE:  Python version 2.7.14.final.0 using LexMySQL 
 if LEX_CLASS is qiki.LexMySQL:
     print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
     print(
