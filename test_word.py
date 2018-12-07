@@ -1102,7 +1102,7 @@ class Word0011FirstTests(WordTests):
             self.assertTripleEqual(_unicode, txt.unicode())
             self.assertTripleEqual(_utf8, txt.utf8())
 
-        example(six.b(b'ascii').decode('utf-8'), u'ascii', b'ascii')
+        example(bytes(b'ascii').decode('utf-8'), u'ascii', b'ascii')
         example(u'ascii',                 u'ascii', b'ascii')
 
         example(unicodedata.lookup('latin small letter a with ring above') +
@@ -1150,10 +1150,10 @@ class Word0011FirstTests(WordTests):
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-        works_as_txt(six.b(b'apple').decode('utf-8'))
+        works_as_txt(bytes(b'apple').decode('utf-8'))
         works_as_txt(bytearray('apple', 'utf-8').decode('utf-8'))
         works_as_txt(u'apple')
-        works_as_txt(qiki.Text(six.b(b'apple').decode('utf-8')))
+        works_as_txt(qiki.Text(bytes(b'apple').decode('utf-8')))
         works_as_txt(qiki.Text(bytearray('apple', 'utf-8').decode('utf-8')))
         works_as_txt(qiki.Text(u'apple'))
 
