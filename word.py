@@ -214,6 +214,7 @@ class Word(object):
         return SubjectedVerb(self, vrb, *args, **kwargs)
 
     def define(self, obj, txt):
+        # TODO:  WTF, D.R.Y. violation with LexSentence.define().  One should use the other or sumpin.
         """
         Define a word.  Name it txt.  Its type or class is obj.
 
@@ -566,7 +567,6 @@ class Word(object):
             num=num,
             txt=txt,
         )
-
 
     def is_a(self, word, reflexive=True, recursion=10):
         assert recursion >= 0
@@ -1063,7 +1063,6 @@ class Listing(Lex):
                 # def __call__(self, vrb, *a, **k):
                 #     return SubjectedVerb(self.idn, vrb, *a, **k)
 
-
             word_class = WordDerivedJustForThisListing
 
         super(Listing, self).__init__(meta_word=meta_word, word_class=word_class, **kwargs)
@@ -1125,6 +1124,7 @@ class Listing(Lex):
 
     def read_word(self, index):
         word = self.word_class(self.composite_idn(index))
+        # noinspection PyProtectedMember
         assert word._is_inchoate
         return word
 
@@ -1486,6 +1486,7 @@ class LexSentence(Lex):
     def define(self, obj, txt, sbj=None):
         old_definition = self[txt]
         if old_definition.exists():
+            # TODO:  Use create_word's use_already option instead.
             return old_definition
         sbj = sbj or self._lex
         vrb = self._define
@@ -1518,13 +1519,13 @@ class LexSentence(Lex):
     class CreateWordError(Exception):
         """LexSentence.create_word() argument error."""
 
-    def read_word(self, idn_or_txt):
-        if Text.is_valid(idn_or_txt):
-            word = self.word_class(txt=idn_or_txt)
-            self.populate_word_from_definition(word, idn_or_txt)
+    def read_word(self, txt_or_idn_etc):
+        if Text.is_valid(txt_or_idn_etc):
+            word = self.word_class(txt=txt_or_idn_etc)
+            self.populate_word_from_definition(word, txt_or_idn_etc)
             return word
         else:
-            return super(LexSentence, self).read_word(idn_or_txt)
+            return super(LexSentence, self).read_word(txt_or_idn_etc)
 
     def create_word(
         self,
@@ -2112,7 +2113,11 @@ class LexMySQL(LexSentence):
         The order of jbo words is always chronological.
 
         obj_group=True to collapse by obj.
-        jbo_strictly means only words that are the objects of jbo_vrb verbs.
+        jbo_strictly means only include words that are the objects of jbo_vrb verbs.
+
+        If jbo_strictly is True and jbo_vrb contains multiple verbs, then an OR
+        relationship can be expected.  That is, words will be included if they
+        are objectified by ANY of the jbo_vrb verbs.
 
         (note 1) If jbo_strictly is true, then jbo_vrb IS restrictive.
         and words are excluded that would otherwise have an empty jbo.
@@ -2569,6 +2574,7 @@ def is_iterable(x):
     else:
         return True
 
+
 assert is_iterable(['a', 'list', 'is', 'iterable'])
 assert not is_iterable('a string is not')
 
@@ -2678,6 +2684,30 @@ class QoolbarSimple(Qoolbar):
             num=16, txt=u'http://tool.qiki.info/icon/thumbsup_16.png'
         )
 
+    def get_verbs(self, debug=False):
+        return self.get_verbs_new(debug)
+
+    def get_verb_dicts(self, debug=False):
+        """
+        Generate dictionaries about qoolbar verbs:
+            idn - qstring of the verb's idn
+            name - txt of the verb, e.g. 'like'
+            icon_url - txt from the most recent iconify sentence (or None if there weren't any)
+
+        :param debug: bool - print() SQL (to log) and other details.
+        :rtype: collections.Iterable[dict[string, string]]
+        """
+        # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
+        # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991
+        # Then we would not have to translate verbs to verb_dicts:
+        verbs = self.get_verbs(debug)
+        for verb in verbs:
+            yield dict(
+                idn=verb.idn.qstring(),
+                name=verb.txt,
+                icon_url=verb.icon_url
+            )
+
     def get_verbs_new(self, debug=False):
         qool_verbs = self.lex.find_words(
             vrb=self.lex[u'define'],
@@ -2709,30 +2739,6 @@ class QoolbarSimple(Qoolbar):
                 # Probably not because of super_select() -- the MySQL version of which
                 # needs to pass a list of its values and know its length anyway.
         return verbs
-
-    def get_verbs(self, debug=False):
-        return self.get_verbs_new(debug)
-
-    def get_verb_dicts(self, debug=False):
-        """
-        Generate dictionaries about qoolbar verbs:
-            idn - qstring of the verb's idn
-            name - txt of the verb, e.g. 'like'
-            icon_url - txt from the iconify sentence
-
-        :param debug: bool - print() SQL (to log) and other details.
-        :rtype: collections.Iterable[dict[string, string]]
-        """
-        # TODO:  Make Qoolbar json serializable, http://stackoverflow.com/a/3768975/673991
-        # SEE:  Also, patching json module, http://stackoverflow.com/a/32225623/673991++++++
-        # Then we would not have to translate verbs to verb_dicts:
-        verbs = self.get_verbs(debug)
-        for verb in verbs:
-            yield dict(
-                idn=verb.idn.qstring(),
-                name=verb.txt,
-                icon_url=verb.icon_url
-            )
 
     def get_verbs_old(self, debug=False):
         qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)

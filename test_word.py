@@ -1265,14 +1265,45 @@ class Word0011FirstTests(WordTests):
         self.assertIs(self.lex, agent.lex)
         self.assertTrue(agent._is_inchoate)
 
-    def test_18a_define_duplicate(self):
-        noun = self.lex[u'noun']
+    def test_18a_create_word_multiple_words(self):
+        lex = self.lex._lex
         define = self.lex[u'define']
-        punt1 = self.lex._lex.says(define, noun, txt=u'punt')
-        punt2 = self.lex._lex.says(define, noun, txt=u'punt')
+        noun = self.lex[u'noun']
+        with self.assertNewWord():
+            punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt')
+        with self.assertNewWord():
+            punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt')
         self.assertNotEqual(punt1.idn, punt2.idn)
-        punt = self.lex.define(noun, u'punt')
-        self.assertEqual(punt.idn, punt1.idn)
+
+    def test_18a_create_word_use_already_single_word(self):
+        lex = self.lex._lex
+        define = self.lex[u'define']
+        noun = self.lex[u'noun']
+        with self.assertNewWord():
+            punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=True)
+        with self.assertNoNewWord():
+            punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=True)
+        self.assertEqual(punt1.idn, punt2.idn)
+
+    def test_18a_define_single_word(self):
+        noun = self.lex[u'noun']
+        with self.assertNewWord():
+            punt1 = self.lex.define(obj=noun, txt=u'punt')
+        with self.assertNoNewWord():
+            punt2 = self.lex.define(obj=noun, txt=u'punt')
+        self.assertEqual(punt1.idn, punt2.idn)
+
+    def test_18a_define_prefers_earlier_definition(self):
+        lex = self.lex._lex
+        define = self.lex[u'define']
+        noun = self.lex[u'noun']
+        punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
+        punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
+        self.assertNotEqual(punt1.idn, punt2.idn)
+
+        punt3 = self.lex.define(noun, u'punt')
+        self.assertEqual(punt3.idn,    punt1.idn)
+        self.assertNotEqual(punt3.idn, punt2.idn)
 
 
     # TODO:  Words as dictionary keys preserve their inchoate-ness.

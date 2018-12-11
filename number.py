@@ -1320,7 +1320,6 @@ class Number(numbers.Complex):
                 else:
                     return                      Zone.NAN
 
-
     # TODO:  Alternative suffix syntax
     # n.suffixes() === n.parse_suffixes()[1:]
     # n.root === n.parse_suffixes()[0]
@@ -1507,7 +1506,6 @@ class Number(numbers.Complex):
                     raise Suffix.RawError("Invalid suffix, payload overflow.")
                     # NOTE:  The length indicates a payload that extends beyond the start of the raw byte string.
                 yield index_end
-
 
     # Constants (see Number.internal_setup())
     # ---------
