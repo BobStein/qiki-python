@@ -1297,12 +1297,13 @@ class Word0011FirstTests(WordTests):
         lex = self.lex._lex
         define = self.lex[u'define']
         noun = self.lex[u'noun']
-        punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
-        punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
-        self.assertNotEqual(punt1.idn, punt2.idn)
+        with self.assertNewWord():
+            punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
+        with self.assertNewWord():
+            punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt', use_already=False)
 
         punt3 = self.lex.define(noun, u'punt')
-        self.assertEqual(punt3.idn,    punt1.idn)
+        self.assertEqual(   punt3.idn, punt1.idn)
         self.assertNotEqual(punt3.idn, punt2.idn)
 
 
