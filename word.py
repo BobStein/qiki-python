@@ -2723,16 +2723,16 @@ class QoolbarSimple(Qoolbar):
         iconify = self.lex[u'iconify']
         for qool_verb in qool_verbs:
             has_qool = False
-            last_iconify_url = None
+            newest_iconify_url = None
             for aux in qool_verb.jbo:
                 if aux.vrb == qool:
                     has_qool = True
                 elif aux.vrb == iconify:
-                    last_iconify_url = aux.txt
-            if has_qool:   # and last_iconify_url is not None:
+                    newest_iconify_url = aux.txt
+            if has_qool:   # and newest_iconify_url is not None:
                 # NOTE:  We used to insist that qool verbs have an icon.
                 # NOTE:  We don't usually catch ourselves using the royal we.
-                qool_verb.icon_url = last_iconify_url
+                qool_verb.icon_url = newest_iconify_url
                 verbs.append(qool_verb)
                 # yield is not used here because find_word(jbo_vrb) does not handle
                 # a generator's iterator well.  Can that be done in one pass anyway?
