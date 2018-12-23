@@ -776,10 +776,10 @@ But it is still better than nothing.
 Thanks to Ben from Melbourne for sleuthing this funky ".__func__" technique.
 See http://stackoverflow.com/a/12718272/673991
 
-This only helps with static methods.  No assert can follow a class method or a regular method.
-For example, this does not work immediately after qiki.Number._pack_integer() is defined:
-     assert b'\x00\xFF' == _pack_integer.__self__._pack_integer.__func__(255, 2)
-because the function has no __self__ member yet
+This only helps with static methods.  No assert can immediately follow the definition a class method or a regular method.
+For example, this does not work immediately after the definition of a class function pack_integer (and still inside the class):
+     assert b'\x00\xFF' == pack_integer.__self__.pack_integer.__func__(255, 2)
+The function has no __self__ member there.  Outside and after the class definition, it does and it's set to the class itself.
 
 
 Extract Variable
@@ -802,6 +802,24 @@ No:
 Yes:
     explain_why_we_call_g_first = g(x)
     y = f(explain_why_we_call_g_first)
+    
+Clarify misleading code, commenting as a last resort
+----------------------------------------------------
+
+For example, the CSS cursor property values.
+
+    cursor: pointer;   /* pointing finger */
+    cursor: default;   /* arrow */
+    cursor: default;   /* I-beam */
+    cursor: move;   /* 4-directional arrows */
+    cursor: wait;   /* hourglass */
+    
+For example, a Python class method's __self__attribute:
+    class_itself = class_function.__self__
+    
+Note how a little homage can be given to the misleading name, echoing it so as to reveal the tenuous connection to its meaning.
+    cursor: pointer;   /* pointing finger */
+    class_itself = class_function.__self__
 
 
 Conversational
