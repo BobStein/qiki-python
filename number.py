@@ -684,7 +684,7 @@ class Number(numbers.Complex):
         return return_value
 
     def is_whole(self):
-        """Is the number an integer?"""
+        """Is the number an integer?""" 
         if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan_int, qan_len) = self.qan_int_len()
             qex = self.qex_int() - qan_len

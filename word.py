@@ -867,9 +867,15 @@ class SubjectedVerb(object):
         """
         Pop num and/or txt from arguments.
 
-        Expects args as a list so it can be modified.
+        TypeError if ambiguous or unsupportable.
+        Examples that will raise TypeError:
+            extract_txt_num('text', 'more text')
+            extract_txt_num(1, 42)
+            extract_txt_num(too_exotic_number)
+
+        Expects args as a list, so it can be modified in-place.
         """
-        # TODO:  It was silly to expect args to be a list.  Only kwargs can have extra parameters.
+        # TODO:  It was silly to expect args to be a list.  Only kwargs can have surplus parameters.
         #        If this function doesn't generate an exception, then it used up all the args anyway.
         def type_code(x):
             return 'n' if isinstance(x, numbers.Number) else 't' if Text.is_valid(x) else 'x'
@@ -1654,13 +1660,8 @@ class LexMemory(LexSentence):
 
     def insert_word(self, word):
         assert not word.idn.is_nan()
-        # assert word.idn == self.max_idn(), repr(word.idn) + ", " + repr(self.max_idn())
-        # TODO:  Suspend this assert for seminal words?
         word.whn = self.now()
-
         self.words.append(word)
-        # print("Words", json.dumps(self.words, indent=4, cls=WordEncoder))
-
         # noinspection PyProtectedMember
         word._now_it_exists()
 
@@ -2119,7 +2120,7 @@ class LexMySQL(LexSentence):
         relationship can be expected.  That is, words will be included if they
         are objectified by ANY of the jbo_vrb verbs.
 
-        (note 1) If jbo_strictly is true, then jbo_vrb IS restrictive.
+        (note 1) If jbo_strictly is True, then jbo_vrb IS restrictive.
         and words are excluded that would otherwise have an empty jbo.
         """
         if isinstance(jbo_vrb, (Word, Number)):
@@ -2705,7 +2706,8 @@ class QoolbarSimple(Qoolbar):
             yield dict(
                 idn=verb.idn.qstring(),
                 name=verb.txt,
-                icon_url=verb.icon_url
+                icon_url=verb.icon_url,
+                qool_num=int(verb.qool_num),
             )
 
     def get_verbs_new(self, debug=False):
@@ -2714,6 +2716,7 @@ class QoolbarSimple(Qoolbar):
             # obj=self.lex[u'verb'],   # Ignore whether object is lex[verb] or lex[qool]
                                        # Because qiki playground did [lex](define][qool] = 'like'
                                        # but now we always do        [lex](define][verb] = 'like'
+                                       # so we only care if some OTHER word declares it qool.  And nonzero.
             jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
             jbo_strictly=True,
             debug=debug
@@ -2724,9 +2727,11 @@ class QoolbarSimple(Qoolbar):
         for qool_verb in qool_verbs:
             has_qool = False
             newest_iconify_url = None
+            qool_verb.qool_num = None
             for aux in qool_verb.jbo:
                 if aux.vrb == qool:
                     has_qool = True
+                    qool_verb.qool_num = aux.num   # Remember num from newest qool sentence.
                 elif aux.vrb == iconify:
                     newest_iconify_url = aux.txt
             if has_qool:   # and newest_iconify_url is not None:

@@ -1624,6 +1624,7 @@ class Word0014CreateWord(WordTests):
         self.assertEqual(236, old_word.num)
 
     def test_03_use_already_same(self):
+        """Will reuse an old word if it's the same txt & num."""
         with self.assertNewWord():
             old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
         with self.assertNoNewWord():
@@ -1639,7 +1640,19 @@ class Word0014CreateWord(WordTests):
         self.assertEqual(236, old_word.num)
         self.assertEqual(744, new_word.num)
 
-    def test_05_use_already_different_txt(self):
+    def test_05_use_already_resurrected_num(self):
+        """Will not reuse an old word if it isn't the most recent."""
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao")
+        with self.assertNewWord():
+            old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
+        with self.assertNewWord():
+            new_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao", use_already=True)
+        self.assertNotEqual(new_word.idn, old_word.idn)
+        self.assertEqual(236, old_word.num)
+        self.assertEqual(744, new_word.num)
+
+    def test_06_use_already_different_txt(self):
         with self.assertNewWord():
             old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
         with self.assertNewWord():
@@ -3309,6 +3322,36 @@ class WordQoolbarTests(WordQoolbarSetup):
     #             self.bart: {'num': qiki.Number(10)},
     #         }
     #     }, nums)
+
+    def test_qoolbar_verb_started_off_deleted(self):
+        bleep = self.lex.verb(u'bleep')
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 0
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
+
+    def test_qoolbar_verb_later_deleted(self):
+        bleep = self.lex.verb(u'bleep')
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 1
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 0
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
+
+    def test_qoolbar_verb_undeleted(self):
+        bleep = self.lex.verb(u'bleep')
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 1
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 0
+        with self.assertNewWord():
+            self.lex._lex(self.qool)[bleep] = 1
+
+        verbs = self.qoolbar.get_verbs()
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
 
     def test_qoolbar_jbo(self):
         self.assertFalse(hasattr(self.youtube, 'jbo'))
