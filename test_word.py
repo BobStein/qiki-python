@@ -59,8 +59,8 @@ except ImportError:
     sys.exit(1)
 
 
-# LEX_CLASS = qiki.LexMemory   # \ pick
-LEX_CLASS = qiki.LexMySQL    # / one
+LEX_CLASS = qiki.LexMemory   # \ pick
+# LEX_CLASS = qiki.LexMySQL    # / one
 
 LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
                                       # Set this to True to manually examine the database after running it.
@@ -3329,7 +3329,10 @@ class WordQoolbarTests(WordQoolbarSetup):
             self.lex._lex(self.qool)[bleep] = 0
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
+
+        non_deleted_verbs = {v for v in verbs if v.qool_num != 0}
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(non_deleted_verbs))
 
     def test_qoolbar_verb_later_deleted(self):
         bleep = self.lex.verb(u'bleep')
@@ -3339,7 +3342,10 @@ class WordQoolbarTests(WordQoolbarSetup):
             self.lex._lex(self.qool)[bleep] = 0
 
         verbs = self.qoolbar.get_verbs()
-        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(verbs))
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete'], self.lex[u'bleep']}, set(verbs))
+
+        non_deleted_verbs = {v for v in verbs if v.qool_num != 0}
+        self.assertEqual({self.lex[u'like'], self.lex[u'delete']}, set(non_deleted_verbs))
 
     def test_qoolbar_verb_undeleted(self):
         bleep = self.lex.verb(u'bleep')

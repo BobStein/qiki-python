@@ -651,7 +651,15 @@ class Word(object):
     def __repr__(self):
         if self.exists():
             if self.is_defined() and self.txt:
-                return "Word('{}')".format(self.txt)
+                # TODO:  Undo comma_num
+                if self.num == Number(1):
+                    comma_num = ""
+                else:
+                    comma_num = ", num={num}".format(num=repr(self.num))
+                return "Word('{txt}'{comma_num})".format(
+                    comma_num=comma_num,
+                    txt=self.txt
+                )
             else:
                 return "Word({})".format(int(self.idn))
         elif (
@@ -1808,9 +1816,16 @@ class LexMySQL(LexSentence):
         super(LexMySQL, self).__init__(**kwargs_etc)
 
         try:
+            # kwargs_sql['use_pure'] = True
             self._connection = mysql.connector.connect(**kwargs_sql)
-        except mysql.connector.ProgrammingError as exception:
-            raise self.ConnectError(str(exception))
+        except mysql.connector.Error as exception:
+            raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
+        # EXAMPLE:  (mysqld is down)
+        #     InterfaceError - 2003: Can't connect to MySQL server on 'localhost:33073'
+        #     (10061 No connection could be made because the target machine actively refused it)
+        # EXAMPLE:  (maybe wrong password)
+        #     ProgrammingError
+
         # self.lex = self
         # self.last_inserted_whn = None
         self._lex = self.word_class(self.IDN_LEX)
