@@ -6,7 +6,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-import collections
+
+try:
+    import collections.abc as collections_abc
+except ImportError:
+    import collections as collections_abc
+
 import numbers
 import re
 import time
@@ -26,6 +31,7 @@ from number import Number, Suffix, type_name
 HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 # SEE:  https://stackoverflow.com/questions/52759667/properly-getting-blobs-from-mysql-database-with-mysql-connector-in-python#comment99030618_55150960
 # SEE:  https://stackoverflow.com/questions/49958723/cant-insert-blob-image-using-python-via-stored-procedure-mysql
+# SEE:  https://stackoverflow.com/questions/51657097/how-can-i-retrieve-binary-data-using-mysql-python-connector
 # Problem:  VARBINARY fields are decoded as if their contents were text
 #           'utf8' codec can't decode ... invalid start byte
 #           0q80 == lex.idn, and '\x80' can never be a valid utf8 string
@@ -1812,6 +1818,7 @@ class LexMySQL(LexSentence):
         assert language == 'MySQL'
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
+        self._connection = None
         default_txt_type = 'VARCHAR(10000)'   if self._engine.upper() == 'MEMORY' else   'TEXT'
         # VARCHAR(65536):  ProgrammingError: 1074 (42000): Column length too big for column 'txt'
         #                  (max = 16383); use BLOB or TEXT instead
@@ -1827,70 +1834,96 @@ class LexMySQL(LexSentence):
 
         super(LexMySQL, self).__init__(**kwargs_etc)
 
-        try:
+
+        def we_connect():
+            self._connection = mysql.connector.connect(**kwargs_sql)
+
+        def we_connect_with_and_without_use_pure():
+            """
+            MySQL Connector compatibility.
+
+            MySQL Python Connector version 8.0.16 requires use_pure=True.
+            MySQL Python Connector version 2.2.2b1 doesn't support use_pure.
+            """
+
             kwargs_sql['use_pure'] = True
             # THANKS:  Disable CEXT because it doesn't support prepared statements
             #          https://stackoverflow.com/a/50535647/673991
 
-            # kwargs_sql['raw'] = True
+            try:
+                we_connect()
+            except AttributeError as attribute_error:
+                if str(attribute_error) == "Unsupported argument 'use_pure'":
+                    del kwargs_sql['use_pure']
+                    we_connect()
+                else:
+                    print("Unknown Attribute Error:", str(attribute_error))
+                    raise
 
-            # kwargs_sql['charset'] = None
-
-            self._connection = mysql.connector.connect(**kwargs_sql)
+        try:
+            we_connect_with_and_without_use_pure()
         except mysql.connector.Error as exception:
             raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
-        # EXAMPLE:  (mysqld is down)
-        #     InterfaceError - 2003: Can't connect to MySQL server on 'localhost:33073'
-        #     (10061 No connection could be made because the target machine actively refused it)
-        # EXAMPLE:  (maybe wrong password)
-        #     ProgrammingError
+            # EXAMPLE:  (mysqld is down)
+            #     InterfaceError - 2003: Can't connect to MySQL server on 'localhost:33073'
+            #     (10061 No connection could be made because the target machine actively refused it)
+            # EXAMPLE:  (maybe wrong password)
+            #     ProgrammingError
 
 
 
-        # self._connection.set_charset_collation(b'binary', b'binary')
-        # self._connection.set_charset_collation(b'utf8', b'utf8_unicode_ci')
-        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
-            self._connection.set_charset_collation(str('latin1'), str('latin1_swedish_ci'))
-
-
-
-        # self.lex = self
-        # self.last_inserted_whn = None
-        self._lex = self.word_class(self.IDN_LEX)
         try:
-            # noinspection PyProtectedMember
-            self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
-        except self.SelectError as exception:   # was mysql.connector.ProgrammingError as exception:
-            exception_message = str(exception)
-            if re.search(r"Table .* doesn't exist", exception_message):
-                # TODO:  Better detection of automatic table creation opportunity.
-                self.install_from_scratch()
-                # TODO:  Do not super() twice -- cuz it's not D.R.Y.
-                # TODO:  Do not install in unit tests if we're about to uninstall.
-                super(LexMySQL, self).__init__(**kwargs_etc)
-                self._lex = self.word_class(self.IDN_LEX)   # because base constructor sets it to None
+            # self._connection.set_charset_collation(b'binary', b'binary')
+            if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+                self._connection.set_charset_collation(str('latin1'))
             else:
-                raise self.ConnectError(str(exception))
+                self._connection.set_charset_collation(str('utf8'))
 
-        if self._lex is None or not self._lex.exists():
-            self._install_all_seminal_words()
 
-        self._lex = self[self.IDN_LEX]
-        self._noun = self[self.IDN_NOUN]
-        self._verb = self[self.IDN_VERB]
-        self._define = self[self.IDN_DEFINE]
 
-        # assert self.exists(), self.__dict__
-        # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
-        # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
+            # self.lex = self
+            # self.last_inserted_whn = None
+            self._lex = self.word_class(self.IDN_LEX)
+            try:
+                # noinspection PyProtectedMember
+                self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
+            except self.SelectError as exception:   # was mysql.connector.ProgrammingError as exception:
+                exception_message = str(exception)
+                if re.search(r"Table .* doesn't exist", exception_message):
+                    # TODO:  Better detection of automatic table creation opportunity.
+                    self.install_from_scratch()
+                    # TODO:  Do not super() twice -- cuz it's not D.R.Y.
+                    # TODO:  Do not install in unit tests if we're about to uninstall.
+                    super(LexMySQL, self).__init__(**kwargs_etc)
+                    self._lex = self.word_class(self.IDN_LEX)   # because base constructor sets it to None
+                else:
+                    raise self.ConnectError(str(exception))
 
-        self.super_query('SET character_set_results = binary')
+            if self._lex is None or not self._lex.exists():
+                self._install_all_seminal_words()
 
-        # self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
-        # THANKS:  http://stackoverflow.com/a/27390024/673991
+            self._lex = self[self.IDN_LEX]
+            self._noun = self[self.IDN_NOUN]
+            self._verb = self[self.IDN_VERB]
+            self._define = self[self.IDN_DEFINE]
 
-        # assert self.is_lex()
-        assert self._connection.is_connected()
+            # assert self.exists(), self.__dict__
+            # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
+            # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
+
+            self.super_query('SET character_set_results = binary')
+
+            # self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
+            # THANKS:  http://stackoverflow.com/a/27390024/673991
+
+            # assert self.is_lex()
+            assert self._connection.is_connected()
+
+        except BaseException:
+            # SEE:  Exception vs BaseException vs bare except, https://stackoverflow.com/a/7161517/673991
+            # NOTE:  Prevent ConnectError: OperationalError - 1040 (08004): Too many connections
+            self.disconnect()
+            raise
 
     APPROVED_MYSQL_CONNECT_ARGUMENTS = {
         'user',
@@ -1906,7 +1939,7 @@ class LexMySQL(LexSentence):
     }
     # SEE:  https://dev.mysql.com/doc/connector-python/en/connector-python-connectargs.html
 
-    def __del__(self):
+    def disconnect(self):
         # noinspection SpellCheckingInspection
         """
         Prevent lots of ResourceWarning messages in test_word.py in Python 3.5
@@ -1916,13 +1949,17 @@ class LexMySQL(LexSentence):
             <socket.socket fd=532, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM,
             proto=6, laddr=(...), raddr=(...)>
 
-        THANKS:  Close aggregated connection, https://softwareengineering.stackexchange.com/a/200529/56713
+        SEE:  Closing aggregated connection (using flawed __del__),
+              https://softwareengineering.stackexchange.com/a/200529/56713
         """
         if hasattr(self, '_connection') and self._connection is not None:
             if self._connection.is_connected():
                 # NOTE:  Prevent `TypeError: 'NoneType'` deep in MySQL Connector code.
                 self._connection.close()
             self._connection = None
+
+    def __del__(self):
+        self.disconnect()
 
     # def noun(self, name=None):
     #     if name is None:
@@ -2003,9 +2040,6 @@ class LexMySQL(LexSentence):
         # self._now_it_doesnt_exist()   # So install will insert the lex sentence.
         # After this, we can only install_from_scratch() or disconnect()
 
-    def disconnect(self):
-        self._connection.close()
-
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
         assert not word.idn.is_nan()
@@ -2052,6 +2086,8 @@ class LexMySQL(LexSentence):
         def __enter__(self):
             try:
                 self.the_cursor = self.connection.cursor(prepared=True)
+                # NOTE:  Exception here if we don't connect with use_pure=True:
+                #        NotImplementedError: Alternative: Use connection.MySQLCursorPrepared
             except mysql.connector.OperationalError:
                 self.connection.connect()
                 self.the_cursor = self.connection.cursor(prepared=True)
@@ -2287,7 +2323,7 @@ class LexMySQL(LexSentence):
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
         # assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
-        assert isinstance(vrb, (Number, Word, type(None), collections.Iterable))
+        assert isinstance(vrb, (Number, Word, type(None), collections_abc.Iterable))
         assert isinstance(obj, (Number, Word, type(None)))
         query_args = []
         if idn is not None:
@@ -2371,7 +2407,7 @@ class LexMySQL(LexSentence):
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(query_arg.to_mysql())
+                parameters.append(self.mysql_from_text(query_arg))
             elif isinstance(query_arg, self.SuperIdentifier):
                 query += '`' + six.text_type(query_arg) + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
@@ -2478,12 +2514,9 @@ class LexMySQL(LexSentence):
                     if field is None:
                         value = None
                     elif name.endswith('txt'):   # including jbo_txt
-                        value = Text.from_mysql(field)
+                        value = self.text_from_mysql(field)
                     else:
-                        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
-                            value = Number.from_mysql(field.encode('latin1'))
-                        else:
-                            value = Number.from_mysql(field)
+                        value = self.number_from_mysql(field)
                     field_dictionary[name] = value
                     if debug:
                         print(name, repr(value), end='; ')
@@ -2491,8 +2524,36 @@ class LexMySQL(LexSentence):
                 if debug:
                     print()
 
-    @staticmethod
-    def _parametric_forms(sub_args):
+    @classmethod
+    def number_from_mysql(cls, mysql_cell):
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            try:
+                return Number.from_mysql(mysql_cell.encode('latin1'))
+            except AttributeError:
+                return Number.from_mysql(mysql_cell)   # for 2.2.2b1 MySQL connector
+        else:
+            return Number.from_mysql(mysql_cell)
+
+    @classmethod
+    def text_from_mysql(cls, mysql_cell):
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            try:
+                return Text(mysql_cell.encode('latin1').decode('utf8'))
+            except AttributeError:
+                return Text.decode_if_you_must(mysql_cell)   # for 2.2.2b1 MySQL connector
+        else:
+            return Text.decode_if_you_must(mysql_cell)
+
+    @classmethod
+    def mysql_from_text(cls, text):
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            return text.encode('utf8').decode('latin1')
+        else:
+            return text.unicode()
+
+
+    @classmethod
+    def _parametric_forms(cls, sub_args):
         """
         Convert objects into the form MySQL expects for its data parameters.
 
@@ -2501,7 +2562,7 @@ class LexMySQL(LexSentence):
         """
         for sub_arg in sub_args:
             if isinstance(sub_arg, Text):
-                yield sub_arg.to_mysql()
+                yield cls.mysql_from_text(sub_arg)
             elif isinstance(sub_arg, Number):
                 yield sub_arg.raw
             elif isinstance(sub_arg, Word):
@@ -2700,19 +2761,6 @@ class Text(six.text_type):
         except TypeError:
             # noinspection PyArgumentList
             return cls(x.decode('utf-8'))   # This happens in Python 2.
-
-    @classmethod
-    def from_mysql(cls, x):
-        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
-            return cls(x.encode('latin1').decode('utf8'))
-        else:
-            return cls.decode_if_you_must(x)
-
-    def to_mysql(self):
-        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
-            return self.encode('utf8').decode('latin1')
-        else:
-            return self.unicode()
 
     def unicode(self):
         return six.text_type(self)

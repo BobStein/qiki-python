@@ -73,50 +73,72 @@ except ImportError:
     sys.exit(1)
 
 
-# LEX_CLASS = qiki.LexMemory   # \ pick
-LEX_CLASS = qiki.LexMySQL    # / one
+LEX_CLASS = qiki.LexMemory   # \ pick
+# LEX_CLASS = qiki.LexMySQL    # / one
 
-LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
-                                      # Set this to True to manually examine the database after running it.
-                                      # If True, you may want to make RANDOMIZE_DATABASE_TABLE False.
+LET_DATABASE_RECORDS_REMAIN = False   # False = Each run deletes its table
+                                      # True = Each run leaves its table behind, for human examination
+                                      #        If RANDOMIZE_DATABASE_TABLE = True then HUNDREDS of tables remain
+                                      #                                           after running all tests
+                                      #        If RANDOMIZE_DATABASE_TABLE = False then only table 'word' remains
+
+RANDOMIZE_DATABASE_TABLE = False   # False = table name e.g. 'word'
+                                   #         See secure.credentials.for_unit_testing_database.table
+                                   # True = support concurrent test runs (e.g. Word2.7 and Word3.7).
+                                   #        Table name e.g. word_ce09954b2e784cd8811b640079497568
+                                   # CAUTION:  if LET_DATABASE_RECORDS_REMAIN is also True, then
+                                   #           HUNDREDS of tables will accumulate after each full test run.
+
 TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane (beyond the base 64K)
+
 SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u escape syntax and UTF-8 hexadecimal.
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
-RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
-                                  # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
 
-def version_report():
-    print(
-        "Python version",
-        ".".join(str(x) for x in sys.version_info),
-        "using",
-        LEX_CLASS.__name__,
-        # "\n",   # TODO:  Do we need a \n here (in LexMemory mode)?
-    )
-    sys.stdout.flush()
-    # EXAMPLE:  Python version 2.7.14.final.0 using LexMySQL
-    # EXAMPLE:  Python version 2.7.16.final.0 using LexMemory
+def version_report_1():
+    print(LEX_CLASS.__name__, "in use")
+
+    print("Python version", ".".join(str(x) for x in sys.version_info))
+    # EXAMPLE:  Python version 2.7.14.final.0
+    # EXAMPLE:  Python version 2.7.16.final.0
+    # EXAMPLE:  Python version 3.4.3.final.0
+    # EXAMPLE:  Python version 3.5.4.final.0
+    # EXAMPLE:  Python version 3.6.8.final.0
+    # EXAMPLE:  Python version 3.7.3.final.0
 
 
     if LEX_CLASS is qiki.LexMySQL:
         print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
+        # EXAMPLE:  MySQL Python Connector version 2.0.3
+        # EXAMPLE:  MySQL Python Connector version 2.2.2b1
+        # EXAMPLE:  MySQL Python Connector version 8.0.16
+
         print(
-            "MySQL Client version {}\n".format(
-                # TODO:  Why do we need a \n here?  Doesn't print() do that automatically??
-                subprocess.Popen(
+            "MySQL Client version {client_version}\n".format(
+                client_version=subprocess.Popen(
                     'mysql --version',
                     shell=True,
                     stdout=subprocess.PIPE
-                ).stdout.read()
-                # ).stdout.read().strip().decode('ascii')
-                # TODO:  Explain why we used to strip and decode?
+                ).stdout.read().strip(),
+                end='',
             )
+            # NOTE:  Python 2 quirks in THIS print() call:
+            #            appends a \n to the subprocess output
+            #            ignores the end= parameter
+            #            never outputs a newline, unless it's explicit in the string
         )
-    # SEE:  MySQL Server version, InternalWordTests.test_001_show_version() (after connected)
+        # EXAMPLE:  MySQL Client version mysql  Ver 14.14 Distrib 5.7.24, for Win64 (x86_64)
 
 
-version_report()
+def version_report_2():
+    credentials = secure.credentials.for_unit_testing_database.copy()
+    lex = qiki.LexMySQL(**credentials)
+    print("MySQL Server version", lex.server_version())
+    lex.uninstall_to_scratch()
+    lex.disconnect()
+
+
+version_report_1()
 # NOTE:  This output may come anywhere before or after Unittests output.
 #        Threading??
 
@@ -130,11 +152,7 @@ if LEX_CLASS is qiki.LexMySQL:
 
         # noinspection PyMethodMayBeStatic
         def test_001_show_version(self):
-            credentials = secure.credentials.for_unit_testing_database.copy()
-            lex = qiki.LexMySQL(**credentials)
-            print("MySQL Server version", lex.server_version())
-            lex.uninstall_to_scratch()
-            lex.disconnect()
+            version_report_2()
 
         def test_table_name_at_creation_good(self):
             credentials = secure.credentials.for_unit_testing_database.copy()
@@ -142,7 +160,13 @@ if LEX_CLASS is qiki.LexMySQL:
             def good_table_name(name):
                 credentials['table'] = name
                 lex = qiki.LexMySQL(**credentials)
+                lex.uninstall_to_scratch()   # in case left over from a botched test
+                lex.install_from_scratch()
+                
                 self.assertEqual('verb', lex['define'].obj.txt)
+                # NOTE:  Former error about None having no txt attribute goes away by deleting the table.
+                #        But it shouldn't happen now that we uninstall and install.
+
                 lex.uninstall_to_scratch()
                 lex.disconnect()
 
@@ -223,6 +247,9 @@ if LEX_CLASS is qiki.LexMySQL:
             credentials = secure.credentials.for_unit_testing_database.copy()
             credentials['table'] = 'innocent_table_name_to_start_with'
             lex = qiki.LexMySQL(**credentials)
+            lex.uninstall_to_scratch()   # in case left over from a botched test
+            lex.install_from_scratch()
+            
             self.assertEqual('verb', lex['define'].obj.txt)
 
             lex._table = 'evil_table_name_later_`\'_\"_oops_\\"'
@@ -249,13 +276,15 @@ if LEX_CLASS is qiki.LexMySQL:
             with six.assertRaisesRegex(self, qiki.LexSentence.ConnectError, r'Access denied'):
                 # EXAMPLE:  1045 (28000): Access denied for user 'unittest'@'localhost' (using password: YES)
                 qiki.LexMySQL(**credentials)
-                # TODO:  Prevent ResourceWarning in Python 3.5, 3.6
-                # EXAMPLE:   (appears every time testing Word 3.5 or 3.6)
+                # TODO:  Prevent ResourceWarning in Python 3.4 - 3.6
+                # EXAMPLE:   (appears every time running tests Word3.4, Word3.5, Word3.6)
                 #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
                 #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 59546),
                 #        raddr=('127.0.0.1', 33073)>
                 # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
                 #        sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
+                # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
+                #        C:\Python34\lib\importlib\_bootstrap.py:2150: ImportWarning: sys.meta_path is empty
 
         def test_two_lex(self):
             lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
@@ -282,24 +311,27 @@ if LEX_CLASS is qiki.LexMySQL:
 # noinspection PyUnresolvedReferences
 class WordTests(unittest.TestCase):
 
-    class WordTestable(qiki.Word):
-        lex = None
-
     def setUp(self):
         credentials = secure.credentials.for_unit_testing_database.copy()
         if RANDOMIZE_DATABASE_TABLE:
             credentials['table'] = 'word_' + uuid.uuid4().hex
+            # EXAMPLE:  word_ce09954b2e784cd8811b640079497568
+
         self.lex = LEX_CLASS(**credentials)
-        self.WordTestable.lex = self.lex
+
+        def disconnect():
+            if not LET_DATABASE_RECORDS_REMAIN:
+                self.lex.uninstall_to_scratch()
+                # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
+                #        in the next test's call to the LEX_CLASS() constructor.
+            self.lex.disconnect()
+        self.addCleanup(disconnect)
+        # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
+
         if LET_DATABASE_RECORDS_REMAIN:
             self.lex.uninstall_to_scratch()
             self.lex.install_from_scratch()
-            # Delete and insert all records for a fresh start.
-
-    def tearDown(self):
-        if not LET_DATABASE_RECORDS_REMAIN:
-            self.lex.uninstall_to_scratch()
-        self.lex.disconnect()
+            # NOTE:  Delete old table from last test, insert fresh new table for this test.
 
     def lex_report(self):
 
@@ -381,9 +413,9 @@ class WordTests(unittest.TestCase):
                     use_message = stock_message
                 else:
                     use_message = stock_message + "\n" + self.message
-                raise self.WordCountFailure(use_message)
+                raise self.WrongCount(use_message)
 
-        class WordCountFailure(unittest.TestCase.failureException):
+        class WrongCount(Exception):
             pass
 
     def assertNewWords(self, expected_new_words, message=None):
@@ -633,10 +665,10 @@ class AardvarkInternalWordTests(WordTests):
             pass
 
     def test_assertNoNewWord_failure(self):
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNoNewWord():
                 self._make_one_new_word(u'shrubbery')
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNoNewWord():
                 self._make_one_new_word(u'bushes')
                 self._make_one_new_word(u'swallow')
@@ -646,14 +678,14 @@ class AardvarkInternalWordTests(WordTests):
             self._make_one_new_word(u'shrubbery')
 
     def test_assertNewWord_failure(self):
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWord():
                 pass
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWord():
                 self._make_one_new_word(u'shrubbery')
                 self._make_one_new_word(u'swallow')
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWords(1):
                 self._make_one_new_word(u'barn')
                 self._make_one_new_word(u'tail')
@@ -664,13 +696,13 @@ class AardvarkInternalWordTests(WordTests):
             self._make_one_new_word(u'gopher')
 
     def test_assertNewWords_2_failure(self):
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWords(2):   # Fails if too few.
                 pass
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWords(2):   # Fails if too few.
                 self._make_one_new_word(u'knight')
-        with self.assertRaises(self._CheckNewWordCount.WordCountFailure):
+        with self.assertRaises(self._CheckNewWordCount.WrongCount):
             with self.assertNewWords(2):   # Fails if too many.
                 self._make_one_new_word(u'nit')
                 self._make_one_new_word(u'rabbit')
@@ -1658,6 +1690,7 @@ class Word0014CreateWord(WordTests):
         self.assertEqual(new_word.idn, old_word.idn)
 
     def test_04_use_already_different_num(self):
+        """Will not reuse, if num differs."""
         with self.assertNewWord():
             old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
         with self.assertNewWord():
@@ -1666,15 +1699,30 @@ class Word0014CreateWord(WordTests):
         self.assertEqual(236, old_word.num)
         self.assertEqual(744, new_word.num)
 
-    def test_05_use_already_resurrected_num(self):
-        """Will not reuse an old word if it isn't the most recent."""
+    def test_05_use_already_unchange_num(self):
+        """
+        Will not reuse if num "unchanges".
+
+        Reuse only looks at the most recently matching txt
+            (with same sbj-vrb-obj of course).
+        If that's a different num, no reuse occurs,
+            even if an OLDER word did match in txt and num.
+        Because in this situation, the word's num changed, then unchanged.
+        So we must preserve the history of all three events.
+        """
         with self.assertNewWord():
-            old_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao")
+            older_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao")
         with self.assertNewWord():
             old_word = self.lex.create_word(self.art, self.got, self.lek, 236, "tao")
         with self.assertNewWord():
             new_word = self.lex.create_word(self.art, self.got, self.lek, 744, "tao", use_already=True)
-        self.assertNotEqual(new_word.idn, old_word.idn)
+
+        self.assertNotEqual(new_word.idn, older_word.idn)   # Older word matched, but hidden by old
+        self.assertNotEqual(new_word.idn, old_word.idn)     # Old word had a different num
+
+        self.assertTrue(older_word.idn < old_word.idn < new_word.idn)
+
+        self.assertEqual(744, older_word.num)
         self.assertEqual(236, old_word.num)
         self.assertEqual(744, new_word.num)
 
