@@ -1,2 +1,3 @@
-mysql-connector-python>=2.2.2
+mysql-connector-python>=8.0.16
+# THANKS:  Official mysql connector, https://stackoverflow.com/a/53272691/673991
 six>=1.10

@@ -48,19 +48,33 @@ except ImportError:
         You also need an empty secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
 
-        In MySQL you only need to create the database:  LexMySQL will create the table.
+        In MySQL you need to create the database and the user.
+        LexMySQL will create the tables.
+                
+            CREATE DATABASE `database`;
+            CREATE USER 'user'@'localhost';
+            ALTER USER  'user'@'localhost' 
+                IDENTIFIED BY 'password';
+            GRANT CREATE, INSERT, SELECT, DROP 
+                ON `database`.* 
+                TO 'user'@'localhost';
+            
+        Formerly:
 
             CREATE DATABASE `database`;
             GRANT CREATE, INSERT, SELECT, DROP 
                 ON `database`.* 
                 TO 'user'@'localhost' 
                 IDENTIFIED BY 'password';
+                
+         THANKS:  Deprecated GRANT, https://stackoverflow.com/a/46784276/673991
+
     \n""")
     sys.exit(1)
 
 
-LEX_CLASS = qiki.LexMemory   # \ pick
-# LEX_CLASS = qiki.LexMySQL    # / one
+# LEX_CLASS = qiki.LexMemory   # \ pick
+LEX_CLASS = qiki.LexMySQL    # / one
 
 LET_DATABASE_RECORDS_REMAIN = False   # Each run always starts the test database over from scratch.
                                       # Set this to True to manually examine the database after running it.
@@ -71,31 +85,43 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 RANDOMIZE_DATABASE_TABLE = True   # True supports concurrent unit test runs.
                                   # If LET_DATABASE_RECORDS_REMAIN is also True, tables will accumulate.
 
-print(
-    "Python version",
-    ".".join(str(x) for x in sys.version_info),
-    "using",
-    LEX_CLASS.__name__,
-    "\n",   # TODO:  Why do we need a \n here (in LexMemory mode)?
-)
-# EXAMPLE:  Python version 2.7.14.final.0 using LexMySQL 
-if LEX_CLASS is qiki.LexMySQL:
-    print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
+
+def version_report():
     print(
-        "MySQL Client version {}\n".format(
-            # TODO:  Why do we need a \n here?  Doesn't print() do that automatically??
-            subprocess.Popen(
-                'mysql --version',
-                shell=True,
-                stdout=subprocess.PIPE
-            ).stdout.read()
-            # ).stdout.read().strip().decode('ascii')
-            # TODO:  Explain why we used to strip and decode?
-        )
+        "Python version",
+        ".".join(str(x) for x in sys.version_info),
+        "using",
+        LEX_CLASS.__name__,
+        # "\n",   # TODO:  Do we need a \n here (in LexMemory mode)?
     )
+    sys.stdout.flush()
+    # EXAMPLE:  Python version 2.7.14.final.0 using LexMySQL
+    # EXAMPLE:  Python version 2.7.16.final.0 using LexMemory
+
+
+    if LEX_CLASS is qiki.LexMySQL:
+        print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
+        print(
+            "MySQL Client version {}\n".format(
+                # TODO:  Why do we need a \n here?  Doesn't print() do that automatically??
+                subprocess.Popen(
+                    'mysql --version',
+                    shell=True,
+                    stdout=subprocess.PIPE
+                ).stdout.read()
+                # ).stdout.read().strip().decode('ascii')
+                # TODO:  Explain why we used to strip and decode?
+            )
+        )
     # SEE:  MySQL Server version, InternalWordTests.test_001_show_version() (after connected)
 
 
+version_report()
+# NOTE:  This output may come anywhere before or after Unittests output.
+#        Threading??
+
+
+if LEX_CLASS is qiki.LexMySQL:
     # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
     # while a project was loaded with another secure.credentials.  Hence the following noinspection.
     # The correct package imports when run however.
@@ -1723,6 +1749,8 @@ class Word0020UnicodeVerb(WordUnicode):
         self.assertTrue(self.lex[u'comentó'].is_a_verb())
 
     def test_unicode_n_verb_encourage(self):
+        """Unicode smiley in string literal."""
+        self.assertEqual("\U0000263A", "☺")
         sentence1 = self.lex.define(self.comment, u"enc☺urage")
         sentence2 = self.lex[sentence1.idn]
         self.assertEqual(u"enc☺urage", sentence2.txt)
@@ -3901,7 +3929,9 @@ some_type = SomeType()
 
 
 if __name__ == '__main__':
+    # NOTE:  PyCharm Unittests doesn't run this part
     import unittest
+
     unittest.main(verbosity=2)
     # NOTE:  Most verbose level 2, https://stackoverflow.com/a/1322648/673991
 

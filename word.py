@@ -23,6 +23,18 @@ import six
 from number import Number, Suffix, type_name
 
 
+HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
+# SEE:  https://stackoverflow.com/questions/52759667/properly-getting-blobs-from-mysql-database-with-mysql-connector-in-python#comment99030618_55150960
+# SEE:  https://stackoverflow.com/questions/49958723/cant-insert-blob-image-using-python-via-stored-procedure-mysql
+# Problem:  VARBINARY fields are decoded as if their contents were text
+#           'utf8' codec can't decode ... invalid start byte
+#           0q80 == lex.idn, and '\x80' can never be a valid utf8 string
+#           Started happening between connector versions 2.2.2 and 8.0.16
+# Workaround:  character encoding latin1 across whole table
+#              qiki.Number fields work because latin1 can never fail to decode
+#              qiki.Text field (txt) fake stores utf8 when it thinks its latin1, yuk
+
+
 # noinspection PyAttributeOutsideInit
 class Word(object):
     """
@@ -1816,7 +1828,14 @@ class LexMySQL(LexSentence):
         super(LexMySQL, self).__init__(**kwargs_etc)
 
         try:
-            # kwargs_sql['use_pure'] = True
+            kwargs_sql['use_pure'] = True
+            # THANKS:  Disable CEXT because it doesn't support prepared statements
+            #          https://stackoverflow.com/a/50535647/673991
+
+            # kwargs_sql['raw'] = True
+
+            # kwargs_sql['charset'] = None
+
             self._connection = mysql.connector.connect(**kwargs_sql)
         except mysql.connector.Error as exception:
             raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
@@ -1825,6 +1844,15 @@ class LexMySQL(LexSentence):
         #     (10061 No connection could be made because the target machine actively refused it)
         # EXAMPLE:  (maybe wrong password)
         #     ProgrammingError
+
+
+
+        # self._connection.set_charset_collation(b'binary', b'binary')
+        # self._connection.set_charset_collation(b'utf8', b'utf8_unicode_ci')
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            self._connection.set_charset_collation(str('latin1'), str('latin1_swedish_ci'))
+
+
 
         # self.lex = self
         # self.last_inserted_whn = None
@@ -1856,8 +1884,11 @@ class LexMySQL(LexSentence):
         # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
         # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
 
-        self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
+        self.super_query('SET character_set_results = binary')
+
+        # self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
         # THANKS:  http://stackoverflow.com/a/27390024/673991
+
         # assert self.is_lex()
         assert self._connection.is_connected()
 
@@ -1911,6 +1942,10 @@ class LexMySQL(LexSentence):
             raise self.IllegalEngineName("Not a valid table name: " + repr(self._engine))
 
         with self._cursor() as cursor:
+            if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+                txt_specs = "CHARACTER SET latin1"
+            else:
+                txt_specs = "CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
             query = """
                 CREATE TABLE IF NOT EXISTS `{table}` (
                     `idn` VARBINARY(255) NOT NULL,
@@ -1918,19 +1953,26 @@ class LexMySQL(LexSentence):
                     `vrb` VARBINARY(255) NOT NULL,
                     `obj` VARBINARY(255) NOT NULL,
                     `num` VARBINARY(255) NOT NULL,
-                    `txt` {txt_type} NOT NULL,
+                    `txt` {txt_type} {txt_specs} NOT NULL,
                     `whn` VARBINARY(255) NOT NULL,
                     PRIMARY KEY (`idn`)
                 )
                     ENGINE = `{engine}`
-                    DEFAULT CHARACTER SET = utf8mb4
-                    DEFAULT COLLATE = utf8mb4_general_ci
                 ;
             """.format(
                 table=self.table,
                 txt_type=self._txt_type,   # Using this was a hard error:  <type> expected found '{'
+                txt_specs=txt_specs,
                 engine=self._engine,
             )
+
+            # Graveyard:
+                    # DEFAULT CHARACTER SET = utf8mb4
+                    # DEFAULT COLLATE = utf8mb4_general_ci
+                    # `txt` {txt_type}
+                    #     CHARACTER SET utf8mb4
+                    #     COLLATE utf8mb4_general_ci
+                    #     NOT NULL,
 
             cursor.execute(query)
             # TODO:  other keys?  sbj-vrb?   obj-vrb?
@@ -2329,7 +2371,7 @@ class LexMySQL(LexSentence):
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
-                parameters.append(query_arg.unicode())
+                parameters.append(query_arg.to_mysql())
             elif isinstance(query_arg, self.SuperIdentifier):
                 query += '`' + six.text_type(query_arg) + '`'
             elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
@@ -2404,6 +2446,16 @@ class LexMySQL(LexSentence):
         """super_select() had a MySQL exception.  Report the query."""
 
     def super_select(self, *query_args, **kwargs):
+        """
+        SQL statement-fragment strings interleaved with data, that generates rows
+
+        EXAMPLE:
+
+
+        :param query_args:  e.g.
+        :param kwargs:
+        :return:
+        """
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         if debug:
@@ -2417,6 +2469,7 @@ class LexMySQL(LexSentence):
                 #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
                 #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
                 raise self.SelectError(str(exception) + " on query: " + query)
+
             for row in cursor:
                 field_dictionary = dict()
                 if debug:
@@ -2425,9 +2478,12 @@ class LexMySQL(LexSentence):
                     if field is None:
                         value = None
                     elif name.endswith('txt'):   # including jbo_txt
-                        value = Text.decode_if_you_must(field)
+                        value = Text.from_mysql(field)
                     else:
-                        value = Number.from_mysql(field)
+                        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+                            value = Number.from_mysql(field.encode('latin1'))
+                        else:
+                            value = Number.from_mysql(field)
                     field_dictionary[name] = value
                     if debug:
                         print(name, repr(value), end='; ')
@@ -2445,7 +2501,7 @@ class LexMySQL(LexSentence):
         """
         for sub_arg in sub_args:
             if isinstance(sub_arg, Text):
-                yield sub_arg.unicode()
+                yield sub_arg.to_mysql()
             elif isinstance(sub_arg, Number):
                 yield sub_arg.raw
             elif isinstance(sub_arg, Word):
@@ -2644,6 +2700,19 @@ class Text(six.text_type):
         except TypeError:
             # noinspection PyArgumentList
             return cls(x.decode('utf-8'))   # This happens in Python 2.
+
+    @classmethod
+    def from_mysql(cls, x):
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            return cls(x.encode('latin1').decode('utf8'))
+        else:
+            return cls.decode_if_you_must(x)
+
+    def to_mysql(self):
+        if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
+            return self.encode('utf8').decode('latin1')
+        else:
+            return self.unicode()
 
     def unicode(self):
         return six.text_type(self)
