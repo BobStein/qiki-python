@@ -11,21 +11,20 @@ try:
     import collections.abc as collections_abc
 except ImportError:
     import collections as collections_abc
+    # THANKS:  six-ish collections.abc, https://stackoverflow.com/a/53978543/673991
 
 import numbers
 import re
 import time
 
-# noinspection PyPackageRequirements
 import mysql.connector
-# NOTE:  False alarm from naming of mysql-connector-python-rf
-#        Package containing module 'mysql' is not listed in project requirements
+import six
+
+import number
+from number import Number, type_name
 
 
 # TODO:  Move mysql stuff to lex_mysql.py?
-import six
-
-from number import Number, Suffix, type_name
 
 
 HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
@@ -1067,7 +1066,7 @@ class Listing(Lex):
     #                    # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     listing_dictionary = dict()   # Table of Listing instances, indexed by meta_word.idn
 
-    SUFFIX_TYPE = Suffix.Type.LISTING
+    SUFFIX_TYPE = number.Suffix.Type.LISTING
 
     def __init__(self, meta_word, word_class=None, **kwargs):
         """
@@ -1090,7 +1089,7 @@ class Listing(Lex):
 
                 @property
                 def index(self):
-                    return self.idn.suffix(Suffix.Type.LISTING).number
+                    return self.idn.suffix(number.Suffix.Type.LISTING).number
 
                 # def __call__(self, vrb, *a, **k):
                 #     return SubjectedVerb(self.idn, vrb, *a, **k)
@@ -1103,7 +1102,7 @@ class Listing(Lex):
                                                             # that's self-referentially nuts
         self.listing_dictionary[meta_word.idn] = self
         self.meta_word = meta_word
-        self.suffix_type = Suffix.Type.LISTING
+        self.suffix_type = number.Suffix.Type.LISTING
 
         # assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         # assert self.meta_word is not None, (
@@ -1152,7 +1151,7 @@ class Listing(Lex):
     #     return self.read_word(index)
 
     def composite_idn(self, index):
-        return Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
+        return Number(self.meta_word.idn, number.Suffix(number.Suffix.Type.LISTING, Number(index)))
 
     def read_word(self, index):
         word = self.word_class(self.composite_idn(index))
@@ -1255,7 +1254,7 @@ class Listing(Lex):
         """Return (meta_idn, index) from a listing word's idn.  Or raise NotAListing."""
         try:
             return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
-        except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
+        except (AttributeError, number.Suffix.RawError, number.Suffix.NoSuchType) as e:
             raise cls.NotAListing("Not a Listing idn: " + type_name(idn) + " - " + six.text_type(e))
 
         # try:
@@ -1835,10 +1834,10 @@ class LexMySQL(LexSentence):
         super(LexMySQL, self).__init__(**kwargs_etc)
 
 
-        def we_connect():
+        def do_connect():
             self._connection = mysql.connector.connect(**kwargs_sql)
 
-        def we_connect_with_and_without_use_pure():
+        def do_connect_with_and_without_use_pure():
             """
             MySQL Connector compatibility.
 
@@ -1851,17 +1850,17 @@ class LexMySQL(LexSentence):
             #          https://stackoverflow.com/a/50535647/673991
 
             try:
-                we_connect()
+                do_connect()
             except AttributeError as attribute_error:
                 if str(attribute_error) == "Unsupported argument 'use_pure'":
                     del kwargs_sql['use_pure']
-                    we_connect()
+                    do_connect()
                 else:
                     print("Unknown Attribute Error:", str(attribute_error))
                     raise
 
         try:
-            we_connect_with_and_without_use_pure()
+            do_connect_with_and_without_use_pure()
         except mysql.connector.Error as exception:
             raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
             # EXAMPLE:  (mysqld is down)
@@ -1911,7 +1910,7 @@ class LexMySQL(LexSentence):
             # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
             # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
 
-            self.super_query('SET character_set_results = binary')
+            # self.super_query('SET character_set_results = binary')
 
             # self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
             # THANKS:  http://stackoverflow.com/a/27390024/673991
@@ -1945,7 +1944,7 @@ class LexMySQL(LexSentence):
         Prevent lots of ResourceWarning messages in test_word.py in Python 3.5
 
         EXAMPLE:
-            ...\qiki-python\number.py:180: ResourceWarning: unclosed
+            .../qiki-python/number.py:180: ResourceWarning: unclosed
             <socket.socket fd=532, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM,
             proto=6, laddr=(...), raddr=(...)>
 

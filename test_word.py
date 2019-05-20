@@ -8,7 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 import inspect
-import mysql.connector
 import subprocess
 import sys
 import time
@@ -16,6 +15,7 @@ import unicodedata
 import unittest
 import uuid
 
+import mysql.connector
 import six
 
 import qiki
@@ -73,8 +73,8 @@ except ImportError:
     sys.exit(1)
 
 
-LEX_CLASS = qiki.LexMemory   # \ pick
-# LEX_CLASS = qiki.LexMySQL    # / one
+# LEX_CLASS = qiki.LexMemory   # \ pick
+LEX_CLASS = qiki.LexMySQL    # / one
 
 LET_DATABASE_RECORDS_REMAIN = False   # False = Each run deletes its table
                                       # True = Each run leaves its table behind, for human examination
@@ -105,6 +105,7 @@ def version_report_1():
     # EXAMPLE:  Python version 3.5.4.final.0
     # EXAMPLE:  Python version 3.6.8.final.0
     # EXAMPLE:  Python version 3.7.3.final.0
+    # EXAMPLE:  Python version 3.8.0.alpha.4
 
 
     if LEX_CLASS is qiki.LexMySQL:
@@ -319,13 +320,13 @@ class WordTests(unittest.TestCase):
 
         self.lex = LEX_CLASS(**credentials)
 
-        def disconnect():
+        def cleanup_disconnect():
             if not LET_DATABASE_RECORDS_REMAIN:
                 self.lex.uninstall_to_scratch()
                 # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
                 #        in the next test's call to the LEX_CLASS() constructor.
             self.lex.disconnect()
-        self.addCleanup(disconnect)
+        self.addCleanup(cleanup_disconnect)
         # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
 
         if LET_DATABASE_RECORDS_REMAIN:

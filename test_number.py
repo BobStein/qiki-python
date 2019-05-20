@@ -3040,10 +3040,19 @@ class NumberPickleTests(NumberTests):
     __setstate__ generate and consume.
     """
 
+    @classmethod
+    def printable(cls, x):
+        return x.decode('latin1').encode('ascii', 'backslashreplace')
+        # NOTE:  The latin-1 decode is not required for the equal comparison.  It's required if
+        #        the comparison fails, and the values must be displayed.
+        # NOTE:  It's no mystery why NumberAlternate appeared in place of Number when that
+        #        class was derived.  It is a mystery why cnumber changed to ctest_number.
+        # NOTE:  Another mystery is why a failure of comparison still generates another exception
+        #        within that exception.  Possibly on the decode('latin-1').
+
     def test_pickle_protocol_0_class(self):
-        self.assertEqual(
-            pickle.dumps(Number).decode('latin-1'),
-            py23(
+        self.assertEqual(   # FIXME:  Python 3.8
+            self.printable(py23(
                 b'ctest_number\n'
                 b'NumberAlternate\n'
                 b'p0\n'
@@ -3052,14 +3061,12 @@ class NumberPickleTests(NumberTests):
                 b'\x80\x03ctest_number\n'   # Python 3.X
                 b'NumberAlternate\n'
                 b'q\x00.',
-            ).decode('latin-1')
+            )),
+            self.printable(pickle.dumps(Number)),
         )
-        # NOTE:  The latin-1 decode is not required for the equal comparison.  It's required if
-        #        the comparison fails, and the values must be displayed.
-        # NOTE:  It's no mystery why NumberAlternate appeared in place of Number when that
-        #        class was derived.  It is a mystery why cnumber changed to ctest_number.
-        # NOTE:  Another mystery is why a failure of comparison still generates another exception
-        #        within that exception.  Possibly on the decode('latin-1').
+        # TODO:  Python 3.8:
+        #        b'\\x80\x04\\x95#\x00\x00\x00\x00\x00\x00\x00\\x8c\x0btest_number\\x94\\x8'
+        #        b'c\x0fNumberAlternate\\x94\\x93\\x94.'
 
     def test_pickle_protocol_0_instance(self):
         x314 = Number(3.14)
@@ -3068,9 +3075,8 @@ class NumberPickleTests(NumberTests):
         self.assertEqual(py23( "",  "b") +  "'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw))
         self.assertEqual(py23(b"", b"b") + b"'\\x82\\x03#\\xd7\\n=p\\xa3\\xe0'", repr(x314.raw).encode('ascii'))
         # noinspection PyTypeChecker
-        self.assertEqual(
-            pickle.dumps(x314).decode('latin-1'),
-            py23(
+        self.assertEqual(   # FIXME:  Python 3.8
+            self.printable(py23(
                 b'ccopy_reg\n'
                 b'_reconstructor\n'
                 b'p0\n'
@@ -3089,31 +3095,35 @@ class NumberPickleTests(NumberTests):
                 b'\x80\x03ctest_number\n'   # Python 3.X
                 b'NumberAlternate\n'
                 b'q\x00)\x81q\x01C\t' + x314.raw + b'q\x02b.'
-            ).decode('latin-1')
+            )),
+            self.printable(pickle.dumps(x314)),
         )
+        # TODO:  Python 3.8:
+        #        b'\\x80\x04\\x953\x00\x00\x00\x00\x00\x00\x00\\x8c\x0btest_number\\x94\\x8'
+        #        b'c\x0fNumberAlternate\\x94\\x93\\x94)\\x81\\x94C\t\\x82\x03#\\xd7\n=p\\xa'
+        #        b'3\\xe0\\x94b.'
 
         y314 = pickle.loads(pickle.dumps(x314))
         self.assertEqual(x314, y314)
 
     def test_pickle_protocol_2_class(self):
         self.assertEqual(
-            pickle.dumps(Number, 2),
             (
                 b'\x80\x02ctest_number\n'
                 b'NumberAlternate\n'
                 b'q\x00.'
-            )
+            ),
+            pickle.dumps(Number, 2),
         )
 
     def test_pickle_protocol_2_instance(self):
         x314 = Number(3.14)
-        self.assertEqual(x314.qstring(), '0q82_0323D70A3D70A3E0')
-        self.assertEqual(x314.raw, b'\x82\x03\x23' b'\xd7\x0a\x3d\x70' b'\xa3' b'\xe0')
-        x314_raw_utf8 =        b'\xc2\x82\x03\x23\xc3\x97\x0a\x3d\x70\xc2\xa3\xc3\xa0'
+        self.assertEqual('0q82_0323D70A3D70A3E0', x314.qstring())
+        self.assertEqual(   b'\x82\x03\x23' b'\xd7\x0a\x3d\x70' b'\xa3' b'\xe0', x314.raw)
+        x314_raw_utf8 = b'\xc2\x82\x03\x23\xc3\x97\x0a\x3d\x70\xc2\xa3\xc3\xa0'
 
         self.assertEqual(
-            pickle.dumps(x314, 2).decode('latin-1'),
-            py23(
+            self.printable(py23(
                 b'\x80\x02ctest_number\n'
                 b'NumberAlternate\n'
                 b'q\x00)\x81q\x01U\t' + x314.raw + b'q\x02b.',   # Python 2.X
@@ -3123,7 +3133,8 @@ class NumberPickleTests(NumberTests):
                 b'q\x00)\x81q\x01c_codecs\n'
                 b'encode\n'
                 b'q\x02X\r\x00\x00\x00' + x314_raw_utf8 + b'q\x03X\x06\x00\x00\x00latin1q\x04\x86q\x05Rq\x06b.'
-            ).decode('latin-1')
+            )),
+            self.printable(pickle.dumps(x314, 2)),
         )
 
         # print(repr(pickle.dumps(x314, 2)))
