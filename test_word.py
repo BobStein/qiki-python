@@ -93,6 +93,31 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 
 
+class LexClasses(object):
+    """We will run WordTests-derived tests using multiple Lex classes."""
+    ALL = [qiki.LexMemory, qiki.LexMySQL]
+    SQL = [                qiki.LexMySQL]
+
+    counts = {lex_class.__name__ : 0 for lex_class in ALL}
+
+    @classmethod
+    def count_test(cls, lex_class):
+        cls.counts[lex_class.__name__] += 1
+
+    @classmethod
+    def report_lines(cls):
+        for lex_class_name, count in cls.counts.items():
+            yield "{count:5d} tests of {lex_class_name}".format(
+                lex_class_name=lex_class_name,
+                count=count,
+            )
+
+
+# noinspection PyPep8Naming
+def tearDownModule():
+    print("\n".join(LexClasses.report_lines()))
+
+
 mysql_client_version = subprocess.Popen(
     'mysql --version',
     shell=True,
@@ -297,31 +322,6 @@ class LexErrorTests(unittest.TestCase):
         lex.disconnect()
 
 
-class LexClasses(object):
-
-    ALL = [qiki.LexMemory, qiki.LexMySQL]
-    SQL = [                qiki.LexMySQL]
-
-    counts = {lex_class.__name__ : 0 for lex_class in ALL}
-
-    @classmethod
-    def count_test(cls, lex_class):
-        cls.counts[lex_class.__name__] += 1
-
-    @classmethod
-    def report_lines(cls):
-        for lex_class_name, count in cls.counts.items():
-            yield "{count:5d} tests of {lex_class_name}\n".format(
-                lex_class_name=lex_class_name,
-                count=count,
-            )
-
-
-# noinspection PyPep8Naming
-def tearDownModule():
-    print("".join(LexClasses.report_lines()))
-
-
 # noinspection PyUnresolvedReferences
 class WordTests(unittest.TestCase):
 
@@ -333,7 +333,7 @@ class WordTests(unittest.TestCase):
     def will_test_all_lexes(self):
         self.lex_classes = [c for c in LexClasses.ALL]
 
-    def these_tests_are_for_sql_lexes_only(self):
+    def weed_out_non_sql_lexes(self):
         self.lex_classes = [c for c in self.lex_classes if c in LexClasses.SQL]
 
     def run(self, result=None):
@@ -3523,7 +3523,7 @@ class WordSuperSelectTest(WordQoolbarSetup):
 
     def __init__(self, *args, **kwargs):
         super(WordSuperSelectTest, self).__init__(*args, **kwargs)
-        self.these_tests_are_for_sql_lexes_only()
+        self.weed_out_non_sql_lexes()
 
     def test_lex_table_not_writable(self):
         with self.assertRaises(AttributeError):
