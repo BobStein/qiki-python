@@ -934,7 +934,12 @@ class SubjectedVerb(object):
 
 
 class Lex(object):
-    # meta_word = None
+    """
+    Collection of Numbered Words.
+
+    idn is the number that identifies the word.
+    meta_idn is the number that identifies the Lex collection.
+    """
 
     def __init__(self, meta_word=None, word_class=None, **_):
         """
@@ -1321,7 +1326,11 @@ class LexSentence(Lex):
     # Make Lex formally an abstract base class
 
     """
-    Abstract base class for Word collector and factory.
+    LexSentence is a collection of Sentences.
+
+    A Sentence is a Numbered Word that is defined by a triplet of Words:  subject, verb, object
+
+    LexSentence is the abstract base class for this kind of Word collector and factory.
 
     Instantiate a derived class of Lex for a database or other collection of word definitions.
     The word_class property is the class of words unique to this Lex instance.

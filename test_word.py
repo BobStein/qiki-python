@@ -93,7 +93,14 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 
 
-def version_report_1():
+mysql_client_version = subprocess.Popen(
+    'mysql --version',
+    shell=True,
+    stdout=subprocess.PIPE
+).stdout.read().decode('unicode_escape').strip()
+
+
+def version_report():
     print("Python version", ".".join(str(x) for x in sys.version_info))
     # EXAMPLE:  Python version 2.7.14.final.0
     # EXAMPLE:  Python version 2.7.16.final.0
@@ -103,40 +110,32 @@ def version_report_1():
     # EXAMPLE:  Python version 3.7.3.final.0
     # EXAMPLE:  Python version 3.8.0.alpha.4
 
-
     print("MySQL Python Connector version", mysql.connector.version.VERSION_TEXT)
     # EXAMPLE:  MySQL Python Connector version 2.0.3
     # EXAMPLE:  MySQL Python Connector version 2.2.2b1
     # EXAMPLE:  MySQL Python Connector version 8.0.16
 
-    print(
-        "MySQL Client version {client_version}\n".format(
-            client_version=subprocess.Popen(
-                'mysql --version',
-                shell=True,
-                stdout=subprocess.PIPE
-            ).stdout.read().strip(),
-            end='',
-        )
-        # NOTE:  Python 2 quirks in THIS print() call:
-        #            appends a \n to the subprocess output
-        #            ignores the end= parameter
-        #            never outputs a newline, unless it's explicit in the string
-    )
+    print("MySQL Client version " + mysql_client_version + "\n", end="")
+    # NOTE:  Python 2 quirks in THIS print() call:
+    #            appends a \n to the subprocess output
+    #            ignores the end= parameter
+    #            never outputs a newline, unless it's explicit in the string
     # EXAMPLE:  MySQL Client version mysql  Ver 14.14 Distrib 5.7.24, for Win64 (x86_64)
 
-
-def version_report_2():
     credentials = secure.credentials.for_unit_testing_database.copy()
     lex = qiki.LexMySQL(**credentials)
-    print("MySQL Server version", lex.server_version())
+    server_version = lex.server_version()
     lex.uninstall_to_scratch()
     lex.disconnect()
+    print("MySQL Server version", server_version)
+    # EXAMPLE:  MySQL Server version 5.7.24
 
 
-version_report_1()
-# NOTE:  This output may come anywhere before or after Unittests output.
-#        Threading??
+class Aardvark001VersionReport(unittest.TestCase):
+
+    # noinspection PyMethodMayBeStatic
+    def test_version_report(self):
+        version_report()
 
 
 class SafeNameTests(unittest.TestCase):
@@ -144,10 +143,6 @@ class SafeNameTests(unittest.TestCase):
     # while a project was loaded with another secure.credentials.  Hence the following noinspection.
     # The correct package imports when run however.
     # noinspection PyUnresolvedReferences
-
-    # noinspection PyMethodMayBeStatic
-    def test_001_show_version(self):
-        version_report_2()
 
     def test_table_name_at_creation_good(self):
         credentials = secure.credentials.for_unit_testing_database.copy()
@@ -688,7 +683,7 @@ class WordExoticTests(WordTests):
         )
 
 
-class AardvarkInternalWordTests(WordTests):
+class Aardvark002InternalWordTests(WordTests):
     """Test the WordTests class itself."""
 
     # # noinspection PyMethodMayBeStatic
