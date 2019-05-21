@@ -559,48 +559,48 @@ class NumberBasicTests(NumberTests):
     def test_qexponent_unsupported(self):
         number_has_no_qexponent = Number(0)
         with self.assertRaises(Number.QexValueError):
-            number_has_no_qexponent.qex_int()
+            number_has_no_qexponent.base_256_exponent()
 
     def test_qexponent_positive(self):
-        self.assertEqual(1, Number('0q82_01').qex_int())
-        self.assertEqual(1, Number('0q82_01000001').qex_int())
-        self.assertEqual(1, Number('0q82_02').qex_int())
-        self.assertEqual(1, Number('0q82_FF').qex_int())
-        self.assertEqual(2, Number('0q83_01').qex_int())
-        self.assertEqual(3, Number('0q84_01').qex_int())
-        self.assertEqual(4, Number('0q85_01').qex_int())
-        self.assertEqual(5, Number('0q86_01').qex_int())
-        self.assertEqual(6, Number('0q87_01').qex_int())
-        self.assertEqual(124, Number('0qFD_01').qex_int())
-        self.assertEqual(125, Number('0qFE_01').qex_int())
+        self.assertEqual(1, Number('0q82_01').base_256_exponent())
+        self.assertEqual(1, Number('0q82_01000001').base_256_exponent())
+        self.assertEqual(1, Number('0q82_02').base_256_exponent())
+        self.assertEqual(1, Number('0q82_FF').base_256_exponent())
+        self.assertEqual(2, Number('0q83_01').base_256_exponent())
+        self.assertEqual(3, Number('0q84_01').base_256_exponent())
+        self.assertEqual(4, Number('0q85_01').base_256_exponent())
+        self.assertEqual(5, Number('0q86_01').base_256_exponent())
+        self.assertEqual(6, Number('0q87_01').base_256_exponent())
+        self.assertEqual(124, Number('0qFD_01').base_256_exponent())
+        self.assertEqual(125, Number('0qFE_01').base_256_exponent())
 
     def test_qexponent_negative(self):
-        self.assertEqual(6, Number('0q78').qex_int())
-        self.assertEqual(5, Number('0q79').qex_int())
-        self.assertEqual(4, Number('0q7A').qex_int())
-        self.assertEqual(3, Number('0q7B').qex_int())
-        self.assertEqual(2, Number('0q7C').qex_int())
-        self.assertEqual(1, Number('0q7D').qex_int())
+        self.assertEqual(6, Number('0q78').base_256_exponent())
+        self.assertEqual(5, Number('0q79').base_256_exponent())
+        self.assertEqual(4, Number('0q7A').base_256_exponent())
+        self.assertEqual(3, Number('0q7B').base_256_exponent())
+        self.assertEqual(2, Number('0q7C').base_256_exponent())
+        self.assertEqual(1, Number('0q7D').base_256_exponent())
 
-        self.assertEqual(125, Number('0q01').qex_int())
-        self.assertEqual(124, Number('0q02').qex_int())
+        self.assertEqual(125, Number('0q01').base_256_exponent())
+        self.assertEqual(124, Number('0q02').base_256_exponent())
 
     def test_qexponent_fractional(self):
-        self.assertEqual(   0, Number('0q81FF_80').qex_int())
-        self.assertEqual(   0, Number('0q81FF_01').qex_int())
-        self.assertEqual(  -1, Number('0q81FE_01').qex_int())
-        self.assertEqual(  -2, Number('0q81FD_01').qex_int())
-        self.assertEqual(-123, Number('0q8184_01').qex_int())
-        self.assertEqual(-124, Number('0q8183_01').qex_int())
+        self.assertEqual(0, Number('0q81FF_80').base_256_exponent())
+        self.assertEqual(0, Number('0q81FF_01').base_256_exponent())
+        self.assertEqual(-1, Number('0q81FE_01').base_256_exponent())
+        self.assertEqual(-2, Number('0q81FD_01').base_256_exponent())
+        self.assertEqual(-123, Number('0q8184_01').base_256_exponent())
+        self.assertEqual(-124, Number('0q8183_01').base_256_exponent())
 
     def test_qexponent_fractional_neg(self):
-        self.assertEqual(   0, Number('0q7E00_01').qex_int())   # -.996
-        self.assertEqual(   0, Number('0q7E00_80').qex_int())   # -.5
-        self.assertEqual(   0, Number('0q7E00_FF').qex_int())   # -.004
-        self.assertEqual(  -1, Number('0q7E01_FF').qex_int())
-        self.assertEqual(  -2, Number('0q7E02_FF').qex_int())
-        self.assertEqual(-123, Number('0q7E7B_FF').qex_int())
-        self.assertEqual(-124, Number('0q7E7C_FF').qex_int())
+        self.assertEqual(0, Number('0q7E00_01').base_256_exponent())   # -.996
+        self.assertEqual(0, Number('0q7E00_80').base_256_exponent())   # -.5
+        self.assertEqual(0, Number('0q7E00_FF').base_256_exponent())   # -.004
+        self.assertEqual(-1, Number('0q7E01_FF').base_256_exponent())
+        self.assertEqual(-2, Number('0q7E02_FF').base_256_exponent())
+        self.assertEqual(-123, Number('0q7E7B_FF').base_256_exponent())
+        self.assertEqual(-124, Number('0q7E7C_FF').base_256_exponent())
 
     def test_alias_one(self):
         """
@@ -3900,33 +3900,33 @@ class NumberUtilitiesTests(NumberTests):
         self.assertEqual('AAAAAAAA', hex_from_integer(0xAAAAAAAA).upper())
 
     def test_03_string_from_hex(self):
-        self.assertEqual(b'',                                 string_from_hex(''))
-        self.assertEqual(b'\x00',                             string_from_hex('00'))
-        self.assertEqual(b'\xFF',                             string_from_hex('FF'))
-        self.assertEqual(b'hello',                            string_from_hex('68656C6C6F'))
-        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789ABCDEF'))
-        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', string_from_hex('0123456789abcdef'))
+        self.assertEqual(b'', bytes_from_hex(''))
+        self.assertEqual(b'\x00', bytes_from_hex('00'))
+        self.assertEqual(b'\xFF', bytes_from_hex('FF'))
+        self.assertEqual(b'hello', bytes_from_hex('68656C6C6F'))
+        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', bytes_from_hex('0123456789ABCDEF'))
+        self.assertEqual(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', bytes_from_hex('0123456789abcdef'))
 
     # noinspection PyUnresolvedReferences
     def test_03_string_from_hex_errors(self):
 
-        with self.assertRaises(string_from_hex.Error):
-            string_from_hex('GH')   # nonhex
-        with self.assertRaises(string_from_hex.Error):
-            string_from_hex('89XX')   # hex then nonhex
-        with self.assertRaises(string_from_hex.Error):
-            string_from_hex('000')   # not even
-        with self.assertRaises(string_from_hex.Error):
-            string_from_hex('DE AD')   # space
+        with self.assertRaises(bytes_from_hex.Error):
+            bytes_from_hex('GH')   # nonhex
+        with self.assertRaises(bytes_from_hex.Error):
+            bytes_from_hex('89XX')   # hex then nonhex
+        with self.assertRaises(bytes_from_hex.Error):
+            bytes_from_hex('000')   # not even
+        with self.assertRaises(bytes_from_hex.Error):
+            bytes_from_hex('DE AD')   # space
 
         with self.assertRaises(ValueError):
-            string_from_hex('GH')   # nonhex
+            bytes_from_hex('GH')   # nonhex
         with self.assertRaises(ValueError):
-            string_from_hex('89XX')   # hex then nonhex
+            bytes_from_hex('89XX')   # hex then nonhex
         with self.assertRaises(ValueError):
-            string_from_hex('000')   # not even
+            bytes_from_hex('000')   # not even
         with self.assertRaises(ValueError):
-            string_from_hex('DE AD')   # space
+            bytes_from_hex('DE AD')   # space
 
     def test_hex_from_string(self):
         self.assertEqual('',                 hex_from_string(b''))

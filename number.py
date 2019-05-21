@@ -18,7 +18,6 @@ import numbers
 import operator
 import struct
 
-
 import six
 
 
@@ -108,14 +107,12 @@ class Zone(object):
     TRANSFINITE_NEG     = b'\x00'
     NAN                 = b''
 
-    # NOTE:  Zone.internal_setup() will set these:
     name_from_code = None
     descending_codes = None
 
     @classmethod
     def internal_setup(cls):
         """Initialize Zone properties after the Zone class is otherwise defined."""
-
         cls.name_from_code = { getattr(cls, attr): attr for attr in dir(cls) if attr.isupper() }
         cls.descending_codes = sorted(Zone.name_from_code.keys(), reverse=True)
 
@@ -163,8 +160,8 @@ class Number(numbers.Complex):
     The qiki Number one is internally represented as two bytes b'\x82\x01'.  82 is the qex,
     like an exponent. 01 is the qan, like a mantissa.
     """
-    __slots__ = ('_raw', '_zone')
-    # NOTE:  Remove _zone from __slots__ for slightly more frugal memory, slower speed
+    # __slots__ = ('_raw',        )   # slightly less memory    \ pick
+    __slots__ = ('_raw', '_zone')   # slightly faster         / one
 
     def __init__(self, *args, **kwargs):   # content=None, qigits=None, normalize=False):
         """
@@ -183,10 +180,10 @@ class Number(numbers.Complex):
         except IndexError:
             content = kwargs.pop(str('content'), None)
         qigits = kwargs.pop(str('qigits'), None)
-        normalize = kwargs.pop(str('normalize'), False)
+        normalize = bool(kwargs.pop(str('normalize'), False))
 
         assert isinstance(qigits, (int, type(None)))
-        assert isinstance(normalize, (int, bool))
+        assert isinstance(normalize, bool)
 
         # TODO:  Is-instance or duck-typing or factory-method?
         #        is-instance calls isinstance(content) many times in the constructor,
@@ -687,7 +684,7 @@ class Number(numbers.Complex):
         """Is the number an integer?""" 
         if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan_int, qan_len) = self.qan_int_len()
-            qex = self.qex_int() - qan_len
+            qex = self.base_256_exponent() - qan_len
             if qex >= 0:
                 return True
             else:
@@ -837,8 +834,8 @@ class Number(numbers.Complex):
         if len(digits) % 2 != 0:
             digits += '0'
         try:
-            byte_string = string_from_hex(digits)
-        except string_from_hex.Error:
+            byte_string = bytes_from_hex(digits)
+        except bytes_from_hex.Error:
             raise self.ConstructorValueError(
                 "A qstring consists of hexadecimal digits or underscores, not {}".format(repr(s))
             )
@@ -885,12 +882,17 @@ class Number(numbers.Complex):
         Construct a Number from a Python IEEE-754 double-precision floating point number
 
         float('nan'), float('+inf'), float('-inf') each correspond to distinct Number values.
-        Negative zero (-0.0) corresponds to Number.NEGATIVE_INFINITESIMAL.
 
-        The big zone-based if-statement in this function reveals the following conversion in its lambdas:
-            qex <-- base 256 exponent
+        float(-0.0) is trickier, mostly because -0.0 == 0.0:
+        Number(-0.0) == 0q80 == Number(0.0) == 0.0 == -0.0
+        But float(Number.NEGATIVE_INFINITESIMAL)) is -0.0
 
-        Contrast _qex_encoder().
+        The raw part of a number starts with a qex which encodes the base 256 exponent.
+        The big zone-based if-statement in this function encodes the qex differently for each zone.
+        That qex encoding is what the lambda functions do.
+        Contrast the lambdas in the dictionary _qex_decoder().
+        Those do the inverse, decoding the qex into the base 256 exponent.
+
         Example:  assert '0q82_01' == Number(1.0).qstring()
         Example:  assert '0q82_03243F6A8885A3' == Number(math.pi).qstring()
 
@@ -1063,13 +1065,13 @@ class Number(numbers.Complex):
         """
         n = self.normalized()
         (qan_int, qan_len) = n.qan_int_len()
-        qex = n.qex_int() - qan_len
+        qex = n.base_256_exponent() - qan_len
         return shift_leftward(qan_int, qex*8)
 
     def _to_int_negative(self):
         """To a negative integer."""
         (qan_int, qan_len) = self.qan_int_len()
-        qex = self.qex_int() - qan_len
+        qex = self.base_256_exponent() - qan_len
         qan_negative = qan_int - exp256(qan_len)
         the_int = shift_leftward(qan_negative, qex*8)
         if qex < 0:
@@ -1117,7 +1119,7 @@ class Number(numbers.Complex):
     def _to_float(self):
         """To a reasonable, nonzero floating point number."""
         try:
-            qex = self.qex_int()
+            qex = self.base_256_exponent()
         except ValueError:
             return 0.0
         (qan_int, qan_len) = self.qan_int_len(max_qigits=self.QIGITS_PRECISION_DEFAULT + 2)
@@ -1183,9 +1185,10 @@ class Number(numbers.Complex):
         Zone.NEGATIVE:       1,
     }   # TODO:  ludicrous numbers will have a qan too (offset 2^N)
 
-    def qex_int(self):
+    def base_256_exponent(self):
         """
-        The base-256 exponent.  Interpreting qan in the range [0...0.99609375)
+        The base-256 exponent, when you interpret the qan in the range [0...0.99609375)
+                                      oh wait, it's actually more like [0.00390625...1)
 
          2 for [    256...65536)
          1 for [      1...256)
@@ -1193,27 +1196,27 @@ class Number(numbers.Complex):
         -1 for [1/65536...1/256)
         """
         try:
-            encoder = self._qex_encoder[self.zone]
+            decoder = self._qex_decoder[self.zone]
         except KeyError:
             raise self.QexValueError("qex not defined for {}".format(repr(self)))
+
         try:
-            qex = encoder(self)
+            return decoder(self)
         except IndexError:
             # TODO:  Unit test this branch.
             #        It may not be possible without breaking the .zone() method,
             #        because Zone.POSITIVE must have at least one byte,
             #        and Zone.FRACTIONAL must have at least two.
             raise self.QexValueError("qex broken for {}".format(repr(self)))
-        return qex
 
     class QexValueError(ValueError):
-        """There is no qex for some zones, e.g. Number.ZERO.qex_int()"""
+        """There is no qex for some zones, e.g. Number.ZERO.base_256_exponent()"""
 
     # The following dictionary reveals this conversion in its lambdas:
     #     base 256 exponent <-- qex
     #
     # Contrast _from_float().
-    _qex_encoder = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+    _qex_decoder = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
         Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
@@ -1375,7 +1378,10 @@ class Number(numbers.Complex):
             return self.plus_suffix(suffix)
 
     def minus_suffix(self, old_type=None):
-        """Make a version of a number without any suffixes of the given type.  This does NOT mutate self."""
+        """
+        Make a version of a number without any suffixes of the given type.
+        This does NOT mutate self.
+        """
         # TODO:  A way to remove just ONE suffix of the given type?
         #        minus_suffix(t) for one, minus_suffixes(t) for all?
         #        minus_suffix(t, global=True) for all?
@@ -1480,9 +1486,9 @@ class Number(numbers.Complex):
         """
         Find the starting indexes of all the suffixes.  Last first, that is right-to-left.
 
-        Returns an iterator of values in range(len(self.raw)).
-        Suffix indexes are in yielded in REVERSE ORDER because we have to parse the terminators
-        and lengths from the right end.
+        Returns an iterator of values each in range(len(self.raw)).
+        Suffix indexes are yielded in REVERSE ORDER
+        because we have to parse the terminators and lengths from the right end.
         """
         index_end = len(self.raw)
         if index_end > 0:
@@ -1507,7 +1513,7 @@ class Number(numbers.Complex):
                     # NOTE:  The length indicates a payload that extends beyond the start of the raw byte string.
                 yield index_end
 
-    # Constants (see Number.internal_setup())
+    # Constants
     # ---------
     NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
     ZERO = None
@@ -1519,8 +1525,8 @@ class Number(numbers.Complex):
     @classmethod
     def internal_setup(cls):
         """Initialize Number constants after the Number class is defined."""
-        cls.NAN = cls(None)
-        cls.ZERO = cls(0)
+        cls.NAN                    = cls.from_raw(cls.RAW_NAN)    # Number(None)
+        cls.ZERO                   = cls.from_raw(cls.RAW_ZERO)   # Number(0)
         cls.POSITIVE_INFINITY      = cls.from_raw(cls.RAW_INFINITY)
         cls.POSITIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL)
         cls.NEGATIVE_INFINITESIMAL = cls.from_raw(cls.RAW_INFINITESIMAL_NEG)
@@ -1966,8 +1972,8 @@ class Suffix(object):
         """Unclean distinction between suffix and root, e.g. the crazy length 99 in 0q82_01__9900"""
 
 
-# Hex
-# ---
+# Hexadecimal
+# -----------
 def hex_from_integer(the_integer):
     """
     Encode a hexadecimal string from an arbitrarily big integer.
@@ -1983,13 +1989,13 @@ assert 'ff' == hex_from_integer(255)
 assert '0100' == hex_from_integer(256)
 
 
-def string_from_hex(s):
+def bytes_from_hex(hexadecimal_digits):
     # noinspection SpellCheckingInspection
     """
         Decode a hexadecimal string into an 8-bit binary (base-256) string.
 
-        Raises string_from_hex.Error if s is not an even number of hex digits.
-        The string_from_hex.Error exception is a ValueError.  Why a ValueError?
+        Raises bytes_from_hex.Error if hexadecimal_digits is not an even number of digits.
+        The bytes_from_hex.Error exception is a ValueError.  Why a ValueError?
             Pro:  bytearray.fromhex('nonsense') raises a ValueError
             Pro:  int('0xNonsense', 0) raises a ValueError
             Con:  binascii.unhexlify('nonsense') raises a TypeError in Python 2
@@ -2009,24 +2015,24 @@ def string_from_hex(s):
 
         Possibly because fromhex is more permissive:  bytearray.fromhex('12 AB')
         """
-    assert(isinstance(s, six.string_types))
+    assert(isinstance(hexadecimal_digits, six.string_types))
     try:
-        return_value = binascii.unhexlify(s)
+        return_value = binascii.unhexlify(hexadecimal_digits)
     except (
         TypeError,        # binascii.unhexlify('nonsense') in Python 2.
         binascii.Error,   # binascii.unhexlify('nonsense') in Python 3.
     ):
-        raise string_from_hex.Error("Not an even number of hexadecimal digits: " + repr(s))
-    assert return_value == six.binary_type(bytearray.fromhex(s))
+        raise bytes_from_hex.Error("Not an even number of hexadecimal digits: " + repr(hexadecimal_digits))
+    assert return_value == six.binary_type(bytearray.fromhex(hexadecimal_digits))
     return return_value
-string_from_hex.Error = type(str('string_from_hex_Error'), (ValueError,), {})
-assert b'\xBE\xEF' == string_from_hex('BEEF')
+bytes_from_hex.Error = type(str('string_from_hex_Error'), (ValueError,), {})
+assert b'\xBE\xEF' == bytes_from_hex('BEEF')
 
 
-def hex_from_string(s):
+def hex_from_string(string_of_8_bit_bytes):
     """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
-    assert(isinstance(s, six.binary_type))
-    return binascii.hexlify(s).upper().decode()
+    assert(isinstance(string_of_8_bit_bytes, six.binary_type))
+    return binascii.hexlify(string_of_8_bit_bytes).upper().decode()
 assert 'BEEF' == hex_from_string(b'\xBE\xEF')
 
 
@@ -2068,9 +2074,10 @@ assert 16 == shift_leftward(32, -1)
 
 
 def floats_really_same(f1,f2):
-    """Compare floating point numbers, a little differently.
+    """
+    Compare floating point numbers.
 
-    Similar to == except:
+    Similar to the == equality operator except:
      1. They ARE the same if both are NAN.
      2. They are NOT the same if one is +0.0 and the other -0.0.
 
@@ -2088,8 +2095,8 @@ assert True is floats_really_same(float('nan'), float('nan'))
 assert False is floats_really_same(+0.0, -0.0)
 
 
-# Padding and Unpadding Strings
-# -----------------------------
+# Padding and Unpadding Bytes
+# ---------------------------
 def left_pad00(the_string, num_bytes):
     """Make a byte-string num_bytes long by padding '\x00' bytes on the left."""
     assert(isinstance(the_string, six.binary_type))
@@ -2104,8 +2111,8 @@ def right_strip00(the_string):
 assert b'string' == right_strip00(b'string\x00\x00')
 
 
-# Packing and Unpacking Integers
-# ------------------------------
+# Packing and Unpacking Bytes
+# ---------------------------
 def pack_integer(the_integer, num_bytes=None):
     """
     Pack an integer into a byte-string, which becomes a kind of base-256, big-endian number.
@@ -2131,7 +2138,7 @@ def pack_integer(the_integer, num_bytes=None):
         return struct.pack('>q', the_integer)[8-num_bytes:]
     else:
         return pack_big_integer_via_hex(the_integer, num_bytes)
-        # NOTE:  Pretty sure this could never ever raise string_from_hex.Error
+        # NOTE:  Pretty sure this could never ever raise bytes_from_hex.Error
 assert b'\x00\xAA' == pack_integer(170,2)
 assert b'\xFF\x56' == pack_integer(-170,2)
 assert byte(42) == pack_integer(42, num_bytes=1)
@@ -2149,7 +2156,7 @@ def pack_big_integer_via_hex(num, num_bytes):
     else:
         num_twos_complement = num + exp256(num_bytes)   # two's complement of big negative integers
     return left_pad00(
-        string_from_hex(
+        bytes_from_hex(
             hex_from_integer(
                 num_twos_complement
             )
@@ -2589,3 +2596,5 @@ assert 'function' == type_name(type_name)
 # TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity there.
 # TODO:  Are Numbers immutable after __init__() is done or not?
 #        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
+#        They kind of have to be immutable, because strings and integers are ffs.
+#        But that means no Number().addSuffix()

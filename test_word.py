@@ -107,10 +107,14 @@ class LexClasses(object):
     @classmethod
     def report_lines(cls):
         for lex_class_name, count in cls.counts.items():
-            yield "{count:5d} tests of {lex_class_name}".format(
+            yield "{count:5d} tests on {lex_class_name}".format(
                 lex_class_name=lex_class_name,
                 count=count,
             )
+
+
+class TestBaseClass(unittest.TestCase):
+    pass
 
 
 # noinspection PyPep8Naming
@@ -156,14 +160,14 @@ def version_report():
     # EXAMPLE:  MySQL Server version 5.7.24
 
 
-class Aardvark001VersionReport(unittest.TestCase):
+class Aardvark001VersionReport(TestBaseClass):
 
     # noinspection PyMethodMayBeStatic
     def test_version_report(self):
         version_report()
 
 
-class SafeNameTests(unittest.TestCase):
+class SafeNameTests(TestBaseClass):
     # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
     # while a project was loaded with another secure.credentials.  Hence the following noinspection.
     # The correct package imports when run however.
@@ -275,7 +279,7 @@ class SafeNameTests(unittest.TestCase):
         lex.disconnect()
 
 
-class LexErrorTests(unittest.TestCase):
+class LexErrorTests(TestBaseClass):
     """Try to generate common errors with instatiating a Lex."""
 
     def test_bad_password(self):
@@ -323,7 +327,7 @@ class LexErrorTests(unittest.TestCase):
 
 
 # noinspection PyUnresolvedReferences
-class WordTests(unittest.TestCase):
+class WordTests(TestBaseClass):
 
     def __init__(self, *args, **kwargs):
         super(WordTests, self).__init__(*args, **kwargs)
@@ -337,10 +341,16 @@ class WordTests(unittest.TestCase):
         self.lex_classes = [c for c in self.lex_classes if c in LexClasses.SQL]
 
     def run(self, result=None):
+        """
+        Run the unit tests on each of the Lex classes.
+        
+        This may slightly confuse the test framework on the total number of tests being run.
+        """
         for self.lex_class in self.lex_classes:
             result = super(WordTests, self).run(result)
             LexClasses.count_test(self.lex_class)
         return result
+        # THANKS:  Parameterizing tests, https://eli.thegreenplace.net/2011/08/02/python-unit-testing-parametrized-test-cases
 
     def setUp(self):
         credentials = secure.credentials.for_unit_testing_database.copy()
