@@ -13,7 +13,7 @@ import pickle
 import sys
 import unittest
 
-from number import *
+from qiki.number import *
 
 
 # Slow tests:

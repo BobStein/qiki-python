@@ -19,12 +19,11 @@ import mysql.connector
 import six
 
 import qiki
-from number import hex_from_string
-from number import type_name
-from word import SubjectedVerb
-from word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
-from word import is_iterable
-from test_number import py23
+from qiki.number import hex_from_string
+from qiki.number import type_name
+from qiki.word import SubjectedVerb
+from qiki.word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
+from qiki.word import is_iterable
 
 try:
     import secure.credentials
@@ -4009,6 +4008,21 @@ class WordInternalTests(WordTests):
     #     anna_likes_bart = anna.like(bart, "He's just so dreamy.", qiki.Number(10))
     #     anna_likes_chet = anna.like(chet, "He's alright I guess.", qiki.Number(9))
     #     print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
+
+
+
+def py23(if2, if3_or_greater):
+    """
+    Python-2-specific value.  Versus Python-3-or-later-specific value.
+
+    Sensibly returns a value that stands a reasonable chance of not breaking on Python 4,
+    if there ever is such a thing.  That is, assumes Python 4 will be more like 3 than 2.
+    SEE:  http://astrofrog.github.io/blog/2016/01/12/stop-writing-python-4-incompatible-code/
+    """
+    if six.PY2:
+        return if2
+    else:
+        return if3_or_greater
 
 
 class SomeType(object):

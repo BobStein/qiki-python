@@ -20,8 +20,8 @@ import time
 import mysql.connector
 import six
 
-import number
-from number import Number, type_name
+from qiki import Number, Suffix
+from qiki.number import type_name
 
 
 # TODO:  Move mysql stuff to lex_mysql.py?
@@ -1071,7 +1071,7 @@ class Listing(Lex):
     #                    # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     listing_dictionary = dict()   # Table of Listing instances, indexed by meta_word.idn
 
-    SUFFIX_TYPE = number.Suffix.Type.LISTING
+    SUFFIX_TYPE = Suffix.Type.LISTING
 
     def __init__(self, meta_word, word_class=None, **kwargs):
         """
@@ -1094,7 +1094,7 @@ class Listing(Lex):
 
                 @property
                 def index(self):
-                    return self.idn.suffix(number.Suffix.Type.LISTING).number
+                    return self.idn.suffix(Suffix.Type.LISTING).number
 
                 # def __call__(self, vrb, *a, **k):
                 #     return SubjectedVerb(self.idn, vrb, *a, **k)
@@ -1107,7 +1107,7 @@ class Listing(Lex):
                                                             # that's self-referentially nuts
         self.listing_dictionary[meta_word.idn] = self
         self.meta_word = meta_word
-        self.suffix_type = number.Suffix.Type.LISTING
+        self.suffix_type = Suffix.Type.LISTING
 
         # assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
         # assert self.meta_word is not None, (
@@ -1156,7 +1156,7 @@ class Listing(Lex):
     #     return self.read_word(index)
 
     def composite_idn(self, index):
-        return Number(self.meta_word.idn, number.Suffix(number.Suffix.Type.LISTING, Number(index)))
+        return Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
 
     def read_word(self, index):
         word = self.word_class(self.composite_idn(index))
@@ -1259,7 +1259,7 @@ class Listing(Lex):
         """Return (meta_idn, index) from a listing word's idn.  Or raise NotAListing."""
         try:
             return idn.unsuffixed, idn.suffix(cls.SUFFIX_TYPE).number
-        except (AttributeError, number.Suffix.RawError, number.Suffix.NoSuchType) as e:
+        except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
             raise cls.NotAListing("Not a Listing idn: " + type_name(idn) + " - " + six.text_type(e))
 
         # try:
