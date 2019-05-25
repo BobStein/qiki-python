@@ -10,18 +10,20 @@ setuptools.setup(
     name="qiki",
     version=version,
     author="Bob Stein",
-    author_email="me@bobste.in",
+    author_email="bob.stein@qiki.info",
     description="Unsiloed social web. Rate and relate anything. Any number of times. With any verb.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BobStein/qiki-python",
     packages=setuptools.find_packages(),
+    platforms=['any'],
+    license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     classifiers=[
         "Development Status :: 1 - Planning",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
-        "License :: Public Domain",
+        "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
@@ -43,6 +45,3 @@ setuptools.setup(
             # emergence, disruption, reinvention, hyper-democracy
     ],
 )
-
-
-

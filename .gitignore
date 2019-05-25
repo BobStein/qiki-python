@@ -4,8 +4,10 @@ museum/
 # Database credentials
 secure/
 
-# Django SQLite experimental database
-db.sqlite3
+# setuptools
+build/
+dist/
+*.egg-info
 
 # Less whining
 .idea/
