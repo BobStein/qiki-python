@@ -21,6 +21,7 @@ import six
 import qiki
 from qiki.number import hex_from_string
 from qiki.number import type_name
+from qiki.word import LexInMemory
 from qiki.word import SubjectedVerb
 from qiki.word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
 from qiki.word import is_iterable
@@ -94,7 +95,7 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 
 class LexClasses(object):
     """We will run WordTests-derived tests using multiple Lex classes."""
-    ALL = [qiki.LexMemory, qiki.LexMySQL]
+    ALL = [qiki.LexInMemory, qiki.LexMySQL]
     SQL = [                qiki.LexMySQL]
 
     counts = {lex_class.__name__ : 0 for lex_class in ALL}
@@ -580,6 +581,21 @@ class WordDemoTests(WordTests):
         #            s.v(o, n, t)
         #            lex.s.v(o, n, t)
 
+    def test_read_md(self):
+        lex = LexInMemory()
+        hello = lex.verb('hello')
+        world = lex.noun('world')
+
+        lex[lex](hello)[world] = 1,"First comment!"
+
+        word = lex[lex](hello)[world]
+
+        print(word.txt)
+        # First comment!
+
+        print("{:svo}".format(word))
+        # Word(sbj=lex,vrb=hello,obj=world)
+
 
 class WordExoticTests(WordTests):
 
@@ -860,11 +876,11 @@ class Word0011FirstTests(WordTests):
 
     def test_01e_class_names(self):
         self.assertEqual(self.lex_class.__name__, type_name(self.lex))
-        self.assertEqual('WordDerivedJustForThisLex', type_name(self.lex._lex))
+        self.assertEqual('WordClassJustForThisLex', type_name(self.lex._lex))
 
     def test_01f_word_classes_distinct(self):
-        lex1 = qiki.LexMemory()
-        lex2 = qiki.LexMemory()
+        lex1 = qiki.LexInMemory()
+        lex2 = qiki.LexInMemory()
         self.assertEqual(lex1.word_class.__name__, lex2.word_class.__name__)
         self.assertNotEqual(lex1.word_class, lex2.word_class)
 
@@ -885,6 +901,16 @@ class Word0011FirstTests(WordTests):
 
     def test_02c_repr(self):
         self.assertEqual(u"Word('noun')", repr(self.lex[u'noun']))
+
+    # noinspection PyStringFormat
+    def test_02d_format(self):
+        word = self.lex.noun('frog')
+
+        self.assertEqual("frog", "{}".format(word))
+        self.assertEqual("frog", "{:}".format(word))
+        self.assertEqual("Word(idn=5)", "{:i}".format(word))
+        self.assertEqual("Word(sbj=lex,vrb=define,obj=noun)", "{:svo}".format(word))
+        self.assertEqual("Word(txt='frog')", "{:t}".format(word))
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.LexSentence.IDN_MAX_FIXED, self.lex.max_idn())
@@ -1692,6 +1718,25 @@ class Word0013Brackets(WordTests):
     #     """Lex is a singleton when indexing itself."""
     #     self.assertIs(self.lex[self.lex], self.lex)
 
+    def test_08_lex_itself(self):
+        """Ways to get the word in a lex that refers to the lex itself."""
+        lex = self.lex
+        word_for_lex_1 = lex['lex']
+        word_for_lex_2 = lex[qiki.LexSentence.IDN_LEX]
+        word_for_lex_3 = lex[lex]   # <-- new and improved!
+
+        self.assertEqual(word_for_lex_1, word_for_lex_2)
+        self.assertEqual(word_for_lex_1, word_for_lex_3)
+        self.assertEqual(word_for_lex_2, word_for_lex_3)   # Equal ...
+
+        self.assertIsNot(word_for_lex_1, word_for_lex_2)   # ... but distinct
+        self.assertIsNot(word_for_lex_1, word_for_lex_3)
+        self.assertIsNot(word_for_lex_2, word_for_lex_3)
+
+        self.assertNotEqual(word_for_lex_1, lex)
+        self.assertNotEqual(word_for_lex_2, lex)
+        self.assertNotEqual(word_for_lex_3, lex)
+
 
 class Word0014CreateWord(WordTests):
 
@@ -2448,7 +2493,7 @@ class Word0051ListingBasicTests(WordListingTests):
         chad = self.student_roster[qiki.Number(2)]
         self.assertIsInstance(chad, self.student_roster.word_class)
         self.assertIs(type(chad), self.student_roster.word_class)
-        self.assertEqual('WordDerivedJustForThisListing', type_name(chad))
+        self.assertEqual('WordClassJustForThisListing', type_name(chad))
 
     def test_listing_word_type_unique(self):
         self.assertIsNot(self.student_roster.word_class, type(self.lex['lex']))

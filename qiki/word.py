@@ -662,10 +662,32 @@ class Word(object):
     def presentable(num):
         if num.is_whole():
             return str(int(num))
-        else:
+        elif not num.is_suffixed():
             return str(float(num))
+        else:
+            return num.qstring()
+
+    def __format__(self, format_spec):
+        # THANKS:  format > repr > str, https://stackoverflow.com/a/40600544/673991
+        if format_spec == '':
+            return str(self)
+        else:
+            return "Word({})".format(",".join(self._word_attributes(format_spec)))
+
+    def _word_attributes(self, format_spec):
+        for c in format_spec:
+            if   c == 'i': yield "idn={}".format(self.presentable(self.idn))
+            elif c == 's': yield "sbj={}".format(str(self.sbj))
+            elif c == 'v': yield "vrb={}".format(str(self.vrb))
+            elif c == 'o': yield "obj={}".format(str(self.obj))
+            elif c == 't': yield "txt='{}'".format(str(self.txt))
+            elif c == 'n': yield "num={}".format(self.presentable(self.num))
+            elif c == 'w': yield "whn={}".format(self.presentable(self.whn))
+            else:
+                raise ValueError("'{}' unknown in .format(word)".format(c))
 
     def __repr__(self):
+        # THANKS:  repr() conventions, https://codingkilledthecat.wordpress.com/2012/06/03/please-dont-abuse-repr/
         if self.exists():
             if self.is_defined() and self.txt:
                 # TODO:  Undo comma_num
@@ -888,49 +910,53 @@ class SubjectedVerb(object):
             # return self._subjected.said(self._verbed, objected)
 
     @classmethod
-    def extract_txt_num(cls, args, kwargs):
+    def extract_txt_num(cls, a, k):   # aka (args, kwargs)
         """
-        Pop num and/or txt from arguments.
+        Pop num and/or txt from positional-arguments, and keyword-arguments.
 
         TypeError if ambiguous or unsupportable.
         Examples that will raise TypeError:
             extract_txt_num('text', 'more text')
             extract_txt_num(1, 42)
-            extract_txt_num(too_exotic_number)
+            extract_txt_num(neither_text_nor_number)
 
-        Expects args as a list, so it can be modified in-place.
+        Expects a (args) is a list, not a tuple, so it can be modified in-place.
+
         """
-        # TODO:  It was silly to expect args to be a list.  Only kwargs can have surplus parameters.
-        #        If this function doesn't generate an exception, then it used up all the args anyway.
+        # TODO:  It was silly to expect a (args) to be a list.
+        #        Only k (kwargs) can have surplus parameters.
+        #        If this function doesn't generate an exception,
+        #        then it used up all of a (args) anyway.
+
         def type_code(x):
             return 'n' if isinstance(x, numbers.Number) else 't' if Text.is_valid(x) else 'x'
 
-        a = ''.join(type_code(arg) for arg in args)
-        t = 'txt' in kwargs
-        n = 'num' in kwargs
+        pats = ''.join(type_code(arg) for arg in a)   # pats:  positional-argument types
+        t = 'txt' in k
+        n = 'num' in k
 
         def type_failure():
-            return TypeError("Expecting a num and a txt, not {} {} {} {} {}".format(repr(args), repr(kwargs), a, t, n))
+            return TypeError("Expecting a num and a txt, not {} {} {} {} {}".format(
+                repr(a), repr(k), pats, t, n
+            ))
 
-        if   a == ''   and not t and not n:  r = '',            1
-        elif a == 'n'  and not t and not n:  r = '',            args[0]       ; del args[0]
-        elif a == 't'  and not t and not n:  r = args[0],       1             ; del args[0]
-        elif a == ''   and     t and not n:  r = kwargs['txt'], 1             ; del kwargs['txt']
-        elif a == ''   and not t and     n:  r = '',            kwargs['num'] ; del kwargs['num']
-        elif a == 'tn' and not t and not n:  r = args[0],       args[1]       ; del args[0:2]
-        elif a == 'nt' and not t and not n:  r = args[1],       args[0]       ; del args[0:2]
-        elif a == 't'  and not t and     n:  r = args[0],       kwargs['num'] ; del args[0]; del kwargs['num']
-        elif a == 'n'  and     t and not n:  r = kwargs['txt'], args[0]       ; del kwargs['txt']; del args[0]
-        elif a == ''   and     t and     n:  r = kwargs['txt'], kwargs['num'] ; del kwargs['txt']; del kwargs['num']
+        if   pats == ''   and not t and not n:  r = ''          , 1
+        elif pats == 'n'  and not t and not n:  r = ''          , a[0]        ; del a[0]
+        elif pats == 't'  and not t and not n:  r = a[0]        , 1           ; del a[0]
+        elif pats == ''   and     t and not n:  r = k.pop('txt'), 1
+        elif pats == ''   and not t and     n:  r = ''          , k.pop('num')
+        elif pats == 'tn' and not t and not n:  r = a[0]        , a[1]        ; del a[0:2]
+        elif pats == 'nt' and not t and not n:  r = a[1]        , a[0]        ; del a[0:2]
+        elif pats == 't'  and not t and     n:  r = a[0]        , k.pop('num'); del a[0]
+        elif pats == 'n'  and     t and not n:  r = k.pop('txt'), a[0]        ; del a[0]
+        elif pats == ''   and     t and     n:  r = k.pop('txt'), k.pop('num')
         else:
             raise type_failure()
 
         try:
-            r = Text(r[0]),  Number(r[1])
+            return Text(r[0]),  Number(r[1])
         except ValueError:
             raise type_failure()
-
-        return r
 
 
 class Lex(object):
@@ -955,10 +981,10 @@ class Lex(object):
 
         if word_class is None:
 
-            class WordDerivedJustForThisLex(Word):
+            class WordClassJustForThisLex(Word):
                 lex = None
 
-            word_class = WordDerivedJustForThisLex
+            word_class = WordClassJustForThisLex
         self.word_class = word_class
         self.word_class.lex = self
         self.meta_word = meta_word
@@ -1089,7 +1115,7 @@ class Listing(Lex):
 
         if word_class is None:
 
-            class WordDerivedJustForThisListing(Word):
+            class WordClassJustForThisListing(Word):
                 lex = None
 
                 @property
@@ -1099,7 +1125,7 @@ class Listing(Lex):
                 # def __call__(self, vrb, *a, **k):
                 #     return SubjectedVerb(self.idn, vrb, *a, **k)
 
-            word_class = WordDerivedJustForThisListing
+            word_class = WordClassJustForThisListing
 
         super(Listing, self).__init__(meta_word=meta_word, word_class=word_class, **kwargs)
         assert isinstance(meta_word, Word)
@@ -1665,10 +1691,10 @@ class LexSentence(Lex):
 #             return super(WordEncoder, self).default(o)
 
 
-class LexMemory(LexSentence):
+class LexInMemory(LexSentence):
     def __init__(self, **kwargs):
         # self.lex = self
-        super(LexMemory, self).__init__(**kwargs)
+        super(LexInMemory, self).__init__(**kwargs)
         # TODO:  new_lex_memory = LexMemory(old_lex_memory)?
         # self._choate()
         # if not self.exists():
@@ -2625,6 +2651,11 @@ def idn_from_word_or_number(x):
     """
     Helper for functions that take either idn or word.
 
+    Or for a LexSentence, return its idn for itself!
+
+    CAUTION:  This will of course NOT be the idn that OTHER lexes use
+              to refer to this lex.
+
     :param x:  - an idn or a word
     :return:   - an idn
     """
@@ -2634,6 +2665,8 @@ def idn_from_word_or_number(x):
         return x.idn
     elif isinstance(x, Number):
         return x
+    elif isinstance(x, LexSentence):
+        return x.IDN_LEX
     else:
         raise TypeError(
             "idn_from_word_or_number({}) is not supported, "
