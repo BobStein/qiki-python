@@ -1,8 +1,8 @@
-# qiki - rate anything
+# qiki -- rate anything
 
-A qiki is a no-center public record 
+A qiki is part of a no-center public record 
 of what anybody thinks of anything.
-Including what we think of each others' thinking.
+Including what we think of each other's thinking.
 And what we think of each other.
 Crazy, right?
 
@@ -13,31 +13,33 @@ The best opportunity for human betterment today
 is to get good at deciding:
 
 1. what **is**
-2. what **ought** to be
+2. what **ought to be**
 3. what to **do**
 
 Let's get much better at these now.
-
 Great consequences will not happen until we do.
 We don't want to agree. 
+Not totally.
 But we must decide.
 
 We must find a way to decide 
 what is happening.
+This is why many discussions 
+talk past each other.
 We need some agreement on what is happening
 before we can talk about what matters.
-We need some agreement on what matters
+We need enough agreement on what matters
 before we can talk about what to do.
 
 Who is we?
-This applies to every group you can think of.
-I think the opportunity is overripe
+This applies to any group you can think of.
+The opportunity is overripe
 for getting better at group decisions.
 
 
 ## how
 
-I think the gizmos can help.
+I think the gizmos can help out.
 Start by storing our thinking out of the silos.
 Then anybody can start looking for patterns.
 And turning the gizmos loose looking for patterns.
@@ -45,7 +47,7 @@ And looking for meaning.
 
 The time to create value and safety
 by obscuring will soon be over.
-It's time to put all our thinking on the table.
+It is time to put all our thinking on the table.
 
 A qiki will allow you to rate and relate:
 
@@ -76,7 +78,7 @@ Let's get started.
 
 ## word
 
-A qiki **word**, like a natural language word, 
+A qiki word, like a natural language word, 
 can represent anything.
 Unlike a natural language word 
 you can make up a lot of them easily.
@@ -88,7 +90,8 @@ you string together three other qiki words:
 * verb
 * object
 
-and you give the new word its own special:
+and you give the new word a number
+and some text:
 
 * number 
 (1 means normal, 
@@ -116,7 +119,7 @@ Here's what they're called:
 * `sbj` - subject 
 * `vrb` - verb
 * `obj` - object
-* `num` - quantify
+* `num` - quantify matters
 * `txt` - name, explain, discuss
 * `idn` - identified by a number
 * `whn` - seconds after 1970 (or before)
@@ -128,10 +131,12 @@ And each word has these seven attributes.
 
 ## hello proverbial world
 
-Here is some word make-upping action. 
+Let's make up some words.
+Here is some word-making-upping action
+in the Python programming language. 
 Before a lex can say hello to the world,
 it has to define _world_. And _hello_.
-Those are new words to be made up.
+Those are new words.
 The lex also has a word for itself.
 
 ```
@@ -145,10 +150,10 @@ and a noun for world,
 then it can say hello to the world.
 
 ```
-lex[lex](hello)[world] = 1,"First comment!"
+lex[lex](hello)[world] = 42,"How are ya!"
 ```
 
-This syntax will make a little more sense
+The syntax will make a little more sense
 if you diagram a sentence as
 subjects and objects with squares,
 and the verb in a circle.
@@ -170,21 +175,24 @@ Let's look at this new word.
 ```
 word = lex[lex](hello)[world]
 
-print(word.txt)
-# First comment!
+print(int(word.num), word.txt)
+# 42 How are ya!
 
 print("{:svo}".format(word))
 # Word(sbj=lex,vrb=hello,obj=world)
 ```
 
 
-## so a word is a sentence?
+## is a word a sentence?
 
 Yes and no.
 Yes every sentence defines a new word.
 But no there are other ways to make up words.
 
-I lied earlier,
+I lied earlier, 
+the subclass `LexSentence` contains words
+of seven attributes each, 
+but a `Lex` is simpler.
 the only attribute a word really has to have 
 is an `idn`.
 A word can be anything 
@@ -193,30 +201,51 @@ And a lex can be any collection
 of uniquely identified words.
 
 
-## is a lex just a bunch of sentences?
+## is a lex a bunch of sentences?
 
 Almost. 
-A lex is always a bunch of words.
-Give a lex an idn and it'll give you a word.
+A lex is always a bunch of _words_.
+Give a lex an idn and it will give you a word.
 
 ```
+idn = 7
 word = lex[idn]             # These do
-word = lex.read_word(idn)   # the same thing
+word = lex.read_word(idn)   # the same
 ```
 
 If you have a database with numeric ids
 you can make a lex that will churn out
 a word for any record in that database.
-Then a lex of sentences can refer to 
-those words.
+Then a sentence 
+can refer to those records.
 
 
-## so what is a word??
+## so what is a word?
 
-Yeah, a word can be a lot more than just a rating.
-It can represent a thing,
-or a relationship between things.
+A word can be a lot more 
+than just a rating.
+It can represent any thing,
+or relationship between things.
 It can be any abstraction at all.
+
+A word can represent an algorithm you make
+to extract something interesting
+from a bunch of other words.
+Make up a qiki word for your algorithm
+so we can use it.
+And rate it.
+And reward it.
+And encourage more like it.
+
+A word can represent the system
+that will start over and displace this software,
+after it goes down in flames
+from regulation, 
+big ventures, 
+bungled financing, 
+and patent trolls.
+So please steal this idea and redo it right.
+Or help me make that more tempting.
 
 
 ## the no-center thing
@@ -224,19 +253,21 @@ It can be any abstraction at all.
 Now if you want, 
 your lex can connect to other lexes.
 Because of dirty tricks with qiki numbers, 
-your sentences can use the words in any other lex.
+the sentences in your lex
+can use the words in any other lex.
 
 If you want help making sense 
-of your lex and your words
+of your lex and your words,
 the best part happens when you make it all public.
 Everyone's job, remember.
 You get to rate how we all do.
 
 Human opinions are messy. 
 That's what we do.
-You may want tools to extract meaning
-from the mess of human opinion on your lex.
-Or you may want to make and share tools.
+You may want to use tools to extract meaning
+from the mess of human opinions in your lex.
+Or you may want to make and share 
+tools that do that.
 
 To start, only geeky developer-y types 
 will be able to create a lex. 
@@ -245,8 +276,25 @@ That should change.
 
 ## change
 
-Not sure, 
+I'm not sure, 
 you can decide,
 but I think you should be able to change anything
-but your history of changes.
-I know, right.
+except your history of changes.
+I know, right?
+
+This package needs a whole lot of change
+before it can play a part
+in all the stuff I've said here.
+I hope you'll participate.
+
+-- Bob Stein, http://bobste.in/ 
+
+---
+
+http://qiki.info/ 
+Generation 2 is sorta running there now. 
+Generation 3 is what's in this repo.
+
+It's terrible to start over.
+It's worse not to be able to.
+Let's start over again.

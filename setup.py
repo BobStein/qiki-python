@@ -17,7 +17,10 @@ setuptools.setup(
     url="https://github.com/BobStein/qiki-python",
     packages=setuptools.find_packages(),
     platforms=['any'],
-    license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    # license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    # NOTE:  Saying the license in two places causes the Meta section on PyPI to double up:
+    #        License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+    #                (CC0 1.0 Universal (CC0 1.0) Public Domain Dedication)
     classifiers=[
         "Development Status :: 1 - Planning",
         "Environment :: Web Environment",
@@ -32,16 +35,16 @@ setuptools.setup(
         "Topic :: Office/Business :: Groupware",
         "Topic :: Scientific/Engineering :: Information Analysis",
         "Topic :: Other/Nonlisted Topic",
-            # rating
-            # reviewing
-            # commenting
+            # rating, reviewing, commenting, opinions
             # social
             # societal
             # governance
             # collaboration
+            # networking
             # consensus
-            # economics
             # research
-            # emergence, disruption, reinvention, hyper-democracy
+            # democracy
+            # economics, economy, big data
+            # emergence, disruption, reinvention
     ],
 )
