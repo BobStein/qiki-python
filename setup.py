@@ -4,14 +4,20 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 with open("qiki/version.py", "r") as fh:
-    version = fh.read().strip().strip('"')
+    version = fh.read().strip().strip(u'"')
 
 setuptools.setup(
     name="qiki",
     version=version,
     author="Bob Stein",
     author_email="bob.stein@qiki.info",
-    description="Unsiloed social web. Rate and relate anything. Any number of times. With any verb.",
+    description=
+        "Unsiloed social web. "
+        "Rate and relate anything. "
+        "Any number of times. "
+        "With any verb. "
+        "Quarks for the next social physics.",
+        # THANKS:  phrase "new social physics", Christopher Robert, dobility.com
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BobStein/qiki-python",
@@ -46,5 +52,6 @@ setuptools.setup(
             # democracy
             # economics, economy, big data
             # emergence, disruption, reinvention
+            # social physics
     ],
 )

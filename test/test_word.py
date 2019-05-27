@@ -582,19 +582,24 @@ class WordDemoTests(WordTests):
         #            lex.s.v(o, n, t)
 
     def test_read_md(self):
+        """Example code in README.md"""
         lex = LexInMemory()
         hello = lex.verb('hello')
         world = lex.noun('world')
 
-        lex[lex](hello)[world] = 1,"First comment!"
+        lex[lex](hello)[world] = 42,"How are ya!"
 
         word = lex[lex](hello)[world]
 
-        print(word.txt)
-        # First comment!
+        # print(int(word.num), word.txt)
+        # # 42 How are ya!
+        #
+        # print("{:svo}".format(word))
+        # # Word(sbj=lex,vrb=hello,obj=world)
 
-        print("{:svo}".format(word))
-        # Word(sbj=lex,vrb=hello,obj=world)
+        self.assertEqual("42", str(int(word.num)))
+        self.assertEqual("How are ya!", str(word.txt))
+        self.assertEqual("Word(sbj=lex,vrb=hello,obj=world)", "{:svo}".format(word))
 
 
 class WordExoticTests(WordTests):

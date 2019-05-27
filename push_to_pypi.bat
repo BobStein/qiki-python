@@ -1,5 +1,8 @@
 @echo off
 REM Upload to PyPI
+REM --------------
+REM THANKS:  PyPI instructions, https://packaging.python.org/tutorials/packaging-projects/
+REM THANKS:  Batch variable from a file, https://stackoverflow.com/a/2768658/673991
 
 rm -f dist/qiki-*
 py -3.7 version_update_now.py || goto bad

@@ -18,8 +18,8 @@ is to get good at deciding:
 
 Let's get much better at these now.
 Great consequences will not happen until we do.
-We don't want to agree. 
-Not totally.
+We don't want to agree, 
+not totally.
 But we must decide.
 
 We must find a way to decide 
@@ -44,7 +44,6 @@ Start by storing our thinking out of the silos.
 Then anybody can start looking for patterns.
 And turning the gizmos loose looking for patterns.
 And looking for meaning.
-
 The time to create value and safety
 by obscuring will soon be over.
 It is time to put all our thinking on the table.
@@ -62,7 +61,6 @@ A qiki will allow you to rate and relate:
 
 Rate the ratings. 
 Rate the raters. 
-
 It's everyone's job to have opinions.
 And everyone's job to figure out what they mean.
 
@@ -72,7 +70,7 @@ no subset is smart enough,
 to decide the most important decisions.
 Or decide who decides them.
 This has to be everyone's job.
-Yes its going to be very hard. 
+Yes it's going to be very hard. 
 Let's get started.
 
 
@@ -98,17 +96,17 @@ and some text:
 2 means you mean it twice as much.
 Numbers are awesome.
 They can be tiny, they can be huge.
-And you get to say what they mean.)
+And you get to say what they mean)
 * text 
 (because you've got a lot of splainin to do)
 
-and store this stuff in a lex. 
+and store this in a lex. 
 
 
 ## lex
 
 A lex is a dictionary for your made-up words.
-For each word a lex will remember:
+For each word, a lex will remember:
 
 * id number
 * when you defined it
@@ -121,7 +119,7 @@ Here's what they're called:
 * `obj` - object
 * `num` - quantify matters
 * `txt` - name, explain, discuss
-* `idn` - identified by a number
+* `idn` - identified sequentially
 * `whn` - seconds after 1970 (or before)
 
 You could call this seven-y thing a sentence.
@@ -154,8 +152,8 @@ lex[lex](hello)[world] = 42,"How are ya!"
 ```
 
 The syntax will make a little more sense
-if you diagram a sentence as
-subjects and objects with squares,
+if you diagram a sentence with
+subjects and objects in squares,
 and the verb in a circle.
 
 ```
@@ -167,7 +165,7 @@ and the verb in a circle.
 
 Okay, it doesn't make any more sense.
 But you see the resemblance right?
-Give it time to grown on you.
+Give it time to grow on you.
 
 The hello-world statement is itself a word.
 Let's look at this new word.
@@ -193,7 +191,7 @@ I lied earlier,
 the subclass `LexSentence` contains words
 of seven attributes each, 
 but a `Lex` is simpler.
-the only attribute a word really has to have 
+The only attribute a word really has to have 
 is an `idn`.
 A word can be anything 
 you can identify with a number.
@@ -213,33 +211,68 @@ word = lex[idn]             # These do
 word = lex.read_word(idn)   # the same
 ```
 
-If you have a database with numeric ids
-you can make a lex that will churn out
+If you know a database with numeric ids
+you can make a lex that will provide
 a word for any record in that database.
-Then a sentence 
-can refer to those records.
+Then you can make up words 
+that refer to those records.
+You could triple-like one record,
+suggest correcting another,
+and claim another validates 
+some comment somewhere.
 
 
-## so what is a word?
+## the no-center thing
 
-A word can be a lot more 
-than just a rating.
+So if you want, 
+your lex can connect to other lexes.
+Because of dirty tricks with qiki numbers, 
+the sentences in your lex
+can use the words in any other lex.
+
+If you want help making sense 
+of your lex and your words,
+the best chance comes from making it all public.
+Everyone's job, remember.
+You get to rate how well that works.
+
+Human opinions are messy. 
+That's what we do.
+You may want to use tools to extract meaning
+from the mess of human opinions in your lex.
+Or you may want to make and share 
+tools that do that.
+
+
+## so what does a word represent?
+
+A word can represent
+a skit about cheese,
+or that meme your friend would like,
+or the cure for your grandmother's cancer,
+or the good part of a video,
+or whoever designed that curvy part on your phone.
+
+A word can be more 
+than a rating.
 It can represent any thing,
 or relationship between things.
 It can be any abstraction at all.
-
+ 
 A word can represent an algorithm you make
 to extract something interesting
 from a bunch of other words.
-Make up a qiki word for your algorithm
-so we can use it.
+Make up a qiki word for that,
+and other lexes can use it.
 And rate it.
 And reward it.
 And encourage more like it.
 
-A word can represent the system
-that will start over and displace this software,
-after it goes down in flames
+A word can represent the next big thing
+that will make this software obsolete,
+or eclipse the reckless adventures 
+I try to start with it,
+after they go down in flames
 from regulation, 
 big ventures, 
 bungled financing, 
@@ -248,26 +281,19 @@ So please steal this idea and redo it right.
 Or help me make that more tempting.
 
 
-## the no-center thing
+## who is this for?
 
-Now if you want, 
-your lex can connect to other lexes.
-Because of dirty tricks with qiki numbers, 
-the sentences in your lex
-can use the words in any other lex.
-
-If you want help making sense 
-of your lex and your words,
-the best part happens when you make it all public.
-Everyone's job, remember.
-You get to rate how we all do.
-
-Human opinions are messy. 
-That's what we do.
-You may want to use tools to extract meaning
-from the mess of human opinions in your lex.
-Or you may want to make and share 
-tools that do that.
+I hope you'll use this package 
+to spin up your own lex
+and integrate it into your site
+and start collecting
+opinions and other abstractions.
+And share them with other trusted lexes.
+A lot of software needs developing too.
+This is barely an appetizer of a demo.
+Just some quarks 
+for the next social physics, 
+as it were.
 
 To start, only geeky developer-y types 
 will be able to create a lex. 
@@ -282,9 +308,9 @@ but I think you should be able to change anything
 except your history of changes.
 I know, right?
 
-This package needs a whole lot of change
+This package needs a lot of change
 before it can play a part
-in all the stuff I've said here.
+in the ways I've mentioned here.
 I hope you'll participate.
 
 -- Bob Stein, http://bobste.in/ 
@@ -292,7 +318,7 @@ I hope you'll participate.
 ---
 
 http://qiki.info/ 
-Generation 2 is sorta running there now. 
+Generation 2 is running there now. 
 Generation 3 is what's in this repo.
 
 It's terrible to start over.
