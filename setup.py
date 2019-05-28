@@ -1,10 +1,11 @@
+from __future__ import unicode_literals
 import setuptools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 with open("qiki/version.py", "r") as fh:
-    version = fh.read().strip().strip(u'"')
+    version = fh.read().strip().strip('"').strip()
 
 setuptools.setup(
     name="qiki",
@@ -21,7 +22,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BobStein/qiki-python",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages('qiki'),
     platforms=['any'],
     # license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     # NOTE:  Saying the license in two places causes the Meta section on PyPI to double up:

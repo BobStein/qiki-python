@@ -1,5 +1,6 @@
 """Update version.py, a docstring-only module with a timestamped version-code."""
 
+from __future__ import unicode_literals
 import datetime
 
 VERSION_BASE = '0.0.1'
