@@ -22,7 +22,13 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BobStein/qiki-python",
-    packages=setuptools.find_packages('qiki'),
+    packages=['qiki'],
+    package_data={
+        '': [
+            '*.html',
+            '*.txt',
+        ],
+    },
     platforms=['any'],
     # license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     # NOTE:  Saying the license in two places causes the Meta section on PyPI to double up:
