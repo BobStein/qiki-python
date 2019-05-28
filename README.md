@@ -71,6 +71,22 @@ to decide the most important decisions.
 Or decide who decides them.
 This has to be everyone's job.
 Yes it's going to be very hard. 
+
+This is how we'll get big things done
+without being overwhelmed, 
+without losing our minds
+or our humanity:
+by teaching machines to 
+tease out of many opinions what we want,
+what actually matters to us.
+
+If you don't think machines are up to that
+you're probably right.
+We need better machines 
+and better machine teachers. 
+But before we start those negotiations
+we need a richer collection of opinions
+in the open.
 Let's get started.
 
 

@@ -96,7 +96,7 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 class LexClasses(object):
     """We will run WordTests-derived tests using multiple Lex classes."""
     ALL = [qiki.LexInMemory, qiki.LexMySQL]
-    SQL = [                qiki.LexMySQL]
+    SQL = [                  qiki.LexMySQL]
 
     counts = {lex_class.__name__ : 0 for lex_class in ALL}
 
