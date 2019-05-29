@@ -1473,7 +1473,7 @@ class LexSentence(Lex):
         __crazy_idea_define_lex_first__ = True
         # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word.IDN_LEX
         if __crazy_idea_define_lex_first__:
-                                                                        # forward, reflexive references
+            #                                                           forward,reflexive references
             seminal_word(self.IDN_LEX,    self.IDN_AGENT, u'lex')     # 2,1    0,+1,+4
             seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 1,1   -1, 0,+2
             seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
@@ -1482,7 +1482,7 @@ class LexSentence(Lex):
                                                                         # ---
                                                                         # 3,3
         else:
-                                                                        # forward, reflexive references
+            #                                                           forward,reflexive references
             seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 2,1   +4, 0,+2
             seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
             seminal_word(self.IDN_VERB,   self.IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
@@ -2666,6 +2666,7 @@ def idn_from_word_or_number(x):
     elif isinstance(x, Number):
         return x
     elif isinstance(x, LexSentence):
+        assert isinstance(x.IDN_LEX, Number)
         return x.IDN_LEX
     else:
         raise TypeError(
@@ -2817,7 +2818,7 @@ class Text(six.text_type):
 
     @staticmethod
     def is_valid(x):
-        return isinstance(x, six.text_type)
+        return isinstance(x, (type(u''), type(b''), bytearray))
 
 
 class Qoolbar(object):

@@ -601,6 +601,26 @@ class WordDemoTests(WordTests):
         self.assertEqual("How are ya!", str(word.txt))
         self.assertEqual("Word(sbj=lex,vrb=hello,obj=world)", "{:svo}".format(word))
 
+    def test_read_md_bytes(self):
+        """Example code in README.md -- with b'byte strings'"""
+        lex = LexInMemory()
+        hello = lex.verb(b'hello')
+        world = lex.noun(b'world')
+
+        lex[lex](hello)[world] = 42,b"How are ya!"
+
+        word = lex[lex](hello)[world]
+
+        # print(int(word.num), word.txt)
+        # # 42 How are ya!
+        #
+        # print("{:svo}".format(word))
+        # # Word(sbj=lex,vrb=hello,obj=world)
+
+        self.assertEqual("42", str(int(word.num)))
+        self.assertEqual("How are ya!", str(word.txt))
+        self.assertEqual("Word(sbj=lex,vrb=hello,obj=world)", b"{:svo}".format(word))
+
 
 class WordExoticTests(WordTests):
 
@@ -1134,16 +1154,11 @@ class Word0011FirstTests(WordTests):
         with six.assertRaisesRegex(self, TypeError, '^((?!unicode).)*$'):
             self.lex.word_class(bogus_new_instance)
 
-    def test_09h_word_constructor_by_name_must_be_unicode(self):
-        with six.assertRaisesRegex(self, TypeError, "unicode"):
-            self.lex.word_class(b'this is not unicode')
-        with six.assertRaisesRegex(self, TypeError, "unicode"):
-            self.lex.word_class(bytearray(b'this is not unicode'))
-        with six.assertRaisesRegex(self, TypeError, "unicode"):
-            self.lex.word_class(bytes(b'this is not unicode'))
-
-        w = self.lex.word_class(u'this is unicode')
-        self.assertFalse(w.exists())
+    def test_09h_word_constructor_by_name_need_not_be_unicode(self):
+        self.assertFalse(self.lex.word_class(              u'this is unicode').exists())
+        self.assertFalse(self.lex.word_class(          b'this is not unicode').exists())
+        self.assertFalse(self.lex.word_class(bytearray(b'this is not unicode')).exists())
+        self.assertFalse(self.lex.word_class(    bytes(b'this is not unicode')).exists())
 
     # TODO:  Prevent cloning lex?
     # def test_09x_lex_singleton_cant_do_by_copy_constructor(self):
@@ -1215,9 +1230,8 @@ class Word0011FirstTests(WordTests):
         else:
             self.assertTripleEqual(u'string', qiki.Text(u'string').native())
 
-    def test_13c_text_not_unicode(self):
-        with self.assertRaises(TypeError):
-            qiki.Text(b'string')
+    def test_13c_text_not_unicode_okay(self):
+        self.assertEqual(qiki.Text(u'string'), qiki.Text(b'string'))
 
     def test_13d_text_decode(self):
         self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_you_must(u'string'))

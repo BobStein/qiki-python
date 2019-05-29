@@ -1,5 +1,8 @@
-from __future__ import unicode_literals
+"""qiki configuration for PyPI"""
+
 import setuptools
+
+# NOTE:  No future unicode_literals, https://stackoverflow.com/q/23174738/673991
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
