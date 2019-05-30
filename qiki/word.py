@@ -1338,7 +1338,7 @@ class Listing(Lex):
 #         raise self.NotAListing
 
 
-class Time(Lex):
+class TimeLex(Lex):
     def populate_word_from_idn(self, word, idn):
         utc_seconds_since_1970 = time.time()
         time_tuple_thingie = time.gmtime(utc_seconds_since_1970)
@@ -1691,7 +1691,7 @@ class LexSentence(Lex):
 
     @classmethod
     def now(cls):
-        return Time()[Number.NAN].num
+        return TimeLex()[Number.NAN].num
         # return Number(time.time())
 
     # TODO:  Dynamic word factory for "now".  num is seconds since 1970, txt is yyyy.mmdd.hhmm

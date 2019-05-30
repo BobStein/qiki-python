@@ -1441,12 +1441,11 @@ class Word0011FirstTests(WordTests):
         self.assertNotEqual(punt3, punt2)
 
     def test_19a_time_lex(self):
-        time_lex = qiki.word.Time()
-        now_word = time_lex[qiki.Number.NAN]
-        print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
+        now_word = qiki.word.TimeLex()[qiki.Number.NAN]
+        # print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
         # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
 
-        six.assertRegex(self, now_word.txt, r'\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d')   # Y10K bug
+        six.assertRegex(self, str(now_word.txt), r'\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d')   # Y10K bug
         self.assertGreater(now_word.txt, qiki.Text('2019.0530.1216.46'))
         self.assertGreater(now_word.num, qiki.Number('0q85_5CEFC9AE6BC6A8'))
         self.assertGreater(now_word.num, qiki.Number(1559218606.421))
