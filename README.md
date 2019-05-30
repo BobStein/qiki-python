@@ -134,9 +134,9 @@ Here's what they're called:
 * `vrb` - verb
 * `obj` - object
 * `num` - quantify matters
-* `txt` - name, explain, discuss
+* `txt` - name, explain, discuss, UTF-8
 * `idn` - identified sequentially
-* `whn` - seconds after 1970 (or before)
+* `whn` - UTC seconds after 1970 (or before)
 
 You could call this seven-y thing a sentence.
 A lex is just a bunch of words.

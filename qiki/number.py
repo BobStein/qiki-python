@@ -1411,7 +1411,12 @@ class Number(numbers.Complex):
     def unsuffixed(self):
         """Get the Number minus all suffixes."""
 
-        # TODO:  Less vacuous name.  Harder to misunderstand, or conflate.  Easier to search for.
+        # TODO:  Less vacuous names.
+        #            for Suffix (the thing)
+        #            for Number.unsuffixed() (a number without any things)
+        #        Objectives:
+        #            Harder to misunderstand, or conflate.
+        #            Easier to search for.
         #        root alternatives:
         #            unsuffixed
         #            core
@@ -1420,8 +1425,8 @@ class Number(numbers.Complex):
         #            crux
         #            pith   <===
         #            gist
-        #            stem   <===
-        #            trunk
+        #            stem   <=== (if Suffix changes to leaf)
+        #            trunk  (also if Suffix changes to leaf)
         #            pit
         #        Maybe "suffix" is vacuous and misunderstandable too.  Need a new name for that.
         #        suffix alternatives:
@@ -1454,7 +1459,7 @@ class Number(numbers.Complex):
         #            fringe
         #            lagniappe
         #            secret passage
-        #            leaf    <===   (leading to "leafless" number)
+        #            leaf    <===   (leading to "leafless" number) (ala tree leaf, table leef)
         #            branch
         #            arm
 
@@ -1796,6 +1801,7 @@ assert b'A' == byte(65)
 
 
 class Suffix(object):
+    # SEE:  Alternative names for Suffix at Number.unsuffixed()
     """
     A Number can have suffixes.  Suffixed numbers include, complex, alternate ID spaces, etc.
 

@@ -601,26 +601,6 @@ class WordDemoTests(WordTests):
         self.assertEqual("How are ya!", str(word.txt))
         self.assertEqual("Word(sbj=lex,vrb=hello,obj=world)", "{:svo}".format(word))
 
-    def test_read_md_bytes(self):
-        """Example code in README.md -- with b'byte strings'"""
-        lex = LexInMemory()
-        hello = lex.verb(b'hello')
-        world = lex.noun(b'world')
-
-        lex[lex](hello)[world] = 42,b"How are ya!"
-
-        word = lex[lex](hello)[world]
-
-        # print(int(word.num), word.txt)
-        # # 42 How are ya!
-        #
-        # print("{:svo}".format(word))
-        # # Word(sbj=lex,vrb=hello,obj=world)
-
-        self.assertEqual("42", str(int(word.num)))
-        self.assertEqual("How are ya!", str(word.txt))
-        self.assertEqual("Word(sbj=lex,vrb=hello,obj=world)", b"{:svo}".format(word))
-
 
 class WordExoticTests(WordTests):
 
@@ -1154,11 +1134,14 @@ class Word0011FirstTests(WordTests):
         with six.assertRaisesRegex(self, TypeError, '^((?!unicode).)*$'):
             self.lex.word_class(bogus_new_instance)
 
-    def test_09h_word_constructor_by_name_need_not_be_unicode(self):
+    def test_09h_word_constructor_by_name_must_be_unicode(self):
         self.assertFalse(self.lex.word_class(              u'this is unicode').exists())
-        self.assertFalse(self.lex.word_class(          b'this is not unicode').exists())
-        self.assertFalse(self.lex.word_class(bytearray(b'this is not unicode')).exists())
-        self.assertFalse(self.lex.word_class(    bytes(b'this is not unicode')).exists())
+        with self.assertRaises(TypeError):
+            self.assertFalse(self.lex.word_class(          b'this is not unicode').exists())
+        with self.assertRaises(TypeError):
+            self.assertFalse(self.lex.word_class(bytearray(b'this is not unicode')).exists())
+        with self.assertRaises(TypeError):
+            self.assertFalse(self.lex.word_class(    bytes(b'this is not unicode')).exists())
 
     # TODO:  Prevent cloning lex?
     # def test_09x_lex_singleton_cant_do_by_copy_constructor(self):
@@ -1231,7 +1214,9 @@ class Word0011FirstTests(WordTests):
             self.assertTripleEqual(u'string', qiki.Text(u'string').native())
 
     def test_13c_text_not_unicode_okay(self):
-        self.assertEqual(qiki.Text(u'string'), qiki.Text(b'string'))
+        if six.PY2:  self.assertEqual(u'string' ,           b'string' )
+        else:     self.assertNotEqual(u'string' ,           b'string' )
+        # self.assertEqual(   qiki.Text(u'string'), qiki.Text(b'string'))
 
     def test_13d_text_decode(self):
         self.assertTripleEqual(qiki.Text(u'string'), qiki.Text.decode_if_you_must(u'string'))
@@ -1455,6 +1440,17 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(   punt3, punt1)
         self.assertNotEqual(punt3, punt2)
 
+    def test_19a_time_lex(self):
+        time_lex = qiki.word.Time()
+        now_word = time_lex[qiki.Number.NAN]
+        print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
+        # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
+
+        six.assertRegex(self, now_word.txt, r'\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d')   # Y10K bug
+        self.assertGreater(now_word.txt, qiki.Text('2019.0530.1216.46'))
+        self.assertGreater(now_word.num, qiki.Number('0q85_5CEFC9AE6BC6A8'))
+        self.assertGreater(now_word.num, qiki.Number(1559218606.421))
+        # 7:16am Thursday 30-May-2019, US Central Daylight Time
 
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 

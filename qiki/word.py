@@ -1338,6 +1338,22 @@ class Listing(Lex):
 #         raise self.NotAListing
 
 
+class Time(Lex):
+    def populate_word_from_idn(self, word, idn):
+        utc_seconds_since_1970 = time.time()
+        time_tuple_thingie = time.gmtime(utc_seconds_since_1970)
+
+        yyyy_mmdd_hhmm_ss = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
+        if six.PY2:
+            yyyy_mmdd_hhmm_ss = yyyy_mmdd_hhmm_ss.decode('ascii')
+
+        word.populate_from_num_txt(
+            Number(utc_seconds_since_1970),
+            Text(yyyy_mmdd_hhmm_ss)
+        )
+
+
+
 class LexSentence(Lex):
     # rename candidates:  Site, Book, Server, Domain, Dictionary, Qorld, Lex, Lexicon
     #                     Station, Repo, Repository, Depot, Log, Tome, Manuscript,
@@ -1675,7 +1691,10 @@ class LexSentence(Lex):
 
     @classmethod
     def now(cls):
-        return Number(time.time())
+        return Time()[Number.NAN].num
+        # return Number(time.time())
+
+    # TODO:  Dynamic word factory for "now".  num is seconds since 1970, txt is yyyy.mmdd.hhmm
 
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
@@ -2754,7 +2773,7 @@ assert is_iterable(['a', 'list', 'is', 'iterable'])
 assert not is_iterable('a string is not')
 
 
-class Text(six.text_type):
+class Text(six.text_type):   # always Unicode
     # TODO:  Move this to inside Word?
     """
     The class for the Word txt field.
@@ -2818,7 +2837,7 @@ class Text(six.text_type):
 
     @staticmethod
     def is_valid(x):
-        return isinstance(x, (type(u''), type(b''), bytearray))
+        return isinstance(x, type(u''))
 
 
 class Qoolbar(object):

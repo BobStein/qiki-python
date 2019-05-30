@@ -34,6 +34,7 @@ from .word import Listing
 from .word import Qoolbar
 from .word import QoolbarSimple
 from .word import Text
+from .word import Time
 
 __all__ = [
     'Number',
