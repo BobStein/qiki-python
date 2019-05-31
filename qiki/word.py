@@ -1340,18 +1340,21 @@ class Listing(Lex):
 
 class TimeLex(Lex):
     def populate_word_from_idn(self, word, idn):
-        utc_seconds_since_1970 = time.time()
-        time_tuple_thingie = time.gmtime(utc_seconds_since_1970)
+        utc_seconds_since_1970_float = time.time()
+        utc_seconds_since_1970 = Number(utc_seconds_since_1970_float)
 
-        yyyy_mmdd_hhmm_ss = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
-        if six.PY2:
-            yyyy_mmdd_hhmm_ss = yyyy_mmdd_hhmm_ss.decode('ascii')
+        time_tuple_thingie = time.gmtime(utc_seconds_since_1970_float)
+        yyyy_mmdd_hhmm_ss_ascii = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
+        yyyy_mmdd_hhmm_ss = Text.decode_if_you_must(yyyy_mmdd_hhmm_ss_ascii)
+        # EXAMPLE:  2019.0530.1629.37
+        # NOTE:  No Unicode for you.  Another way timekeeping is stuck in 1970.
+        # THANKS:  https://stackoverflow.com/q/2571515/673991
+        # TODO:  Use arrow?  https://github.com/crsmithdev/arrow
 
         word.populate_from_num_txt(
-            Number(utc_seconds_since_1970),
-            Text(yyyy_mmdd_hhmm_ss)
+            num=utc_seconds_since_1970,
+            txt=yyyy_mmdd_hhmm_ss
         )
-
 
 
 class LexSentence(Lex):

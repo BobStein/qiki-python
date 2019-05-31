@@ -51,17 +51,24 @@ setuptools.setup(
         "Topic :: Office/Business :: Groupware",
         "Topic :: Scientific/Engineering :: Information Analysis",
         "Topic :: Other/Nonlisted Topic",
-            # rating, reviewing, commenting, opinions
-            # social
-            # societal
-            # governance
-            # collaboration
-            # networking
-            # consensus
-            # research
-            # democracy
-            # economics, economy, big data
-            # emergence, disruption, reinvention
-            # social physics
+        # NOTE:  Topics that could go here:
+        #        rating, reviewing, commenting, opinions
+        #        social
+        #        societal
+        #        governance
+        #        collaboration
+        #        networking
+        #        consensus
+        #        research
+        #        democracy
+        #        economics, economy, big data
+        #        emergence, disruption, reinvention
+        #        social physics
+        # SEE:  Standardized classifiers, https://pypi.org/classifiers/
     ],
 )
+# CAUTION:  Newlines break description, https://github.com/pypa/setuptools/issues/1390
+
+# NOTE:  If twine reports something stupid or stale,
+#        such as 'text/html' is an invalid value for Description-Content-Type. python twine
+#        Check for stale packages in the dist folder.
