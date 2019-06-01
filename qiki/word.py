@@ -2560,7 +2560,13 @@ class LexMySQL(LexSentence):
                 #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
                 #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
                 #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
-                raise self.SelectError(str(exception) + " on query: " + query)
+                raise self.SelectError(
+                    str(exception) +
+                    " on query: " +
+                    query +
+                    "; parameter lengths " +
+                    ",".join(str(len(p)) for p in parameters)
+                )
 
             for row in cursor:
                 field_dictionary = dict()

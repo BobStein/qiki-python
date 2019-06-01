@@ -230,10 +230,10 @@ word = lex.read_word(idn)   # the same
 If you know a database with numeric ids
 you can make a lex that will provide
 a word for any record in that database.
-Then you can make up words 
+Then you can make up sentences 
 that refer to those records.
 You could triple-like one record,
-suggest correcting another,
+suggest corrections to another,
 and claim another validates 
 some comment somewhere.
 

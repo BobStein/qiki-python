@@ -366,6 +366,7 @@ class WordTests(TestBaseClass):
                 # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
                 #        in the next test's call to the self.lex_class() constructor.
             self.lex.disconnect()
+
         self.addCleanup(cleanup_disconnect)
         # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
 
