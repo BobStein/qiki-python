@@ -695,17 +695,22 @@ class Word(object):
         # THANKS:  repr() conventions, https://codingkilledthecat.wordpress.com/2012/06/03/please-dont-abuse-repr/
         if self.exists():
             if self.is_defined() and self.txt:
-                # TODO:  Undo comma_num
+
+                # TODO:  Undo comma_num (WTF is this?)
+
                 if self.num == Number(1):
                     comma_num = ""
                 else:
                     comma_num = ", num={num}".format(num=repr(self.num))
+
+                # TODO:  comma_idn -- Show idn if txt,num is not the latest
+
                 return "Word('{txt}'{comma_num})".format(
                     comma_num=comma_num,
                     txt=self.txt
                 )
             else:
-                return "Word({})".format(int(self.idn))
+                return "Word({})".format(self.presentable(self.idn))
         elif (
             isinstance(self.sbj, Word) and
             isinstance(self.vrb, Word) and

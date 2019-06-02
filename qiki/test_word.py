@@ -909,20 +909,6 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(u"Word('noun')", repr(self.lex[u'noun']))
 
     # noinspection PyStringFormat
-    def test_02e_format_suffixed(self):
-
-        class Listing(qiki.Listing):
-            def lookup(self, index):
-                return index
-
-        listing_word = self.lex.noun('listing')
-        listing_lex = Listing(listing_word)
-        listing_of_255 = listing_lex[255]
-        self.assertEqual('0q82_05', listing_word.idn)
-        self.assertEqual(         '0q82_05__82FF_1D0300', listing_of_255.idn)
-        self.assertEqual("Word(idn=0q82_05__82FF_1D0300)", "{:i}".format(listing_of_255))
-
-    # noinspection PyStringFormat
     def test_02d_format(self):
         word = self.lex.noun('frog')
 
@@ -2463,20 +2449,53 @@ class Word0040SentenceTests(WordTests):
         #     self.sam.says(self.vet, self.orb, 99, num=-99, num_add=999999)
 
 
-class WordListingTests(WordTests):
+class WordSimpleListingTests(WordTests):
 
     class SimpleListing(qiki.Listing):
         def lookup(self, index):
             return "{:d}".format(int(index)), index
 
+    def setUp(self):
+        super(WordSimpleListingTests, self).setUp()
+        self.listing = self.lex.noun('listing')
+
+        meta_simple_listing = self.lex.define(self.listing, 'simple listing')
+        self.simple_listing = self.SimpleListing(meta_simple_listing)
+
+
+class Word0050SimpleListingBasicTests(WordSimpleListingTests):
+
+    def test_simple_listing(self):
+        self.assertEqual('0q82_06',              self.simple_listing.meta_word.idn)
+        self.assertEqual('0q82_06__82FF_1D0300', self.simple_listing[255].idn)
+        self.assertEqual( 255,               int(self.simple_listing[255].num))
+        self.assertEqual("255",              str(self.simple_listing[255].txt))
+
+    # noinspection PyStringFormat
+    def test_listing_idn_repr(self):
+        listing_of_65535 = self.simple_listing[65535]
+        self.assertEqual(     '0q82_06', self.simple_listing.meta_word.idn)
+        self.assertEqual(     '0q82_06__83FFFF_1D0400', listing_of_65535.idn)
+        self.assertEqual("Word(0q82_06__83FFFF_1D0400)", repr(listing_of_65535))
+
+    # noinspection PyStringFormat
+    def test_listing_idn_formatting(self):
+        listing_of_255 = self.simple_listing[255]
+        self.assertEqual(         '0q82_06', self.simple_listing.meta_word.idn)
+        self.assertEqual(         '0q82_06__82FF_1D0300', listing_of_255.idn)
+        self.assertEqual("Word(idn=0q82_06__82FF_1D0300)", "{:i}".format(listing_of_255))
+
+
+class WordStudentListingTests(WordTests):
+
     class StudentRoster(qiki.Listing):
 
         def __init__(self, grades, *args, **kwargs):
-            super(WordListingTests.StudentRoster, self).__init__(*args, **kwargs)
+            super(WordStudentListingTests.StudentRoster, self).__init__(*args, **kwargs)
             self.grades = grades
 
         def lookup(self, index):
-            WordListingTests._lookup_call_count += 1
+            WordStudentListingTests._lookup_call_count += 1
             try:
                 return self.grades[int(index)]
             except IndexError:
@@ -2484,26 +2503,9 @@ class WordListingTests(WordTests):
 
     _lookup_call_count = None   # number of lookups since SetUp
 
-    # class Student(qiki.Listing):
-    #     names_and_grades = [
-    #         (u"Archie", 4.0),
-    #         (u"Barbara", 3.0),
-    #         (u"Chad", 3.0),
-    #         (u"Deanne", 1.0),
-    #     ]
-    #
-    #     def lookup(self, index, callback):
-    #         WordListingTests._lookup_call_count += 1
-    #         try:
-    #             name_and_grade = self.names_and_grades[int(index)]
-    #         except IndexError:
-    #             raise self.NotFound("Cannot find student '{}'".format(repr(index)))
-    #         else:
-    #             callback(*name_and_grade)
-
     def setUp(self):
-        super(WordListingTests, self).setUp()
-        WordListingTests._lookup_call_count = 0
+        super(WordStudentListingTests, self).setUp()
+        WordStudentListingTests._lookup_call_count = 0
         # self.listing = self.lex['lex']('define', txt='listing')['noun']
         # meta_word = self.lex['lex']('define', txt='student roster')['listing']
         self.listing = self.lex.noun('listing')
@@ -2519,17 +2521,8 @@ class WordListingTests(WordTests):
             meta_word
         )
 
-        meta_simple_listing = self.lex.define(self.listing, 'simple listing')
-        self.simple_listing = self.SimpleListing(meta_simple_listing)
 
-
-class Word0051ListingBasicTests(WordListingTests):
-
-    def test_simple_listing(self):
-        self.assertEqual('0q82_07', self.simple_listing.meta_word.idn)
-        self.assertEqual('0q82_07__82FF_1D0300', self.simple_listing[255].idn)
-        self.assertEqual( 255,  int(self.simple_listing[255].num))
-        self.assertEqual("255", str(self.simple_listing[255].txt))
+class Word0051StudentListingBasicTests(WordStudentListingTests):
 
     def test_listing_word_type(self):
         chad = self.student_roster[qiki.Number(2)]
@@ -2678,9 +2671,9 @@ class Word0051ListingBasicTests(WordListingTests):
 
 
 
-class Word0052ListingMultipleTests(WordListingTests):
+class Word0052StudentListingMultipleTests(WordStudentListingTests):
 
-    class SubStudent(WordListingTests.StudentRoster):
+    class SubStudent(WordStudentListingTests.StudentRoster):
         pass
 
     class AnotherListing(qiki.Listing):
@@ -2689,7 +2682,7 @@ class Word0052ListingMultipleTests(WordListingTests):
             raise self.NotFound
 
     def setUp(self):
-        super(Word0052ListingMultipleTests, self).setUp()
+        super(Word0052StudentListingMultipleTests, self).setUp()
         self.sub_student = self.SubStudent(meta_word=self.lex.noun(u'sub_student'), grades=[])
         self.another_listing = self.AnotherListing(meta_word=self.lex.noun(u'another_listing'))
         # TODO:  Shouldn't these be ...define(listing, u'blah') instead of plain nouns?
@@ -2747,8 +2740,8 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertEqual('0q82_05', self.listing.idn.qstring())
         self.assertEqual('0q82_06', self.student_roster.meta_word.idn.qstring())   # Number(7)
         self.assertEqual('0q82_06__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
-        self.assertEqual('0q82_08', self.sub_student.meta_word.idn.qstring())
-        self.assertEqual('0q82_09', self.another_listing.meta_word.idn.qstring())
+        self.assertEqual('0q82_07', self.sub_student.meta_word.idn.qstring())
+        self.assertEqual('0q82_08', self.another_listing.meta_word.idn.qstring())
 
     def test_composite_idn(self):
         self.assertEqual('0q82_06__8222_1D0300', self.student_roster.composite_idn(0x22))
@@ -2792,11 +2785,11 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertFalse(chad_clone._is_inchoate)
 
     def test_listing_instance_from_idn_lookup_call(self):
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         chad_clone = qiki.Listing.word_from_idn(self.student_roster[2].idn)
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         _ = chad_clone.txt
-        self.assertEqual(WordListingTests._lookup_call_count, 1)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)
 
     def test_listing_lex_lookup_type(self):
         chad_clone = self.lex[self.student_roster[2].idn]
@@ -2876,33 +2869,33 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertFalse(chad._is_inchoate)
 
     def test_listing_lookup_call_txt(self):
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         chad = self.student_roster[2]
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         _ = chad.txt
-        self.assertEqual(WordListingTests._lookup_call_count, 1)   # w.txt triggers lookup
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)   # w.txt triggers lookup
         _ = chad.txt
-        self.assertEqual(WordListingTests._lookup_call_count, 1)   # once
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)   # once
         _ = chad.num
-        self.assertEqual(WordListingTests._lookup_call_count, 1)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)
 
     def test_listing_lookup_call_num(self):
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         chad = self.student_roster[2]
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         _ = chad.num
-        self.assertEqual(WordListingTests._lookup_call_count, 1)   # w.num triggers lookup
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)   # w.num triggers lookup
         _ = chad.num
-        self.assertEqual(WordListingTests._lookup_call_count, 1)   # once
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)   # once
         _ = chad.txt
-        self.assertEqual(WordListingTests._lookup_call_count, 1)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 1)
 
     def test_listing_lookup_call_idn(self):
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         chad = self.student_roster[2]
-        self.assertEqual(WordListingTests._lookup_call_count, 0)
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)
         _ = chad.idn
-        self.assertEqual(WordListingTests._lookup_call_count, 0)   # w.idn doesn't trigger lookup
+        self.assertEqual(WordStudentListingTests._lookup_call_count, 0)   # w.idn doesn't trigger lookup
 
     # def test_class_from_listing_idn(self):
     #     """Find the class from the listing id."""
