@@ -909,6 +909,20 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(u"Word('noun')", repr(self.lex[u'noun']))
 
     # noinspection PyStringFormat
+    def test_02e_format_suffixed(self):
+
+        class Listing(qiki.Listing):
+            def lookup(self, index):
+                return index
+
+        listing_word = self.lex.noun('listing')
+        listing_lex = Listing(listing_word)
+        listing_of_255 = listing_lex[255]
+        self.assertEqual('0q82_05', listing_word.idn)
+        self.assertEqual(         '0q82_05__82FF_1D0300', listing_of_255.idn)
+        self.assertEqual("Word(idn=0q82_05__82FF_1D0300)", "{:i}".format(listing_of_255))
+
+    # noinspection PyStringFormat
     def test_02d_format(self):
         word = self.lex.noun('frog')
 
@@ -2451,6 +2465,9 @@ class Word0040SentenceTests(WordTests):
 
 class WordListingTests(WordTests):
 
+    class SimpleListing(qiki.Listing):
+        def lookup(self, index):
+            return "{:d}".format(int(index)), index
 
     class StudentRoster(qiki.Listing):
 
@@ -2490,6 +2507,7 @@ class WordListingTests(WordTests):
         # self.listing = self.lex['lex']('define', txt='listing')['noun']
         # meta_word = self.lex['lex']('define', txt='student roster')['listing']
         self.listing = self.lex.noun('listing')
+
         meta_word = self.lex.define(self.listing, 'student roster')
         self.student_roster = self.StudentRoster(
             [
@@ -2501,8 +2519,17 @@ class WordListingTests(WordTests):
             meta_word
         )
 
+        meta_simple_listing = self.lex.define(self.listing, 'simple listing')
+        self.simple_listing = self.SimpleListing(meta_simple_listing)
+
 
 class Word0051ListingBasicTests(WordListingTests):
+
+    def test_simple_listing(self):
+        self.assertEqual('0q82_07', self.simple_listing.meta_word.idn)
+        self.assertEqual('0q82_07__82FF_1D0300', self.simple_listing[255].idn)
+        self.assertEqual( 255,  int(self.simple_listing[255].num))
+        self.assertEqual("255", str(self.simple_listing[255].txt))
 
     def test_listing_word_type(self):
         chad = self.student_roster[qiki.Number(2)]
@@ -2720,8 +2747,8 @@ class Word0052ListingMultipleTests(WordListingTests):
         self.assertEqual('0q82_05', self.listing.idn.qstring())
         self.assertEqual('0q82_06', self.student_roster.meta_word.idn.qstring())   # Number(7)
         self.assertEqual('0q82_06__8202_1D0300', chad.idn.qstring())   # Unsuffixed Number(7), payload Number(2)
-        self.assertEqual('0q82_07', self.sub_student.meta_word.idn.qstring())
-        self.assertEqual('0q82_08', self.another_listing.meta_word.idn.qstring())
+        self.assertEqual('0q82_08', self.sub_student.meta_word.idn.qstring())
+        self.assertEqual('0q82_09', self.another_listing.meta_word.idn.qstring())
 
     def test_composite_idn(self):
         self.assertEqual('0q82_06__8222_1D0300', self.student_roster.composite_idn(0x22))
@@ -3392,14 +3419,32 @@ class WordQoolbarTests(WordQoolbarSetup):
         self.assertEqual([self.anna_like_youtube, self.bart_like_youtube], nouns[0].jbo)
         self.assertEqual([self.anna_like_zigzags, self.bart_delete_zigzags], nouns[1].jbo)
 
-    def test_jbo_single_verb(self):
+    def test_jbo_single_verb_word(self):
         deleted_things = self.lex.find_words(jbo_vrb=self.delete, jbo_strictly=True)
-        self.assertEqual([
+        self.assertEqual({
             u'zigzags'
-        ], [thing.txt for thing in deleted_things])
+        }, {thing.txt for thing in deleted_things})
 
-    # TODO:  Test jbo_vrb = a single verb, not just a container
-    # TODO:  Test jbo_vrb = idn
+    def test_jbo_single_verb_idn(self):
+        deleted_things = self.lex.find_words(jbo_vrb=self.delete.idn, jbo_strictly=True)
+        self.assertEqual({
+            u'zigzags'
+        }, {thing.txt for thing in deleted_things})
+
+    def test_jbo_two_verbs(self):
+        """jbo_vrb specifying multiple words and/or idns"""
+        deleted_and_qooled = self.lex.find_words(jbo_vrb=[self.delete, self.qool.idn], jbo_strictly=True)
+        self.assertEqual({
+            u'delete',
+            u'like',
+            u'zigzags',
+        }, {thing.txt for thing in deleted_and_qooled})
+
+        deleted_and_qooled = self.lex.find_words(jbo_vrb=[self.delete.idn, self.like], jbo_strictly=True)
+        self.assertEqual({
+            u'youtube',
+            u'zigzags',
+        }, {thing.txt for thing in deleted_and_qooled})
 
     def find_b_l_y(self):   # Find all the words where bart likes youtube.
         return self.lex.find_words(sbj=self.bart, vrb=self.like, obj=self.youtube)
@@ -3960,6 +4005,17 @@ class WordInternalTests(WordTests):
         self.assertTrue(is_iterable(IteratorByGetItem([1,2,3])))
 
         self.assertEqual(py23(b'instance', 'IteratorByGetItem'), type(IteratorByGetItem([1,2,3])).__name__)
+
+    def test_word_presentable(self):
+        self.assertEqual("42", qiki.Word.presentable(qiki.Number(42)))
+        self.assertEqual("4.75", qiki.Word.presentable(qiki.Number(4.75)))
+        self.assertEqual("0q82_2A__7E0100", qiki.Word.presentable(qiki.Number(
+            42,
+            qiki.Suffix(qiki.Suffix.Type.TEST)
+        )))
+        self.assertEqual("0qFF_81", qiki.Word.presentable(qiki.Number.POSITIVE_INFINITY))
+        self.assertEqual("0q00_7F", qiki.Word.presentable(qiki.Number.NEGATIVE_INFINITY))
+        self.assertEqual("0q", qiki.Word.presentable(qiki.Number.NAN))
 
 
     ################## obsolete or maybe someday #################################

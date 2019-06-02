@@ -350,6 +350,9 @@ class Number(numbers.Complex):
         """For the 'pickle' package, object serialization."""
         self.raw = raw_incoming
 
+    # TODO:  def __format__() that behaves like EITHER an int or float depending on specifier
+    #        e.g. {:d} for int, {:f} for float
+
     def __repr__(self):
         """Handle repr(Number(x))"""
         # TODO:  Alternative repr() for suffixed numbers, e.g.

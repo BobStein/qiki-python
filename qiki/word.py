@@ -660,12 +660,17 @@ class Word(object):
 
     @staticmethod
     def presentable(num):
-        if num.is_whole():
-            return str(int(num))
-        elif not num.is_suffixed():
-            return str(float(num))
-        else:
+        if num.is_suffixed():
             return num.qstring()
+        try:
+            is_it_whole = num.is_whole()
+        except Number.WholeError:
+            return num.qstring()
+        else:
+            if is_it_whole:
+                return str(int(num))
+            else:
+                return str(float(num))
 
     def __format__(self, format_spec):
         # THANKS:  format > repr > str, https://stackoverflow.com/a/40600544/673991
@@ -676,13 +681,13 @@ class Word(object):
 
     def _word_attributes(self, format_spec):
         for c in format_spec:
-            if   c == 'i': yield "idn={}".format(self.presentable(self.idn))
-            elif c == 's': yield "sbj={}".format(str(self.sbj))
-            elif c == 'v': yield "vrb={}".format(str(self.vrb))
-            elif c == 'o': yield "obj={}".format(str(self.obj))
-            elif c == 't': yield "txt='{}'".format(str(self.txt))
-            elif c == 'n': yield "num={}".format(self.presentable(self.num))
-            elif c == 'w': yield "whn={}".format(self.presentable(self.whn))
+            if   c == 'i':  yield "idn={}".format(self.presentable(self.idn))
+            elif c == 's':  yield "sbj={}".format(str(self.sbj))
+            elif c == 'v':  yield "vrb={}".format(str(self.vrb))
+            elif c == 'o':  yield "obj={}".format(str(self.obj))
+            elif c == 't':  yield "txt='{}'".format(str(self.txt))
+            elif c == 'n':  yield "num={}".format(self.presentable(self.num))
+            elif c == 'w':  yield "whn={}".format(str(TimeLex()[self.whn].txt))
             else:
                 raise ValueError("'{}' unknown in .format(word)".format(c))
 
@@ -2509,6 +2514,7 @@ class LexMySQL(LexSentence):
             query += ' '
         if debug:
             print("Query", query)
+            print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
         return query, parameters
 
     def server_version(self):
@@ -2550,8 +2556,6 @@ class LexMySQL(LexSentence):
         """
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
-        if debug:
-            print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
         with self._cursor() as cursor:
             try:
                 cursor.execute(query, parameters)
