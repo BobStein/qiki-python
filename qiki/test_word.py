@@ -912,11 +912,15 @@ class Word0011FirstTests(WordTests):
     def test_02d_format(self):
         word = self.lex.noun('frog')
 
-        self.assertEqual("frog", "{}".format(word))
-        self.assertEqual("frog", "{:}".format(word))
+        self.assertEqual(      "frog", str(word))
+        self.assertEqual("Word('frog')", repr(word))
+        self.assertEqual("Word('frog')", "{}".format(word))
+        self.assertEqual("Word('frog')", "{:}".format(word))
         self.assertEqual("Word(idn=5)", "{:i}".format(word))
-        self.assertEqual("Word(sbj=lex,vrb=define,obj=noun)", "{:svo}".format(word))
         self.assertEqual("Word(txt='frog')", "{:t}".format(word))
+        self.assertEqual("Word(sbj=lex,vrb=define,obj=noun)", "{:svo}".format(word))
+        self.assertEqual("Word(idn=5,sbj=lex,vrb=define,obj=noun,num=1,txt='frog')", "{:isvont}".format(word))
+        six.assertRegex(self, "{:w}".format(word), r"^Word\(whn=\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d\)$")
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.LexSentence.IDN_MAX_FIXED, self.lex.max_idn())
@@ -1446,7 +1450,7 @@ class Word0011FirstTests(WordTests):
         # print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
         # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
 
-        six.assertRegex(self, str(now_word.txt), r'\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d')   # Y10K bug
+        six.assertRegex(self, str(now_word.txt), r'^\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d$')   # Y10K bug
         self.assertGreater(now_word.txt, qiki.Text('2019.0530.1216.46'))
         self.assertGreater(now_word.num, qiki.Number('0q85_5CEFC9AE6BC6A8'))
         self.assertGreater(now_word.num, qiki.Number(1559218606.421))

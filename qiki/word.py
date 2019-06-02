@@ -675,7 +675,7 @@ class Word(object):
     def __format__(self, format_spec):
         # THANKS:  format > repr > str, https://stackoverflow.com/a/40600544/673991
         if format_spec == '':
-            return str(self)
+            return repr(self)
         else:
             return "Word({})".format(",".join(self._word_attributes(format_spec)))
 
@@ -732,7 +732,7 @@ class Word(object):
                 if self.txt:
                     return "Word(undefined {})".format(repr(self.txt))
                 else:
-                    return "Word(in a strange state, idn {})".format(repr(self.idn))
+                    return "Word(in a stranger state, idn {})".format(repr(self.idn))
             else:
                 return "Word(in a strange state, idn {})".format(idn_int)
 
