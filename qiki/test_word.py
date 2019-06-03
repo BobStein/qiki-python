@@ -1148,6 +1148,36 @@ class Word0011FirstTests(WordTests):
         with self.assertRaises(TypeError):
             self.assertFalse(self.lex.word_class(    bytes(b'this is not unicode')).exists())
 
+    def test_09g_define_must_be_unicode(self):
+        agent = self.lex['agent']
+        self.assertEqual(u"ninja", self.lex.define(obj=agent, txt=u'ninja').txt)
+
+        with self.assertRaises(TypeError):
+            self.lex.define(obj=agent, txt=b'ninja')
+
+        with self.assertRaises(qiki.LexSentence.DefinitionMustBeUnicode):
+            self.lex.define(obj=agent, txt=b'ninja')
+
+    def test_09h_noun_must_be_unicode(self):
+        self.assertEqual(u"name", self.lex.noun(u'name').txt)
+
+        with self.assertRaises(TypeError):
+            self.lex.noun(b'name')
+
+        with self.assertRaises(qiki.LexSentence.DefinitionMustBeUnicode):
+            self.lex.noun(b'name')
+
+        self.assertTrue(issubclass(qiki.LexSentence.DefinitionMustBeUnicode, TypeError))
+
+    def test_09i_verb_must_be_unicode(self):
+        self.assertEqual(u"name", self.lex.verb(u'name').txt)
+
+        with self.assertRaises(TypeError):
+            self.lex.verb(b'name')
+
+        with self.assertRaises(qiki.LexSentence.DefinitionMustBeUnicode):
+            self.lex.verb(b'name')
+
     # TODO:  Prevent cloning lex?
     # def test_09x_lex_singleton_cant_do_by_copy_constructor(self):
     #     with self.assertRaises(ValueError):

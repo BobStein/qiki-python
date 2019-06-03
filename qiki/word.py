@@ -1355,11 +1355,13 @@ class TimeLex(Lex):
 
         time_tuple_thingie = time.gmtime(utc_seconds_since_1970_float)
         yyyy_mmdd_hhmm_ss_ascii = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
+
+        # noinspection PyTypeChecker
         yyyy_mmdd_hhmm_ss = Text.decode_if_you_must(yyyy_mmdd_hhmm_ss_ascii)
         # EXAMPLE:  2019.0530.1629.37
         # NOTE:  No Unicode for you.  Another way timekeeping is stuck in 1970.
         # THANKS:  https://stackoverflow.com/q/2571515/673991
-        # TODO:  Use arrow?  https://github.com/crsmithdev/arrow
+        # TODO:  Use arrow module instead of time?  https://github.com/crsmithdev/arrow
 
         word.populate_from_num_txt(
             num=utc_seconds_since_1970,
@@ -1578,7 +1580,14 @@ class LexSentence(Lex):
         else:
             return self.define(self._verb, name, sbj=sbj)
 
+    class DefinitionMustBeUnicode(TypeError):
+        """In a word definition, the name (txt) must be Unicode."""
+
     def define(self, obj, txt, sbj=None):
+        if not Text.is_valid(txt):
+            raise self.DefinitionMustBeUnicode(
+                "Definition must have unicode name, not " + repr(txt)
+            )
         old_definition = self[txt]
         if old_definition.exists():
             # TODO:  Use create_word's use_already option instead.
@@ -2287,7 +2296,7 @@ class LexMySQL(LexSentence):
         if jbo_vrb is None:
             jbo_vrb = ()
         assert isinstance(idn, (Number, Word, type(None)))
-        assert isinstance(sbj, (Number, Word, type(None)))
+        assert isinstance(sbj, (Number, Word, type(None)))   # TODO: Allow LexSentence too
         assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None)))
         assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type_name(jbo_vrb)
@@ -2707,9 +2716,10 @@ def idn_from_word_or_number(x):
         return x.IDN_LEX
     else:
         raise TypeError(
-            "idn_from_word_or_number({}) is not supported, "
-            "only Word or Number.".format(
-                type_name(x),
+            "idn_from_word_or_number({the_type}) is not supported, "
+            "only Word, Number, or LexSentence. (You passed {repr})".format(
+                the_type=type_name(x),
+                repr=repr(x),
             )
         )
 
