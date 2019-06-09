@@ -13,7 +13,7 @@ The best opportunity for human betterment today
 is to get good at deciding:
 
 1. what **is**
-2. what **ought to be**
+2. what **matters**
 3. what to **do**
 
 Let's get much better at these now.

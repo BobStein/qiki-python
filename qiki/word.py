@@ -13,6 +13,7 @@ except ImportError:
     import collections as collections_abc
     # THANKS:  six-ish collections.abc, https://stackoverflow.com/a/53978543/673991
 
+import datetime
 import numbers
 import re
 import time
@@ -402,7 +403,7 @@ class Word(object):
             return self.lex.root_lex[args[0]]
 
         try:
-            idn = idn_from_word_or_number(args[0])
+            idn = idn_ify(args[0])
         except IndexError:                        # args is empty (kwargs probably is not)
             pass
         except TypeError:                         # args[0] is neither a Word nor a Number
@@ -915,7 +916,20 @@ class SubjectedVerb(object):
                 obj=objected,
             )
             if not does_exist:
-                raise self._subjected.NotExist
+                raise self._subjected.NotExist(
+                    "There is no word type '{word}' such that:\n"
+                    "    sbj={sbj}\n"
+                    "    vrb={vrb}\n"
+                    "    obj={obj}\n"
+                    "in this {lex} (python id {lex_python_id})".format(
+                        word=self._subjected.lex.word_class.__name__,
+                        sbj=self._subjected,
+                        vrb=self._verbed,
+                        obj=objected,
+                        lex=repr(self._subjected.lex),
+                        lex_python_id=id(repr(self._subjected.lex)),
+                    )
+                )
             return existing_word
             # return self._subjected.said(self._verbed, objected)
 
@@ -1061,7 +1075,7 @@ class Lex(object):
         if idn_or_word_or_none is None:
             return self.word_class(None)
 
-        idn = idn_from_word_or_number(idn_or_word_or_none)
+        idn = idn_ify(idn_or_word_or_none)
         assert isinstance(idn, Number)
 
         if idn.is_suffixed():
@@ -1348,25 +1362,159 @@ class Listing(Lex):
 #         raise self.NotAListing
 
 
-class TimeLex(Lex):
-    def populate_word_from_idn(self, word, idn):
-        utc_seconds_since_1970_float = time.time()
-        utc_seconds_since_1970 = Number(utc_seconds_since_1970_float)
+class Pythonic:
+    """
+    Python-specific features.
 
-        time_tuple_thingie = time.gmtime(utc_seconds_since_1970_float)
-        yyyy_mmdd_hhmm_ss_ascii = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
+    Python-platform arcana is supposed to start going here.
+    This may ease porting of other classes to other languages.
+    """
+    @classmethod
+    def unix_epoch_now(cls):
+        if six.PY2:
+            unix_epoch = time.time()
+        else:
+            unix_epoch = datetime.datetime.timestamp(datetime.datetime.now(datetime.timezone.utc))
+            # THANKS:  Python 3.3 unix epoch, https://stackoverflow.com/a/30156392/673991
+        # TODO:  Use arrow module instead of time?  https://github.com/crsmithdev/arrow
+        assert isinstance(unix_epoch, float)
+        return unix_epoch
 
-        # noinspection PyTypeChecker
-        yyyy_mmdd_hhmm_ss = Text.decode_if_you_must(yyyy_mmdd_hhmm_ss_ascii)
-        # EXAMPLE:  2019.0530.1629.37
+    @classmethod
+    def time_format_yyyy_mmdd_hhmm_ss(cls, unix_epoch):
+        """
+        Format a unix timestamp (seconds since 1970 UTC) into a string.
+
+        EXAMPLE:  assert "1999.1231.2359.59" == time_local_yyyy_mmdd_hhmm_ss(946684799.0)
+        EXAMPLE:  assert "2000.0101.0000.00" == time_local_yyyy_mmdd_hhmm_ss(946684800.0)
+        """
+        assert isinstance(unix_epoch, float)
+        time_tuple_thingie = time.gmtime(unix_epoch)
+
+        yyyy_mmdd_hhmm_ss_str = time.strftime('%Y.%m%d.%H%M.%S', time_tuple_thingie)
         # NOTE:  No Unicode for you.  Another way timekeeping is stuck in 1970.
         # THANKS:  https://stackoverflow.com/q/2571515/673991
-        # TODO:  Use arrow module instead of time?  https://github.com/crsmithdev/arrow
 
+        yyyy_mmdd_hhmm_ss_unicode = cls._unicode_from_str(yyyy_mmdd_hhmm_ss_str)
+        return yyyy_mmdd_hhmm_ss_unicode
+
+    @classmethod
+    def _unicode_from_str(cls, string):
+        assert isinstance(string, str)
+        if six.PY2:
+            # noinspection PyUnresolvedReferences
+            string = string.decode('utf-8')
+        assert isinstance(string, six.text_type)
+        return string
+
+
+class TimeLex(Lex):
+    """
+    Factory for words whose idn == num == whn are all a time code, seconds since 1970 UTC.
+
+    Each word represents an instant in time.  Or an interval between times.
+
+    lex[Number.NAN] is "now" -- the time it was referenced.
+    lex[i] is any other time i.
+    """
+
+    _DIFFER = 'differ'
+    _POWER_VERBS = [_DIFFER]
+
+    def __init__(self, word_class=None, **kwargs):
+        """
+        This is cosmetics, just to name the word_class TimeWord.
+
+        :param word_class: - or something else, but probably None
+        :param kwargs: - could contain Lex() constructor stuff I guess
+        """
+        if word_class is None:
+
+            class TimeWord(Word):
+                lex = None
+
+            word_class = TimeWord
+
+        super(TimeLex, self).__init__(word_class=word_class, **kwargs)
+
+    def read_word(self, idn_like):
+        if Text.is_valid(idn_like):
+            txt = Text(idn_like)
+            if txt in self._POWER_VERBS:
+                new_word = self.word_class(None)
+                new_word.populate_from_num_txt(Number.NAN, txt)
+                return new_word
+                # NOTE:  This TimeLex word doesn't represent a time OR an interval.
+                #        It represents the ABSTRACTION of a time interval.
+                #        This word defines the verb whose txt='differ'.
+                #        Then all time interval words have this word as their vrb.
+        else:
+            return super(TimeLex, self).read_word(idn_like)
+
+    @classmethod
+    def differ(cls, word, sbj, vrb, obj):
+        difference = obj.whn - sbj.whn
+        word.populate_from_row(dict(
+            idn=difference,
+            num=difference,
+            whn=difference,
+            sbj=sbj.idn,
+            vrb=vrb.idn,
+            obj=obj.idn,
+            txt=Text("fake-time-difference"),
+        ))
+        return True
+
+    def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
+        if vrb.txt == self._DIFFER:
+            return self.differ(word, sbj, vrb, obj)
+        return False
+
+    def populate_word_from_idn(self, word, idn):
+        assert isinstance(word, Word)
+        assert isinstance(idn, Number)
+        if idn.is_nan():
+            unix_epoch = Pythonic.unix_epoch_now()
+            num = Number(unix_epoch)
+        else:
+            try:
+                unix_epoch = float(idn)
+            except ValueError:
+                unix_epoch = None
+                num = Number.NAN
+            else:
+                num = idn
+
+        if unix_epoch is None:
+            txt = Text("((indeterminate time))")
+        else:
+            txt = Text(Pythonic.time_format_yyyy_mmdd_hhmm_ss(unix_epoch))
         word.populate_from_num_txt(
-            num=utc_seconds_since_1970,
-            txt=yyyy_mmdd_hhmm_ss
+            num=num,
+            txt=txt,
         )
+        word.whn = word.num
+        # NOTE:  Yes, idn == num == whn
+        #        This breaks the rules for whn,
+        #        which is supposed to indicate when the word became choate,
+        #        e.g. was inserted into a LexMySQL record.
+        #        But maybe that rule should only apply to a LexSentence word.
+        #        Anyway, here it will facilitate creating a TimeLex word
+        #        that represents a time difference.
+        #        Because then you can check the difference
+        #        between a TimeLex word (representing a moment in time)
+        #        and any other word (representing anything)
+        #        because only the whn fields will be compared.
+        #        For example,
+        #            t = TimeLex()
+        #            now = t[Number.NAN]
+        #        and                                     v--- These fields represent time:  idn == num == whn
+        #            how_old_is_word_w = t[w]('differ')[now]
+        #                                  ^--- in word w, only the whn field has a time
+        #        in case w.num represents a time, you can:
+        #            t[w.num]('differ')[now]
+
+    # TODO:  TimeLex()[t1:t2] could be a time interval shorthand??  D'oh!
 
 
 class LexSentence(Lex):
@@ -1793,6 +1941,7 @@ class LexInMemory(LexSentence):
 
     def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
         for word_source in reversed(self.words):
+            # NOTE:  reversed() to prefer the LATEST word that matches s,v,o
             if word_source.sbj == sbj and word_source.vrb == vrb and word_source.obj == obj:
                 word.populate_from_word(word_source)
                 return True
@@ -1823,6 +1972,8 @@ class LexInMemory(LexSentence):
         sbj=None,
         vrb=None,
         obj=None,
+        txt=None,
+        # TODO: num
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
@@ -1834,7 +1985,7 @@ class LexInMemory(LexSentence):
         found_words = []
         for word_source in self.words if idn_ascending else reversed(self.words):
             hit = True
-            if idn is not None and word_source.idn != idn_from_word_or_number(idn):
+            if idn is not None and word_source.idn != idn_ify(idn):
                 # TODO:  Why does word_match(word_source.idn, idn) fail in one test?
                 hit = False
             if sbj is not None and not word_match(word_source.sbj, sbj):
@@ -1842,6 +1993,8 @@ class LexInMemory(LexSentence):
             if vrb is not None and not word_match(word_source.vrb, vrb):
                 hit = False
             if obj is not None and not word_match(word_source.obj, obj):
+                hit = False
+            if txt is not None and word_source.txt != Text(txt):
                 hit = False
             if hit:
                 found_words.append(self[word_source])   # copy constructor
@@ -2255,6 +2408,8 @@ class LexMySQL(LexSentence):
         sbj=None,
         vrb=None,
         obj=None,
+        txt=None,
+        # TODO: num
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
@@ -2346,7 +2501,7 @@ class LexMySQL(LexSentence):
             ]
 
         query_args += ['WHERE TRUE', None]
-        query_args += self._and_clauses(idn, sbj, vrb, obj)
+        query_args += self._and_clauses(idn, sbj, vrb, obj, txt)
 
         if obj_group:
             query_args += ['GROUP BY obj', None]
@@ -2394,7 +2549,7 @@ class LexMySQL(LexSentence):
     #     return idns
 
     @staticmethod
-    def _and_clauses(idn, sbj, vrb, obj):
+    def _and_clauses(idn, sbj, vrb, obj, txt):
         assert isinstance(idn, (Number, Word, type(None)))
         assert isinstance(sbj, (Number, Word, type(None)))
         # assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
@@ -2402,14 +2557,14 @@ class LexMySQL(LexSentence):
         assert isinstance(obj, (Number, Word, type(None)))
         query_args = []
         if idn is not None:
-            query_args += ['AND w.idn =', idn_from_word_or_number(idn)]
+            query_args += ['AND w.idn =', idn_ify(idn)]
         if sbj is not None:
-            query_args += ['AND w.sbj =', idn_from_word_or_number(sbj)]
+            query_args += ['AND w.sbj =', idn_ify(sbj)]
         if vrb is not None:
             try:
-                verbs = [idn_from_word_or_number(v) for v in vrb]
+                verbs = [idn_ify(v) for v in vrb]
             except TypeError:
-                verbs = [idn_from_word_or_number(vrb)]
+                verbs = [idn_ify(vrb)]
             if len(verbs) < 1:
                 pass
             elif len(verbs) == 1:
@@ -2421,7 +2576,9 @@ class LexMySQL(LexSentence):
                 query_args += [')', None]
         if obj is not None:
             # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
-            query_args += ['AND w.obj =', idn_from_word_or_number(obj)]
+            query_args += ['AND w.obj =', idn_ify(obj)]
+        if txt is not None:
+            query_args += ['AND w.txt =', Text(txt)]
         return query_args
 
     class SuperSelectTypeError(TypeError):
@@ -2693,7 +2850,7 @@ class LexMySQL(LexSentence):
         pass
 
 
-def idn_from_word_or_number(x):
+def idn_ify(x):
     """
     Helper for functions that take either idn or word.
 
@@ -2702,22 +2859,25 @@ def idn_from_word_or_number(x):
     CAUTION:  This will of course NOT be the idn that OTHER lexes use
               to refer to this lex.
 
-    :param x:  - an idn or a word
+    :param x:  - an idn or a word or a lex (LexSentence)
     :return:   - an idn
     """
-    # TODO:  Support idn_from_word_or_number(42) !?
+    # TODO:  Support idn_ify(42) !?
     if isinstance(x, Word):
         assert isinstance(x.idn, Number)
         return x.idn
     elif isinstance(x, Number):
         return x
+    elif isinstance(x, (int, float)):
+        return Number(x)
     elif isinstance(x, LexSentence):
         assert isinstance(x.IDN_LEX, Number)
         return x.IDN_LEX
     else:
         raise TypeError(
-            "idn_from_word_or_number({the_type}) is not supported, "
-            "only Word, Number, or LexSentence. (You passed {repr})".format(
+            "{the_type} is not supported here.  "
+            "Expecting Word, Number, or LexSentence.\n"
+            "    You passed:  {repr}".format(
                 the_type=type_name(x),
                 repr=repr(x),
             )
@@ -2737,7 +2897,7 @@ def word_match(word_1, word_or_words_2):
                 return True
         return False
     else:
-        return idn_from_word_or_number(word_1) == idn_from_word_or_number(word_or_words_2)
+        return idn_ify(word_1) == idn_ify(word_or_words_2)
 
 
 def is_iterable(x):

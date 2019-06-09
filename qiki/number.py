@@ -2317,6 +2317,10 @@ assert 'function' == type_name(type_name)
 #     It is a Quiet NaN except for division by zero which is a Signaling NaN.
 
 # TODO:  Lengthed-export.  Package up a Number value in a byte sequence that knows its own length.
+##### LENGTHED EXPORT
+##### ===============
+
+# Background:
 # The raw attribute is an unlengthed representation of the number.
 # That is to say there is no way to know the length of a string of raw bytes from their content.
 # Content carries no reliable indication of its length.  Length must be encoded extrinsically somehow.
@@ -2437,8 +2441,9 @@ assert 'function' == type_name(type_name)
 # Perhaps more initial values should be "reserved".  We could reserve F0-FF for example,
 # then 0qFO_01 (2**880 ~~ 8e264) and larger would require a lengthed-part:  02F001
 
-# REDOING THE CODING
-# ==================
+##### REDOING THE CODING - A NEW IMPROVED LENGTHED EXPORT (or is this just a rewording?)
+##### ---------------------------------------------------
+#
 # Interpreting the (left-lengthed) export, i.e. converting it to raw.  Start with first byte of raw, call it Byte0.
 # ---------------------------------------
 # Byte0
@@ -2516,7 +2521,7 @@ assert 'function' == type_name(type_name)
 #         but this is not condensing, in fact it is expanding.
 #         really it is more like a packetized number
 #     pickled?  That term is taken, but something analogous...
-#     fermented?
+#     fermented?   <--- I think I like this one best.  Make wine not pickle juice.
 #     calcified
 #     emulsified
 #     cauterized
@@ -2602,8 +2607,21 @@ assert 'function' == type_name(type_name)
 # k and y are kinda rotated versions.  u/n and m/w are kinda rotated pairs too.
 # In a way the existing Suffix scheme is already a right-lengthed export, with payload-type-length-00
 
+# There might be use for a #### bidirectional-lengthed-export.
+# That is, a sequence of numbers stored in bytes that could be interpreted in either direction.
+# An application could be a file that accumulateds chronologically,
+# A LexBinaryFlatFile or something that just writes its sentences
+# (each of which consists of 6 numbers and a UTF-8 string)
+# to the end of a binary file.
+# Then another process might want to scan that file -- and here's the crucial part --
+# either earliest-first or latest-first.
+
+##### (end of lengthed-export talk)
+
 # TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity there.
+#
 # TODO:  Are Numbers immutable after __init__() is done or not?
 #        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
 #        They kind of have to be immutable, because strings and integers are ffs.
-#        But that means no Number().addSuffix()
+#        But that means no Number().addSuffix() <-- already fixed, replaced with plus_suffix()
+#        which sounds SLIGHTLY less like something that could mutate in place.

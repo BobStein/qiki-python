@@ -7,8 +7,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import calendar
 import inspect
-import subprocess
 import sys
 import time
 import unicodedata
@@ -23,7 +23,7 @@ from qiki.number import hex_from_string
 from qiki.number import type_name
 from qiki.word import LexInMemory
 from qiki.word import SubjectedVerb
-from qiki.word import idn_from_word_or_number   # , to_kwargs, ToKwargsException
+from qiki.word import idn_ify   # , to_kwargs, ToKwargsException
 from qiki.word import is_iterable
 
 try:
@@ -37,9 +37,9 @@ except ImportError:
                 language='MySQL',
                 host=    'localhost',
                 port=    8000,
-                user=    'user',
-                password='password',
-                database='database',
+                user=    'example_user',
+                password='example_password',
+                database='example_database',
                 table=   'word',
                 engine=   'MEMORY',        # About 2x faster unit testing.
                 txt_type= 'VARCHAR(255)',  # Because MEMORY doesn't support TEXT.
@@ -47,28 +47,19 @@ except ImportError:
 
         You also need an empty secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
+        Short answer:  that makes 'secure' into a package so we can import 'credentials.py' which is a module.
 
-        In MySQL you need to create the database and the user.
-        LexMySQL will create the tables.
+        In MySQL you need to create the example_database and the example_user.
+        LexMySQL will create the table.
                 
-            CREATE DATABASE `database`;
-            CREATE USER 'user'@'localhost';
-            ALTER USER  'user'@'localhost' 
-                IDENTIFIED BY 'password';
+            CREATE DATABASE `example_database`;
+            CREATE USER 'example_user'@'localhost';
+            ALTER USER  'example_user'@'localhost' 
+                IDENTIFIED BY 'example_password';
             GRANT CREATE, INSERT, SELECT, DROP 
-                ON `database`.* 
-                TO 'user'@'localhost';
+                ON `example_database`.* 
+                TO 'example_user'@'localhost';
             
-        Formerly:
-
-            CREATE DATABASE `database`;
-            GRANT CREATE, INSERT, SELECT, DROP 
-                ON `database`.* 
-                TO 'user'@'localhost' 
-                IDENTIFIED BY 'password';
-                
-         THANKS:  Deprecated GRANT, https://stackoverflow.com/a/46784276/673991
-
     \n""")
     sys.exit(1)
 
@@ -122,11 +113,11 @@ def tearDownModule():
     print("\n".join(LexClasses.report_lines()))
 
 
-mysql_client_version = subprocess.Popen(
-    'mysql --version',
-    shell=True,
-    stdout=subprocess.PIPE
-).stdout.read().decode('unicode_escape').strip()
+# mysql_client_version = subprocess.Popen(
+#     'mysql --version',
+#     shell=True,
+#     stdout=subprocess.PIPE
+# ).stdout.read().decode('unicode_escape').strip()
 
 
 def version_report():
@@ -144,12 +135,13 @@ def version_report():
     # EXAMPLE:  MySQL Python Connector version 2.2.2b1
     # EXAMPLE:  MySQL Python Connector version 8.0.16
 
-    print("MySQL Client version " + mysql_client_version + "\n", end="")
+    # print("MySQL Client version " + mysql_client_version + "\n", end="")
     # NOTE:  Python 2 quirks in THIS print() call:
     #            appends a \n to the subprocess output
     #            ignores the end= parameter
     #            never outputs a newline, unless it's explicit in the string
     # EXAMPLE:  MySQL Client version mysql  Ver 14.14 Distrib 5.7.24, for Win64 (x86_64)
+    # NOTE:  Do we care what mysql --version says?  Is the python connector the real client?
 
     credentials = secure.credentials.for_unit_testing_database.copy()
     lex = qiki.LexMySQL(**credentials)
@@ -343,6 +335,8 @@ class WordTests(TestBaseClass):
     def run(self, result=None):
         """
         Run the unit tests on each of the Lex classes.
+
+        If one version of the tests raises an exception, the other version may never be tested.
         
         This may slightly confuse the test framework on the total number of tests being run.
         """
@@ -429,7 +423,7 @@ class WordTests(TestBaseClass):
 
     def assertSensibleWhen(self, whn):
         self.assertIsNotNone(whn)
-        self.assertGreaterEqual(time.time(), float(whn))
+        self.assertGreaterEqual(self.lex.now(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
     class _CheckNewWordCount(object):
@@ -919,6 +913,7 @@ class Word0011FirstTests(WordTests):
         self.assertEqual("Word(idn=5)", "{:i}".format(word))
         self.assertEqual("Word(txt='frog')", "{:t}".format(word))
         self.assertEqual("Word(sbj=lex,vrb=define,obj=noun)", "{:svo}".format(word))
+        # noinspection SpellCheckingInspection
         self.assertEqual("Word(idn=5,sbj=lex,vrb=define,obj=noun,num=1,txt='frog')", "{:isvont}".format(word))
         six.assertRegex(self, "{:w}".format(word), r"^Word\(whn=\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d\)$")
 
@@ -1208,6 +1203,51 @@ class Word0011FirstTests(WordTests):
         self.assertSensibleWhen(new_word.whn)
         self.assertGreaterEqual(float(new_word.whn), float(define.whn))
 
+    def test_11c_vrb_by_name(self):
+        bart = self.lex.define('agent', 'bart')
+        cook = self.lex.verb('cook')
+        deer = self.lex.noun('deer')
+
+        deer_bbq = bart(cook, txt="Yummy")[deer]
+        self.assertEqual("Yummy", deer_bbq.txt)
+        self.assertEqual(cook, deer_bbq.vrb)
+
+        #                  v--- the point of this test -- 'cook' is a string for the vrb
+        deer_dry = bart('cook', "A little dry")[deer]
+        #                            ^--- assumed to be the txt
+
+        self.assertEqual("A little dry", deer_dry.txt)
+        self.assertEqual(cook, deer_dry.vrb)
+
+    def test_11d_idn_by_int(self):
+        frog = self.lex.noun('frog')
+        self.assertEqual(frog, self.lex[    frog.idn ])
+        self.assertEqual(frog, self.lex[int(frog.idn)])
+
+    def test_11d_idn_by_float(self):
+        frog = self.lex.noun('frog')
+        self.assertEqual(frog, self.lex[      frog.idn ])
+        self.assertEqual(frog, self.lex[float(frog.idn)])
+
+    def test_11e_svo_by_int(self):
+        bart = self.lex.define('agent', 'bart')
+        cook = self.lex.verb('cook')
+        deer = self.lex.noun('deer')
+        deer_bbq = bart(cook, txt="Yummy")[deer]
+
+        self.assertEqual(deer_bbq, self.lex[    bart     ](cook)[deer])
+        self.assertEqual(deer_bbq, self.lex[    bart.idn ](cook)[deer])
+        self.assertEqual(deer_bbq, self.lex[int(bart.idn)](cook)[deer])
+
+        self.assertEqual(deer_bbq, self.lex[bart](    cook     )[deer])
+        self.assertEqual(deer_bbq, self.lex[bart](    cook.idn )[deer])
+        self.assertEqual(deer_bbq, self.lex[bart](int(cook.idn))[deer])
+
+        self.assertEqual(deer_bbq, self.lex[bart](cook)[    deer     ])
+        self.assertEqual(deer_bbq, self.lex[bart](cook)[    deer.idn ])
+        self.assertEqual(deer_bbq, self.lex[bart](cook)[int(deer.idn)])
+
+
     # def test_12a_non_vrb(self):
     #     # anna = self.lex.define(u'agent', u'anna')
     #     anna = self.lex.define(u'agent', u'anna')
@@ -1475,16 +1515,43 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(   punt3, punt1)
         self.assertNotEqual(punt3, punt2)
 
-    def test_19a_time_lex(self):
+    def test_19a_time_lex_now(self):
         now_word = qiki.word.TimeLex()[qiki.Number.NAN]
         # print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
         # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
 
         six.assertRegex(self, str(now_word.txt), r'^\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d$')   # Y10K bug
         self.assertGreater(now_word.txt, qiki.Text('2019.0530.1216.46'))
+        # noinspection SpellCheckingInspection
         self.assertGreater(now_word.num, qiki.Number('0q85_5CEFC9AE6BC6A8'))
         self.assertGreater(now_word.num, qiki.Number(1559218606.421))
         # 7:16am Thursday 30-May-2019, US Central Daylight Time
+
+    def test_19a_time_lex_fixed(self):
+        y2k_unix_epoch = calendar.timegm(time.struct_time((1999,12,31, 23,59,59, 0,0,0)))
+        # THANKS:  UTC from 9-tuple, https://stackoverflow.com/a/2956997/673991
+
+        self.assertEqual(946684799, y2k_unix_epoch)
+        # THANKS:  Unix epoch from Gregorian date-time, https://www.epochconverter.com/
+
+        self.assertEqual((30*365 + 7)*24*60*60 - 1, y2k_unix_epoch)
+        # NOTE:  30 years and 7 leaps between 1/1/1970 and 12/31/1999.
+
+        y2k_word = qiki.word.TimeLex()[qiki.Number(y2k_unix_epoch)]
+        self.assertEqual(y2k_unix_epoch, float(y2k_word.num))
+        self.assertEqual(y2k_unix_epoch, float(y2k_word.whn))
+        self.assertEqual('1999.1231.2359.59', str(y2k_word))
+
+    def test_19a_time_lex_delta(self):
+        time_lex = qiki.TimeLex()
+        y2k_before = time_lex[946684799]
+        y2k_after  = time_lex[946684800]
+
+        delta = time_lex[y2k_before]('differ')[y2k_after]
+        self.assertEqual(qiki.Number(1), delta.num)
+
+        self.assertEqual(qiki.Number(1), time_lex[946684799]('differ')[946684800].num)
+
 
     # TODO:  Words as dictionary keys preserve their inchoate-ness.
 
@@ -1497,14 +1564,15 @@ class Word0012Utilities(WordTests):
 
     def test_idn_from_word_or_number(self):
         agent = self.lex[u'agent']
-        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_from_word_or_number(agent.idn))
-        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_from_word_or_number(agent))
+        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_ify(agent.idn))
+        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_ify(agent))
+        self.assertEqual(qiki.Number(42), idn_ify(42))
         with self.assertRaises(TypeError):
-            idn_from_word_or_number('')
+            idn_ify('')
+        # with self.assertRaises(TypeError):   Nope, this works now
+        #     idn_ify(0)
         with self.assertRaises(TypeError):
-            idn_from_word_or_number(0)
-        with self.assertRaises(TypeError):
-            idn_from_word_or_number(None)
+            idn_ify(None)
 
     def test_inequality_words_and_numbers(self):
         """Sanity check to make sure words and idns aren't intrinsically equal or something."""
@@ -3164,6 +3232,15 @@ class Word0070FindTests(WordTests):
         # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave    , retch    ]))
         # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave.idn, retch.idn]))
         # self.assertEqual([                r3.idn], self.lex.find_idns(vrb=[                retch.idn]))
+
+    def test_find_by_txt(self):
+        a = self.fred(self.crave, 1, "eat" )[self.apple]
+        b = self.fred(self.crave, 1, "math")[self.berry]
+        c = self.fred(self.crave, 1, "eat" )[self.curry]
+
+        self.assertEqual([a, c], self.lex.find_words(vrb=self.crave, txt="eat"))
+        self.assertEqual([b],    self.lex.find_words(vrb=self.crave, txt="math"))
+        self.assertEqual([],     self.lex.find_words(vrb=self.crave, txt="neither"))
 
     def test_find_words(self):
         words = self.lex.find_words()
