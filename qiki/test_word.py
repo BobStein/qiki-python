@@ -423,7 +423,7 @@ class WordTests(TestBaseClass):
 
     def assertSensibleWhen(self, whn):
         self.assertIsNotNone(whn)
-        self.assertGreaterEqual(self.lex.now(), float(whn))
+        self.assertGreaterEqual(self.lex.now_number(), float(whn))
         self.assertLessEqual(1447029882.792, float(whn))
 
     class _CheckNewWordCount(object):
@@ -1516,7 +1516,7 @@ class Word0011FirstTests(WordTests):
         self.assertNotEqual(punt3, punt2)
 
     def test_19a_time_lex_now(self):
-        now_word = qiki.word.TimeLex()[qiki.Number.NAN]
+        now_word = qiki.word.TimeLex().now_word()
         # print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
         # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
 
@@ -1526,6 +1526,9 @@ class Word0011FirstTests(WordTests):
         self.assertGreater(now_word.num, qiki.Number('0q85_5CEFC9AE6BC6A8'))
         self.assertGreater(now_word.num, qiki.Number(1559218606.421))
         # 7:16am Thursday 30-May-2019, US Central Daylight Time
+
+        self.assertEqual(now_word.num, now_word.idn)
+        self.assertEqual(now_word.num, now_word.whn)
 
     def test_19a_time_lex_fixed(self):
         y2k_unix_epoch = calendar.timegm(time.struct_time((1999,12,31, 23,59,59, 0,0,0)))

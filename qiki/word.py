@@ -144,6 +144,9 @@ class Word(object):
         # DONE:  Refactor _is_inchoate property to check for the existence of self._fields instead.
         # CAUTION:  But Word(content=None) is a choate word.  Because it populates self._fields.
         #           Listing relies on all this so it may need to be refactored.
+        self.set_idn_if_you_really_have_to(idn)
+
+    def set_idn_if_you_really_have_to(self, idn):
         self._idn = idn
 
     def _choate(self):
@@ -481,7 +484,7 @@ class Word(object):
         """
         assert isinstance(idn, Number)
         # assert not idn.is_suffixed()
-        self._idn = idn
+        self.set_idn_if_you_really_have_to(idn)
         self.lex.populate_word_from_idn(self, idn)
         # NOTE:  If this returned True, it already called populate_from_word()
         #        and so the word now exists()
@@ -563,7 +566,7 @@ class Word(object):
         assert isinstance(row[prefix + 'num'], Number)
         assert isinstance(row[prefix + 'txt'], Text)
         assert isinstance(row[prefix + 'whn'], Number)
-        self._idn = row[prefix + 'idn']
+        self.set_idn_if_you_really_have_to(row[prefix + 'idn'])
         self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
             # sbj=self.spawn(row[prefix + 'sbj']),
@@ -781,7 +784,7 @@ class Word(object):
 
     def save(self, override_idn=None):
         if override_idn is not None:
-            self._idn = override_idn
+            self.set_idn_if_you_really_have_to(override_idn)
         assert isinstance(self.idn, (Number, type(None)))
         assert isinstance(self.sbj, Word)
         assert isinstance(self.vrb, Word)
@@ -789,7 +792,7 @@ class Word(object):
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
         if self.exists() or self.idn == Number.NAN:
-            self._idn = self.lex.max_idn().inc()   # AUTO sorta INCREMENT
+            self.set_idn_if_you_really_have_to(self.lex.max_idn().inc())   # AUTO sorta INCREMENT
             # TODO:  Race condition?  Make max_idn and insert_word part of an atomic transaction.
             # Or store latest idn in another table
             # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
@@ -1437,9 +1440,21 @@ class TimeLex(Lex):
 
         super(TimeLex, self).__init__(word_class=word_class, **kwargs)
 
-    def read_word(self, idn_like):
-        if Text.is_valid(idn_like):
-            txt = Text(idn_like)
+    def now_word(self):
+        """
+        A qiki.Word representing the time this function was called.
+
+        Actually it's a TimeWord, a subclass of qiki.Word.
+
+        Suitable for comparing with other TimeWord's.
+
+        Not to be confused with LexSentence.now_number(), a qiki.Number
+        """
+        return self[Number.NAN]
+
+    def read_word(self, idn_ish):
+        if Text.is_valid(idn_ish):
+            txt = Text(idn_ish)
             if txt in self._POWER_VERBS:
                 new_word = self.word_class(None)
                 new_word.populate_from_num_txt(Number.NAN, txt)
@@ -1449,10 +1464,10 @@ class TimeLex(Lex):
                 #        This word defines the verb whose txt='differ'.
                 #        Then all time interval words have this word as their vrb.
         else:
-            return super(TimeLex, self).read_word(idn_like)
+            return super(TimeLex, self).read_word(idn_ish)
 
-    @classmethod
-    def differ(cls, word, sbj, vrb, obj):
+    # noinspection PyMethodMayBeStatic
+    def differ(self, word, sbj, vrb, obj):
         difference = obj.whn - sbj.whn
         word.populate_from_row(dict(
             idn=difference,
@@ -1461,7 +1476,7 @@ class TimeLex(Lex):
             sbj=sbj.idn,
             vrb=vrb.idn,
             obj=obj.idn,
-            txt=Text("fake-time-difference"),
+            txt=Text("fake-time-difference"),   # TODO:  e.g. "3.2 minutes" ?
         ))
         return True
 
@@ -1474,8 +1489,12 @@ class TimeLex(Lex):
         assert isinstance(word, Word)
         assert isinstance(idn, Number)
         if idn.is_nan():
+            # TODO:  Should this weird special case be somehow achieved by the
+            #        same mechanism that LexMySQL auto increments when inserting a new word?
+            #        Kind of a lex.next_idn() method or something?
             unix_epoch = Pythonic.unix_epoch_now()
             num = Number(unix_epoch)
+            word.set_idn_if_you_really_have_to(num)
         else:
             try:
                 unix_epoch = float(idn)
@@ -1507,12 +1526,12 @@ class TimeLex(Lex):
         #        because only the whn fields will be compared.
         #        For example,
         #            t = TimeLex()
-        #            now = t[Number.NAN]
+        #            now_word = t.now_word()
         #        and                                     v--- These fields represent time:  idn == num == whn
-        #            how_old_is_word_w = t[w]('differ')[now]
+        #            how_old_is_word_w = t[w]('differ')[now_word]
         #                                  ^--- in word w, only the whn field has a time
         #        in case w.num represents a time, you can:
-        #            t[w.num]('differ')[now]
+        #            t[w.num]('differ')[now_word]
 
     # TODO:  TimeLex()[t1:t2] could be a time interval shorthand??  D'oh!
 
@@ -1860,11 +1879,15 @@ class LexSentence(Lex):
         return new_word
 
     @classmethod
-    def now(cls):
-        return TimeLex()[Number.NAN].num
-        # return Number(time.time())
+    def now_number(cls):
+        """
+        Returns a qiki.Number suitable for the whn field:  seconds since 1970 UTC.
 
-    # TODO:  Dynamic word factory for "now".  num is seconds since 1970, txt is yyyy.mmdd.hhmm
+        Not to be confused with qiki.TimeLex.now_word() which is a qiki.Word
+        an abstraction representing the current time.
+        """
+        return TimeLex().now_word().num
+
 
 # TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
 
@@ -1909,7 +1932,7 @@ class LexInMemory(LexSentence):
 
     def insert_word(self, word):
         assert not word.idn.is_nan()
-        word.whn = self.now()
+        word.whn = self.now_number()
         self.words.append(word)
         # noinspection PyProtectedMember
         word._now_it_exists()
@@ -2271,7 +2294,7 @@ class LexMySQL(LexSentence):
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
         assert not word.idn.is_nan()
-        whn = self.now()
+        whn = self.now_number()
         # TODO:  Enforce whn uniqueness?
         # SEE:  https://docs.python.org/2/library/time.html#time.time
         #     "Note that even though the time is always returned as a floating point number,
