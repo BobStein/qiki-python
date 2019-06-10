@@ -2521,6 +2521,27 @@ class NumberIsTests(NumberTests):
         self.assertNegative(Number('0q7E01_0000'))   # Normalizes to 7E00_FF
         self.assertNegative(Number('0q7E00_FF'))
 
+    def test_is_number(self):
+        class SomeType(object):
+            pass
+        some_type = SomeType()
+
+        self.assertTrue(Number.is_number(42))
+        self.assertTrue(Number.is_number(999999999999999999999999999999999))
+        self.assertTrue(Number.is_number(3.14))
+        self.assertTrue(Number.is_number(123 + 456j))
+        self.assertTrue(Number.is_number(Number.NAN))
+        self.assertTrue(Number.is_number(Number(0)))
+        self.assertTrue(Number.is_number(float('nan')))
+        self.assertTrue(Number.is_number(float('-inf')))
+        self.assertTrue(Number.is_number(Number(float('-inf'))))
+
+        self.assertFalse(Number.is_number(u"42"))
+        self.assertFalse(Number.is_number(b"42"))
+        self.assertFalse(Number.is_number(u"0"))
+        self.assertFalse(Number.is_number(b"0"))
+        self.assertFalse(Number.is_number("0q80"))
+        self.assertFalse(Number.is_number(some_type))
 
     # noinspection PyUnusedLocal
     def someday_assertIses(self, number_able, is_zero = None, all_true = None, all_false = None):

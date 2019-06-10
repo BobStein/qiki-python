@@ -663,6 +663,17 @@ class Number(numbers.Complex):
         """
         return type(self)(self, normalize=True)
 
+    @staticmethod
+    def is_number(x):
+        """
+        Is this fundamentally numeric?
+
+        Not to be confused with what the Number() constructor could take.
+        Because Number('0q82_01') and Number("42") are valid but
+        Number.is_number('0q82_01') and Number.is_number("42") are false.
+        """
+        return isinstance(x, numbers.Number)
+
     def is_negative(self):
         """Is this Number negative?"""
         return_value = ((six.indexbytes(self.raw, 0) & 0x80) == 0)
@@ -1462,7 +1473,7 @@ class Number(numbers.Complex):
         #            fringe
         #            lagniappe
         #            secret passage
-        #            leaf    <===   (leading to "leafless" number) (ala tree leaf, table leef)
+        #            leaf    <===   (leading to "leafless" number) (ala tree leaf, table leaf)
         #            branch
         #            arm
 
@@ -2609,7 +2620,7 @@ assert 'function' == type_name(type_name)
 
 # There might be use for a #### bidirectional-lengthed-export.
 # That is, a sequence of numbers stored in bytes that could be interpreted in either direction.
-# An application could be a file that accumulateds chronologically,
+# An application could be a file that accumulates chronologically,
 # A LexBinaryFlatFile or something that just writes its sentences
 # (each of which consists of 6 numbers and a UTF-8 string)
 # to the end of a binary file.

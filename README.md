@@ -13,11 +13,11 @@ The best opportunity for human betterment today
 is to get good at deciding:
 
 1. what **is**
-2. what **matters**
-3. what to **do**
+2. what **ought** to be
+3. what to **do** about it
 
 Let's get much better at these now.
-Great consequences will not happen until we do.
+Many great consequences are held up until we do.
 We don't want to agree, 
 not totally.
 But we must decide.

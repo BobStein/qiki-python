@@ -14,7 +14,6 @@ except ImportError:
     # THANKS:  six-ish collections.abc, https://stackoverflow.com/a/53978543/673991
 
 import datetime
-import numbers
 import re
 import time
 
@@ -231,7 +230,17 @@ class Word(object):
         pass
 
     def __call__(self, vrb, *args, **kwargs):
-        """subject(verb, ...)"""
+        """
+        Part way to the square-bracket sentence.
+
+        This is the result of the curried expression:
+
+            lex[s](v)
+
+        Which is just before the [o] part.
+        """
+        if isinstance(vrb, six.binary_type):
+            raise TypeError("Verb name must be unicode, not " + repr(vrb))
         return SubjectedVerb(self, vrb, *args, **kwargs)
 
     def define(self, obj, txt):
@@ -295,12 +304,30 @@ class Word(object):
         #     raise self.NotExist
         # return existing_word
 
+    @classmethod
+    def txt_num_swap(cls, a1, a2):
+        """
+        Swap num and txt if necessary.
+
+        Either could be None
+        """
+        # TODO:  This is a poor stand-in for extract_txt_num().  Or vice versa.
+        if (
+            (a2 is None or Text.is_valid(a2)) and
+            (a1 is None or Number.is_number(a1))
+        ):
+            return a2, a1
+        else:
+            return a1, a2
+
     def says(self, vrb, obj, num=None, txt=None, num_add=None, use_already=False):
 
         # return self(vrb, *args, **kwargs)[obj]
         # NOTE:  The above way is not quite aggressive enough.
         #        If num and txt were missing it would passively find a word by s,v,o,
         #        as opposed to making a new ('',1) word, as create_word below would do.
+
+        txt, num = self.txt_num_swap(num, txt)   # in case they were specified positionally
 
         return self.lex.create_word(
             sbj=self,
@@ -393,9 +420,9 @@ class Word(object):
         #     new_word.save()
         # return new_word
 
-    class SentenceArgs(TypeError):
-        """Arguments to Word.says() (or intended for Word.says()) are wrong."""
-        # TODO:  SayError?
+    # class SentenceArgs(TypeError):
+    #     """Arguments to Word.says() (or intended for Word.says()) are wrong."""
+    #     # TODO:  SayError?
 
     def spawn(self, *args, **kwargs):
         """
@@ -830,40 +857,51 @@ class SubjectedVerb(object):
         """
         # objected = self._subjected.spawn(key)
         objected = self._subjected.lex.root_lex[key]
-        num_and_or_txt = value
-        if isinstance(num_and_or_txt, numbers.Number):
-            num = num_and_or_txt
-            txt = u""
-        elif Text.is_valid(num_and_or_txt):
-            txt = num_and_or_txt
-            num = Number(1)
-        else:
-            num = Number(1)
-            txt = Text(u"")
-            num_count = 0
-            txt_count = 0
-            if is_iterable(num_and_or_txt):
-                for num_or_txt in num_and_or_txt:
-                    if isinstance(num_or_txt, numbers.Number):
-                        num = num_or_txt
-                        num_count += 1
-                    elif Text.is_valid(num_or_txt):
-                        txt = num_or_txt
-                        txt_count += 1
-                    else:
-                        raise self._subjected.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
-            else:
-                raise self._subjected.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
-            if num_count > 1:
-                raise self._subjected.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
-                    n=num_count,
-                    arg=repr(num_and_or_txt)
-                ))
-            if txt_count > 1:
-                raise self._subjected.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
-                    n=txt_count,
-                    arg=repr(num_and_or_txt)
-                ))
+
+
+
+        txt, num = self.extract_txt_num(value, dict())
+
+
+        # num_and_or_txt = value
+        # if isinstance(num_and_or_txt, numbers.Number):
+        #     # TODO:  instead Number.is_number()?  But it shouldn't accept q-strings!  Or '3'!
+        #     num = num_and_or_txt
+        #     txt = u""
+        # elif Text.is_valid(num_and_or_txt):
+        #     # TODO:  rename Text.is_text()?
+        #     txt = num_and_or_txt
+        #     num = Number(1)
+        # else:
+        #     num = Number(1)
+        #     txt = Text(u"")
+        #     num_count = 0
+        #     txt_count = 0
+        #     if is_iterable(num_and_or_txt):
+        #         for num_or_txt in num_and_or_txt:
+        #             if isinstance(num_or_txt, numbers.Number):
+        #                 num = num_or_txt
+        #                 num_count += 1
+        #             elif Text.is_valid(num_or_txt):
+        #                 txt = num_or_txt
+        #                 txt_count += 1
+        #             else:
+        #                 raise self._subjected.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
+        #     else:
+        #         raise self._subjected.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
+        #     if num_count > 1:
+        #         raise self._subjected.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
+        #             n=num_count,
+        #             arg=repr(num_and_or_txt)
+        #         ))
+        #     if txt_count > 1:
+        #         raise self._subjected.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
+        #             n=txt_count,
+        #             arg=repr(num_and_or_txt)
+        #         ))
+
+
+
         self._subjected.lex.root_lex.create_word(
             sbj=self._subjected,
             vrb=self._verbed,
@@ -895,12 +933,17 @@ class SubjectedVerb(object):
 
         Without the assignment there may be a warning about code having no effect.
         """
+        if isinstance(item, six.binary_type):
+            raise TypeError("Object name must be unicode, not " + repr(item))
         objected = self._subjected.lex.root_lex[item]
         if self._args or self._kwargs:
-            num, txt = self.extract_txt_num(self._args, self._kwargs)
-            self._kwargs.pop('txt', None)
-            self._kwargs.pop('num', None)
-            # return self._subjected.says(self._verbed, objected, num=num, txt=txt, **self._kwargs)
+            txt, num = self.extract_txt_num(self._args, self._kwargs)
+
+            # self._kwargs.pop('txt', None)
+            # self._kwargs.pop('num', None)
+            # XXX:  WTF Why were these here, aren't they SUPPOSED to be removed
+            #       by extract_txt_num??
+
             return self._subjected.lex.root_lex.create_word(
                 sbj=self._subjected,
                 vrb=self._verbed,
@@ -939,8 +982,14 @@ class SubjectedVerb(object):
     @classmethod
     def extract_txt_num(cls, a, k):   # aka (args, kwargs)
         """
-        Pop num and/or txt from positional-arguments, and keyword-arguments.
+        Get num and/or txt from positional-arguments, and keyword-arguments.
 
+        This is the <etc> part of lex[s](v, <etc>)[o]
+
+        Or at least part of it.
+        It's meant to remove from <etc> the num and txt if they're there.
+        whether they're keyword-arguments or not.
+        But also leave behind other keyword arguments to pass through to
         TypeError if ambiguous or unsupportable.
         Examples that will raise TypeError:
             extract_txt_num('text', 'more text')
@@ -949,16 +998,32 @@ class SubjectedVerb(object):
 
         Expects a (args) is a list, not a tuple, so it can be modified in-place.
 
+        :return:  (txt, num)
         """
         # TODO:  It was silly to expect a (args) to be a list.
         #        Only k (kwargs) can have surplus parameters.
         #        If this function doesn't generate an exception,
         #        then it used up all of a (args) anyway.
 
-        def type_code(x):
-            return 'n' if isinstance(x, numbers.Number) else 't' if Text.is_valid(x) else 'x'
+        if isinstance(a, tuple):
+            a = list(a)   # A tuple turns into a list. (Oh well, can't know what wasn't absorbed.)
+        elif isinstance(a, list):
+            a = a         # A list stays the same, that's what we expected, ala args
+        else:
+            a = [a]       # Anything else is stuffed INTO a list
 
-        pats = ''.join(type_code(arg) for arg in a)   # pats:  positional-argument types
+        for arg in a:
+            if isinstance(arg, six.binary_type):
+                raise TypeError("Expecting unicode not " + repr(arg))
+
+        for name,value in k.items():
+            if isinstance(value, six.binary_type):
+                raise TypeError("Expecting " + repr(name) + " to be unicode not " + repr(value))
+
+        def type_code(x):
+            return 'n' if Number.is_number(x) else 't' if Text.is_valid(x) else 'x'
+
+        pats = ''.join(type_code(arg) for arg in a)   # pats:  Positional-Argument Types
         t = 'txt' in k
         n = 'num' in k
 
@@ -1810,12 +1875,15 @@ class LexSentence(Lex):
         """
         Construct a new sentence from a 3-word subject-verb-object.
         """
+        # TODO:  Disallow num,txt positionally, unlike Word.says()
+
         assert isinstance(sbj, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(sbj))
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
-        if isinstance(txt, numbers.Number) or Text.is_valid(num):
-            # TODO:  Why `or` not `and`?
-            (txt, num) = (num, txt)
+
+        # if isinstance(txt, numbers.Number) or Text.is_valid(num):
+        #     # TODO:  Why `or` not `and`?
+        #     (txt, num) = (num, txt)
 
         if num is not None and num_add is not None:
             raise self.CreateWordError("{self_type}.create_word() cannot specify both num and num_add.".format(
@@ -1825,7 +1893,7 @@ class LexSentence(Lex):
         num = num if num is not None else 1
         txt = txt if txt is not None else u''
 
-        if not isinstance(num, numbers.Number):
+        if not Number.is_number(num):
             # TODO:  Allow q-strings for num.  I.e. raise this exception on Number(num) error.
             raise self.CreateWordError("Wrong type for {self_type}.create_word(num={num_type})".format(
                 self_type=type_name(self),
@@ -1845,7 +1913,7 @@ class LexSentence(Lex):
             txt=txt,
         )
         if num_add is not None:
-            assert isinstance(num_add, numbers.Number)
+            assert Number.is_number(num_add)
             self.populate_word_from_sbj_vrb_obj(new_word, sbj, vrb, obj)
             if new_word.exists():
                 # noinspection PyProtectedMember
@@ -2897,14 +2965,17 @@ def idn_ify(x):
         assert isinstance(x.IDN_LEX, Number)
         return x.IDN_LEX
     else:
-        raise TypeError(
-            "{the_type} is not supported here.  "
-            "Expecting Word, Number, or LexSentence.\n"
-            "    You passed:  {repr}".format(
-                the_type=type_name(x),
-                repr=repr(x),
+        if isinstance(x, six.binary_type):
+            raise TypeError("The name of a qiki Word must be unicode, not " + repr(x))
+        else:
+            raise TypeError(
+                "{the_type} is not supported here.  "
+                "Expecting the idn or name of a word, a word itself, or a lex.\n"
+                "    You passed:  {repr}".format(
+                    the_type=type_name(x),
+                    repr=repr(x),
+                )
             )
-        )
 
 
 def word_match(word_1, word_or_words_2):

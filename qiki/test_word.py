@@ -9,6 +9,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import calendar
 import inspect
+import re
 import sys
 import time
 import unicodedata
@@ -521,10 +522,10 @@ class WordDemoTests(WordTests):
         lex[s](v)[o] = 1
         lex[s](v)[o] = ''
         lex.create_word(sbj=s, vrb=v, obj=o, num=n, txt=t)
-        lex.create_word(s, v, o, n, t)
-        lex.create_word(s, v, o, t, n)
-        lex.create_word(s, v, o, n)
-        lex.create_word(s, v, o, t)
+        lex.create_word(s, v, o, num=n, txt=t)
+        lex.create_word(s, v, o, txt=t, num=n)
+        lex.create_word(s, v, o, num=n)
+        lex.create_word(s, v, o, txt=t)   # boo hoo swapped positional arguments will break
         lex.create_word(s, v, o)
         # s.v(o, n)
         # s.v(o, n, t)
@@ -633,11 +634,29 @@ class WordExoticTests(WordTests):
     def test_extract_txt_num(self):
 
         def extract_test(expected_pair, *args, **kwargs):
-            args_list = list(args)
-            actual_pair = SubjectedVerb.extract_txt_num(args_list, kwargs)
+            args_list = list(args)   # shallow copy
+            kwargs_dict = dict(kwargs)  # shallow copy
+            actual_pair = SubjectedVerb.extract_txt_num(args_list, kwargs_dict)
             self.assertEqual(expected_pair, actual_pair)
             self.assertEqual([], args_list)
-            self.assertEqual({}, kwargs)
+            self.assertEqual({}, kwargs_dict)   # Make sure all args,kwargs were removed in-place
+
+            if (
+                any(isinstance(x, six.text_type) for x in args) or
+                any(isinstance(x, six.text_type) for k,x in kwargs.items())
+            ) :
+                # NOTE:  Some of the args or kwargs were unicode strings.
+                #        Make sure they raise a TypeError as byte-strings.
+                args_non_unicode = [
+                    x.encode('ascii') if isinstance(x,six.text_type) else x
+                    for x in args
+                ]
+                kwargs_non_unicode = {
+                    k:x.encode('ascii') if isinstance(x,six.text_type) else x
+                    for k,x in kwargs.items()
+                }
+                with six.assertRaisesRegex(self, TypeError, re.compile(r'unicode', re.IGNORECASE)):
+                    SubjectedVerb.extract_txt_num(args_non_unicode, kwargs_non_unicode)
 
         extract_test((   '',  1), )
 
@@ -662,15 +681,15 @@ class WordExoticTests(WordTests):
         extract_test(('foo', 42), txt='foo', num=qiki.Number(42))
         extract_test(('foo', 42), qiki.Number(42), txt='foo')
 
-        def extract_test(expected_pair, *args, **kwargs):
+        def extract_test_plus_kwargs(expected_pair, *args, **kwargs):
             args_list = list(args)
             actual_pair = SubjectedVerb.extract_txt_num(args_list, kwargs)
             self.assertEqual(expected_pair, actual_pair)
             self.assertEqual([], args_list)
             self.assertEqual(dict(any=0, other=1, keywords=2), kwargs)
 
-        extract_test(('foo', 42), 'foo', 42, any=0, other=1, keywords=2)
-        extract_test((''   ,  1),            any=0, other=1, keywords=2)
+        extract_test_plus_kwargs(('foo', 42), 'foo', 42, any=0, other=1, keywords=2)
+        extract_test_plus_kwargs((''   ,  1),            any=0, other=1, keywords=2)
 
         def extract_call(*args, **kwargs):
             _, _ = SubjectedVerb.extract_txt_num(list(args), kwargs)
@@ -690,6 +709,16 @@ class WordExoticTests(WordTests):
         with self.assertRaises(TypeError):  extract_call(txt=42)
         with self.assertRaises(TypeError):  extract_call(99, txt=42)
         with self.assertRaises(TypeError):  extract_call('foo', txt=42)
+
+    def test_extract_txt_num_singleton(self):
+        self.assertEqual(("foo", 1), SubjectedVerb.extract_txt_num("foo", dict()))
+        self.assertEqual(("",   42), SubjectedVerb.extract_txt_num(42, dict()))
+
+    def test_extract_txt_num_tuple(self):
+        self.assertEqual(("foo",  1), SubjectedVerb.extract_txt_num(("foo",), dict()))
+        self.assertEqual(("",    42), SubjectedVerb.extract_txt_num((42,), dict()))
+        self.assertEqual(("foo", 42), SubjectedVerb.extract_txt_num((42, "foo"), dict()))
+        self.assertEqual(("foo", 42), SubjectedVerb.extract_txt_num(("foo", 42), dict()))
 
     def test_setter_and_getter(self):
         self.assertFalse(self.lex['animal'].exists())
@@ -1700,11 +1729,11 @@ class Word0013Brackets(WordTests):
         self.assertEqual(496, word.num)
 
     def test_03a_subject_circle_bad(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.art(self.got)[self.lek] = some_type
 
     def test_03b_subject_circle_bad(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.art(self.got)[self.lek] = [some_type]
 
     def test_04a_lex_square_circle_square_num(self):
@@ -1738,29 +1767,29 @@ class Word0013Brackets(WordTests):
         self.assertEqual(u"route", word.txt)
 
     def test_04d_lex_square_circle_square_txt_txt(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = u"one string", u"another string"
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = u"one string", u"another string", u"third"
 
     def test_04e_lex_square_circle_square_num_num(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = 42, 24
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = 11, 22, 33
 
     def test_04f_lex_square_circle_square_num_num_txt_txt(self):
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = 11, 22, u"one"
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = 11, u"one", 22
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = u"one", 11, 22
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = 11, u"one", u"two"
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = u"one", 11, u"two"
-        with self.assertRaises(qiki.Word.SentenceArgs):
+        with self.assertRaises(TypeError):
             self.lex[self.art](self.got)[self.lek] = u"one", u"two", 11
 
     # TODO:  What about lex[s](v)[o] = (n,t)   (In other words, explicit tuple)
@@ -1825,6 +1854,32 @@ class Word0013Brackets(WordTests):
         self.assertEqual(self.lek, word.obj)
         self.assertEqual(2, word.num)
         self.assertEqual(u"two", word.txt)
+
+    def test_06e_lex_square_circle_square_bad_binary(self):
+        with self.assertNewWord():
+            self.lex[u'art'](u'got')[u'lek'] = u"foo bar"
+        self.assertEqual(u"foo bar", self.lex[u'art'](u'got')[u'lek'].txt)
+
+        with six.assertRaisesRegex(self, TypeError, re.compile(r'unicode', re.IGNORECASE)):
+            _ = self.lex[b'art'](u'got')[u'lek']
+        with six.assertRaisesRegex(self, TypeError, re.compile(r'verb.*unicode', re.IGNORECASE)):
+            _ = self.lex[u'art'](b'got')[u'lek']
+        with six.assertRaisesRegex(self, TypeError, re.compile(r'object.*unicode', re.IGNORECASE)):
+            _ = self.lex[u'art'](u'got')[b'lek']
+
+    def test_06f_lex_square_circle_square_bad_binary_txt(self):
+        with self.assertNewWord():
+            _ = self.lex[u'art'](u'got', txt=u'flea bar', use_already=True)[u'lek']
+        with self.assertNoNewWord():
+            _ = self.lex[u'art'](u'got', txt=u'flea bar', use_already=True)[u'lek']
+        with six.assertRaisesRegex(self, TypeError, re.compile(r'unicode', re.IGNORECASE)):
+            _ = self.lex[u'art'](u'got', txt=b'flea bar', use_already=True)[u'lek']
+
+    def test_06g_lex_square_circle_square_assign_bad_binary_txt(self):
+        with self.assertNewWord():
+            self.lex[u'art'](u'got', use_already=True)[u'lek'] = u'flea bar'
+        with six.assertRaisesRegex(self, TypeError, re.compile(r'unicode', re.IGNORECASE)):
+            self.lex[u'art'](u'got', use_already=True)[u'lek'] = b'flea bar'
 
     def test_07a_subject_circle_use_already_square(self):
         with self.assertNewWord():
