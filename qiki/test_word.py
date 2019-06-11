@@ -681,34 +681,45 @@ class WordExoticTests(WordTests):
         extract_test(('foo', 42), txt='foo', num=qiki.Number(42))
         extract_test(('foo', 42), qiki.Number(42), txt='foo')
 
-        def extract_test_plus_kwargs(expected_pair, *args, **kwargs):
-            args_list = list(args)
-            actual_pair = SubjectedVerb.extract_txt_num(args_list, kwargs)
+        # noinspection PyPep8Naming
+        EXTRA_KWARGS = dict(any=0, other=1, keywords=2)
+
+        def extract_test_extra_kwargs(expected_pair, *args, **kwargs):
+            args_mutable = list(args)
+            actual_pair = SubjectedVerb.extract_txt_num(args_mutable, kwargs)
             self.assertEqual(expected_pair, actual_pair)
-            self.assertEqual([], args_list)
-            self.assertEqual(dict(any=0, other=1, keywords=2), kwargs)
+            self.assertEqual([], args_mutable)
+            self.assertEqual(EXTRA_KWARGS, kwargs)
 
-        extract_test_plus_kwargs(('foo', 42), 'foo', 42, any=0, other=1, keywords=2)
-        extract_test_plus_kwargs((''   ,  1),            any=0, other=1, keywords=2)
+        extract_test_extra_kwargs(('foo', 42), 'foo', 42,     **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('foo', 42), 'foo', num=42, **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('foo', 42), 42, txt='foo', **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('foo',  1), txt='foo',     **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('foo',  1), 'foo',         **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('',    42), 42,            **EXTRA_KWARGS)
+        extract_test_extra_kwargs(('',    42), num=42,        **EXTRA_KWARGS)
+        extract_test_extra_kwargs((''   ,  1),                **EXTRA_KWARGS)
+        extract_test_extra_kwargs((''   ,  1),                **EXTRA_KWARGS)
 
-        def extract_call(*args, **kwargs):
-            _, _ = SubjectedVerb.extract_txt_num(list(args), kwargs)
+        def extract_bombs(*args, **kwargs):
+            """Call extract_txt_num() expecting an exception"""
+            with self.assertRaises(TypeError):
+                _, _ = SubjectedVerb.extract_txt_num(args, kwargs)
 
-        with self.assertRaises(TypeError):  extract_call(42, 99)
-        with self.assertRaises(TypeError):  extract_call('foo', 'bar')
-        with self.assertRaises(TypeError):  extract_call(42, 'foo', 99)
-        with self.assertRaises(TypeError):  extract_call('foo', 42, 'bar')
+        extract_bombs(42, 99)              # two numerics
+        extract_bombs('foo', 'bar')        # two texts
+        extract_bombs(42, 'foo', 99)       # two numerics with a text between
+        extract_bombs('foo', 42, 'bar')    # two texts with a numeric between
 
-        with self.assertRaises(TypeError):  extract_call(42, num=99)
-        with self.assertRaises(TypeError):  extract_call('foo', txt='bar')
+        extract_bombs(42, num=99)          # both positional and keyword numeric
+        extract_bombs('foo', txt='bar')    # both positional and keyword text
 
-        with self.assertRaises(TypeError):  extract_call(num='foo')
-        with self.assertRaises(TypeError):  extract_call(42, num='foo')
-        with self.assertRaises(TypeError):  extract_call('bar', num='foo')
-        with self.assertRaises(TypeError):  extract_call(txt=42)
-        with self.assertRaises(TypeError):  extract_call(txt=42)
-        with self.assertRaises(TypeError):  extract_call(99, txt=42)
-        with self.assertRaises(TypeError):  extract_call('foo', txt=42)
+        extract_bombs(num='foo')           # num=non-numeric
+        extract_bombs(42, num='foo')       # num=non-numeric
+        extract_bombs('bar', num='foo')    # num=non-numeric
+        extract_bombs(txt=42)              # txt=non-text
+        extract_bombs(99, txt=42)          # txt=non-text
+        extract_bombs('foo', txt=42)       # txt=non-text
 
     def test_extract_txt_num_singleton(self):
         self.assertEqual(("foo", 1), SubjectedVerb.extract_txt_num("foo", dict()))
