@@ -1055,8 +1055,15 @@ class Lex(object):
     """
     Collection of Numbered Words.
 
-    idn is the number that identifies the word.
-    meta_idn is the number that identifies the Lex collection.
+    idn is the qiki Number that identifies the word.
+    The words are instantiations of a subclass of qiki Word.
+
+    meta_idn is the number that identifies the Lex collection itself, in some parent Lex.
+    Meta and mesa are opposites, up and down the hierarchy of lexes.
+    (this is not an inheritance hierarchy)
+    This hierarchy was invented so a Listing can reconstruct the suffixed idn
+    needed in the LexSentence words that REFER to Listing words.
+
     """
 
     def __init__(self, meta_word=None, word_class=None, **_):

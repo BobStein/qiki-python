@@ -556,18 +556,19 @@ class Number(numbers.Complex):
         """One-input operator - fob off on int or float or complex math."""
         n = type(self)(self)
         if n.is_complex():
-            # noinspection PyTypeChecker
+            # NO LONGER NEEDED? noinspection PyTypeChecker
             return type(self)(op(complex(n)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
-            # return Number(op(n.__complex__()))
 
-        try:
-            int_is_better_than_float = n.is_whole()
-        except self.WholeError:
-            int_is_better_than_float = False
+        # try:
+        #     int_is_better_than_float = n.is_whole()
+        # except self.WholeError:
+        #     int_is_better_than_float = False
+        #
+        # if int_is_better_than_float:
 
-        if int_is_better_than_float:
+        elif n.is_whole():
             return type(self)(op(int(n)))
         else:
             return type(self)(op(float(n)))
@@ -578,18 +579,19 @@ class Number(numbers.Complex):
         n1 = cls(input_left)
         n2 = cls(input_right)
         if n1.is_complex() or n2.is_complex():
-            # noinspection PyTypeChecker
+            # NO LONGER NEEDED?  noinspection PyTypeChecker
             return cls(op(complex(n1), complex(n2)))
             # FIXME:  Unexpected type(s): (Number) Possible types: (float) (str)
             # SEE:  https://youtrack.jetbrains.com/issue/PY-27766
-            # return Number(op(n1.__complex__(), n2.__complex__()))
 
-        try:
-            int_better_than_float = n1.is_whole() and n2.is_whole()
-        except cls.WholeError:
-            int_better_than_float = False
+        # try:
+        #     int_better_than_float = n1.is_whole() and n2.is_whole()
+        # except cls.WholeError:
+        #     int_better_than_float = False
+        #
+        # if int_better_than_float:
 
-        if int_better_than_float:
+        elif n1.is_whole() and n2.is_whole():
             return cls(op(int(n1), int(n2)))
         else:
             return cls(op(float(n1), float(n2)))
@@ -695,7 +697,7 @@ class Number(numbers.Complex):
         return return_value
 
     def is_whole(self):
-        """Is the number an integer?""" 
+        """Can this number be represented by an integer?"""
         if self.zone in ZoneSet.WHOLE_MAYBE:
             (qan_int, qan_len) = self.qan_int_len()
             qex = self.base_256_exponent() - qan_len
@@ -711,12 +713,17 @@ class Number(numbers.Complex):
         elif self.zone in ZoneSet.WHOLE_NO:
             return False
         else:           # ZoneSet.WHOLE_INDETERMINATE
-            raise self.WholeError("Cannot determine wholeness of " + repr(self))   # e.g. Number.POSITIVE_INFINITY
+            return False
+            # NOTE:  Lets just not make a big deal out of it
+            #        and say transfinite numbers are NOT whole.
+            #        So n.is_whole() is more like asking
+            #        whether int(n) can represent the number.
+            # raise self.WholeError("Cannot determine wholeness of " + repr(self))   # e.g. Number.POSITIVE_INFINITY
 
     is_integer = is_whole
 
-    class WholeError(OverflowError):
-        """When it's nonsense to ask if a number is whole, e.g. Number.POSITIVE_INFINITY.is_whole()"""
+    # class WholeError(OverflowError):
+    #     """When it's nonsense to ask if a number is whole, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
         """Is this NAN?"""

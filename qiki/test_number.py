@@ -2441,14 +2441,13 @@ class NumberIsTests(NumberTests):
         self.assertEqual(Number('0q8A_010000000000000001'), 18446744073709551617)
 
     def test_is_whole_indeterminate(self):
-        with self.assertRaises(Number.WholeError):
-            Number(float('+inf')).is_whole()
-        with self.assertRaises(Number.WholeError):
-            Number(float('-inf')).is_whole()
-        with self.assertRaises(Number.WholeError):
-            Number.POSITIVE_INFINITY.is_whole()
-        with self.assertRaises(Number.WholeError):
-            Number.NEGATIVE_INFINITY.is_whole()
+        self.assertFalse(Number(float('+inf')).is_whole())
+        self.assertFalse(Number(float('-inf')).is_whole())
+        self.assertFalse(Number(float('nan')).is_whole())
+        self.assertFalse(Number().is_whole())
+        self.assertFalse(Number.POSITIVE_INFINITY.is_whole())
+        self.assertFalse(Number.NEGATIVE_INFINITY.is_whole())
+        self.assertFalse(Number.NAN.is_whole())
 
     def test_comparable_whole_indeterminate(self):
         self.assertTrue(Number.POSITIVE_INFINITY > Number.NEGATIVE_INFINITY)
