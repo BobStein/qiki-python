@@ -2271,7 +2271,14 @@ class LexMySQL(LexSentence):
         SEE:  Closing aggregated connection (using flawed __del__),
               https://softwareengineering.stackexchange.com/a/200529/56713
         """
-        if hasattr(self, '_connection') and self._connection is not None:
+
+        try:
+            need_to_close = hasattr(self, '_connection') and self._connection is not None
+        except NameError:
+            need_to_close = False
+            # THANKS:  Safely ignore, https://stackoverflow.com/a/44940341/673991
+
+        if need_to_close:
             if self._connection.is_connected():
                 # NOTE:  Prevent `TypeError: 'NoneType'` deep in MySQL Connector code.
                 self._connection.close()
