@@ -2449,13 +2449,31 @@ class NumberIsTests(NumberTests):
         self.assertFalse(Number.NEGATIVE_INFINITY.is_whole())
         self.assertFalse(Number.NAN.is_whole())
 
-    def test_comparable_whole_indeterminate(self):
+    def test_is_reasonable(self):
+        self.assertTrue(Number(-2.5).is_reasonable())
+        self.assertTrue(Number(-1  ).is_reasonable())
+        self.assertTrue(Number(-0.5).is_reasonable())
+        self.assertTrue(Number( 0  ).is_reasonable())
+        self.assertTrue(Number( 0.5).is_reasonable())
+        self.assertTrue(Number( 2  ).is_reasonable())
+        self.assertTrue(Number( 2.5).is_reasonable())
+        self.assertTrue(Number('0q8A_01').is_reasonable())
+
+        self.assertFalse(Number(float('+inf')).is_reasonable())
+        self.assertFalse(Number(float('-inf')).is_reasonable())
+        self.assertFalse(Number(float('nan')).is_reasonable())
+        self.assertFalse(Number().is_reasonable())
+        self.assertFalse(Number.POSITIVE_INFINITY.is_reasonable())
+        self.assertFalse(Number.NEGATIVE_INFINITY.is_reasonable())
+        self.assertFalse(Number.NAN.is_reasonable())
+
+    def test_compare_transfinite(self):
         self.assertTrue(Number.POSITIVE_INFINITY > Number.NEGATIVE_INFINITY)
         self.assertTrue(Number.POSITIVE_INFINITY >= Number.NEGATIVE_INFINITY)
         self.assertTrue(Number.NEGATIVE_INFINITY < Number.POSITIVE_INFINITY)
         self.assertTrue(Number.NEGATIVE_INFINITY <= Number.POSITIVE_INFINITY)
 
-    def test_binary_op_whole_indeterminate(self):
+    def test_binary_op_transfinite(self):
         self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY + Number.POSITIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY + Number.NEGATIVE_INFINITY)
 
@@ -2464,7 +2482,7 @@ class NumberIsTests(NumberTests):
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.POSITIVE_INFINITY)
         self.assertEqual(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.NEGATIVE_INFINITY)
 
-    def test_unary_op_whole_indeterminate(self):
+    def test_unary_op_transfinite(self):
         self.assertEqual(Number.POSITIVE_INFINITY, -Number.NEGATIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, -Number.POSITIVE_INFINITY)
 

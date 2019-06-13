@@ -696,6 +696,9 @@ class Number(numbers.Complex):
         assert return_value == (self.zone in ZoneSet.ZERO)
         return return_value
 
+    def is_reasonable(self):
+        return self.zone in ZoneSet.REASONABLE
+
     def is_whole(self):
         """Can this number be represented by an integer?"""
         if self.zone in ZoneSet.WHOLE_MAYBE:

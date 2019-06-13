@@ -691,11 +691,11 @@ class Word(object):
 
     @staticmethod
     def presentable(num):
-        if num.is_suffixed():
+        if num.is_suffixed() or not num.is_reasonable():
             return num.qstring()
         try:
             is_it_whole = num.is_whole()
-        except Number.WholeError:
+        except TypeError:   # Number.WholeError:
             return num.qstring()
         else:
             if is_it_whole:
