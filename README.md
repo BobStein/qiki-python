@@ -16,20 +16,19 @@ is to get good at deciding:
 2. what **ought** to be
 3. what to **do** about it
 
-Let's get much better at these now.
+Let's get better at these now.
 Many great consequences are held up until we do.
-We don't want to agree, 
-not totally.
+We don't want to agree, not totally.
 But we must decide.
 
 We must find a way to decide 
-what is happening.
+what is **happening**.
 This is why many discussions 
 talk past each other.
 We need some agreement on what is happening
-before we can talk about what matters.
+before we can talk about what **matters**.
 We need enough agreement on what matters
-before we can talk about what to do.
+before we can talk about what to **do**.
 
 Who is we?
 This applies to any group you can think of.
@@ -39,7 +38,7 @@ for getting better at group decisions.
 
 ## how
 
-I think the gizmos can help out.
+I think the gizmos can help us out.
 Start by storing our thinking out of the silos.
 Then anybody can start looking for patterns.
 And turning the gizmos loose looking for patterns.
@@ -86,8 +85,11 @@ We need better machines
 and better machine teachers. 
 But before we start those negotiations
 we need a richer collection of opinions
-in the open.
+out in the open.
 Let's get started.
+
+((smooth transition 
+to technical stuff))
 
 
 ## word
@@ -179,7 +181,7 @@ and the verb in a circle.
 # |_________|    \ __ /    |________|
 ```
 
-Okay, it doesn't make any more sense.
+Okay, it doesn't make a whole lot more sense.
 But you see the resemblance right?
 Give it time to grow on you.
 
@@ -201,24 +203,24 @@ print("{:svo}".format(word))
 
 Yes and no.
 Yes every sentence defines a new word.
-But no there are other ways to make up words.
+But no there are some other ways to make up words.
 
-I lied earlier, 
-the subclass `LexSentence` contains words
-of seven attributes each, 
+I lied earlier, the subclass `LexSentence` 
+contains words of seven attributes each, 
 but a `Lex` is simpler.
 The only attribute a word really has to have 
 is an `idn`.
 A word can be anything 
 you can identify with a number.
-And a lex can be any collection 
-of uniquely identified words.
+And a lex can be any kind 
+of access to identified words.
 
 
 ## is a lex a bunch of sentences?
 
 Almost. 
-A lex is always a bunch of _words_.
+A lex always provides access 
+to a bunch of _words_.
 Give a lex an idn and it will give you a word.
 
 ```
@@ -240,7 +242,7 @@ some comment somewhere.
 
 ## the no-center thing
 
-So if you want, 
+If you want, 
 your lex can connect to other lexes.
 Because of dirty tricks with qiki numbers, 
 the sentences in your lex
@@ -285,9 +287,10 @@ And reward it.
 And encourage more like it.
 
 A word can represent the next big thing
-that will make this software obsolete,
-or eclipse the reckless adventures 
-I try to start with it,
+that will make this software obsolete.
+Something else is bound to eclipse 
+the reckless experiments 
+I try to start with qiki,
 after they go down in flames
 from regulation, 
 big ventures, 

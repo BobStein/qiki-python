@@ -1489,8 +1489,13 @@ class TimeLex(Lex):
 
     Each word represents an instant in time.  Or an interval between times.
 
-    lex[Number.NAN] is "now" -- the time it was referenced.
-    lex[i] is any other time i.
+    time_lex = TimeLex()
+    t_now = time_lex[Number.NAN]   # "now" -- the time it was referenced.
+    t_i = time_lex[i]              # any other time, i seconds since 1970 UTC
+
+    t_1 = time_lex[unix_timestamp_1]
+    t_2 = time_lex[unix_timestamp_2]
+    t_delta = time_lex[t_1]('differ')[t_2]   # seconds between any two times
     """
 
     _DIFFER = 'differ'
@@ -2283,6 +2288,7 @@ class LexMySQL(LexSentence):
             need_to_close = hasattr(self, '_connection') and self._connection is not None
         except NameError:
             need_to_close = False
+            # EXAMPLE:  NameError: name 'hasattr' is not defined
             # THANKS:  Safely ignore, https://stackoverflow.com/a/44940341/673991
 
         if need_to_close:

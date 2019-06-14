@@ -1566,6 +1566,10 @@ class Word0011FirstTests(WordTests):
         # print("TimeLex", now_word.num.qstring(), float(now_word.num), now_word.txt)
         # EXAMPLE:  TimeLex 0q85_5CEFC9AE6BC6A8 1559218606.42 2019.0530.1216.46
 
+        self.assertGreater(now_word.idn, qiki.Number(1560516598))
+        # NOTE:  There was a bug where idn would be NAN until referencing txt or num
+        #        because the word was "inchoate" until then.
+
         six.assertRegex(self, str(now_word.txt), r'^\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d$')   # Y10K bug
         self.assertGreater(now_word.txt, qiki.Text('2019.0530.1216.46'))
         # noinspection SpellCheckingInspection
