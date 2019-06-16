@@ -1540,8 +1540,15 @@ class TimeLex(Lex):
                 #        It represents the ABSTRACTION of a time interval.
                 #        This word defines the verb whose txt='differ'.
                 #        Then all time interval words have this word as their vrb.
+            else:
+                raise ValueError("TimeLex can't identify " + repr(idn_ish))
         else:
-            return super(TimeLex, self).read_word(idn_ish)
+            new_word = super(TimeLex, self).read_word(idn_ish)
+            new_word.exists()
+            # NOTE:  This is a sneaky way to make new_word choate, so idn of NAN becomes now.
+            #        This fixes time_lex[time_lex[NAN]] which also should be now.
+            return new_word
+
 
     # noinspection PyMethodMayBeStatic
     def differ(self, word, sbj, vrb, obj):
@@ -1559,6 +1566,8 @@ class TimeLex(Lex):
 
     def populate_word_from_sbj_vrb_obj(self, word, sbj, vrb, obj):
         if vrb.txt == self._DIFFER:
+            # XXX:  This is a cute hijack of qiki sentences, but clumsy as musher fudge.
+            #       Subtraction, i.e. time_word.__sub__() might be a lot less muddy.
             return self.differ(word, sbj, vrb, obj)
         return False
 
@@ -1566,9 +1575,9 @@ class TimeLex(Lex):
         assert isinstance(word, Word)
         assert isinstance(idn, Number)
         if idn.is_nan():
-            # TODO:  Should this weird special case be somehow achieved by the
-            #        same mechanism that LexMySQL auto increments when inserting a new word?
-            #        Kind of a lex.next_idn() method or something?
+            # TODO:  Should this weird special NAN=now case be somehow achieved by the
+            #        same (weird) mechanism that LexMySQL auto increments when inserting a new word?
+            #        Kind of a lex.next_available_idn() method or something?
             unix_epoch = Pythonic.unix_epoch_now()
             num = Number(unix_epoch)
             word.set_idn_if_you_really_have_to(num)
@@ -1864,16 +1873,20 @@ class LexSentence(Lex):
         except IndexError:
             raise self.NotFound
 
-    class CreateWordError(Exception):
-        """LexSentence.create_word() argument error."""
-
     def read_word(self, txt_or_idn_etc):
         if Text.is_valid(txt_or_idn_etc):
             word = self.word_class(txt=txt_or_idn_etc)
-            self.populate_word_from_definition(word, txt_or_idn_etc)
+            # FIXME:  Should verify that lex defined it.
+            #         Maybe eventually the user can define it himself.
+            # word = self.lex.find_words(sbj=self.lex, vrb='define', txt=txt_or_idn_etc)
+
+            self.populate_word_from_definition(word, txt_or_idn_etc)   # TODO:  redundant??
             return word
         else:
             return super(LexSentence, self).read_word(txt_or_idn_etc)
+
+    class CreateWordError(Exception):
+        """LexSentence.create_word() argument error."""
 
     def create_word(
         self,
@@ -1889,7 +1902,8 @@ class LexSentence(Lex):
         """
         # TODO:  Disallow num,txt positionally, unlike Word.says()
 
-        assert isinstance(sbj, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(sbj))
+        # TODO:  Allow sbj=lex
+        assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type_name(sbj))
         assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
         assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
 
@@ -2848,10 +2862,16 @@ class LexMySQL(LexSentence):
                 #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
                 raise self.SelectError(
                     str(exception) +
-                    " on query: " +
+                    " on query:\n" +
                     query +
-                    "; parameter lengths " +
+                    ";\n" +
+                    "parameter lengths " +
                     ",".join(str(len(p)) for p in parameters)
+                    # +
+                    # "\n" +
+                    # "parameters: " +
+                    # ",".join(repr(p) for p in parameters)
+                    # NOTE:  Not showing parameter values, they may be binary.
                 )
 
             for row in cursor:

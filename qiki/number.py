@@ -2055,7 +2055,9 @@ def bytes_from_hex(hexadecimal_digits):
         raise bytes_from_hex.Error("Not an even number of hexadecimal digits: " + repr(hexadecimal_digits))
     assert return_value == six.binary_type(bytearray.fromhex(hexadecimal_digits))
     return return_value
-bytes_from_hex.Error = type(str('string_from_hex_Error'), (ValueError,), {})
+class _BytesFromHexError(ValueError):
+    """bytes_from_hex() invalid input"""
+bytes_from_hex.Error = _BytesFromHexError
 assert b'\xBE\xEF' == bytes_from_hex('BEEF')
 
 
