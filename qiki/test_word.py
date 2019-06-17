@@ -300,8 +300,10 @@ class LexErrorTests(TestBaseClass):
     def test_two_lex(self):
         lex1 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
         max_start = lex1.max_idn()
-        lex1._lex.define(lex1.noun(), u'borg')
+
+        lex1.define(lex1.noun(), u'borg')
         self.assertEqual(max_start+1, lex1.max_idn())
+
         lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
         self.assertEqual(max_start+1, lex2.max_idn())
 
