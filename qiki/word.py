@@ -1171,6 +1171,14 @@ class Lex(object):
         raise NotImplementedError()
 
 
+class WordListed(Word):
+    lex = None
+
+    @property
+    def index(self):
+        return self.idn.suffix(Suffix.Type.LISTING).number
+
+
 class Listing(Lex):
     # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
     # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
@@ -1214,15 +1222,8 @@ class Listing(Lex):
 
         if word_class is None:
 
-            class WordClassJustForThisListing(Word):
-                lex = None
-
-                @property
-                def index(self):
-                    return self.idn.suffix(Suffix.Type.LISTING).number
-
-                # def __call__(self, vrb, *a, **k):
-                #     return SubjectedVerb(self.idn, vrb, *a, **k)
+            class WordClassJustForThisListing(WordListed):
+                pass
 
             word_class = WordClassJustForThisListing
 
@@ -1885,7 +1886,7 @@ class LexSentence(Lex):
         else:
             return super(LexSentence, self).read_word(txt_or_idn_etc)
 
-    class CreateWordError(Exception):
+    class CreateWordError(ValueError):
         """LexSentence.create_word() argument error."""
 
     def create_word(
@@ -2298,18 +2299,26 @@ class LexMySQL(LexSentence):
               https://softwareengineering.stackexchange.com/a/200529/56713
         """
 
+        # noinspection PyBroadException
         try:
-            need_to_close = hasattr(self, '_connection') and self._connection is not None
-        except NameError:
-            need_to_close = False
-            # EXAMPLE:  NameError: name 'hasattr' is not defined
-            # THANKS:  Safely ignore, https://stackoverflow.com/a/44940341/673991
-
-        if need_to_close:
-            if self._connection.is_connected():
-                # NOTE:  Prevent `TypeError: 'NoneType'` deep in MySQL Connector code.
-                self._connection.close()
-            self._connection = None
+            name_error = NameError
+        except:
+            '''Severe inability to close'''
+            # EXAMPLE:  NameError: name 'NameError' is not defined
+            raise
+        else:
+            try:
+                need_to_close = hasattr(self, '_connection') and self._connection is not None
+            except name_error:
+                '''Dying session, give up trying to close gracefully.'''
+                # EXAMPLE:  NameError: name 'hasattr' is not defined
+                # THANKS:  Safely ignore, https://stackoverflow.com/a/44940341/673991
+            else:
+                if need_to_close:
+                    if self._connection.is_connected():
+                        # NOTE:  Prevent `TypeError: 'NoneType'` deep in MySQL Connector code.
+                        self._connection.close()
+                    self._connection = None
 
     def __del__(self):
         self.disconnect()

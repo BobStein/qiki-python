@@ -16,10 +16,22 @@ is to get good at deciding:
 2. what **ought** to be
 3. what to **do** about it
 
-Let's get better at these now.
-Many great consequences are held up until we do.
-We don't want to agree, not totally.
-But we must decide.
+Let's get better at these.
+Many great consequences are held back until we do.
+We don't need to agree.
+But we do have decisions to make, 
+and move on,
+in a way most everyone can get behind.
+
+Impossible you think?
+I'm not so sure.
+I am sure if we don't figure this out
+it will ruin us.
+I think someone's going to figure it out,
+how to resolve as a group.
+I'd rather it be us.
+I'd rather it be humans
+than some species living on our ruins.
 
 We must find a way to decide 
 what is **happening**.
@@ -40,7 +52,7 @@ for getting better at group decisions.
 
 I think the gizmos can help us out.
 Start by storing our thinking out of the silos.
-Then anybody can start looking for patterns.
+Then anybody can begin looking for patterns.
 And turning the gizmos loose looking for patterns.
 And looking for meaning.
 The time to create value and safety
@@ -65,18 +77,21 @@ And everyone's job to figure out what they mean.
 
 No company is powerful enough, 
 no government is rich enough,
-no subset is smart enough,
+no review staff is responsible enough --
+no subset has enough smarts --
 to decide the most important decisions.
 Or decide who decides them.
-This has to be everyone's job.
+This has got to be everyone's job.
 Yes it's going to be very hard. 
 
 This is how we'll get big things done
 without being overwhelmed, 
-without losing our minds
-or our humanity:
+without losing our minds,
+or our humanity 
+(or whatever divinity means to you):
 by teaching machines to 
-tease out of many opinions what we want,
+tease out of many opinions 
+what we want,
 what actually matters to us.
 
 If you don't think machines are up to that
@@ -84,12 +99,12 @@ you're probably right.
 We need better machines 
 and better machine teachers. 
 But before we start those negotiations
-we need a richer collection of opinions
+we need a rich collection of opinions
 out in the open.
 Let's get started.
 
-((smooth transition 
-to technical stuff))
+((some kind of smooth transition 
+to some technical stuff goes here))
 
 
 ## word
@@ -138,11 +153,12 @@ Here's what they're called:
 * `num` - quantify matters
 * `txt` - name, explain, discuss, UTF-8
 * `idn` - identified sequentially
-* `whn` - UTC seconds after 1970 (or before)
+* `whn` - UTC seconds after 1970
 
 You could call this seven-y thing a sentence.
 A lex is just a bunch of words.
 And each word has these seven attributes.
+(All but `txt` are qiki numbers.)
 
 
 ## hello proverbial world
@@ -329,7 +345,7 @@ I know, right?
 
 This package needs a lot of change
 before it can play a part
-in the ways I've mentioned here.
+in the ways mentioned here.
 I hope you'll participate.
 
 -- Bob Stein, http://bobste.in/ 

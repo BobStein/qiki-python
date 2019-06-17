@@ -30,6 +30,7 @@ from .word import Lex
 from .word import LexSentence
 from .word import LexInMemory
 from .word import LexMySQL
+from .word import WordListed
 from .word import Listing
 from .word import Qoolbar
 from .word import QoolbarSimple
@@ -38,16 +39,18 @@ from .word import TimeLex
 
 __all__ = [
     'Number',
+    'Suffix',
     'Word',
     'Lex',
     'LexSentence',
     'LexInMemory',
     'LexMySQL',
+    'WordListed',
     'Listing',
     'Qoolbar',
     'QoolbarSimple',
     'Text',
-    'Suffix',
+    'TimeLex',
 ]
 
 from . import version
