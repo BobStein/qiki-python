@@ -3388,3 +3388,8 @@ class QoolbarSimple(Qoolbar):
 # Or the word might be named in a computer language for reference by code.
 # Not so much language but application
 #     lex-apacheName-path "pth"
+
+# TODO:  lex[x] is exactly one word (or an exception) but how about:
+#        lex(x) is a COLLECTION of words, same as lex.find_words(x)
+#        lex(vrb='like') is all the words with lex['like'] as their vrb
+#        lex(obj=lex(vrb=browse, obj=path)) is all the hits on a path
