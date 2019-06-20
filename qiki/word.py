@@ -1873,7 +1873,9 @@ class LexSentence(Lex):
         raise NotImplementedError()
 
     def find_last(self, **kwargs):
-        # TODO:  In LexMySQL, limit find_words() to latest using sql LIMIT.
+        # TODO:  In LexMySQL, do this more efficiently:
+        #        limit find_words() to latest using sql LIMIT.
+        # TODO:  Who should make sure idn_ascending is True?
         bunch = self.find_words(**kwargs)
         try:
             return bunch[-1]

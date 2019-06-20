@@ -216,7 +216,7 @@ class Number(numbers.Complex):
             self._from_complex(content)
         elif content is None:
             self.raw = self.RAW_NAN
-            assert not args_list
+            assert len(args_list) == 0
             # NOTE:  Avoid suffixing NAN.
         else:
             raise self.ConstructorTypeError("{outer}({inner}) is not supported".format(
@@ -231,7 +231,7 @@ class Number(numbers.Complex):
             else:
                 raise self.ConstructorSuffixError("Expecting suffixes, not a '{}'".format(type_name(suffix)))
 
-        assert(isinstance(self._raw, six.binary_type))
+        assert isinstance(self._raw, six.binary_type)
         if normalize:
             self._normalize_all()
 
@@ -336,7 +336,7 @@ class Number(numbers.Complex):
         """ Set the raw byte-string.  Rare. """
         # TODO:  Enforce rarity?  Make this setter raise an exception, and create a _set_raw() method.
         # Would making Number immutable avoid common ref bugs, e.g. def f(n=Number(0)):  n += 1 ...
-        assert(isinstance(value, six.binary_type))
+        assert isinstance(value, six.binary_type)
         # noinspection PyAttributeOutsideInit
         self._raw = value
         self._zone_setter()
@@ -811,7 +811,7 @@ class Number(numbers.Complex):
         assert Number(1) == Number('0q82_01')
         assert Number(1) == Number('1')
         """
-        assert(isinstance(s, six.string_types))
+        assert isinstance(s, six.string_types)
         if s.startswith('0q'):
             self._from_qstring(s)
         else:
@@ -2045,7 +2045,7 @@ def bytes_from_hex(hexadecimal_digits):
 
         Possibly because fromhex is more permissive:  bytearray.fromhex('12 AB')
         """
-    assert(isinstance(hexadecimal_digits, six.string_types))
+    assert isinstance(hexadecimal_digits, six.string_types)
     try:
         return_value = binascii.unhexlify(hexadecimal_digits)
     except (
@@ -2055,15 +2055,15 @@ def bytes_from_hex(hexadecimal_digits):
         raise bytes_from_hex.Error("Not an even number of hexadecimal digits: " + repr(hexadecimal_digits))
     assert return_value == six.binary_type(bytearray.fromhex(hexadecimal_digits))
     return return_value
-class _BytesFromHexError(ValueError):
+class BytesFromHexError(ValueError):
     """bytes_from_hex() invalid input"""
-bytes_from_hex.Error = _BytesFromHexError
+bytes_from_hex.Error = BytesFromHexError
 assert b'\xBE\xEF' == bytes_from_hex('BEEF')
 
 
 def hex_from_string(string_of_8_bit_bytes):
     """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
-    assert(isinstance(string_of_8_bit_bytes, six.binary_type))
+    assert isinstance(string_of_8_bit_bytes, six.binary_type)
     return binascii.hexlify(string_of_8_bit_bytes).upper().decode()
 assert 'BEEF' == hex_from_string(b'\xBE\xEF')
 
@@ -2131,14 +2131,14 @@ assert False is floats_really_same(+0.0, -0.0)
 # ---------------------------
 def left_pad00(the_string, num_bytes):
     """Make a byte-string num_bytes long by padding '\x00' bytes on the left."""
-    assert(isinstance(the_string, six.binary_type))
+    assert isinstance(the_string, six.binary_type)
     return the_string.rjust(num_bytes, bytes(b'\x00'))
 assert b'\x00\x00string' == left_pad00(b'string', 8)
 
 
 def right_strip00(the_string):
     """Remove '\x00' bytes from the right end of a byte-string."""
-    assert(isinstance(the_string, six.binary_type))
+    assert isinstance(the_string, six.binary_type)
     return the_string.rstrip(bytes(b'\x00'))
 assert b'string' == right_strip00(b'string\x00\x00')
 

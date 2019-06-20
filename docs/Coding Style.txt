@@ -850,7 +850,8 @@ Bias against idioms, to help non-native English speakers.  These can be especial
 
 Unambiguous Wording
 -------------------
-Avoid ambiguous wording.  Imagine your text passing through a cheap translator. Simple words are good, but big words may be more precise and may translate with less confusion.
+Avoid ambiguous wording.  Imagine your text passing through a cheap translator. 
+Simple words are good, but big words may be more precise and may translate with less confusion.
 
 Where precise understanding is important, single-meaning English words are better than multiple-meaning words.
 Because language translators are less likely to confuse the meanings.
@@ -862,7 +863,7 @@ So sometimes arcane polysyllabic jargon is better than a conversational monosyll
     "clear"
         1 syllable
         more than 5 meanings
-            and even the one you want is less precise:  "it's obvious"
+            and the meaning of "clear" that's closest to "unambiguous" is less precise:  "it's obvious"
 
 Avoid non-primary meanings of simple words.  "Clear" means primarily transparent.  Be biased against using its other meanings.
 
@@ -928,6 +929,23 @@ Counterpoint (why you may prefer to repeat yourself in this example):
     This case doesn't have the big D.R.Y. problem for long because a skewed edit would be caught by the assert.
     The benefit of repeating yourself here is comprehensible and trustable code.
 
+
+
+Simple
+======
+Avoid:
+    plural
+    suffix (ly, ed, er, tion)
+    abbreviate
+    double negative
+    ambiguity
+    low-content words ("the", "system", prepositions)
+unless
+    avoiding would be nonsensical, or
+    avoiding could be confusing, or
+    there's some other good reason, or
+    it's very funny
+
         
 
 Naming
@@ -987,7 +1005,8 @@ Yes:
     
 SEE:  Singular table names, https://stackoverflow.com/a/5841297/673991
       Plural table names, https://stackoverflow.com/a/3254185/673991
-        
+    
+
         
 English is better than abbreviations
 ------------------------------------
