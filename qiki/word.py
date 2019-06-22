@@ -103,20 +103,20 @@ class Word(object):
 
         Definition of "inchoate"
         ------------------------
-        An inchoate word is frugal with resources.
+        An inchoate word is frugal with resources.  It's ghosty, barely there.
         All that is known about an inchoate word is its idn.
         Maybe that's all we ever need to know about it.
-        But, if almost anything else is asked of it, then the word is made choate.
-        For example, getting these properties requires the word to become choate first:
+        But, if anything substantive is asked of it, then the word is made choate.
+        For example, getting these properties forces the word to become choate:
             word.sbj
             word.vrb
             word.vrb
             word.num
             word.txt
             word.whn
-            word.exists()
+            word.exists()   (does it exist in the lex, NOT is it choate)
 
-        The following also make a word choate, and they also do so implicitly
+        The following also have the side-effect of making a word choate,
         because they use one of the above properties:
             str(word)
             repr(word)
@@ -140,9 +140,9 @@ class Word(object):
         It also makes it possible to work with a list of words
         in a way that's almost as resource-efficient as a list of idns.
         """
-        # DONE:  Refactor _is_inchoate property to check for the existence of self._fields instead.
-        # CAUTION:  But Word(content=None) is a choate word.  Because it populates self._fields.
+        # CAUTION:  But Word(content=None) is a choate word, because it populates self._fields.
         #           Listing relies on all this so it may need to be refactored.
+        #           (This is weird because Word(idn) is inchoate.)
         self.set_idn_if_you_really_have_to(idn)
 
     def set_idn_if_you_really_have_to(self, idn):
@@ -158,6 +158,14 @@ class Word(object):
         """
         if self._is_inchoate:
             self._from_idn(self._idn)
+
+            # assert not self._is_inchoate
+            # TODO:  Why the f does asserting that break everything?
+
+            if self._is_inchoate:
+                self._fields = dict()
+
+        assert not self._is_inchoate
 
     # TODO:  @property?
     def exists(self):
@@ -242,58 +250,59 @@ class Word(object):
         if isinstance(vrb, six.binary_type):
             raise TypeError("Verb name must be unicode, not " + repr(vrb))
         return SubjectedVerb(self, vrb, *args, **kwargs)
+        # NOTE:  sbj=self
 
-    def define(self, obj, txt):
-        return self.lex.define(obj, txt, sbj=self)
-        # TODO:  Test that sbj=self confers ownership of the word on self (as opposed to lex).
-        # TODO:  Test that sbj.define() works as well as lex.define(..., sbj=sbj)
-        # TODO:  Should the be in some kind of WordSentence() subclass instead?
-        #        Otherwise e.g. word_listing.define() does zombie things
-
-        # # TODO:  WTF, D.R.Y. violation with LexSentence.define().  One should use the other or sumpin.
-        # """
-        # Define a word.  Name it txt.  Its type or class is obj.
-        #
-        # Example:
-        #     agent = lex['agent']
-        #     lex.define(agent, 'fred')
-        # Or:
-        #     lex.define('agent', 'fred')
-        #
-        # The obj may be identified by its txt, example:
-        #     lex.define('agent', 'fred')
-        # """
-        # if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex['x'])
-        #     # obj = self.spawn(obj)
-        #     obj = self.lex.read_word(obj)
-        # # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
-        #
-        # assert isinstance(obj, Word)
-        # assert Text.is_valid(txt), "define() txt cannot be a {}".format(type_name(txt))
-        #
-        # # How to handle "duplications"
-        #
-        # # TODO:  Should not this be spawn(sbj=lex, vrb=define, txt)?
-        # # Maybe someone else will define a word.
-        # # Then everyone who tries to define that word will use that first person's definition.
-        # # Anything interesting about the first definer of a word?  Maybe not much.
-        # # What's important is consistency.
-        # # And anyway, anyone could theoretically imbue the word with their own meaning,
-        # # applicable to their uses.
-        #
-        # # TODO:  Implement define() via says() with a use_earliest option?
-        # # Not really, more subtle than that. Selecting uniqueness on txt and not on sbj.
-        #
-        # # Who cares about num (yet)?  Used to, but now abolished.
-        #
-        # # So anyway, this attempts to find the earliest definition by anybody of the same word:
-        # # possibly_existing_word = self.spawn(txt)
-        # possibly_existing_word = self.lex[txt]
-        # if possibly_existing_word.exists():
-        #     return possibly_existing_word
-        # # new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
-        # new_word = self(vrb=self.lex[u'define'], txt=txt)[obj]
-        # return new_word
+    # def define(self, obj, txt):
+    #     return self.lex.define(obj, txt, sbj=self)
+    #     # TODO:  Test that sbj=self confers ownership of the word on self (as opposed to lex).
+    #     # TODO:  Test that sbj.define() works as well as lex.define(..., sbj=sbj)
+    #     # TODO:  Should the be in some kind of WordSentence() subclass instead?
+    #     #        Otherwise e.g. word_listing.define() does zombie things
+    #
+    #     # # TODO:  WTF, D.R.Y. violation with LexSentence.define().  One should use the other or sumpin.
+    #     # """
+    #     # Define a word.  Name it txt.  Its type or class is obj.
+    #     #
+    #     # Example:
+    #     #     agent = lex['agent']
+    #     #     lex.define(agent, 'fred')
+    #     # Or:
+    #     #     lex.define('agent', 'fred')
+    #     #
+    #     # The obj may be identified by its txt, example:
+    #     #     lex.define('agent', 'fred')
+    #     # """
+    #     # if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex['x'])
+    #     #     # obj = self.spawn(obj)
+    #     #     obj = self.lex.read_word(obj)
+    #     # # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
+    #     #
+    #     # assert isinstance(obj, Word)
+    #     # assert Text.is_valid(txt), "define() txt cannot be a {}".format(type_name(txt))
+    #     #
+    #     # # How to handle "duplications"
+    #     #
+    #     # # TODO:  Should not this be spawn(sbj=lex, vrb=define, txt)?
+    #     # # Maybe someone else will define a word.
+    #     # # Then everyone who tries to define that word will use that first person's definition.
+    #     # # Anything interesting about the first definer of a word?  Maybe not much.
+    #     # # What's important is consistency.
+    #     # # And anyway, anyone could theoretically imbue the word with their own meaning,
+    #     # # applicable to their uses.
+    #     #
+    #     # # TODO:  Implement define() via says() with a use_earliest option?
+    #     # # Not really, more subtle than that. Selecting uniqueness on txt and not on sbj.
+    #     #
+    #     # # Who cares about num (yet)?  Used to, but now abolished.
+    #     #
+    #     # # So anyway, this attempts to find the earliest definition by anybody of the same word:
+    #     # # possibly_existing_word = self.spawn(txt)
+    #     # possibly_existing_word = self.lex[txt]
+    #     # if possibly_existing_word.exists():
+    #     #     return possibly_existing_word
+    #     # # new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
+    #     # new_word = self(vrb=self.lex[u'define'], txt=txt)[obj]
+    #     # return new_word
 
     def said(self, vrb, obj):
         return self(vrb)[obj]
@@ -439,7 +448,7 @@ class Word(object):
             return self.lex.root_lex[args[0]]
 
         try:
-            idn = idn_ify(args[0])
+            idn = self.lex.idn_ify(args[0])
         except IndexError:                        # args is empty (kwargs probably is not)
             pass
         except TypeError:                         # args[0] is neither a Word nor a Number
@@ -519,15 +528,18 @@ class Word(object):
         # assert not idn.is_suffixed()
         self.set_idn_if_you_really_have_to(idn)
         self.lex.populate_word_from_idn(self, idn)
+        # TODO:  Do something with return value?
         # NOTE:  If this returned True, it already called populate_from_word()
         #        and so the word now exists()
 
     def _from_definition(self, txt):
-        """Construct a Word from its txt, but only when it's a definition."""
+        """Construct a Word from its txt, but only when it's a definition, and only by sbj=lex."""
         assert Text.is_valid(txt)
         assert isinstance(self.lex, Lex)
         if not self.lex.populate_word_from_definition(self, txt):
-            self._fields = dict(txt=Text(txt))
+            self._fields = dict(
+                txt=Text(txt)
+            )
 
     def _from_word(self, other):
         assert isinstance(other, Word)   # Not necessarily type(self)
@@ -602,9 +614,6 @@ class Word(object):
         self.set_idn_if_you_really_have_to(row[prefix + 'idn'])
         self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
-            # sbj=self.spawn(row[prefix + 'sbj']),
-            # vrb=self.spawn(row[prefix + 'vrb']),
-            # obj=self.spawn(row[prefix + 'obj']),
             sbj=self.lex[row[prefix + 'sbj']],
             vrb=self.lex[row[prefix + 'vrb']],
             obj=self.lex[row[prefix + 'obj']],
@@ -762,19 +771,21 @@ class Word(object):
                 txt=repr(self.txt),
                 num=self.num.qstring(),
             ))
+        elif Text.is_valid(self.txt):
+            return "Word(undefined {})".format(repr(self.txt))
         else:
             try:
-                idn_int = repr(int(self.idn))
+                idn_repr = repr(self.idn)
             except ValueError:
                 if self.txt:
-                    return "Word(undefined {})".format(repr(self.txt))
+                    return "Word(nonexistent {})".format(repr(self.txt))   # TODO:  unit test
                 else:
-                    return "Word(in a stranger state, idn {})".format(repr(self.idn))
+                    return "Word(in a corrupt state)"   # can't show idn nor txt  TODO: unit test this?
             else:
-                return "Word(in a strange state, idn {})".format(idn_int)
+                return "Word(unidentified {})".format(idn_repr)
 
     def __str__(self):
-        if hasattr(self, 'txt'):
+        if hasattr(self, 'txt') and self.txt is not None:
             return self.txt.native()
         else:
             return repr(self)
@@ -1156,8 +1167,11 @@ class Lex(object):
         if idn_or_word_or_none is None:
             return self.word_class(None)
 
-        idn = idn_ify(idn_or_word_or_none)
+        idn = self.idn_ify(idn_or_word_or_none)
         assert isinstance(idn, Number)
+
+        if idn is None:
+            return self.word_class(idn_or_word_or_none)
 
         if idn.is_suffixed():
             try:
@@ -1165,9 +1179,10 @@ class Lex(object):
                 lex = self.root_lex.mesa_lexes[meta_idn]
                 # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.
                 #        Allowing nested lexes.
-            except (Listing.NotAListing, KeyError):
-                raise Lex.NotFound("{q} is not a Listing idn".format(
+            except (Listing.NotAListing, KeyError) as e:
+                raise Lex.NotFound("{q} is not a Listing idn: {e}".format(
                     q=idn.qstring(),
+                    e=type_name(e) + " - " + str(e),
                 ))
             return lex.read_word(index)
         else:
@@ -1175,6 +1190,55 @@ class Lex(object):
 
     def populate_word_from_idn(self, word, idn):
         raise NotImplementedError()
+
+
+    def idn_ify(self, x):
+        """
+        Helper for functions that take either idn or word.
+
+        Or for a LexSentence, return its idn for itself!
+
+        CAUTION:  This will of course NOT be the idn that OTHER lexes use
+                  to refer to this lex.
+
+        :param x:  - an idn or a word or a lex (LexSentence)
+        :return:   - an idn, nor None for undefined name ()
+        """
+        # TODO:  Support idn_ify(42) !?
+        if isinstance(x, Word):
+            assert isinstance(x.idn, Number)
+            return x.idn
+        elif isinstance(x, Number):
+            return x
+        elif isinstance(x, (int, float)):
+            return Number(x)
+        elif isinstance(x, LexSentence):
+            assert isinstance(x.IDN_LEX, Number)
+            return x.IDN_LEX
+        else:
+            if isinstance(x, six.binary_type):
+                raise TypeError("The name of a qiki Word must be unicode, not " + repr(x))
+            elif Text.is_valid(x):
+                # w = lex[x]
+                w = self.word_class(x)
+                if w.exists():
+                    return w.idn
+                else:
+                    return None
+                    # TODO: is this out of place?  Instead raise ValueError??
+                    # raise TypeError("No definition for '{txt}' in this {lex}".format(
+                    #     txt=x,
+                    #     lex=type_name(lex),
+                    # ))
+            else:
+                raise TypeError(
+                    "{the_type} is not supported here.  "
+                    "Expecting the idn or name of a word, a word itself, or a lex.\n"
+                    "    You passed:  {repr}".format(
+                        the_type=type_name(x),
+                        repr=repr(x),
+                    )
+                )
 
 
 class WordListed(Word):
@@ -1300,6 +1364,7 @@ class Listing(Lex):
         _, index = self.split_compound_idn(idn)
         (txt, num) = self.lookup(index)
         word.populate_from_num_txt(Number(num), Text(txt))
+        return True
 
     # def lookup_callback(self, txt, num):
     #     # Another case where txt comes before num, the exception.
@@ -1556,7 +1621,6 @@ class TimeLex(Lex):
             #        This fixes time_lex[time_lex[NAN]] which also should be now.
             return new_word
 
-
     # noinspection PyMethodMayBeStatic
     def differ(self, word, sbj, vrb, obj):
         difference = obj.whn - sbj.whn
@@ -1625,6 +1689,7 @@ class TimeLex(Lex):
         #                                  ^--- in word w, only the whn field has a time
         #        in case w.num represents a time, you can:
         #            t[w.num]('differ')[now_word]
+        return True
 
     # TODO:  TimeLex()[t1:t2] could be a time interval shorthand??  D'oh!
 
@@ -1656,11 +1721,16 @@ class LexSentence(Lex):
                             then such a class will be created for you.
     The _lex property is a bit mind-bending.
                       It is the word in the lex that's an abstraction for the lex.
-                      See each lex needs a way to refer to itself.  Just as it can refer to another lex.
-                      That reference is usually in the sbj or obj of a word in the lex.
+                      See, each lex needs a way to refer to itself.
+                      A pale shadow of the way it can refer to another lex, also.
+                      That reference (to an abstraction of itself)
+                      is usually in the sbj or obj of a word in the lex.
                       If `lex` is an instance of a Lex subclass,
-                      Then lex._lex is an instance of the word that represents that lex.
+                      Then lex._lex is a word that represents that lex.
                       lex._lex is an instance of lex.word_class
+                      Boy for all that mind-bending it sure isn't used for much.
+                      It's used in Word.define as a default for the sbj=None parameter.
+                      It's used in LexMySQL.__init__() as a hint the lex is new and empty.
     """
 
     def populate_word_from_idn(self, word, idn):
@@ -1672,55 +1742,12 @@ class LexSentence(Lex):
         self._noun = None
         self._verb = None
         self._define = None
+        self._duplicate_definition_callback_functions = []
 
-    # def __getitem__(self, item):
-    #     """
-    #     Square-bracket Word instantiation.
-    #
-    #     This is the result of
-    #         lex[idn]
-    #         lex[txt]  (for a definition)
-    #         lex[word]  (for copy construction)
-    #     """
-    #     return self.read_word(item)
-    #
-    #     existing_word = self._lex.spawn(item)
-    #     # existing_word = self.word_class(item)
-    #     # Oops can't use word_class here. The class depends on the item. That's what spawn does.
-    #
-    #     # if not existing_word.exists():
-    #     #     raise self.NotExist
-    #     # No, because inchoate words become choate by virtue of calling .exists().
-    #     # And it's just not (yet) the Word way of doing things.
-    #     #     That is, lots of code asks permission rather than forgiveness.
-    #     #     But even moreso, the whole inchoate scheme falls apart if we have to ask,
-    #     #     at this point, whether the word exists or not.
-    #
-    #     # if existing_word.idn == self.idn:
-    #     #     return self   # lex is a singleton, i.e. assert lex[lex] is lex
-    #
-    #     # TODO:  Explain, why is this important?
-    #     #        Why is the Lex's word for the Lex itself only instantiated once.
-    #     #        And why aren't other words in the Lex also a singleton.,
-    #     # Ok, one reason it makes sense is only a LexMySQL instantiated object (which is also a Word)
-    #     # can perform database actions like .find_words() or .populate_word_from_idn().
-    #     # There should be only one instance of a Lex for a given lex.
-    #     # Otherwise there'd be multiple connections or shared connections and chaos would reign.
-    #     # But is there any problem with there being a Word('lex') that isn't a Lex?
-    #     # Equal but not identical.  Not so weird.
-    #     # You couldn't do any lex-like things to Word('lex').
-    #     # Maybe the lesson here is that Lex should not derive Word at all.
-    #     # Possibly go further and make Lex the metaclass of Word.
-    #     # Is that just abstraction-confusion?  Lex is really a CONTAINER of Words.
-    #     # Maybe lex should be a class object of Word.  And it should point to
-    #     # whatever generates words.
-    #     #
-    #     #     class MyWord(Word):
-    #     #         pass
-    #     #
-    #     #     MyWord.lex = LexMySQL(**my_credentials, word_class=MyWord)
-    #
-    #     return existing_word
+    def duplicate_definition_notify(self, f):
+        # XXX:  Sure is a drastic, totalitarian solution.
+        #       But duplicate defines have in the past wasted a lot of time.
+        self._duplicate_definition_callback_functions.append(f)
 
     class ConnectError(Exception):
         pass
@@ -1753,11 +1780,9 @@ class LexSentence(Lex):
         """
         def seminal_word(_idn, _obj, _txt):
             """Subject is always 'lex'.  Verb is always 'define'."""
-            # word = self._lex.spawn(_idn)
             word = self[_idn]
             if not word.exists():
                 self._install_one_seminal_word(_idn, _obj, _txt)
-                # word = self._lex.spawn(_idn)
                 word = self[_idn]
             assert word.exists()
 
@@ -1782,25 +1807,7 @@ class LexSentence(Lex):
                                                                         # ---
                                                                         # 5,3
 
-        # assert not self.exists()
-        # if not self.exists():     # XXX:  Does this make sense??
-                                    # Why should from_idn() cause lex to "exist" if it "did not" already?
-                                    # Could lex just start out inchoate and that would take care of this??!??
-
-        # self._from_idn(self.IDN_LEX)
-
-        # assert self.exists()
-        # assert self.is_lex()
-
     def _install_one_seminal_word(self, _idn, _obj, _txt):
-        # word = self._lex.spawn(
-        #     sbj=self.IDN_LEX,
-        #     vrb=self.IDN_DEFINE,
-        #     obj=_obj,
-        #     num=Number(1),
-        #     txt=_txt,
-        # )
-        # word.save(override_idn=_idn)
         self.create_word(
             override_idn=_idn,
             sbj=self.IDN_LEX,
@@ -1822,12 +1829,6 @@ class LexSentence(Lex):
     def populate_word_from_sbj_vrb_obj_num_txt(self, word, sbj, vrb, obj, num, txt):
         raise NotImplementedError()
 
-    # def noun(self, name=None):
-    #     raise NotImplementedError()
-    #
-    # def verb(self, name=None):
-    #     raise NotImplementedError()
-
     def noun(self, name=None):
         if name is None:
             return self._noun
@@ -1848,10 +1849,28 @@ class LexSentence(Lex):
             raise self.DefinitionMustBeUnicode(
                 "Definition must have unicode name, not " + repr(txt)
             )
-        old_definition = self[txt]
-        if old_definition.exists():
-            # TODO:  Use create_word's use_already option instead.
-            return old_definition
+        try:
+            old_definition = self[txt]
+        except TypeError:
+            '''txt must not be defined yet.'''
+        else:
+            if old_definition.exists():
+                # TODO:  Use create_word's use_already option instead?
+                #        Oops, cannot!
+                #        define() goes to EARLIEST definition
+                #        create_word(use_already=True) goes to LATEST definition
+                if len(self._duplicate_definition_callback_functions) > 0:
+                    duplicate_words = self.find_words(vrb=self._define, txt=txt)
+                    if len(duplicate_words) != 1:
+                        for function in self._duplicate_definition_callback_functions:
+                            function(
+                                txt,
+                                "Duplicate definitions for '{txt}': {idns}".format(
+                                    txt=txt,
+                                    idns=", ".join(w.idn.qstring() for w in duplicate_words),
+                                )
+                            )
+                return old_definition
         sbj = sbj or self._lex
         vrb = self._define
         obj = self[obj]
@@ -1882,14 +1901,24 @@ class LexSentence(Lex):
         except IndexError:
             raise self.NotFound
 
+    # def read_word(self, txt_or_idn_etc):
+    #     if Text.is_valid(txt_or_idn_etc):
+    #         # word = self.word_class(txt=txt_or_idn_etc)  <-- well that was dumb ... OR NOT
+    #         word = self.word_class(txt_or_idn_etc)
+    #         # word = self[txt_or_idn_etc]  <--- haha no, that is infinite recursion
+    #         # word._from_definition(txt_or_idn_etc)
+    #         # FIXME:  Should verify that lex defined it.
+    #         #         Maybe eventually the user can define it himself.
+    #         # word = self.lex.find_words(sbj=self.lex, vrb='define', txt=txt_or_idn_etc)
+    #
+    #         # self.populate_word_from_definition(word, txt_or_idn_etc)   # TODO:  redundant??
+    #         return word
+    #     else:
+    #         return super(LexSentence, self).read_word(txt_or_idn_etc)
+
     def read_word(self, txt_or_idn_etc):
         if Text.is_valid(txt_or_idn_etc):
-            word = self.word_class(txt=txt_or_idn_etc)
-            # FIXME:  Should verify that lex defined it.
-            #         Maybe eventually the user can define it himself.
-            # word = self.lex.find_words(sbj=self.lex, vrb='define', txt=txt_or_idn_etc)
-
-            self.populate_word_from_definition(word, txt_or_idn_etc)   # TODO:  redundant??
+            word = self.word_class(txt_or_idn_etc)
             return word
         else:
             return super(LexSentence, self).read_word(txt_or_idn_etc)
@@ -1899,7 +1928,9 @@ class LexSentence(Lex):
 
     def create_word(
         self,
-        sbj, vrb, obj,
+        sbj,
+        vrb,
+        obj,
         num=None,
         txt=None,
         num_add=None,
@@ -1912,9 +1943,9 @@ class LexSentence(Lex):
         # TODO:  Disallow num,txt positionally, unlike Word.says()
 
         # TODO:  Allow sbj=lex
-        assert isinstance(sbj, (Word, Number)), "sbj cannot be a {type}".format(type=type_name(sbj))
-        assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
-        assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
+        assert isinstance(sbj, (Word, Number, type(u''))), "sbj cannot be a {type}".format(type=type_name(sbj))
+        assert isinstance(vrb, (Word, Number, type(u''))), "vrb cannot be a {type}".format(type=type_name(vrb))
+        assert isinstance(obj, (Word, Number, type(u''))), "obj cannot be a {type}".format(type=type_name(obj))
 
         # if isinstance(txt, numbers.Number) or Text.is_valid(num):
         #     # TODO:  Why `or` not `and`?
@@ -1971,7 +2002,7 @@ class LexSentence(Lex):
             else:
                 # There was an identical sentence already.  Fetch it so new_word.exists().
                 # This is the only path through create_word() where no new sentence is created.
-                # new_word._from_sbj_vrb_obj_num_txt()
+                # That is, where new_word is an old word.
                 self.populate_word_from_sbj_vrb_obj_num_txt(new_word, sbj, vrb, obj, Number(num), txt)
                 assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
                     old=old_word.idn.qstring(),
@@ -2049,15 +2080,20 @@ class LexInMemory(LexSentence):
     def populate_word_from_idn(self, word, idn):
         try:
             word_source = self.words[int(idn)]
-        except IndexError:
+        except (
+            IndexError,   # e.g. (what?)
+            ValueError    # e.g. Word(NAN) - ValueError: Not-A-Number cannot be represented by integers.
+        ):
             return False
         else:
             word.populate_from_word(word_source)
             return True
 
     def populate_word_from_definition(self, word, define_txt):
+        """Flesh out a word by its txt.  sbj=lex, vrb=define only."""
         for word_source in self.words:
             if (
+                word_source.sbj.idn == self.IDN_LEX and
                 word_source.vrb.idn == self.IDN_DEFINE and
                 word_source.txt == Text(define_txt)
             ):
@@ -2111,14 +2147,14 @@ class LexInMemory(LexSentence):
         found_words = []
         for word_source in self.words if idn_ascending else reversed(self.words):
             hit = True
-            if idn is not None and word_source.idn != idn_ify(idn):
+            if idn is not None and word_source.idn != self.idn_ify(idn):
                 # TODO:  Why does word_match(word_source.idn, idn) fail in one test?
                 hit = False
-            if sbj is not None and not word_match(word_source.sbj, sbj):
+            if sbj is not None and not self.word_match(word_source.sbj, sbj):
                 hit = False
-            if vrb is not None and not word_match(word_source.vrb, vrb):
+            if vrb is not None and not self.word_match(word_source.vrb, vrb):
                 hit = False
-            if obj is not None and not word_match(word_source.obj, obj):
+            if obj is not None and not self.word_match(word_source.obj, obj):
                 hit = False
             if txt is not None and word_source.txt != Text(txt):
                 hit = False
@@ -2130,7 +2166,7 @@ class LexInMemory(LexSentence):
             for found_word in found_words:
                 jbo = []
                 for other_word in self.words:
-                    if word_match(other_word.obj, found_word.idn) and word_match(other_word.vrb, jbo_vrb):
+                    if self.word_match(other_word.obj, found_word.idn) and self.word_match(other_word.vrb, jbo_vrb):
                         jbo.append(other_word)
 
                 new_word = self[found_word]
@@ -2150,6 +2186,21 @@ class LexInMemory(LexSentence):
             return restricted_found_words
         else:
             return found_words
+
+    def word_match(self, word_1, word_or_words_2):
+        """
+        Is a word equal to another word (or any of a nested collection of words)?
+
+        Actually they can be idns too.
+        """
+        # assert not is_iterable(word_1)
+        if is_iterable(word_or_words_2):
+            for word_2 in word_or_words_2:
+                if self.word_match(word_1, word_2):
+                    return True
+            return False
+        else:
+            return self.idn_ify(word_1) == self.idn_ify(word_or_words_2)
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
@@ -2187,7 +2238,6 @@ class LexMySQL(LexSentence):
         kwargs_etc = { k: v for k, v in kwargs.items() if k not in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
 
         super(LexMySQL, self).__init__(**kwargs_etc)
-
 
         def do_connect():
             self._connection = mysql.connector.connect(**kwargs_sql)
@@ -2330,18 +2380,6 @@ class LexMySQL(LexSentence):
 
     def __del__(self):
         self.disconnect()
-
-    # def noun(self, name=None):
-    #     if name is None:
-    #         return self._noun
-    #     else:
-    #         return self._lex.define(self._noun, name)
-    #
-    # def verb(self, name=None):
-    #     if name is None:
-    #         return self._verb
-    #     else:
-    #         return self._lex.define(self._verb, name)
 
     def install_from_scratch(self):
         """Create database table and insert words.  Or do nothing if table and/or words already exist."""
@@ -2494,9 +2532,11 @@ class LexMySQL(LexSentence):
         return self._populate_from_one_row(word, rows)
 
     def populate_word_from_definition(self, word, define_txt):
+        """Flesh out a word by its txt.  sbj=lex, vrb=define only."""
         rows = self.super_select(
             'SELECT * FROM', self.table, 'AS w '
-            'WHERE vrb =', self.IDN_DEFINE,
+            'WHERE sbj =', self.IDN_LEX,
+            'AND vrb =', self.IDN_DEFINE,
             'AND txt =', Text(define_txt),
             'ORDER BY `idn` ASC LIMIT 1'   # select the EARLIEST definition, so it's the most universal.
         )
@@ -2530,16 +2570,18 @@ class LexMySQL(LexSentence):
         try:
             row = next(rows)
         except StopIteration:
-            return False
+            return    # oops, fewer than 1 row
         else:
             word.populate_from_row(row)
             try:
                 next(rows)
             except StopIteration:
-                pass
+                return True
             else:
                 assert False, "Cannot populate from unexpected extra rows."
-            return True
+                # noinspection PyUnreachableCode
+                return False   # oops, more than 1 row (it is reachable, with python -O)
+
 
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
@@ -2593,9 +2635,9 @@ class LexMySQL(LexSentence):
         if jbo_vrb is None:
             jbo_vrb = ()
         assert isinstance(idn, (Number, Word, type(None)))
-        assert isinstance(sbj, (Number, Word, type(None)))   # TODO: Allow LexSentence too
-        assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
-        assert isinstance(obj, (Number, Word, type(None)))
+        assert isinstance(sbj, (Number, Word, type(None), type(u'')))   # TODO: Allow LexSentence too
+        assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None), type(u'')))
         assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type_name(jbo_vrb)
         assert hasattr(jbo_vrb, '__iter__')
         idn_order = 'ASC' if idn_ascending else 'DESC'
@@ -2690,23 +2732,26 @@ class LexMySQL(LexSentence):
     #     idns = [row['idn'] for row in rows_of_idns]
     #     return idns
 
-    @staticmethod
-    def _and_clauses(idn, sbj, vrb, obj, txt):
+    # @staticmethod
+    def _and_clauses(self, idn, sbj, vrb, obj, txt):
         assert isinstance(idn, (Number, Word, type(None)))
-        assert isinstance(sbj, (Number, Word, type(None)))
-        # assert isinstance(vrb, (Number, Word, type(None))) or is_iterable(vrb)
-        assert isinstance(vrb, (Number, Word, type(None), collections_abc.Iterable))
-        assert isinstance(obj, (Number, Word, type(None)))
+        assert isinstance(sbj, (Number, Word, type(None), type(u'')))
+        assert isinstance(vrb, (Number, Word, type(None), type(u''), collections_abc.Iterable))
+        assert isinstance(obj, (Number, Word, type(None), type(u'')))
         query_args = []
         if idn is not None:
-            query_args += ['AND w.idn =', idn_ify(idn)]
+            query_args += ['AND w.idn =', self.idn_ify(idn)]
         if sbj is not None:
-            query_args += ['AND w.sbj =', idn_ify(sbj)]
+            query_args += ['AND w.sbj =', self.idn_ify(sbj)]
         if vrb is not None:
-            try:
-                verbs = [idn_ify(v) for v in vrb]
-            except TypeError:
-                verbs = [idn_ify(vrb)]
+            if isinstance(vrb, type(u'')):
+                # NOTE:  Don't let a verb name string be interpreted as an iterable
+                verbs = [self.idn_ify(vrb)]
+            else:
+                try:
+                    verbs = [self.idn_ify(v) for v in vrb]
+                except TypeError:
+                    verbs = [self.idn_ify(vrb)]
             if len(verbs) < 1:
                 pass
             elif len(verbs) == 1:
@@ -2718,7 +2763,7 @@ class LexMySQL(LexSentence):
                 query_args += [')', None]
         if obj is not None:
             # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
-            query_args += ['AND w.obj =', idn_ify(obj)]
+            query_args += ['AND w.obj =', self.idn_ify(obj)]
         if txt is not None:
             query_args += ['AND w.txt =', Text(txt)]
         return query_args
@@ -2861,7 +2906,7 @@ class LexMySQL(LexSentence):
         SQL statement-fragment strings interleaved with data, that generates rows
 
         EXAMPLE:
-
+            rows = super_select(
 
         :param query_args:  e.g.
         :param kwargs:
@@ -2884,6 +2929,7 @@ class LexMySQL(LexSentence):
                     ";\n" +
                     "parameter lengths " +
                     ",".join(str(len(p)) for p in parameters)
+
                     # +
                     # "\n" +
                     # "parameters: " +
@@ -2997,58 +3043,6 @@ class LexMySQL(LexSentence):
     class IllegalEngineName(Exception):
         pass
 
-
-def idn_ify(x):
-    """
-    Helper for functions that take either idn or word.
-
-    Or for a LexSentence, return its idn for itself!
-
-    CAUTION:  This will of course NOT be the idn that OTHER lexes use
-              to refer to this lex.
-
-    :param x:  - an idn or a word or a lex (LexSentence)
-    :return:   - an idn
-    """
-    # TODO:  Support idn_ify(42) !?
-    if isinstance(x, Word):
-        assert isinstance(x.idn, Number)
-        return x.idn
-    elif isinstance(x, Number):
-        return x
-    elif isinstance(x, (int, float)):
-        return Number(x)
-    elif isinstance(x, LexSentence):
-        assert isinstance(x.IDN_LEX, Number)
-        return x.IDN_LEX
-    else:
-        if isinstance(x, six.binary_type):
-            raise TypeError("The name of a qiki Word must be unicode, not " + repr(x))
-        else:
-            raise TypeError(
-                "{the_type} is not supported here.  "
-                "Expecting the idn or name of a word, a word itself, or a lex.\n"
-                "    You passed:  {repr}".format(
-                    the_type=type_name(x),
-                    repr=repr(x),
-                )
-            )
-
-
-def word_match(word_1, word_or_words_2):
-    """
-    Is a word equal to another word (or any of a nested collection of words)?
-
-    Actually they can be idns too.
-    """
-    # assert not is_iterable(word_1)
-    if is_iterable(word_or_words_2):
-        for word_2 in word_or_words_2:
-            if word_match(word_1, word_2):
-                return True
-        return False
-    else:
-        return idn_ify(word_1) == idn_ify(word_or_words_2)
 
 
 def is_iterable(x):
@@ -3218,7 +3212,7 @@ class QoolbarSimple(Qoolbar):
         )
 
     def get_verbs(self, debug=False):
-        return self.get_verbs_new(debug)
+        return self.get_verbs_new_method(debug)
 
     def get_verb_dicts(self, debug=False):
         """
@@ -3226,6 +3220,7 @@ class QoolbarSimple(Qoolbar):
             idn - qstring of the verb's idn
             name - txt of the verb, e.g. 'like'
             icon_url - txt from the most recent iconify sentence (or None if there weren't any)
+            qool_num - native integer for verb's num field (0 means user deleted it)
 
         :param debug: bool - print() SQL (to log) and other details.
         :rtype: collections.Iterable[dict[string, string]]
@@ -3242,7 +3237,7 @@ class QoolbarSimple(Qoolbar):
                 qool_num=int(verb.qool_num),
             )
 
-    def get_verbs_new(self, debug=False):
+    def get_verbs_new_method(self, debug=False):
         qool_verbs = self.lex.find_words(
             vrb=self.lex[u'define'],
             # obj=self.lex[u'verb'],   # Ignore whether object is lex[verb] or lex[qool]
@@ -3277,7 +3272,7 @@ class QoolbarSimple(Qoolbar):
                 # needs to pass a list of its values and know its length anyway.
         return verbs
 
-    def get_verbs_old(self, debug=False):
+    def get_verbs_old_method(self, debug=False):
         qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)
         verbs = []
         for qoolification in qoolifications:

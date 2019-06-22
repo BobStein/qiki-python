@@ -22,10 +22,8 @@ import six
 import qiki
 from qiki.number import hex_from_string
 from qiki.number import type_name
-from qiki.word import LexInMemory
-from qiki.word import SubjectedVerb
-from qiki.word import idn_ify   # , to_kwargs, ToKwargsException
 from qiki.word import is_iterable
+from qiki.word import SubjectedVerb
 
 try:
     import secure.credentials
@@ -535,8 +533,8 @@ class WordDemoTests(WordTests):
 
         # Definers
         # s(define)[o] &= t ???
+        lex.define(o, t)
         s('define')[o] = t
-        s.define(o, t)
 
         # Getters (but not setters)
         w = lex[s](v)[o]
@@ -581,7 +579,7 @@ class WordDemoTests(WordTests):
 
     def test_read_md(self):
         """Example code in README.md"""
-        lex = LexInMemory()
+        lex = qiki.LexInMemory()
         hello = lex.verb('hello')
         world = lex.noun('world')
 
@@ -755,14 +753,52 @@ class WordExoticTests(WordTests):
             (unicorn.sbj.txt, unicorn.vrb.txt, unicorn.obj.txt, unicorn.txt, unicorn.num)
         )
 
+    def test_lex_square_txt_nonexistent(self):
+        self.assertFalse(              self.lex[u'nevermore'].exists())
+        self.assertEqual(None,         self.lex[u'nevermore'].idn)
+        self.assertEqual(None,         self.lex[u'nevermore'].sbj)
+        self.assertEqual(None,         self.lex[u'nevermore'].vrb)
+        self.assertEqual(None,         self.lex[u'nevermore'].obj)
+        self.assertEqual(None,         self.lex[u'nevermore'].num)
+        self.assertEqual(u'nevermore', self.lex[u'nevermore'].txt)
+        self.assertEqual(None,         self.lex[u'nevermore'].whn)
+
+        self.assertEqual(u'nevermore', str(self.lex[u'nevermore']))
+
+        six.assertRegex(self, repr(self.lex[u'nevermore']), r'undefined')
+        six.assertRegex(self, repr(self.lex[u'nevermore']), r'nevermore')
+
+        # print("Nonexistent txt str:", str(self.lex[u'nevermore']))
+        # EXAMPLE:  nevermore
+
+        # print("Nonexistent txt repr:", repr(self.lex[u'nevermore']))
+        # EXAMPLE:  Word(undefined 'nevermore')
+
+    def test_lex_square_idn_nonexistent(self):
+        not_an_idn = qiki.Number(-999)
+        self.assertFalse(            self.lex[not_an_idn].exists())
+        self.assertEqual(not_an_idn, self.lex[not_an_idn].idn)
+        self.assertEqual(None,       self.lex[not_an_idn].sbj)
+        self.assertEqual(None,       self.lex[not_an_idn].vrb)
+        self.assertEqual(None,       self.lex[not_an_idn].obj)
+        self.assertEqual(None,       self.lex[not_an_idn].num)
+        self.assertEqual(None,       self.lex[not_an_idn].txt)
+        self.assertEqual(None,       self.lex[not_an_idn].whn)
+
+        six.assertRegex(self, str(self.lex[not_an_idn]), r'unidentified')
+
+        six.assertRegex(self, repr(self.lex[not_an_idn]), r'unidentified')
+        self.assertIn(not_an_idn.qstring(), repr(self.lex[not_an_idn]))
+
+        # print("Nonexistent idn str:", str(self.lex[not_an_idn]))
+        # EXAMPLE:  Word(unidentified Number('0q7C_FC19'))
+
+        # print("Nonexistent idn repr:", repr(self.lex[not_an_idn]))
+        # EXAMPLE:  Word(unidentified Number('0q7C_FC19'))
+
 
 class Aardvark002InternalWordTests(WordTests):
     """Test the WordTests class itself."""
-
-    # # noinspection PyMethodMayBeStatic
-    # def test_000_line_feed(self):
-    #     print()
-    #     # NOTE:  Start with LF because all the other tests print an unterminated "."
 
     def test_assertNoNewWord(self):
         with self.assertNoNewWord():
@@ -926,7 +962,13 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(self.lex_class.__name__, type_name(self.lex))
         self.assertEqual('WordClassJustForThisLex', type_name(self.lex._lex))
 
+
     def test_01f_word_classes_distinct(self):
+        """Even though named the same, default word classes for different lexes are distinct."""
+        # TODO:  Move to a TestClass that doesn't setup self.lex
+        #        i.e. not derived from WordTests
+        #        because this test runs on LexInMemory only.
+        #        or would it be too hard to try it on a LexMySQL too?
         lex1 = qiki.LexInMemory()
         lex2 = qiki.LexInMemory()
         self.assertEqual(lex1.word_class.__name__, lex2.word_class.__name__)
@@ -1106,13 +1148,65 @@ class Word0011FirstTests(WordTests):
         self.assertTrue(greatgrandchild.is_a_noun())
         self.assertTrue(greatgreatgrandchild.is_a_noun())
 
-    def test_08_noun_twice(self):
+    def test_08a_noun_twice(self):
         noun = self.lex[u'noun']
         with self.assertNewWord():
             thing1 = self.lex.define(noun, u'thing')
         with self.assertNoNewWord():
             thing2 = self.lex.define(noun, u'thing')
         self.assertEqual(thing1.idn, thing2.idn)
+
+    def test_08b_defines_with_different_objs(self):
+        """Changing a definition from noun to verb still gets the old definition"""
+        noun = self.lex[u'noun']
+        verb = self.lex[u'verb']
+
+        with self.assertNewWord():
+            fling1 = self.lex.define(noun, u'fling')
+        with self.assertNoNewWord():
+            fling2 = self.lex.define(verb, u'fling')
+        self.assertEqual(fling1.idn, fling2.idn)
+
+    def test_08c_duplicate_definition_notify(self):
+        noun = self.lex[u'noun']
+        define = self.lex[u'define']
+
+        class LocalContext:
+            report_count = 0
+
+        # noinspection PyUnusedLocal
+        def report(*args):
+            LocalContext.report_count += 1
+            # print(*args)
+            # EXAMPLE:  fling Duplicate definitions for 'fling': 0q82_05, 0q82_06
+        self.lex.duplicate_definition_notify(report)
+
+        with self.assertNewWord():
+            fling1 = self.lex.create_word(
+                sbj=self.lex[self.lex],
+                vrb=define,
+                obj=noun,
+                txt=u'fling'
+            )
+        self.assertEqual(0, LocalContext.report_count)
+
+        with self.assertNewWord():
+            fling2 = self.lex.create_word(
+                sbj=self.lex[self.lex],
+                vrb=define,
+                obj=noun,
+                txt=u'fling'
+            )
+        self.assertEqual(0, LocalContext.report_count)
+
+        with self.assertNoNewWord():
+            fling3 = self.lex.define(noun, u'fling')
+        self.assertEqual(1, LocalContext.report_count)
+
+        self.assertEqual(1, LocalContext.report_count)
+        self.assertNotEqual(fling1.idn, fling2.idn)
+        self.assertEqual   (fling1.idn, fling3.idn)
+
 
     def test_09a_equality(self):
         self.assertEqual(self.lex.noun, self.lex.noun)
@@ -1393,7 +1487,7 @@ class Word0011FirstTests(WordTests):
             # self.assertIs(qiki.Text, type(word.txt))
             # self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
-            word = s.define(o, txt)
+            word = self.lex.define(o, txt)
             self.assertIs(qiki.Text, type(word.txt))
             self.assertTripleEqual(qiki.Text(u'apple'), word.txt)
 
@@ -1550,18 +1644,71 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(punt1.idn, punt2.idn)
 
     def test_18d_define_prefers_earlier_definition(self):
-        lex = self.lex._lex
+        lex_word = self.lex._lex
         define = self.lex[u'define']
         noun = self.lex[u'noun']
         with self.assertNewWord():
-            punt1 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt')
+            punt1 = self.lex.create_word(sbj=lex_word, vrb=define, obj=noun, txt=u'punt')
         with self.assertNewWord():
-            punt2 = self.lex.create_word(sbj=lex, vrb=define, obj=noun, txt=u'punt')
+            punt2 = self.lex.create_word(sbj=lex_word, vrb=define, obj=noun, txt=u'punt')
 
         with self.assertNoNewWord():
             punt3 = self.lex.define(noun, u'punt')
-        self.assertEqual(   punt3, punt1)
-        self.assertNotEqual(punt3, punt2)
+        self.assertEqual(   punt3.idn, punt1.idn)
+        self.assertNotEqual(punt3.idn, punt2.idn)
+
+    def test_18e_create_word_by_name(self):
+        lex = self.lex
+        anna = lex.define(lex[u'agent'], u'anna')
+        bale = lex.verb(u'bale')
+        carp = lex.noun(u'carp')
+
+        abc = lex.create_word(sbj='anna', vrb='bale', obj='carp', num=123)
+        self.assertEqual(anna, abc.sbj)
+        self.assertEqual(bale, abc.vrb)
+        self.assertEqual(carp, abc.obj)
+        self.assertEqual(123,  abc.num)
+
+    def test_18g_define_by_name(self):
+        lex = self.lex
+        anna = lex.define(lex[u'agent'], u'anna')
+        carp = lex.noun(u'carp')
+
+        adc = lex.define('carp', 'Garp', sbj='anna')
+        self.assertEqual(anna,          adc.sbj)
+        self.assertEqual(lex['define'], adc.vrb)
+        self.assertEqual(carp,          adc.obj)
+        self.assertEqual('Garp',        adc.txt)
+
+    def test_18h_define_lex_only(self):
+        """Only sbj=lex defines matter"""
+        anna = self.lex.define('agent', 'anna')
+        define = self.lex[u'define']
+        noun = self.lex[u'noun']
+        with self.assertNewWord():
+            punt1 = self.lex.create_word(sbj=anna, vrb=define, obj=noun, txt=u'punt')
+        with self.assertNewWord():
+            punt2 = self.lex.define(noun, u'punt')
+        self.assertNotEqual(punt2.idn, punt1.idn)
+
+    def test_18i_define_lex_only(self):
+        """define() will never find sbj=non-lex definitions"""
+        lex_word = self.lex._lex
+        anna = self.lex.define('agent', 'anna')
+        define = self.lex[u'define']
+        noun = self.lex[u'noun']
+        with self.assertNewWord():
+            punt1 = self.lex.create_word(sbj=anna,     vrb=define, obj=noun, txt=u'punt')
+        with self.assertNewWord():
+            punt2 = self.lex.create_word(sbj=lex_word, vrb=define, obj=noun, txt=u'punt')
+        with self.assertNewWord():
+            punt3 = self.lex.create_word(sbj=anna,     vrb=define, obj=noun, txt=u'punt')
+
+        with self.assertNoNewWord():
+            punt4 = self.lex.define(noun, u'punt')
+        self.assertNotEqual(punt4.idn, punt1.idn)
+        self.assertEqual(   punt4.idn, punt2.idn)
+        self.assertNotEqual(punt4.idn, punt3.idn)
 
     def test_19a_time_lex_now(self):
         now_word = qiki.word.TimeLex().now_word()
@@ -1617,17 +1764,19 @@ class Word0011FirstTests(WordTests):
 
 class Word0012Utilities(WordTests):
 
-    def test_idn_from_word_or_number(self):
+    def test_idn_ify(self):
         agent = self.lex[u'agent']
-        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_ify(agent.idn))
-        self.assertEqual(qiki.LexSentence.IDN_AGENT, idn_ify(agent))
-        self.assertEqual(qiki.Number(42), idn_ify(42))
+        self.assertEqual(qiki.LexSentence.IDN_AGENT, self.lex.idn_ify(agent.idn))
+        self.assertEqual(qiki.LexSentence.IDN_AGENT, self.lex.idn_ify(agent))
+        self.assertEqual(qiki.LexSentence.IDN_AGENT, self.lex.idn_ify(qiki.LexSentence.IDN_AGENT))
+        self.assertEqual(qiki.Number(42),            self.lex.idn_ify(42))
+        self.assertEqual(qiki.LexSentence.IDN_NOUN,  self.lex.idn_ify(u'noun'))
+        self.assertEqual(qiki.LexSentence.IDN_VERB,  self.lex.idn_ify(u'verb'))
+        self.assertIsNone(                           self.lex.idn_ify(u'nonexistent'))
         with self.assertRaises(TypeError):
-            idn_ify('')
-        # with self.assertRaises(TypeError):   Nope, this works now
-        #     idn_ify(0)
+            self.lex.idn_ify(b'')
         with self.assertRaises(TypeError):
-            idn_ify(None)
+            self.lex.idn_ify(None)
 
     def test_inequality_words_and_numbers(self):
         """Sanity check to make sure words and idns aren't intrinsically equal or something."""
@@ -1868,7 +2017,7 @@ class Word0013Brackets(WordTests):
         self.assertEqual(2, word.num)
         self.assertEqual(u"two", word.txt)
 
-    def test_06d_lex_square_circle_square_all_text(self):
+    def test_06d_lex_square_circle_square_by_name(self):
         with self.assertNewWord():
             self.lex[u'art'](u'got')[u'lek'] = 2, u"two"
             word = self.art(self.got)[self.lek]
@@ -3370,6 +3519,16 @@ class Word0070FindTests(WordTests):
         with self.assertRaises(qiki.Lex.NotFound):
             self.lex.find_last(obj=self.curry)
 
+    def test_find_by_name(self):
+        with self.assertNewWords(3):
+            w1 = self.lex[self.fred](self.crave, num=11)[self.apple]
+            w2 = self.lex[self.fred](self.crave, num=22)[self.berry]
+            w3 = self.lex[self.fred](self.crave, num=33)[self.apple]
+
+        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(sbj=u'fred')))
+        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(vrb=u'crave')))
+        self.assertEqual(set(   (w2,   )), set(self.lex.find_words(obj=u'berry')))
+
 
 class WordQoolbarSetup(WordTests):
 
@@ -3683,9 +3842,9 @@ class WordQoolbarTests(WordQoolbarSetup):
         }, {d['name'] for d in verb_dicts})
 
     def test_qoolbar_verbs_old_versus_new_way(self):
-        verbs_old = self.qoolbar.get_verbs_old()
-        verbs_new = self.qoolbar.get_verbs_new()
-        self.assertEqual(verbs_old, verbs_new)
+        old_method = self.qoolbar.get_verbs_old_method()
+        new_method = self.qoolbar.get_verbs_new_method()
+        self.assertEqual(old_method, new_method)
 
     def test_qoolbar_verbs_qool_iconify(self):
         """Verbs that are qool and iconified show up in the qoolbar."""
