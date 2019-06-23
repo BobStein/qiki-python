@@ -17,6 +17,7 @@ import datetime
 import re
 import time
 
+# noinspection PyPackageRequirements
 import mysql.connector
 import six
 
@@ -28,7 +29,7 @@ from qiki.number import type_name
 
 
 HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
-# SEE:  https://stackoverflow.com/questions/52759667/properly-getting-blobs-from-mysql-database-with-mysql-connector-in-python#comment99030618_55150960
+# SEE:  https://stackoverflow.com/q/52759667/673991#comment99030618_55150960
 # SEE:  https://stackoverflow.com/questions/49958723/cant-insert-blob-image-using-python-via-stored-procedure-mysql
 # SEE:  https://stackoverflow.com/questions/51657097/how-can-i-retrieve-binary-data-using-mysql-python-connector
 # Problem:  VARBINARY fields are decoded as if their contents were text
@@ -103,7 +104,7 @@ class Word(object):
 
         Definition of "inchoate"
         ------------------------
-        An inchoate word is frugal with resources.  It's ghosty, barely there.
+        An inchoate word is frugal with resources.  It's a ghost, barely there.
         All that is known about an inchoate word is its idn.
         Maybe that's all we ever need to know about it.
         But, if anything substantive is asked of it, then the word is made choate.
@@ -259,7 +260,8 @@ class Word(object):
     #     # TODO:  Should the be in some kind of WordSentence() subclass instead?
     #     #        Otherwise e.g. word_listing.define() does zombie things
     #
-    #     # # TODO:  WTF, D.R.Y. violation with LexSentence.define().  One should use the other or sumpin.
+    #     # # TODO:  WTF, D.R.Y. violation with LexSentence.define().
+    #     # #        One should use the other or something.
     #     # """
     #     # Define a word.  Name it txt.  Its type or class is obj.
     #     #
@@ -875,10 +877,7 @@ class SubjectedVerb(object):
         # objected = self._subjected.spawn(key)
         objected = self._subjected.lex.root_lex[key]
 
-
-
         txt, num = self.extract_txt_num(value, dict())
-
 
         # num_and_or_txt = value
         # if isinstance(num_and_or_txt, numbers.Number):
@@ -916,8 +915,6 @@ class SubjectedVerb(object):
         #             n=txt_count,
         #             arg=repr(num_and_or_txt)
         #         ))
-
-
 
         self._subjected.lex.root_lex.create_word(
             sbj=self._subjected,
@@ -1033,7 +1030,7 @@ class SubjectedVerb(object):
             if isinstance(arg, six.binary_type):
                 raise TypeError("Expecting unicode not " + repr(arg))
 
-        for name,value in k.items():
+        for name, value in k.items():
             if isinstance(value, six.binary_type):
                 raise TypeError("Expecting " + repr(name) + " to be unicode not " + repr(value))
 
@@ -1176,7 +1173,6 @@ class Lex(object):
         if idn.is_suffixed():
             try:
                 meta_idn, index = Listing.split_compound_idn(idn)
-                lex = self.root_lex.mesa_lexes[meta_idn]
                 # TODO:  Don't just try unsuffixed.  Try all sub-suffixed numbers.
                 #        Allowing nested lexes.
             except (Listing.NotAListing, KeyError) as e:
@@ -1184,13 +1180,26 @@ class Lex(object):
                     q=idn.qstring(),
                     e=type_name(e) + " - " + str(e),
                 ))
+            else:
+                try:
+                    lex = self.root_lex.mesa_lexes[meta_idn]
+                except KeyError as ke:
+                    raise Lex.NotFound("{q} is not a Listing idn: {e}".format(
+                        q=idn.qstring(),
+                        e=type_name(ke) + " - " + str(ke),
+                    ))
+
+                    # class ListingLoo(Listing):
+                    #
+                    #     def __init__(self):
+                    #         super(ListingLoo, self).__init__(meta_word=)
+
             return lex.read_word(index)
         else:
             return self.word_class(idn)
 
     def populate_word_from_idn(self, word, idn):
         raise NotImplementedError()
-
 
     def idn_ify(self, x):
         """
@@ -1224,12 +1233,10 @@ class Lex(object):
                 if w.exists():
                     return w.idn
                 else:
-                    return None
-                    # TODO: is this out of place?  Instead raise ValueError??
-                    # raise TypeError("No definition for '{txt}' in this {lex}".format(
-                    #     txt=x,
-                    #     lex=type_name(lex),
-                    # ))
+                    raise ValueError("No definition for '{txt}' in this {lex}".format(
+                        txt=x,
+                        lex=type_name(self),
+                    ))
             else:
                 raise TypeError(
                     "{the_type} is not supported here.  "
@@ -2274,16 +2281,12 @@ class LexMySQL(LexSentence):
             # EXAMPLE:  (maybe wrong password)
             #     ProgrammingError
 
-
-
         try:
             # self._connection.set_charset_collation(b'binary', b'binary')
             if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
                 self._connection.set_charset_collation(str('latin1'))
             else:
                 self._connection.set_charset_collation(str('utf8'))
-
-
 
             # self.lex = self
             # self.last_inserted_whn = None
@@ -2582,7 +2585,6 @@ class LexMySQL(LexSentence):
                 # noinspection PyUnreachableCode
                 return False   # oops, more than 1 row (it is reachable, with python -O)
 
-
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
     # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
 
@@ -2744,21 +2746,29 @@ class LexMySQL(LexSentence):
         if sbj is not None:
             query_args += ['AND w.sbj =', self.idn_ify(sbj)]
         if vrb is not None:
-            if isinstance(vrb, type(u'')):
-                # NOTE:  Don't let a verb name string be interpreted as an iterable
-                verbs = [self.idn_ify(vrb)]
+            # if isinstance(vrb, type(u'')):
+            #     # NOTE:  Must handle idn_ify['undefined name'].
+            #     #        Which should raise ValueError not return None.
+            #     #        Failing to do so:  LexMySQL.SelectError 1064 (42000): ... SQL syntax ...
+            #     #                           ... AND w.vrb =  AND w.obj = ? ...
+            #     almost_verbs = [vrb]
+            # el
+            if is_iterable(vrb):
+                almost_verbs = vrb
             else:
-                try:
-                    verbs = [self.idn_ify(v) for v in vrb]
-                except TypeError:
-                    verbs = [self.idn_ify(vrb)]
-            if len(verbs) < 1:
-                pass
-            elif len(verbs) == 1:
-                query_args += ['AND w.vrb =', verbs[0]]
+                almost_verbs = [vrb]
+
+            verb_idns = [self.idn_ify(v) for v in almost_verbs]
+            # except TypeError:
+            #     verbs = [self.idn_ify(vrb)]
+            # print("_and_clauses verbs", repr(vrb), repr(verbs))
+            if len(verb_idns) < 1:
+                '''vrb=[] and vrb=None mean no restrictions on vrb value'''
+            elif len(verb_idns) == 1:
+                query_args += ['AND w.vrb =', verb_idns[0]]
             else:
-                query_args += ['AND w.vrb IN (', verbs[0]]
-                for v in verbs[1:]:
+                query_args += ['AND w.vrb IN (', verb_idns[0]]
+                for v in verb_idns[1:]:
                     query_args += [',', v]
                 query_args += [')', None]
         if obj is not None:
@@ -2982,7 +2992,6 @@ class LexMySQL(LexSentence):
         else:
             return text.unicode()
 
-
     @classmethod
     def _parametric_forms(cls, sub_args):
         """
@@ -3042,7 +3051,6 @@ class LexMySQL(LexSentence):
 
     class IllegalEngineName(Exception):
         pass
-
 
 
 def is_iterable(x):

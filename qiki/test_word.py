@@ -754,6 +754,7 @@ class WordExoticTests(WordTests):
         )
 
     def test_lex_square_txt_nonexistent(self):
+        # TODO:  Why is this not a ValueError?
         self.assertFalse(              self.lex[u'nevermore'].exists())
         self.assertEqual(None,         self.lex[u'nevermore'].idn)
         self.assertEqual(None,         self.lex[u'nevermore'].sbj)
@@ -775,6 +776,7 @@ class WordExoticTests(WordTests):
         # EXAMPLE:  Word(undefined 'nevermore')
 
     def test_lex_square_idn_nonexistent(self):
+        # TODO:  Why is this not a ValueError?
         not_an_idn = qiki.Number(-999)
         self.assertFalse(            self.lex[not_an_idn].exists())
         self.assertEqual(not_an_idn, self.lex[not_an_idn].idn)
@@ -1772,7 +1774,8 @@ class Word0012Utilities(WordTests):
         self.assertEqual(qiki.Number(42),            self.lex.idn_ify(42))
         self.assertEqual(qiki.LexSentence.IDN_NOUN,  self.lex.idn_ify(u'noun'))
         self.assertEqual(qiki.LexSentence.IDN_VERB,  self.lex.idn_ify(u'verb'))
-        self.assertIsNone(                           self.lex.idn_ify(u'nonexistent'))
+        with self.assertRaises(ValueError):
+            self.lex.idn_ify(u'nonexistent')
         with self.assertRaises(TypeError):
             self.lex.idn_ify(b'')
         with self.assertRaises(TypeError):
@@ -3359,10 +3362,11 @@ class Word0070FindTests(WordTests):
         self.apple = self.lex.noun(u'apple')
         self.berry = self.lex.noun(u'berry')
         self.curry = self.lex.noun(u'curry')
-        self.macintosh = self.lex.define(u'apple', u'macintosh')
-        self.braburn = self.lex.define(u'apple', u'braburn')
+        self.fuji = self.lex.define(u'apple', u'fuji')
+        self.gala = self.lex.define(u'apple', u'gala')
         self.honeycrisp = self.lex.define(u'apple', u'honeycrisp')
-        self.crave = self.lex.verb(u'crave')
+        self.munch = self.lex.verb(u'munch')
+        self.nibble = self.lex.verb(u'nibble')
         self.fred = self.lex.define(u'agent', u'fred')
 
         # WordFindTests's lex:
@@ -3375,10 +3379,11 @@ class Word0070FindTests(WordTests):
         # 6 lex.define(noun, 1, u'apple')
         # 7 lex.define(noun, 1, u'berry')
         # 8 lex.define(noun, 1, u'curry')
-        # 9 lex.define(apple, 1, u'macintosh')
-        # 10 lex.define(apple, 1, u'braburn')
+        # 9 lex.define(apple, 1, u'fuji')
+        # 10 lex.define(apple, 1, u'gala')
         # 11 lex.define(apple, 1, u'honeycrisp')
-        # 12 lex.define(verb, 1, u'crave')
+        # 12 lex.define(verb, 1, u'munch')
+        #                          nibble
         # 13 lex.define(agent, 1, u'fred')
         #
         # 13 ⋅ Word(u'lex')
@@ -3391,48 +3396,48 @@ class Word0070FindTests(WordTests):
     def test_find_obj(self):
         apple_words = self.lex.find_words(obj=self.apple.idn)
         self.assertEqual(3, len(apple_words))
-        self.assertEqual(self.macintosh, apple_words[0])
-        self.assertEqual(self.braburn, apple_words[1])
+        self.assertEqual(self.fuji, apple_words[0])
+        self.assertEqual(self.gala, apple_words[1])
         self.assertEqual(self.honeycrisp, apple_words[2])
-        self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], apple_words)
+        self.assertEqual([self.fuji, self.gala, self.honeycrisp], apple_words)
 
     def test_find_obj_word(self):
-        self.assertEqual([self.macintosh, self.braburn, self.honeycrisp], self.lex.find_words(obj=self.apple))
+        self.assertEqual([self.fuji, self.gala, self.honeycrisp], self.lex.find_words(obj=self.apple))
 
     def test_find_sbj(self):
-        self.fred.says(self.crave, self.curry, qiki.Number(1), u"Yummy.")
+        self.fred.says(self.munch, self.curry, qiki.Number(1), u"Yummy.")
         fred_words = self.lex.find_words(sbj=self.fred.idn)
         self.assertEqual(1, len(fred_words))
         self.assertEqual(u"Yummy.", fred_words[0].txt)
 
     def test_find_sbj_word(self):
-        fred_word = self.fred.says(self.crave, self.curry, qiki.Number(1), u"Yummy.")
+        fred_word = self.fred.says(self.munch, self.curry, qiki.Number(1), u"Yummy.")
         self.assertEqual([fred_word], self.lex.find_words(sbj=self.fred))
 
     def test_find_vrb(self):
-        self.fred.says(self.crave, self.curry, qiki.Number(1), u"Yummy.")
-        crave_words = self.lex.find_words(vrb=self.crave.idn)
-        self.assertEqual(1, len(crave_words))
-        self.assertEqual(u"Yummy.", crave_words[0].txt)
+        self.fred.says(self.munch, self.curry, qiki.Number(1), u"Yummy.")
+        munch_words = self.lex.find_words(vrb=self.munch.idn)
+        self.assertEqual(1, len(munch_words))
+        self.assertEqual(u"Yummy.", munch_words[0].txt)
 
     def test_find_vrb_word(self):
-        crave_word = self.fred.says(self.crave, self.curry, qiki.Number(1), u"Yummy.")
-        self.assertEqual([crave_word], self.lex.find_words(vrb=self.crave))
+        munch_word = self.fred.says(self.munch, self.curry, qiki.Number(1), u"Yummy.")
+        self.assertEqual([munch_word], self.lex.find_words(vrb=self.munch))
 
     def test_find_chronology(self):
-        craving_apple = self.fred.says(self.crave, self.apple, qiki.Number(1))
-        craving_berry = self.fred.says(self.crave, self.berry, qiki.Number(1))
-        craving_curry = self.fred.says(self.crave, self.curry, qiki.Number(1))
+        craving_apple = self.fred.says(self.munch, self.apple, qiki.Number(1))
+        craving_berry = self.fred.says(self.munch, self.berry, qiki.Number(1))
+        craving_curry = self.fred.says(self.munch, self.curry, qiki.Number(1))
 
         self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find_words(sbj=self.fred))
-        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find_words(vrb=self.crave))
+        self.assertEqual([craving_apple, craving_berry, craving_curry], self.lex.find_words(vrb=self.munch))
 
     def test_find_empty(self):
-        self.fred.says(self.crave, self.apple, qiki.Number(1))
-        self.fred.says(self.crave, self.berry, qiki.Number(1))
-        self.fred.says(self.crave, self.curry, qiki.Number(1))
+        self.fred.says(self.munch, self.apple, qiki.Number(1))
+        self.fred.says(self.munch, self.berry, qiki.Number(1))
+        self.fred.says(self.munch, self.curry, qiki.Number(1))
 
-        self.assertEqual([], self.lex.find_words(sbj=self.crave))
+        self.assertEqual([], self.lex.find_words(sbj=self.munch))
         self.assertEqual([], self.lex.find_words(vrb=self.fred))
 
     # def test_find_idns(self):
@@ -3441,36 +3446,36 @@ class Word0070FindTests(WordTests):
     #         self.assertIsInstance(idn, qiki.Number)
 
     def test_find_by_vrb(self):
-        crave1 = self.fred.says(self.crave, self.apple, 1)
-        crave2 = self.fred.says(self.crave, self.braburn, 10)
-        crave3 = self.fred.says(self.crave, self.macintosh, 0.5)
-        self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave))
-        self.assertEqual([crave1, crave2, crave3], self.lex.find_words(vrb=self.crave.idn))
-        # self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave))
-        # self.assertEqual([crave1.idn, crave2.idn, crave3.idn], self.lex.find_idns(vrb=self.crave.idn))
+        munch1 = self.fred.says(self.munch, self.apple, 1)
+        munch2 = self.fred.says(self.munch, self.fuji, 10)
+        munch3 = self.fred.says(self.munch, self.gala, 0.5)
+        self.assertEqual([munch1, munch2, munch3], self.lex.find_words(vrb=self.munch))
+        self.assertEqual([munch1, munch2, munch3], self.lex.find_words(vrb=self.munch.idn))
+        # self.assertEqual([munch1.idn, munch2.idn, munch3.idn], self.lex.find_idns(vrb=self.munch))
+        # self.assertEqual([munch1.idn, munch2.idn, munch3.idn], self.lex.find_idns(vrb=self.munch.idn))
 
     def test_find_by_vrb_list(self):
-        c1 = self.fred.says(self.crave, self.apple, 1)
-        c2 = self.fred.says(self.crave, self.braburn, 10)
+        c1 = self.fred.says(self.munch, self.apple, 1)
+        c2 = self.fred.says(self.munch, self.fuji, 10)
         retch = self.lex.verb(u'retch')
-        r3 = self.fred.says(retch, self.macintosh, -1)
-        self.assertEqual([c1, c2    ], self.lex.find_words(vrb=[self.crave        ]))
-        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch    ]))
-        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave,     retch.idn]))
-        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch    ]))
-        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.crave.idn, retch.idn]))
-        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave    , retch    ]))
-        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.crave.idn, retch.idn]))
+        r3 = self.fred.says(retch, self.gala, -1)
+        self.assertEqual([c1, c2    ], self.lex.find_words(vrb=[self.munch        ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.munch,     retch    ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.munch,     retch.idn]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.munch.idn, retch    ]))
+        self.assertEqual([c1, c2, r3], self.lex.find_words(vrb=[self.munch.idn, retch.idn]))
+        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.munch    , retch    ]))
+        # self.assertEqual([c1.idn, c2.idn, r3.idn], self.lex.find_idns(vrb=[self.munch.idn, retch.idn]))
         # self.assertEqual([                r3.idn], self.lex.find_idns(vrb=[                retch.idn]))
 
     def test_find_by_txt(self):
-        a = self.fred(self.crave, 1, "eat" )[self.apple]
-        b = self.fred(self.crave, 1, "math")[self.berry]
-        c = self.fred(self.crave, 1, "eat" )[self.curry]
+        a = self.fred(self.munch, 1, "eat" )[self.apple]
+        b = self.fred(self.munch, 1, "math")[self.berry]
+        c = self.fred(self.munch, 1, "eat" )[self.curry]
 
-        self.assertEqual([a, c], self.lex.find_words(vrb=self.crave, txt="eat"))
-        self.assertEqual([b],    self.lex.find_words(vrb=self.crave, txt="math"))
-        self.assertEqual([],     self.lex.find_words(vrb=self.crave, txt="neither"))
+        self.assertEqual([a, c], self.lex.find_words(vrb=self.munch, txt="eat"))
+        self.assertEqual([b],    self.lex.find_words(vrb=self.munch, txt="math"))
+        self.assertEqual([],     self.lex.find_words(vrb=self.munch, txt="neither"))
 
     def test_find_words(self):
         words = self.lex.find_words()
@@ -3521,13 +3526,14 @@ class Word0070FindTests(WordTests):
 
     def test_find_by_name(self):
         with self.assertNewWords(3):
-            w1 = self.lex[self.fred](self.crave, num=11)[self.apple]
-            w2 = self.lex[self.fred](self.crave, num=22)[self.berry]
-            w3 = self.lex[self.fred](self.crave, num=33)[self.apple]
+            w1 = self.lex[self.fred](self.munch, num=11)[self.apple]
+            w2 = self.lex[self.fred](self.munch, num=22)[self.berry]
+            w3 = self.lex[self.fred](self.nibble, num=33)[self.apple]
 
         self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(sbj=u'fred')))
-        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(vrb=u'crave')))
-        self.assertEqual(set(   (w2,   )), set(self.lex.find_words(obj=u'berry')))
+        self.assertEqual(set((w1,w2,   )), set(self.lex.find_words(vrb=u'munch')))
+        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(vrb=(u'munch', u'nibble'))))
+        self.assertEqual(set((   w2,   )), set(self.lex.find_words(obj=u'berry')))
 
 
 class WordQoolbarSetup(WordTests):
