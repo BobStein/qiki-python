@@ -7,12 +7,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-try:
-    import collections.abc as collections_abc
-except ImportError:
-    import collections as collections_abc
-    # THANKS:  six-ish collections.abc, https://stackoverflow.com/a/53978543/673991
-
 import datetime
 import re
 import time
@@ -1213,7 +1207,7 @@ class Lex(object):
         :param x:  - an idn or a word or a lex (LexSentence)
         :return:   - an idn, nor None for undefined name ()
         """
-        # TODO:  Support idn_ify(42) !?
+        # TODO:  Support idn_ify('0q82_2A') q-strings?
         if isinstance(x, Word):
             assert isinstance(x.idn, Number)
             return x.idn
@@ -1228,7 +1222,6 @@ class Lex(object):
             if isinstance(x, six.binary_type):
                 raise TypeError("The name of a qiki Word must be unicode, not " + repr(x))
             elif Text.is_valid(x):
-                # w = lex[x]
                 w = self.word_class(x)
                 if w.exists():
                     return w.idn
@@ -2154,7 +2147,8 @@ class LexInMemory(LexSentence):
         found_words = []
         for word_source in self.words if idn_ascending else reversed(self.words):
             hit = True
-            if idn is not None and word_source.idn != self.idn_ify(idn):
+            if idn is not None and not self.word_match(word_source.idn, idn):   #
+                # was word_source.idn != self.idn_ify(idn):
                 # TODO:  Why does word_match(word_source.idn, idn) fail in one test?
                 hit = False
             if sbj is not None and not self.word_match(word_source.sbj, sbj):
@@ -2163,7 +2157,8 @@ class LexInMemory(LexSentence):
                 hit = False
             if obj is not None and not self.word_match(word_source.obj, obj):
                 hit = False
-            if txt is not None and word_source.txt != Text(txt):
+            if txt is not None and not self.txt_match(word_source.txt, txt):
+                # was word_source.txt != Text(txt):
                 hit = False
             if hit:
                 found_words.append(self[word_source])   # copy constructor
@@ -2200,7 +2195,7 @@ class LexInMemory(LexSentence):
 
         Actually they can be idns too.
         """
-        # assert not is_iterable(word_1)
+        assert not is_iterable(word_1)
         if is_iterable(word_or_words_2):
             for word_2 in word_or_words_2:
                 if self.word_match(word_1, word_2):
@@ -2208,6 +2203,20 @@ class LexInMemory(LexSentence):
             return False
         else:
             return self.idn_ify(word_1) == self.idn_ify(word_or_words_2)
+
+    def txt_match(self, txt_1, txt_or_txts_2):
+        """
+        Is a txt equal to another txt (or any of a nested collection of txt)?
+        """
+        # TODO:  D.R.Y. with word_match()
+        assert not is_iterable(txt_1)
+        if is_iterable(txt_or_txts_2):
+            for txt_2 in txt_or_txts_2:
+                if self.txt_match(txt_1, txt_2):
+                    return True
+            return False
+        else:
+            return txt_1 == txt_or_txts_2
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection
@@ -2636,10 +2645,11 @@ class LexMySQL(LexSentence):
             jbo_vrb = (jbo_vrb,)
         if jbo_vrb is None:
             jbo_vrb = ()
-        assert isinstance(idn, (Number, Word, type(None)))
-        assert isinstance(sbj, (Number, Word, type(None), type(u'')))   # TODO: Allow LexSentence too
+        assert isinstance(idn, (Number, Word, type(None)))            or is_iterable(idn)
+        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)   # TODO: Allow LexSentence too
         assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
-        assert isinstance(obj, (Number, Word, type(None), type(u'')))
+        assert isinstance(obj, (Number, Word, type(None), type(u''))) or is_iterable(obj)
+        assert isinstance(txt, (Text,         type(None), type(u''))) or is_iterable(txt)
         assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type_name(jbo_vrb)
         assert hasattr(jbo_vrb, '__iter__')
         idn_order = 'ASC' if idn_ascending else 'DESC'
@@ -2736,59 +2746,170 @@ class LexMySQL(LexSentence):
 
     # @staticmethod
     def _and_clauses(self, idn, sbj, vrb, obj, txt):
-        assert isinstance(idn, (Number, Word, type(None)))
-        assert isinstance(sbj, (Number, Word, type(None), type(u'')))
-        assert isinstance(vrb, (Number, Word, type(None), type(u''), collections_abc.Iterable))
-        assert isinstance(obj, (Number, Word, type(None), type(u'')))
-        query_args = []
-        if idn is not None:
-            query_args += ['AND w.idn =', self.idn_ify(idn)]
-        if sbj is not None:
-            query_args += ['AND w.sbj =', self.idn_ify(sbj)]
-        if vrb is not None:
-            # if isinstance(vrb, type(u'')):
-            #     # NOTE:  Must handle idn_ify['undefined name'].
-            #     #        Which should raise ValueError not return None.
-            #     #        Failing to do so:  LexMySQL.SelectError 1064 (42000): ... SQL syntax ...
-            #     #                           ... AND w.vrb =  AND w.obj = ? ...
-            #     almost_verbs = [vrb]
-            # el
-            if is_iterable(vrb):
-                almost_verbs = vrb
-            else:
-                almost_verbs = [vrb]
+        assert isinstance(idn, (Number, Word, type(None),          )) or is_iterable(idn)
+        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)
+        assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None), type(u''))) or is_iterable(obj)
+        assert isinstance(txt, (Text,         type(None), type(u''))) or is_iterable(txt)
 
-            verb_idns = [self.idn_ify(v) for v in almost_verbs]
-            # except TypeError:
-            #     verbs = [self.idn_ify(vrb)]
-            # print("_and_clauses verbs", repr(vrb), repr(verbs))
-            if len(verb_idns) < 1:
-                '''vrb=[] and vrb=None mean no restrictions on vrb value'''
-            elif len(verb_idns) == 1:
-                query_args += ['AND w.vrb =', verb_idns[0]]
-            else:
-                query_args += ['AND w.vrb IN (', verb_idns[0]]
-                for v in verb_idns[1:]:
-                    query_args += [',', v]
-                query_args += [')', None]
-        if obj is not None:
-            # TODO:  obj could be a list also.  Would help e.g. find qool verb icons.
-            query_args += ['AND w.obj =', self.idn_ify(obj)]
-        if txt is not None:
-            query_args += ['AND w.txt =', Text(txt)]
+        def clause(value_or_values, name, conversion_function):
+            """
+            Format field value(s) into an AND clause, suitable for super_select().
+
+            EXAMPLE:
+                ['AND w.txt IN (', Text('a'), ',', Text('b'), ')', None] ==
+                    list(clause([       'a',            'b'], 'txt', lambda: Text(x)))
+
+            :param value_or_values: what
+            :param name:
+            :param conversion_function:
+            :return:
+            """
+            if value_or_values is not None:
+                if is_iterable(value_or_values):
+                    almost_values = value_or_values
+                else:
+                    almost_values = [value_or_values]
+
+                values = [conversion_function(x) for x in almost_values]
+                if len(values) < 1:
+                    '''part=[] and part=None mean no restriction'''
+                elif len(values) == 1:
+                    yield 'AND w.{name} ='.format(name=name)
+                    yield values[0]
+                else:
+                    yield 'AND w.{name} IN ('.format(name=name)
+                    yield values[0]
+                    for value in values[1 : ]:
+                        yield ','
+                        yield value
+                    yield ')'
+                    yield None
+
+        query_args = []
+        query_args += list(clause(idn, 'idn', lambda x: self.idn_ify(x)))
+        query_args += list(clause(sbj, 'sbj', lambda x: self.idn_ify(x)))
+        query_args += list(clause(vrb, 'vrb', lambda x: self.idn_ify(x)))
+        query_args += list(clause(obj, 'obj', lambda x: self.idn_ify(x)))
+        query_args += list(clause(txt, 'txt', lambda x: Text(x)))
+
+        # if idn is not None:
+        #     query_args += ['AND w.idn =', self.idn_ify(idn)]
+        # if sbj is not None:
+        #     query_args += ['AND w.sbj =', self.idn_ify(sbj)]
+        # if vrb is not None:
+        #     # if isinstance(vrb, type(u'')):
+        #     #     # NOTE:  Must handle idn_ify['undefined name'].
+        #     #     #        Which should raise ValueError not return None.
+        #     #     #        Failing to do so:  LexMySQL.SelectError 1064 (42000): ... SQL syntax ...
+        #     #     #                           ... AND w.vrb =  AND w.obj = ? ...
+        #     #     almost_verbs = [vrb]
+        #     # el
+        #     if is_iterable(vrb):
+        #         almost_verbs = vrb
+        #     else:
+        #         almost_verbs = [vrb]
+        #
+        #     verb_idns = [self.idn_ify(v) for v in almost_verbs]
+        #     # except TypeError:
+        #     #     verbs = [self.idn_ify(vrb)]
+        #     # print("_and_clauses verbs", repr(vrb), repr(verbs))
+        #     if len(verb_idns) < 1:
+        #         '''vrb=[] and vrb=None mean no restrictions on vrb value'''
+        #     elif len(verb_idns) == 1:
+        #         query_args += ['AND w.vrb =', verb_idns[0]]
+        #     else:
+        #         query_args += ['AND w.vrb IN (', verb_idns[0]]
+        #         for v in verb_idns[1:]:
+        #             query_args += [',', v]
+        #         query_args += [')', None]
+        # if obj is not None:
+        #     # DONE:  obj could be a list also.  Would help e.g. find qool verb icons.
+        #     query_args += ['AND w.obj =', self.idn_ify(obj)]
+        # if txt is not None:
+        #     query_args += ['AND w.txt =', Text(txt)]
         return query_args
 
-    class SuperSelectTypeError(TypeError):
-        pass
+    def server_version(self):
+        return Text.decode_if_you_must(self.super_select_one('SELECT VERSION()')[0])
 
-    class SuperSelectStringString(TypeError):
-        pass
+    def super_select_one(self, *query_args, **kwargs):
+        query, parameters = self._super_parse(*query_args, **kwargs)
+        with self._cursor() as cursor:
+            cursor.execute(query, parameters)
+            return cursor.fetchone()
 
-    class SuperIdentifier(six.text_type):
-        """Identifier in an SQL super-query that could go in `back-ticks`."""
+    class QueryError(Exception):
+        """super_query() had a MySQL exception.  Report the query string along with the error message."""
 
-    class TableName(SuperIdentifier):
-        """Name of a MySQL table in a super-query"""
+    def super_query(self, *query_args, **kwargs):
+        query, parameters = self._super_parse(*query_args, **kwargs)
+        with self._cursor() as cursor:
+            try:
+                cursor.execute(query, parameters)
+            except mysql.connector.ProgrammingError as exception:
+                # EXAMPLE:
+                #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
+                #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
+                raise self.QueryError(str(exception) + " on query: " + query)
+
+    class SelectError(Exception):
+        """super_select() had a MySQL exception.  Report the query."""
+
+    def super_select(self, *query_args, **kwargs):
+        """
+        SQL statement that generates rows, alternating syntax and data.
+
+        EXAMPLE:
+            rows = super_select('SELECT * FROM ', TableName('Order'), 'WHERE id = ', Number(42))
+
+        :param query_args:  Alternating SQL syntax strings with any of:
+                            Text, SuperIdentifier, Number, Word, None
+        :param kwargs: - e.g. debug=True
+        :return:
+        """
+        debug = kwargs.get('debug', False)
+        query, parameters = self._super_parse(*query_args, **kwargs)
+        with self._cursor() as cursor:
+            try:
+                cursor.execute(query, parameters)
+            except mysql.connector.ProgrammingError as exception:
+                # EXAMPLE:
+                #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
+                #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
+                #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+                raise self.SelectError(
+                    str(exception) +
+                    " on query:\n" +
+                    query +
+                    ";\n" +
+                    "parameter lengths " +
+                    ",".join(str(len(p)) for p in parameters)
+
+                    # +
+                    # "\n" +
+                    # "parameters: " +
+                    # ",".join(repr(p) for p in parameters)
+                    # NOTE:  Not showing parameter values, they may be binary.
+                )
+
+            for row in cursor:
+                field_dictionary = dict()
+                if debug:
+                    print(end='\t')
+                for field, name in zip(row, cursor.column_names):
+                    if field is None:
+                        value = None
+                    elif name.endswith('txt'):   # including jbo_txt
+                        value = self.text_from_mysql(field)
+                    else:
+                        value = self.number_from_mysql(field)
+                    field_dictionary[name] = value
+                    if debug:
+                        print(name, repr(value), end='; ')
+                yield field_dictionary
+                if debug:
+                    print()
 
     def _super_parse(self, *query_args, **kwargs):
         """
@@ -2869,7 +2990,7 @@ class LexMySQL(LexSentence):
                 '''
                 None is ignored.  This is useful if you want consecutive plaintext query_args,
                 which would otherwise raise a SuperSelectStringString exception.  
-                Intersperse None instead.
+                Interspersing None avoids this false alarm.
                 '''
             else:
                 raise self.SuperSelectTypeError(
@@ -2885,85 +3006,17 @@ class LexMySQL(LexSentence):
             print("Parameters", ", ".join([repr(parameter) for parameter in parameters]))
         return query, parameters
 
-    def server_version(self):
-        return Text.decode_if_you_must(self.super_select_one('SELECT VERSION()')[0])
+    class SuperSelectTypeError(TypeError):
+        """super_select() or super_query() cannot parse this type."""
 
-    def super_select_one(self, *query_args, **kwargs):
-        query, parameters = self._super_parse(*query_args, **kwargs)
-        with self._cursor() as cursor:
-            cursor.execute(query, parameters)
-            return cursor.fetchone()
+    class SuperSelectStringString(TypeError):
+        """super_select() or super_query() require alternating syntax and data."""
 
-    class QueryError(Exception):
-        """super_query() had a MySQL exception.  Report the query string along with the error message."""
+    class SuperIdentifier(six.text_type):
+        """Identifier in an SQL super-query that could go in `back-ticks`."""
 
-    def super_query(self, *query_args, **kwargs):
-        query, parameters = self._super_parse(*query_args, **kwargs)
-        with self._cursor() as cursor:
-            try:
-                cursor.execute(query, parameters)
-            except mysql.connector.ProgrammingError as exception:
-                # EXAMPLE:
-                #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
-                #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
-                raise self.QueryError(str(exception) + " on query: " + query)
-
-    class SelectError(Exception):
-        """super_select() had a MySQL exception.  Report the query."""
-
-    def super_select(self, *query_args, **kwargs):
-        """
-        SQL statement-fragment strings interleaved with data, that generates rows
-
-        EXAMPLE:
-            rows = super_select(
-
-        :param query_args:  e.g.
-        :param kwargs:
-        :return:
-        """
-        debug = kwargs.get('debug', False)
-        query, parameters = self._super_parse(*query_args, **kwargs)
-        with self._cursor() as cursor:
-            try:
-                cursor.execute(query, parameters)
-            except mysql.connector.ProgrammingError as exception:
-                # EXAMPLE:
-                #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
-                #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
-                #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
-                raise self.SelectError(
-                    str(exception) +
-                    " on query:\n" +
-                    query +
-                    ";\n" +
-                    "parameter lengths " +
-                    ",".join(str(len(p)) for p in parameters)
-
-                    # +
-                    # "\n" +
-                    # "parameters: " +
-                    # ",".join(repr(p) for p in parameters)
-                    # NOTE:  Not showing parameter values, they may be binary.
-                )
-
-            for row in cursor:
-                field_dictionary = dict()
-                if debug:
-                    print(end='\t')
-                for field, name in zip(row, cursor.column_names):
-                    if field is None:
-                        value = None
-                    elif name.endswith('txt'):   # including jbo_txt
-                        value = self.text_from_mysql(field)
-                    else:
-                        value = self.number_from_mysql(field)
-                    field_dictionary[name] = value
-                    if debug:
-                        print(name, repr(value), end='; ')
-                yield field_dictionary
-                if debug:
-                    print()
+    class TableName(SuperIdentifier):
+        """Name of a MySQL table in a super-query"""
 
     @classmethod
     def number_from_mysql(cls, mysql_cell):
@@ -3009,22 +3062,9 @@ class LexMySQL(LexSentence):
                 yield sub_arg.idn.raw
             else:
                 raise TypeError("contains a " + type_name(sub_arg))
-
-    # def words_from_idns(self, idns):
-    #     # TODO:  Generator?  Is this even used anywhere??
-    #     words = []
-    #     for idn in idns:
-    #         word = self[idn]
-    #         words.append(word)
-    #     return words
-
-    # @classmethod
-    # def raws_from_idns(cls, idns):
-    #     # TODO:  Generator?  Is this even used anywhere??
-    #     raws = []
-    #     for idn in idns:
-    #         raws.append(idn.raw)
-    #     return raws
+                # NOTE:  If type is 'str' this MIGHT mean two strings were consecutive
+                #        in the sub_args, and this wasn't caught by SuperSelectStringString.
+                #        Either data or a SuperIdentifier or None must intervene.
 
     def max_idn(self):
         # TODO:  Store max_idn in a singleton table?

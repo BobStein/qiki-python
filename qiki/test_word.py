@@ -3367,6 +3367,7 @@ class Word0070FindTests(WordTests):
         self.honeycrisp = self.lex.define(u'apple', u'honeycrisp')
         self.munch = self.lex.verb(u'munch')
         self.nibble = self.lex.verb(u'nibble')
+        self.dirk = self.lex.define(u'agent', u'dirk')
         self.fred = self.lex.define(u'agent', u'fred')
 
         # WordFindTests's lex:
@@ -3384,6 +3385,7 @@ class Word0070FindTests(WordTests):
         # 11 lex.define(apple, 1, u'honeycrisp')
         # 12 lex.define(verb, 1, u'munch')
         #                          nibble
+        #                           dirk
         # 13 lex.define(agent, 1, u'fred')
         #
         # 13 ⋅ Word(u'lex')
@@ -3527,13 +3529,21 @@ class Word0070FindTests(WordTests):
     def test_find_by_name(self):
         with self.assertNewWords(3):
             w1 = self.lex[self.fred](self.munch, num=11)[self.apple]
-            w2 = self.lex[self.fred](self.munch, num=22)[self.berry]
-            w3 = self.lex[self.fred](self.nibble, num=33)[self.apple]
+            w2 = self.lex[self.dirk](self.munch, num=22)[self.berry]
+            w3 = self.lex[self.fred](self.nibble, num=33)[self.curry]
 
-        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(sbj=u'fred')))
+        self.assertEqual(set((w1,   w3,)), set(self.lex.find_words(sbj=u'fred')))
+        self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(sbj=(u'fred', u'dirk'))))
         self.assertEqual(set((w1,w2,   )), set(self.lex.find_words(vrb=u'munch')))
         self.assertEqual(set((w1,w2,w3,)), set(self.lex.find_words(vrb=(u'munch', u'nibble'))))
         self.assertEqual(set((   w2,   )), set(self.lex.find_words(obj=u'berry')))
+        self.assertEqual(set((   w2,w3,)), set(self.lex.find_words(obj=(u'berry', u'curry'))))
+
+        self.assertEqual(set((w1,w2,   )), set(self.lex.find_words(idn=(w1.idn, w2.idn))))
+        self.assertEqual(
+            set((self.fred, self.dirk, self.berry)),
+            set(self.lex.find_words(txt=(u'fred', u'dirk', u'berry')))
+        )
 
 
 class WordQoolbarSetup(WordTests):
