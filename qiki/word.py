@@ -2242,7 +2242,8 @@ class LexMySQL(LexSentence):
                     #     COLLATE utf8mb4_general_ci
                     #     NOT NULL,
 
-            cursor.execute(query)
+            # cursor.execute(query)
+            self._execute(cursor, query)
             # TODO:  other keys?  sbj-vrb?   obj-vrb?
         self._install_all_seminal_words()
 
@@ -2606,42 +2607,6 @@ class LexMySQL(LexSentence):
         query_args += list(clause(vrb, 'vrb', lambda x: self.idn_ify(x)))
         query_args += list(clause(obj, 'obj', lambda x: self.idn_ify(x)))
         query_args += list(clause(txt, 'txt', lambda x: Text(x)))
-
-        # if idn is not None:
-        #     query_args += ['AND w.idn =', self.idn_ify(idn)]
-        # if sbj is not None:
-        #     query_args += ['AND w.sbj =', self.idn_ify(sbj)]
-        # if vrb is not None:
-        #     # if isinstance(vrb, type(u'')):
-        #     #     # NOTE:  Must handle idn_ify['undefined name'].
-        #     #     #        Which should raise ValueError not return None.
-        #     #     #        Failing to do so:  LexMySQL.SelectError 1064 (42000): ... SQL syntax ...
-        #     #     #                           ... AND w.vrb =  AND w.obj = ? ...
-        #     #     almost_verbs = [vrb]
-        #     # el
-        #     if is_iterable(vrb):
-        #         almost_verbs = vrb
-        #     else:
-        #         almost_verbs = [vrb]
-        #
-        #     verb_idns = [self.idn_ify(v) for v in almost_verbs]
-        #     # except TypeError:
-        #     #     verbs = [self.idn_ify(vrb)]
-        #     # print("_and_clauses verbs", repr(vrb), repr(verbs))
-        #     if len(verb_idns) < 1:
-        #         '''vrb=[] and vrb=None mean no restrictions on vrb value'''
-        #     elif len(verb_idns) == 1:
-        #         query_args += ['AND w.vrb =', verb_idns[0]]
-        #     else:
-        #         query_args += ['AND w.vrb IN (', verb_idns[0]]
-        #         for v in verb_idns[1:]:
-        #             query_args += [',', v]
-        #         query_args += [')', None]
-        # if obj is not None:
-        #     # DONE:  obj could be a list also.  Would help e.g. find qool verb icons.
-        #     query_args += ['AND w.obj =', self.idn_ify(obj)]
-        # if txt is not None:
-        #     query_args += ['AND w.txt =', Text(txt)]
         return query_args
 
     def server_version(self):
@@ -2663,13 +2628,6 @@ class LexMySQL(LexSentence):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             self._execute(cursor, query, parameters)
-            # try:
-            #     cursor.execute(query, parameters)
-            # except mysql.connector.ProgrammingError as exception:
-            #     # EXAMPLE:
-            #     #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
-            #     #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
-            #     raise self.QueryError(str(exception) + " on query: " + query)
 
     def super_select(self, *query_args, **kwargs):
         """
@@ -2687,28 +2645,6 @@ class LexMySQL(LexSentence):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             self._execute(cursor, query, parameters)
-            # try:
-            #     cursor.execute(query, parameters)
-            # except mysql.connector.ProgrammingError as exception:
-            #     # EXAMPLE:
-            #     #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
-            #     #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
-            #     #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
-            #     raise self.SelectError(
-            #         str(exception) +
-            #         " on query:\n" +
-            #         query +
-            #         ";\n" +
-            #         "parameter lengths " +
-            #         ",".join(str(len(p)) for p in parameters)
-            #
-            #         # +
-            #         # "\n" +
-            #         # "parameters: " +
-            #         # ",".join(repr(p) for p in parameters)
-            #         # NOTE:  Not showing parameter values, they may be binary.
-            #     )
-
             for row in cursor:
                 field_dictionary = dict()
                 if debug:
@@ -2727,7 +2663,12 @@ class LexMySQL(LexSentence):
                 if debug:
                     print()
 
-    def _execute(self, cursor, query, parameters):
+    def _execute(self, cursor, query, parameters=()):
+        """
+        SQL execute with informative error message.
+
+        Cannot make the cursor here, because the caller may need it (e.g. SELECT).
+        """
         try:
             cursor.execute(query, parameters)
         except mysql.connector.Error as e:

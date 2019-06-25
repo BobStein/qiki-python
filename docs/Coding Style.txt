@@ -1042,7 +1042,7 @@ No:
         y = y or Y_DEFAULT           # <-- Now "y" has two different meanings.  It lies.
         do_stuff(y)
 Yes:
-    def f(x, y_maybe_none=None):
+    def f(x, y_maybe_none=None):     # This could be a problem for callers, in named-parameter languages.
         y = y_maybe_none or Y_DEFAULT
         do_stuff(y)
 Maybe:
