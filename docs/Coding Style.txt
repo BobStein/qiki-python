@@ -1015,10 +1015,54 @@ From PEP8, "Identifiers ... SHOULD use English words wherever feasible."
 Example:  latitude is better than lat
 
 
-It's All A Test
----------------
-Only an automated code test should be called anything_test_anything.
-Nothing should be called "test" (or "Test" or "TEST").
+It's All A "Test"
+-----------------
+Vague vacuous words are dangerous.
+All life is a test.  
+The parts that are tests today are different than the parts that will be tests tomorrow.
+Failures become rehearsals.  And tests turn out to need testing too.
+The word is a moving target.
+Only unit tests should be called SomethingTest or test_something.
+And nothing should ever be called just "test".
+
+
+Futz with the variable, futz with the name
+------------------------------------------
+No:
+    def function(parameter):
+        parameter = cleaner(parameter)   # <-- works for now, but confusion and bugs are more likely later
+        work_with(parameter)
+Yes:
+    def function(parameter_dirty):
+        parameter = cleaner(parameter_dirty)
+        work_with(parameter)
+
+No:
+    def f(x, y=None):
+        y = y or Y_DEFAULT           # <-- Now "y" has two different meanings.  It lies.
+        do_stuff(y)
+Yes:
+    def f(x, y_maybe_none=None):
+        y = y_maybe_none or Y_DEFAULT
+        do_stuff(y)
+Maybe:
+    def f(x, y=None):                # You may be constrained naming the raw input, e.g. if you want callers to be able to f(1, y=2)
+        y_improved = y or Y_DEFAULT
+        do_stuff(y_improved)         # But this is prone to problems later, if someone does_something_with(y)
+Also yes:
+    def f(x, y=None):
+        but_y_could_be_none = y      # Crazy?  Offense is useful when you want extra attention.  Like when you need to lie but you wish to confess right away.  Better than misleading.
+        y = but_y_could_be_none or Y_DEFAULT
+        do_stuff(y)
+
+
+
+UUIDs should be rarely seen and never pasted
+--------------------------------------------
+I noticed once when I was cutting and pasting UUIDs that it felt wrong. 
+Turned out it was.  When I eventually used them it their handling was automted.
+I could see them in ultra-internal contexts, but I never had to cut and paste them.
+But I haven't worked with them much.
 
 
 
@@ -1060,7 +1104,7 @@ Better yet:
 
 
 Conditional Expressions - one idea max.
-
+-----------------------
 Yes:
     name = 'Jane Doe' if stiff.name is None else stiff.name
 Better?
@@ -1068,20 +1112,29 @@ Better?
 
 No:
     a = (b ? c : (d ? e : f));
-    
-No:
-    a = c if b else (e if d else f)
-
 Yes:
-    if b
-        c
-    else
-        if d
-            e
-        else
-            f
+    if (b) {
+        a = c;
+    } else if (d) {
+        a = e;
+    } else {
+        a = f;
+    }
 
-            
+Nope:
+    a = c if b else e if d else f
+Not even:
+    a = c if b else (e if d else f)
+Yes:
+    if b:
+        a = c
+    elif d:
+        a = e
+    else:
+        a = f
+
+
+
 Dictionaries and Lists
 ----------------------
 
@@ -1096,23 +1149,26 @@ This is an example of readability trumping brevity.
 Or possibly a clarification on what brevity means.
 Brevity is less about characters and more about visual atoms.
 A four-letter-word is atomic to the visual cortex of a literate person.  
-Okay, "dict" is not an English word, but it becomes as good as one with Python fluency.
+Actually, "dict" is not an English word, but it becomes as good as one with Python fluency.
 Punctuation symbols may actually be more verbose, in terms of recognition cost.
 
 Anyway, there could be a high cost for misreading {} for () or []. 
-It's unfortunate the symbols only differ by a few pixels.
-A benevolent developer will only use curly braces when there are more compelling cues.
+It's unfortunate the symbols differ by just a few pixels.
+A benevolent developer will only use curly braces when they could not be misunderstood.
 
 Fine:
     d = {'This': 'is more obviously a dictionary.'}
     l = ['This', 'is more obviously a list.']
     
-If you think the improvement is meager, just imagine twenty years from now 
-when your eyesight may be half as good as it is today.  
-Will you still be coding then?  A lot of us will be.  Be kind.
+If you think the improvement is meager, just imagine twenty years from now, your eyesight half as good.  
+Will you still be coding then?  Some of us will.  Be kind.
 
 Also there's the baked-in confusion that {0} is a set but {} is a dict.
-Not to mention () is an empty tuple but (0) is a plain zero.
+Not to mention () and [] are empty containers, but [0] is a list and (0) is a plain, uncontained zero.
+So this is a little silly, though it sure is unambiguous:  
+
+    t = tuple((1,2,3))
+
 
 
 One Space Two Space, Red Space Blue Space
@@ -1124,8 +1180,8 @@ Two spaces after sentence-ending periods* and list-starting colons in monospaced
 
 
 
-Code comments prescribe:  declarative sentences  (PEP 257)
-Commit comments chronicle:  past tense sentences for human-developer behavior, present tense for code behavior (I guess)
+Code comments prescribe:  declarative, present-tense sentences for code behavior  (PEP 257)
+Commit comments chronicle:  past tense sentences for human-developer behavior (present tense for code behavior? I guess)
 --------------------------
 
 Code comment
@@ -1133,23 +1189,26 @@ Code comment
         # Adds two numbers
     Yes:
         # Add two numbers
+
+Code comments should say what the code does, as if the code itself were speaking.
+Almost in the first person, but omit the subject.
+Even though code is not written in a spoken language, you want to be fluent enough that it still "speaks" to you.
+Comments should NOT resemble a human-writer talking to a human reader *about* the code.
+It should resemble the computer voicing what it's doing and why, as it's executing the code.
+(My interpretation of the intent of PEP 257.)
         
 Commit comment
     No:
+        -m "Support utf8mb4"
+    Nah:
         -m "Supports utf8mb4"
     Meh:
         -m "Supported utf8mb4"
     Better:
         -m "Added support for utf8mb4"
 
-Code comments should say what the code does, 
-as if the code itself were speaking.
-Almost in the first person, but omit the subject.
-(Even though code is not written in a spoken language, 
-you want to be fluent enough that it still "speaks" to you.)
-Comments should NOT resemble a human-writer talking to a human reader *about* the code.
-It should resemble the computer voicing what it's doing and why, as it's executing the code.
-(My interpretation of the intent of PEP 257.)
+Commit comments are about a happening that was decidedly NOT automated.  (Today anyway!)
+It should be in the developer's voice, not the code's.
 
 
 

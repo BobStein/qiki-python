@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 
 import datetime
 import re
+import threading
 import time
 
 # noinspection PyPackageRequirements
@@ -33,6 +34,8 @@ HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 # Workaround:  character encoding latin1 across whole table
 #              qiki.Number fields work because latin1 can never fail to decode
 #              qiki.Text field (txt) fake stores utf8 when it thinks its latin1, yuk
+
+max_idn_lock = threading.Lock()
 
 
 # noinspection PyAttributeOutsideInit
@@ -63,7 +66,7 @@ class Word(object):
 
     @property
     def lex(self):
-        raise NotImplementedError()
+        return None
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
         # assert isinstance(lex, (Lex, type(None)))
@@ -350,91 +353,6 @@ class Word(object):
             use_already=use_already,
         )
 
-        # """
-        # Construct a new sentence from a 3-word subject-verb-object.
-        #
-        # Subject is self.
-        #
-        # use_already makes a difference if the same word with the same num and txt
-        # exists already AND is the newest word with that sbj-vrb-obj combination.
-        # In that case no new sentence is created, the old one is returned.
-        #
-        # Either num or num_add may be specified.
-        #
-        # Differences between Word.sentence() and Word.spawn():
-        #     sentence takes a Word-triple, spawn takes an idn-triple.
-        #     sentence saves the new word.
-        #     spawn can take in idn or other ways to indicate an existing word.
-        # Differences between Word.sentence() and Word.define():
-        #     sentence takes a Word-triple,
-        #     define takes only one word for the object (sbj and vrb are implied)
-        #     sentence requires an explicit num, define defaults to 1
-        # """
-        # # TODO:  rewrite this docstring
-        # # TODO:  say()?
-        #
-        # assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
-        # assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
-        # if isinstance(txt, numbers.Number) or Text.is_valid(num):
-        #     # TODO:  Why `or` not `and`?
-        #     (txt, num) = (num, txt)
-        #
-        # if num is not None and num_add is not None:
-        #     raise self.SentenceArgs("Word.says() cannot specify both num and num_add.")
-        #
-        # num = num if num is not None else 1
-        # txt = txt if txt is not None else u''
-        #
-        # if not isinstance(num, numbers.Number):
-        #     raise self.SentenceArgs("Wrong type for Word.says(num={})".format(type_name(num)))
-        #
-        # if not Text.is_valid(txt):
-        #     raise self.SentenceArgs("Wrong type for Word.says(txt={})".format(type_name(txt)))
-        #
-        # new_word = self.spawn(
-        #     sbj=self,
-        #     vrb=vrb,
-        #     obj=obj,
-        #     num=Number(num),
-        #     txt=txt
-        # )
-        # if num_add is not None:
-        #     new_word._from_sbj_vrb_obj()
-        #     assert isinstance(num_add, numbers.Number)
-        #     if new_word.exists():
-        #         # noinspection PyProtectedMember
-        #         new_word._fields['num'] += Number(num_add)
-        #     else:
-        #         # noinspection PyProtectedMember
-        #         new_word._fields['num'] = Number(num_add)
-        #     new_word.save()
-        # elif use_already:
-        #     old_word = self.spawn(
-        #         sbj=self,
-        #         vrb=vrb,
-        #         obj=obj
-        #     )
-        #     old_word._from_sbj_vrb_obj()
-        #     if not old_word.exists():
-        #         new_word.save()
-        #     elif old_word.txt != new_word.txt or old_word.num != new_word.num:
-        #         new_word.save()
-        #     else:
-        #         # There was an identical sentence already.  Fetch it so new_word.exists().
-        #         # This is the only path through says() where no new sentence is created.
-        #         new_word._from_sbj_vrb_obj_num_txt()
-        #         assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
-        #             old=old_word.idn.qstring(),
-        #             new=new_word.idn.qstring()
-        #         )
-        # else:
-        #     new_word.save()
-        # return new_word
-
-    # class SentenceArgs(TypeError):
-    #     """Arguments to Word.says() (or intended for Word.says()) are wrong."""
-    #     # TODO:  SayError?
-
     def spawn(self, *args, **kwargs):
         """
         Construct a Word() using the same lex as another word.
@@ -529,7 +447,16 @@ class Word(object):
         #        and so the word now exists()
 
     def _from_definition(self, txt):
-        """Construct a Word from its txt, but only when it's a definition, and only by sbj=lex."""
+        """
+        Construct a Word from its name, aka its definition txt.
+
+        That is, look for a word with
+            sbj=lex
+            vrb=define
+            obj=(can be anything)
+            txt=whatever
+
+        """
         assert Text.is_valid(txt)
         assert isinstance(self.lex, Lex)
         if not self.lex.populate_word_from_definition(self, txt):
@@ -817,28 +744,30 @@ class Word(object):
         except AttributeError:
             return Number.NAN
 
-    @idn.setter
-    def idn(self, value):
-        raise AttributeError("Cannot set a Word's idn.")
-    # TODO:  Omit this?  Does this happen for free anyway?
-
     def save(self, override_idn=None):
+        # TODO:  Move to Lex?  It's only ever called by create_word() anyway...
         if override_idn is not None:
             self.set_idn_if_you_really_have_to(override_idn)
-        assert isinstance(self.idn, (Number, type(None)))
+        # assert isinstance(self.idn, (Number, type(None)))   # EXPERIMENTAL
+        assert isinstance(self.idn, Number)
         assert isinstance(self.sbj, Word)
         assert isinstance(self.vrb, Word)
         assert isinstance(self.obj, Word), "{obj} is not a Word".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
-        if self.exists() or self.idn == Number.NAN:
-            self.set_idn_if_you_really_have_to(self.lex.max_idn().inc())   # AUTO sorta INCREMENT
-            # TODO:  Race condition?  Make max_idn and insert_word part of an atomic transaction.
-            # Or store latest idn in another table
-            # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
-            assert not self.idn.is_nan()
-        assert isinstance(self.idn, Number)
-        self.lex.insert_word(self)
+        # if self.exists() or self.idn == Number.NAN:   # EXPERIMENTAL
+        if self.exists() or self.idn.is_nan():
+            with max_idn_lock:
+                self.set_idn_if_you_really_have_to(self.lex.max_idn().inc())   # AUTO sorta INCREMENT
+                # DONE:  Race condition?  Made max_idn and insert_word part of an atomic transaction.
+                # Or we could have stored latest idn in another table
+                # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
+                assert not self.idn.is_nan()
+                assert isinstance(self.idn, Number)
+                self.lex.insert_word(self)
+        else:
+            assert isinstance(self.idn, Number)
+            self.lex.insert_word(self)
 
 
 class SubjectedVerb(object):
@@ -1089,7 +1018,7 @@ class Lex(object):
         if word_class is None:
 
             class WordClassJustForThisLex(Word):
-                lex = None
+                pass
 
             word_class = WordClassJustForThisLex
         self.word_class = word_class
@@ -1178,15 +1107,16 @@ class Lex(object):
                 try:
                     lex = self.root_lex.mesa_lexes[meta_idn]
                 except KeyError as ke:
-                    raise Lex.NotFound("{q} is not a Listing idn: {e}".format(
+                    new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
                         q=idn.qstring(),
                         e=type_name(ke) + " - " + str(ke),
                     ))
-
-                    # class ListingLoo(Listing):
-                    #
-                    #     def __init__(self):
-                    #         super(ListingLoo, self).__init__(meta_word=)
+                    new_word.set_idn_if_you_really_have_to(idn)
+                    return new_word
+                    # raise Lex.NotFound("{q} is not a Listing idn: {e}".format(
+                    #     q=idn.qstring(),
+                    #     e=type_name(ke) + " - " + str(ke),
+                    # ))
 
             return lex.read_word(index)
         else:
@@ -1241,14 +1171,6 @@ class Lex(object):
                 )
 
 
-class WordListed(Word):
-    lex = None
-
-    @property
-    def index(self):
-        return self.idn.suffix(Suffix.Type.LISTING).number
-
-
 class Listing(Lex):
     # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
     # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
@@ -1263,15 +1185,6 @@ class Listing(Lex):
     idn_storage is the idn of a Word in the system Lex, corresponding to the listing.
     idn_record doesn't mean anything to qiki, just to the storage system.
     """
-
-    # meta_word = None   # This class variable is a Word associated with a Listing subclass.
-    #                    # It is assigned by install().
-    #                    # ListingSubclass.meta_word.idn is an unsuffixed qiki.Number.
-    #                    # If x is an instance of a ListingSubclass, then x.idn is a suffixed qiki.Number.
-    #                    # The unsuffixed part of x.idn is its class's meta_word.idn.
-    #                    # I.e. x.idn.unsuffixed == x.meta_word.idn
-    #                    # See examples in test_example_idn().
-    #                    # By convention meta_word.obj.txt == 'listing' but nothing enforces that.
     listing_dictionary = dict()   # Table of Listing instances, indexed by meta_word.idn
 
     SUFFIX_TYPE = Suffix.Type.LISTING
@@ -1305,51 +1218,9 @@ class Listing(Lex):
         self.meta_word = meta_word
         self.suffix_type = Suffix.Type.LISTING
 
-        # assert isinstance(index, (int, Number))   # TODO:  Support a non-int, non-Number index.
-        # assert self.meta_word is not None, (
-        #     "Class {c} must be installed with its meta_word before it can be instantiated".format(
-        #         c=type_name(self)
-        #     )
-        # )
-        # self.index = Number(index)
-        #
-        # if lex is None:
-        #     lex = self.meta_word.lex
-        # super(Listing, self).__init__()
-        #
-        # idn = Number(self.meta_word.idn, Suffix(self.SUFFIX_TYPE, self.index))
-        # # FIXME:  Holy crap, the above line USED to mutate self.meta_word.idn.  What problems did THAT create??
-        # # Did that morph a class property into an instance property?!?
-
-        # self._inchoate(idn)
-        # self.__is_inchoate = True
-
-        # self.lookup(self.index, self.lookup_callback)
-        # self.lex = self.meta_word.lex
-
-    # @property
-    # def _is_inchoate(self):
-    #     # TODO:  Instead override base class property with a member boolean self._is_inchoate?
-    #     #        Otherwise, self._is_choate is better than self.__is_inchoate, avoiding double-underscore.
-    #     return self.__is_inchoate
-
-    # def _from_idn(self, idn):
-    #     assert idn.is_suffixed()
-    #     assert idn.unsuffixed == self.meta_word.idn
-    #     assert idn.suffix(self.SUFFIX_TYPE) == Suffix(self.SUFFIX_TYPE, self.index)
-    #     self.lookup(self.index, self.lookup_callback)
-    #     self.__is_inchoate = False
-
-    # TODO:  @abstractmethod
-    # TODO:  No parameters for lookup()?  Do not pass index, and just return txt and num?
-    # Or was the callback some kind of async feature, in case looking up took a while?
-    # Because I'm doubtful that would work anyway.
     def lookup(self, index):
         raise NotImplementedError("Subclass must def lookup(index): return txt, num ")
         # THANKS:  Classic abstract method, http://stackoverflow.com/a/4383103/673991
-
-    # def __getitem__(self, index):
-    #     return self.read_word(index)
 
     def composite_idn(self, index):
         return Number(self.meta_word.idn, Suffix(Suffix.Type.LISTING, Number(index)))
@@ -1366,45 +1237,8 @@ class Listing(Lex):
         word.populate_from_num_txt(Number(num), Text(txt))
         return True
 
-    # def lookup_callback(self, txt, num):
-    #     # Another case where txt comes before num, the exception.
-    #     # XXX:  Wait, WHY does lookup need a callback?  Can it just RETURN (txt, num)??
-    #     # It could even return a flexible tuple (n), (t), (n,t), (t,n), dict(num=n, txt=t)
-    #     # Oh wait, there's that pesky fact that the word should not "exist" until num,txt are populated.
-    #     # But maybe lookup should populate those fields instead.
-    #     # The lookup's caller could check that they were populated, then call _now_it_exists()
-    #     # Listing is just a burbling cauldron of refactoring need.
-    #     # self.num = num
-    #     # self.txt = Text(txt)
-    #     self._fields = dict(
-    #         num=num,
-    #         txt=Text(txt)
-    #     )
-    #     # self._now_it_exists()
-
-    # @classmethod
-    # def install(cls, meta_word):
-    #     """
-    #     ListingSubclass.meta_word is a word in the lex that represents the subclass.
-    #     That meta-word should already exist, and it will (probably) have no suffix.
-    #     The meta-word's idn will be the unsuffixed part of the idn for all instances of the subclass.
-    #     Each instance idn will have a unique suffix, whose payload is the index for that instance.
-    #     This suffixed word is conceptually created each time the class is instantiated with a unique index.
-    #
-    #     This must be called before any instantiations.
-    #     """
-    #     assert isinstance(meta_word, Word)
-    #     assert isinstance(meta_word.idn, Number)
-    #     # TODO:  Make sure if already defined that it's the same class.
-    #     cls.class_dictionary[meta_word.idn] = cls
-    #     cls.meta_word = meta_word
-
     class NotAListing(Exception):
         pass
-
-    # # noinspection PyClassHasNoInit
-    # class NotAListingRightNow(NotAListing):
-    #     pass
 
     @classmethod
     def word_from_idn(cls, idn):
@@ -1418,26 +1252,12 @@ class Listing(Lex):
         This class will be a subclass of Listing.
         Second we call that class's lookup on the suffix of the idn.
         """
-        # pieces = idn.parse_suffixes()
-        # try:
-        #     (identifier, suffix) = pieces
-        # except ValueError:
-        #     raise cls.NotAListing("Not a Listing identifier: " + idn.qstring())
-        # assert isinstance(identifier, Number)
-        # assert isinstance(suffix, Suffix)
 
         meta_idn, index = cls.split_compound_idn(idn)
         listing = cls.listing_from_meta_idn(meta_idn)
         listed_instance = listing[index]
         # TODO:  Support non-Number suffix payloads?  The Listing index must now be a Number.
         return listed_instance
-
-    # @classmethod
-    # def listing_from_idn(cls, idn):
-    #     """"""
-    #     meta_idn, index = cls.split_compound_idn(idn)
-    #     listing_subclass = cls.listing_from_meta_idn(meta_idn)
-    #     return listing_subclass
 
     @classmethod
     def listing_from_meta_idn(cls, meta_idn):
@@ -1459,54 +1279,32 @@ class Listing(Lex):
         except (AttributeError, Suffix.RawError, Suffix.NoSuchType) as e:
             raise cls.NotAListing("Not a Listing idn: " + type_name(idn) + " - " + six.text_type(e))
 
-        # try:
-        #     identifier = idn.unsuffixed
-        #     suffixes = idn.suffixes
-        # except (AttributeError, Suffix.RawError):
-        #     raise cls.NotAListing("Not a Number: " + type(idn).__name__)
-        # if len(suffixes) != 1:
-        #     raise cls.NotAListing("Not a suffixed Number: " + idn.qstring())
-        # suffix = suffixes[0]
-        # if suffix.type_ != cls.SUFFIX_TYPE:
-        #     raise cls.NotAListing("Not a Listing suffix: 0x{:02X}".format(suffix.type_))
-        #
-        # assert isinstance(identifier, Number)
-        # assert isinstance(suffix, Suffix)
-        # meta_idn = identifier
-        # index = suffix.payload_number()
-        # return meta_idn, index
+
+class WordListed(Word):
+    """Base class of all Listing words."""
+    @property
+    def index(self):
+        return self.idn.suffix(Suffix.Type.LISTING).number
 
 
-# class ListingNotInstalled(Listing):
-#     """
-#     Smelly class where spawn() can dump uninstalled Listings.
-#
-#     To defer raising NotAWord until it becomes choate.
-#     So the spawn() calls in Word.populate_from_row() can meekly go about their inchoate business.
-#     And exceptions are raised only if those words try to become choate.
-#     All this so we do not have to install obsolete listing classes,
-#     but we can still instantiate the no-longer-used words that refer to them.
-#     """
-#     # noinspection PyUnresolvedReferences
-#     meta_idn = Number.NAN
-#
-#     # noinspection PyMissingConstructor
-#     def __init__(self, idn):
-#         self.index = None
-#         # self._inchoate(idn)   # Smelly way this doomed instance will raise an exception only if it becomes choate.
-#
-#     # def _choate(self):
-#     #     assert self.idn.is_suffixed()
-#     #     raise Listing.NotAListing(
-#     #         "Listing identifier {idn} has meta_idn {meta_idn} "
-#     #         "which was not installed to a class.".format(
-#     #             idn=self.idn,
-#     #             meta_idn=self.idn.unsuffixed,
-#     #         )
-#     #     )
-#
-#     def lookup(self, index, callback):
-#         raise self.NotAListing
+class ListingLimbo(Lex):
+    """
+    Singleton for legacy Listing.
+
+    It's composite idn is in the database.
+    But it's meta_idn is not in Listing.listing_dictionary.
+    Presumably, the meta_word was never passed to a Listing constructor.
+    """
+    def populate_word_from_idn(self, word, idn):
+        return False
+
+    # noinspection PyMethodMayBeStatic
+    def populate_word_from_definition(self, _, __):   # word, define_txt):
+        """Used by Lex.read_word().  define_txt will be the txt of a nonexistent limbo word"""
+        return False
+
+
+limbo_listing = ListingLimbo()
 
 
 class Pythonic:
@@ -1583,7 +1381,7 @@ class TimeLex(Lex):
         if word_class is None:
 
             class TimeWord(Word):
-                lex = None
+                pass
 
             word_class = TimeWord
 
@@ -1835,20 +1633,30 @@ class LexSentence(Lex):
         else:
             return self.define(self._noun, name)
 
-    def verb(self, name=None, sbj=None):
+    def verb(self, name=None):   # was , sbj=None):
         if name is None:
             return self._verb
         else:
-            return self.define(self._verb, name, sbj=sbj)
+            return self.define(self._verb, name)   # was: , sbj=sbj)
 
     class DefinitionMustBeUnicode(TypeError):
         """In a word definition, the name (txt) must be Unicode."""
 
-    def define(self, obj, txt, sbj=None):
+    def define(self, obj, txt):   # was , sbj=None):  --- is this needed any more?
+        obj_could_be_many_types = obj
+
+        # sbj_could_be_none = sbj
+        # sbj = sbj_could_be_none or self._lex
+
+        sbj = self._lex
+        vrb = self._define
+        obj = self[obj_could_be_many_types]
+
         if not Text.is_valid(txt):
             raise self.DefinitionMustBeUnicode(
                 "Definition must have unicode name, not " + repr(txt)
             )
+
         try:
             old_definition = self[txt]
         except TypeError:
@@ -1860,20 +1668,23 @@ class LexSentence(Lex):
                 #        define() goes to EARLIEST definition
                 #        create_word(use_already=True) goes to LATEST definition
                 if len(self._duplicate_definition_callback_functions) > 0:
-                    duplicate_words = self.find_words(vrb=self._define, txt=txt)
+                    duplicate_words = self.find_words(vrb=self._define, txt=txt, sbj=sbj)
                     if len(duplicate_words) != 1:
                         for function in self._duplicate_definition_callback_functions:
                             function(
                                 txt,
-                                "Duplicate definitions for '{txt}': {idns}".format(
+                                "Trying to define a {obj} called '{txt}', "
+                                "but there are already {count} definitions for '{txt}': {word}".format(
+                                    obj=str(obj),
+                                    count=len(duplicate_words),
                                     txt=txt,
-                                    idns=", ".join(w.idn.qstring() for w in duplicate_words),
+                                    word=", ".join("{idn}:{txt}".format(
+                                        idn=w.idn.qstring(),
+                                        txt=str(w.obj),
+                                    ) for w in duplicate_words),
                                 )
                             )
                 return old_definition
-        sbj = sbj or self._lex
-        vrb = self._define
-        obj = self[obj]
         return self.create_word(sbj=sbj, vrb=vrb, obj=obj, txt=txt)
 
     def find_words(self, **kwargs):
@@ -2303,7 +2114,7 @@ class LexMySQL(LexSentence):
             try:
                 # noinspection PyProtectedMember
                 self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
-            except self.SelectError as exception:   # was mysql.connector.ProgrammingError as exception:
+            except self.QueryError as exception:   # was mysql.connector.ProgrammingError as exception:
                 exception_message = str(exception)
                 if re.search(r"Table .* doesn't exist", exception_message):
                     # TODO:  Better detection of automatic table creation opportunity.
@@ -2438,9 +2249,6 @@ class LexMySQL(LexSentence):
     def _install_one_seminal_word(self, _idn, _obj, _txt):
         try:
             super(LexMySQL, self)._install_one_seminal_word(_idn, _obj, _txt)
-        except mysql.connector.IntegrityError:
-            # TODO:  What was I thinking should happen here?
-            raise
         except mysql.connector.ProgrammingError as exception:
             exception_message = str(exception)
             if re.search(r"INSERT command denied to user", exception_message):
@@ -2449,6 +2257,12 @@ class LexMySQL(LexSentence):
             else:
                 print(exception_message)
                 raise
+        except mysql.connector.IntegrityError:
+            # TODO:  What was I thinking should happen here?
+            raise
+        except mysql.connector.Error:
+            # TODO:  What could happen here?
+            raise
 
     def uninstall_to_scratch(self):
         """Deletes table.  Opposite of install_from_scratch()."""
@@ -2646,7 +2460,7 @@ class LexMySQL(LexSentence):
         if jbo_vrb is None:
             jbo_vrb = ()
         assert isinstance(idn, (Number, Word, type(None)))            or is_iterable(idn)
-        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)   # TODO: Allow LexSentence too
+        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)   # TODO: Allow LexSentence?
         assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None), type(u''))) or is_iterable(obj)
         assert isinstance(txt, (Text,         type(None), type(u''))) or is_iterable(txt)
@@ -2836,25 +2650,26 @@ class LexMySQL(LexSentence):
     def super_select_one(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
-            cursor.execute(query, parameters)
+            self._execute(cursor, query, parameters)
             return cursor.fetchone()
 
     class QueryError(Exception):
-        """super_query() had a MySQL exception.  Report the query string along with the error message."""
+        """
+        super_query() or super_select() had a MySQL exception.
+        Report query string, parameter lengths, error message.
+        """
 
     def super_query(self, *query_args, **kwargs):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
-            try:
-                cursor.execute(query, parameters)
-            except mysql.connector.ProgrammingError as exception:
-                # EXAMPLE:
-                #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
-                #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
-                raise self.QueryError(str(exception) + " on query: " + query)
-
-    class SelectError(Exception):
-        """super_select() had a MySQL exception.  Report the query."""
+            self._execute(cursor, query, parameters)
+            # try:
+            #     cursor.execute(query, parameters)
+            # except mysql.connector.ProgrammingError as exception:
+            #     # EXAMPLE:
+            #     #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
+            #     #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
+            #     raise self.QueryError(str(exception) + " on query: " + query)
 
     def super_select(self, *query_args, **kwargs):
         """
@@ -2871,27 +2686,28 @@ class LexMySQL(LexSentence):
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
-            try:
-                cursor.execute(query, parameters)
-            except mysql.connector.ProgrammingError as exception:
-                # EXAMPLE:
-                #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
-                #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
-                #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
-                raise self.SelectError(
-                    str(exception) +
-                    " on query:\n" +
-                    query +
-                    ";\n" +
-                    "parameter lengths " +
-                    ",".join(str(len(p)) for p in parameters)
-
-                    # +
-                    # "\n" +
-                    # "parameters: " +
-                    # ",".join(repr(p) for p in parameters)
-                    # NOTE:  Not showing parameter values, they may be binary.
-                )
+            self._execute(cursor, query, parameters)
+            # try:
+            #     cursor.execute(query, parameters)
+            # except mysql.connector.ProgrammingError as exception:
+            #     # EXAMPLE:
+            #     #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
+            #     #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
+            #     #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+            #     raise self.SelectError(
+            #         str(exception) +
+            #         " on query:\n" +
+            #         query +
+            #         ";\n" +
+            #         "parameter lengths " +
+            #         ",".join(str(len(p)) for p in parameters)
+            #
+            #         # +
+            #         # "\n" +
+            #         # "parameters: " +
+            #         # ",".join(repr(p) for p in parameters)
+            #         # NOTE:  Not showing parameter values, they may be binary.
+            #     )
 
             for row in cursor:
                 field_dictionary = dict()
@@ -2910,6 +2726,30 @@ class LexMySQL(LexSentence):
                 yield field_dictionary
                 if debug:
                     print()
+
+    def _execute(self, cursor, query, parameters):
+        try:
+            cursor.execute(query, parameters)
+        except mysql.connector.Error as e:
+            # EXAMPLE:
+            #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
+            #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
+            # EXAMPLE:
+            #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
+            #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
+            #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+            raise self.QueryError(
+                str(e) +
+                " on query:\n" +
+                query +
+                ";\n" +
+                "parameter lengths " +
+                ",".join(str(len(p)) for p in parameters)
+
+                # "parameters: " +
+                # ",".join(repr(p) for p in parameters)
+                # NOTE:  Not showing parameter values, they may be binary, or big.
+            )
 
     def _super_parse(self, *query_args, **kwargs):
         """

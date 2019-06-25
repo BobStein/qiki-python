@@ -1209,8 +1209,8 @@ class Word0011FirstTests(WordTests):
         self.assertNotEqual(fling1.idn, fling2.idn)
         self.assertEqual   (fling1.idn, fling3.idn)
 
-
     def test_09a_equality(self):
+        # TODO:  WTF do I really want to test *methods* here??  Shouldn't these be words?
         self.assertEqual(self.lex.noun, self.lex.noun)
         self.assertNotEqual(self.lex.noun, self.lex.verb)
         self.assertNotEqual(self.lex.verb, self.lex.noun)
@@ -1676,7 +1676,9 @@ class Word0011FirstTests(WordTests):
         anna = lex.define(lex[u'agent'], u'anna')
         carp = lex.noun(u'carp')
 
-        adc = lex.define('carp', 'Garp', sbj='anna')
+        # adc = lex.define('carp', 'Garp', sbj='anna')
+        adc = lex.create_word(sbj='anna', vrb='define', obj='carp', txt='Garp')
+
         self.assertEqual(anna,          adc.sbj)
         self.assertEqual(lex['define'], adc.vrb)
         self.assertEqual(carp,          adc.obj)
@@ -1777,7 +1779,7 @@ class Word0012Utilities(WordTests):
         with self.assertRaises(ValueError):
             self.lex.idn_ify(u'nonexistent')
         with self.assertRaises(TypeError):
-            self.lex.idn_ify(b'')
+            self.lex.idn_ify(b'noun')
         with self.assertRaises(TypeError):
             self.lex.idn_ify(None)
 
@@ -2341,7 +2343,7 @@ class Word0030MoreTests(WordTests):
         human = self.lex.define(u'agent', u'human')
         anna = self.lex.define(human, u'anna')
         bart = self.lex.define(human, u'bart')
-        verb = self.lex.verb
+        verb = self.lex.verb   # [sic] yes, just the bound method
         like = verb(u'like')
         anna.says(like, bart, 13)
         self.assertEqual(13, anna.said(like, bart).num)
