@@ -1031,7 +1031,7 @@ class Number(numbers.Complex):
             else:
                 offset = 1
                 # TODO:  ludicrous numbers have bigger offsets (for googolplex it is 64)
-            h = hex_from_string(unsuffixed.raw)
+            h = hex_from_bytes(unsuffixed.raw)
             if length <= offset:
                 return_value = '0q' + h
             else:
@@ -1252,7 +1252,7 @@ class Number(numbers.Complex):
 
         assert '822A' == Number('0q82_2A').hex()
         """
-        return hex_from_string(self.raw)
+        return hex_from_bytes(self.raw)
 
     def x_apostrophe_hex(self):
         """
@@ -1966,7 +1966,7 @@ class Suffix(object):
             return "Suffix({type_}, b'{payload}')".format(
                 type_=repr(self.type_),
                 # payload="".join(["\\x{:02x}".format(byte_) for byte_ in self.payload]),
-                payload=hex_from_string(self.payload),
+                payload=hex_from_bytes(self.payload),
             )
 
     def __hash__(self):
@@ -1979,7 +1979,7 @@ class Suffix(object):
 
         Even if the payload is itself a Number, its parts will not be underscore-separated.
         """
-        whole_suffix_in_hex = hex_from_string(self.raw)
+        whole_suffix_in_hex = hex_from_bytes(self.raw)
         if underscore > 0 and self.payload:
             payload_hex = whole_suffix_in_hex[ : -self.NUM_OVERHEAD*2]
             type_length_00_hex = whole_suffix_in_hex[-self.NUM_OVERHEAD*2 : ]
@@ -2055,17 +2055,19 @@ def bytes_from_hex(hexadecimal_digits):
         raise bytes_from_hex.Error("Not an even number of hexadecimal digits: " + repr(hexadecimal_digits))
     assert return_value == six.binary_type(bytearray.fromhex(hexadecimal_digits))
     return return_value
-class BytesFromHexError(ValueError):
-    """bytes_from_hex() invalid input"""
-bytes_from_hex.Error = BytesFromHexError
 assert b'\xBE\xEF' == bytes_from_hex('BEEF')
 
 
-def hex_from_string(string_of_8_bit_bytes):
+class BytesFromHexError(ValueError):
+    """bytes_from_hex() invalid input"""
+bytes_from_hex.Error = BytesFromHexError
+
+
+def hex_from_bytes(string_of_8_bit_bytes):
     """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
     assert isinstance(string_of_8_bit_bytes, six.binary_type)
     return binascii.hexlify(string_of_8_bit_bytes).upper().decode()
-assert 'BEEF' == hex_from_string(b'\xBE\xEF')
+assert 'BEEF' == hex_from_bytes(b'\xBE\xEF')
 
 
 # Math

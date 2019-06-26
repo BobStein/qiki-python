@@ -20,7 +20,7 @@ import mysql.connector
 import six
 
 import qiki
-from qiki.number import hex_from_string
+from qiki.number import hex_from_bytes
 from qiki.number import type_name
 from qiki.word import is_iterable
 from qiki.word import SubjectedVerb
@@ -416,7 +416,7 @@ class WordTests(TestBaseClass):
         word = self.lex[idn]
         utf8 = word.txt.encode('utf-8')
         # FIXME:  This will double encode in Python 2
-        hexadecimal = hex_from_string(utf8)
+        hexadecimal = hex_from_bytes(utf8)
         print("\"{txt}\" in utf8 is {hex}".format(
             txt=word.txt.encode('unicode_escape'),   # Python 3 doubles up the backslashes ... shrug.
             hex=hexadecimal,

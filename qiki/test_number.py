@@ -3967,11 +3967,11 @@ class NumberUtilitiesTests(NumberTests):
             bytes_from_hex('DE AD')   # space
 
     def test_hex_from_string(self):
-        self.assertEqual('',                 hex_from_string(b''))
-        self.assertEqual('00',               hex_from_string(b'\x00'))
-        self.assertEqual('FF',               hex_from_string(b'\xFF'))
-        self.assertEqual('68656C6C6F',       hex_from_string(b'hello'))
-        self.assertEqual('0123456789ABCDEF', hex_from_string(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF',))
+        self.assertEqual('', hex_from_bytes(b''))
+        self.assertEqual('00', hex_from_bytes(b'\x00'))
+        self.assertEqual('FF', hex_from_bytes(b'\xFF'))
+        self.assertEqual('68656C6C6F', hex_from_bytes(b'hello'))
+        self.assertEqual('0123456789ABCDEF', hex_from_bytes(b'\x01\x23\x45\x67\x89\xAB\xCD\xEF', ))
 
 
 
