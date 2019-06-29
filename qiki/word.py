@@ -64,9 +64,7 @@ class Word(object):
     :type txt: Unicode string in either Python 2 or 3
     """
 
-    @property
-    def lex(self):
-        return None
+    lex = None   # This is probably overwritten by the Lex base constructor.
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
         # assert isinstance(lex, (Lex, type(None)))
@@ -1043,8 +1041,14 @@ class Lex(object):
         """Something is wrong with Lex meta words, e.g. two sub-lexes use the same meta word."""
 
     def __repr__(self):
-        meta_word_report = "" if self.meta_word is None else " " + repr(self.meta_word)
-        return type_name(self) + meta_word_report
+        """
+        EXAMPLE:  GoogleQikiListing Word('google user')
+        EXAMPLE:  AnonymousQikiListing Word('anonymous')
+        """
+        if self.meta_word is None:
+            return type_name(self)
+        else:
+            return type_name(self) + " " + repr(self.meta_word)
 
     def __getitem__(self, item):
         """
