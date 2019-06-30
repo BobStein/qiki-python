@@ -1534,6 +1534,7 @@ class LexSentence(Lex):
                       It's used in Word.define as a default for the sbj=None parameter.
                       It's used in LexMySQL.__init__() as a hint the lex is new and empty.
     """
+    # TODO:  class WordForLexSentence base class, ala WordListed for Listing.
 
     def populate_word_from_idn(self, word, idn):
         raise NotImplementedError
