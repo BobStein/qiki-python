@@ -371,6 +371,10 @@ class Number(numbers.Complex):
     # ----------
     def __eq__(self, other):
         """Handle Number(x) == something"""
+        # TODO:  Make more efficient.
+        #        Maybe normalize on construction or computation.
+        #        Maybe from_qstring() with a non-normalized contents will just suffer from
+        #        "appearing" nonequal.
         try:
             self_ready = self._op_ready(self)
             other_ready = self._op_ready(other)
