@@ -930,6 +930,20 @@ Counterpoint (why you may prefer to repeat yourself in this example):
     The benefit of repeating yourself here is comprehensible and trustable code.
 
 
+" ! " not-operator spacing
+--------------------------
+JavaScript and C unary 'not' operator should have a space on both sides, so it doesn't get visually lost.
+
+No:
+    if (!is_valid)
+Yes:
+    if ( ! is_valid)
+
+It looks horrible to me too, but missing this operator is worse.  Because it changes everything.
+
+Also if someday it were followed consistently (e.g. warning when not done) 
+then it would be easier to search for, with " ! ".
+
 
 Simple
 ======

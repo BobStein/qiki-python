@@ -456,7 +456,7 @@ class Word(object):
 
         """
         assert Text.is_valid(txt)
-        assert isinstance(self.lex, Lex)
+        assert isinstance(self.lex, LexSentence)
         if not self.lex.populate_word_from_definition(self, txt):
             self._fields = dict(
                 txt=Text(txt)
@@ -1301,11 +1301,11 @@ class ListingLimbo(Lex):
     """
     def populate_word_from_idn(self, word, idn):
         return False
-
-    # noinspection PyMethodMayBeStatic
-    def populate_word_from_definition(self, _, __):   # word, define_txt):
-        """Used by Lex.read_word().  define_txt will be the txt of a nonexistent limbo word"""
-        return False
+    #
+    # # noinspection PyMethodMayBeStatic
+    # def populate_word_from_definition(self, _, __):   # word, define_txt):
+    #     """Used by Lex.read_word().  define_txt will be the txt of a nonexistent limbo word"""
+    #     return False
 
 
 limbo_listing = ListingLimbo()
@@ -1813,17 +1813,25 @@ class LexSentence(Lex):
             self.populate_word_from_sbj_vrb_obj(old_word, sbj, vrb, obj)
             if not old_word.exists():
                 new_word.save()
-            elif old_word.txt != new_word.txt or old_word.num != new_word.num:
-                new_word.save()
-            else:
-                # There was an identical sentence already.  Fetch it so new_word.exists().
-                # This is the only path through create_word() where no new sentence is created.
-                # That is, where new_word is an old word.
+            elif (
+                old_word.txt == new_word.txt and
+                old_word.num == new_word.num
+            ):
+                # NOTE:  There was an identical sentence already (same s,v,o,t,n).
+                #        (And it was the latest word matching (s,v,o).)
+                #        Fetch it so new_word.exists().
+                #        This is the only path through create_word()
+                #        where no new sentence is created.
+                #        That is, where new_word is an old word.
+                # NOTE:  It only happens when the old_word is the NEWEST of its kind (s,v,o)
+                #        This was a problem with multiple explanations on a word.
                 self.populate_word_from_sbj_vrb_obj_num_txt(new_word, sbj, vrb, obj, Number(num), txt)
                 assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
                     old=old_word.idn.qstring(),
                     new=new_word.idn.qstring()
                 )
+            else:
+                new_word.save()
         else:
             new_word.save(override_idn=override_idn)
         return new_word
@@ -1984,7 +1992,10 @@ class LexInMemory(LexSentence):
             for found_word in found_words:
                 jbo = []
                 for other_word in self.words:
-                    if self.word_match(other_word.obj, found_word.idn) and self.word_match(other_word.vrb, jbo_vrb):
+                    if (
+                        self.word_match(other_word.obj, found_word.idn) and
+                        self.word_match(other_word.vrb, jbo_vrb)
+                    ):
                         jbo.append(other_word)
 
                 new_word = self[found_word]
@@ -2438,7 +2449,9 @@ class LexMySQL(LexSentence):
 
         Return a list of choate words.
 
-        idn,sbj,vrb,obj all restrict the list of returned words.
+        idn,sbj,vrb,obj each restrict the list of returned words.
+        Except when they're None or empty, then they don't restrict.
+
         jbo_vrb is not restrictive it's elaborative (note 1).
         'jbo' being 'obj' backwards, it represents a reverse reference.
         If jbo_vrb is a container of verbs, each returned word has a jbo attribute
@@ -2510,8 +2523,8 @@ class LexMySQL(LexSentence):
         if any(jbo_vrb):
             join = 'JOIN' if jbo_strictly else 'LEFT JOIN'
             query_args += [
-                join, self.table, 'AS jbo '
-                    'ON jbo.obj = w.idn '
+                join, self.table, 'AS jbo ' +
+                    'ON jbo.obj = w.idn ' +
                         'AND jbo.vrb in (', jbo_vrb, ')',
                 None
             ]
