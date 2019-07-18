@@ -2208,6 +2208,8 @@ assert b'\xFF\x56' == pack_big_integer_via_hex(-170,2)
 def unpack_big_integer_by_struct(binary_string):
     """Fast version of unpack_big_integer(), limited to 64 bits."""
     return struct.unpack('>Q', left_pad00(binary_string, 8))[0]
+    # TODO:  unpack bigger integers, 64 bits at a time.
+    # SEE:  128-bit unpack, https://stackoverflow.com/a/11895244/673991
 assert 170 == unpack_big_integer_by_struct(b'\x00\xAA')
 
 
