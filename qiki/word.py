@@ -67,8 +67,6 @@ class Word(object):
     lex = None   # This is probably overwritten by the Lex base constructor.
 
     def __init__(self, content=None, sbj=None, vrb=None, obj=None, num=None, txt=None):
-        # assert isinstance(lex, (Lex, type(None)))
-        # self.lex = lex
         if Text.is_valid(content):          # Word('agent')
             self._from_definition(content)
         elif isinstance(content, Number):   # Word(idn)
@@ -438,7 +436,8 @@ class Word(object):
         """
         assert isinstance(idn, Number)
         # assert not idn.is_suffixed()
-        self.set_idn_if_you_really_have_to(idn)
+        # self.set_idn_if_you_really_have_to(idn)
+
         self.lex.populate_word_from_idn(self, idn)
         # TODO:  Do something with return value?
         # NOTE:  If this returned True, it already called populate_from_word()
@@ -473,7 +472,10 @@ class Word(object):
             self._inchoate(other.idn)
         else:
             assert other.exists()
+            self.set_idn_if_you_really_have_to(other.idn)
             self._from_idn(other.idn)
+            # TODO:  Why not copy-construct a choate other into an inchoate self?
+            #        (Find out whether this populated self is now choate.)
 
     def _from_sbj_vrb_obj(self):
         """Construct a word by looking up its subject-verb-object."""
@@ -624,6 +626,26 @@ class Word(object):
             maybe_num=(", " + self.presentable(self.num)) if self.num != 1   else "",
             maybe_txt=(", " + repr(self.txt))             if self.txt != u'' else "",
         )
+
+    def to_json(self):
+        d = dict(
+            idn=self.idn,
+            sbj=self.sbj.idn,
+            vrb=self.vrb.idn,
+            obj=self.obj.idn,
+            whn=float(self.whn),
+        )
+
+        if self.txt != "":
+            d['txt'] = self.txt
+
+        if self.num != 1:
+            d['num'] = self.num
+
+        if hasattr(self, 'jbo') and len(self.jbo) > 0:
+            d['jbo'] = self.jbo
+
+        return d
 
     @staticmethod
     def presentable(num):
@@ -1127,6 +1149,8 @@ class Lex(object):
             return self.word_class(idn)
 
     def populate_word_from_idn(self, word, idn):
+        # TODO:  Be consistent with this method, either return true/false and USE it.
+        #        Or raise exceptions and
         raise NotImplementedError()
 
     def idn_ify(self, x):
@@ -1247,14 +1271,14 @@ class Listing(Lex):
     @classmethod
     def word_from_idn(cls, idn):
         """
-        Turn a suffixed Number identifier into a (word) instance of some subclass of Listing.
+        Turn a suffixed-Number identifier into a (word) instance of some subclass of Listing.
         The ListingSubclass constructor is like an instance_from_index() converter.
 
         So it's a double-lookup.
         First we look up which class this idn is for.
-        That's determined by the unsuffixed part of the idn.
+        That's determined by the unsuffixed (root) part of the idn.
         This class will be a subclass of Listing.
-        Second we call that class's lookup on the suffix of the idn.
+        Second we call that class's lookup on the suffix (payload) part of the idn.
         """
 
         meta_idn, index = cls.split_compound_idn(idn)
@@ -1847,7 +1871,20 @@ class LexSentence(Lex):
         return TimeLex().now_word().num
 
 
-# TODO:  class LexMemory here (faster unit tests).  Move LexMySQL to lex_mysql.py?
+def native_num(num):
+    if num.is_suffixed():
+        # TODO:  Complex?
+        return num.qstring()
+    elif not num.is_reasonable():
+        # THANKS:  JSON is a dummy about NaN, inf,
+        #          https://stackoverflow.com/q/1423081/673991#comment52764219_1424034
+        # THANKS:  None to nul, https://docs.python.org/library/json.html#py-to-json-table
+        return None
+    elif num.is_whole():
+        return int(num)
+    else:
+        # TODO:  Ludicrous numbers should become int.
+        return float(num)
 
 
 # import json
@@ -1862,12 +1899,10 @@ class LexSentence(Lex):
 
 
 class LexInMemory(LexSentence):
+
     def __init__(self, **kwargs):
-        # self.lex = self
         super(LexInMemory, self).__init__(**kwargs)
         # TODO:  new_lex_memory = LexMemory(old_lex_memory)?
-        # self._choate()
-        # if not self.exists():
 
         self.words = []
         # NOTE:  Assume zero-starting idns
@@ -1875,18 +1910,10 @@ class LexInMemory(LexSentence):
         self._lex = self.word_class(self.IDN_LEX)
 
         self._install_all_seminal_words()
-        # assert self.exists()
-        # assert self.is_lex()
         self._lex = self.words[int(self.IDN_LEX)]
         self._noun = self.words[int(self.IDN_NOUN)]
         self._verb = self.words[int(self.IDN_VERB)]
         self._define = self.words[int(self.IDN_DEFINE)]
-
-    # def exists(self):
-    #     if hasattr(self, 'words'):
-    #         return super(LexMemory, self).exists()
-    #     else:
-    #         return False
 
     def insert_word(self, word):
         assert not word.idn.is_nan()
@@ -2051,6 +2078,8 @@ class LexMySQL(LexSentence):
     """
     Store a Lex in a MySQL table.
     """
+    # TODO:  Move LexMySQL to lex_mysql.py?
+
     def __init__(self, **kwargs):
         """
         Create or initialize the table, as necessary.
@@ -2118,14 +2147,11 @@ class LexMySQL(LexSentence):
             #     ProgrammingError
 
         try:
-            # self._connection.set_charset_collation(b'binary', b'binary')
             if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
                 self._connection.set_charset_collation(str('latin1'))
             else:
                 self._connection.set_charset_collation(str('utf8'))
 
-            # self.lex = self
-            # self.last_inserted_whn = None
             self._lex = self.word_class(self.IDN_LEX)
             try:
                 # noinspection PyProtectedMember
@@ -2149,17 +2175,6 @@ class LexMySQL(LexSentence):
             self._noun = self[self.IDN_NOUN]
             self._verb = self[self.IDN_VERB]
             self._define = self[self.IDN_DEFINE]
-
-            # assert self.exists(), self.__dict__
-            # # XXX:  Why does this sometimes fail (3 of 254 tests) and then stop failing?
-            # # And even weirder, when the assert tries to display self.__dict__ is when it stops failing.
-
-            # self.super_query('SET character_set_results = binary')
-
-            # self.super_query('SET NAMES utf8mb4 COLLATE utf8mb4_general_ci')
-            # THANKS:  http://stackoverflow.com/a/27390024/673991
-
-            # assert self.is_lex()
             assert self._connection.is_connected()
 
         except BaseException:
@@ -2577,6 +2592,10 @@ class LexMySQL(LexSentence):
     #     idns = [row['idn'] for row in rows_of_idns]
     #     return idns
 
+    MAX_ITERABLE = 1000
+    class OverflowIterable(ValueError):
+        """find_words() can take iterables, but not too big."""
+
     # @staticmethod
     def _and_clauses(self, idn, sbj, vrb, obj, txt):
         assert isinstance(idn, (Number, Word, type(None),          )) or is_iterable(idn)
@@ -2604,7 +2623,17 @@ class LexMySQL(LexSentence):
                 else:
                     almost_values = [value_or_values]
 
-                values = [conversion_function(x) for x in almost_values]
+                # values = [conversion_function(x) for x in almost_values]
+                # NOTE:  Prevent infinite loop
+                values = []
+                for x in almost_values:
+                    values.append(conversion_function(x))
+                    if len(values) > self.MAX_ITERABLE:
+                        raise self.OverflowIterable("find_words({name} = contains more than {max} things)".format(
+                            name=name,
+                            max=self.MAX_ITERABLE,
+                        ))
+
                 if len(values) < 1:
                     '''part=[] and part=None mean no restriction'''
                 elif len(values) == 1:
@@ -2939,6 +2968,10 @@ def is_iterable(x):
 
     # THANKS:  rule-out-string then duck-type, https://stackoverflow.com/a/1835259/673991
     if isinstance(x, six.string_types):
+        return False
+    if isinstance(x, (Lex, Word)):
+        # NOTE:  Having a __getitme__ that doesn't raise an IndexError makes iter() digest a lex.
+        #        We don't want that.  (It once treated self=lex like an infinitude of words)
         return False
     try:
         iter(x)

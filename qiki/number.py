@@ -367,6 +367,24 @@ class Number(numbers.Complex):
         except Suffix.RawError:
             return "?" + self.hex() + "?"
 
+    def to_json(self):
+        return self.qstring()
+
+        if self.is_suffixed():
+            # TODO:  Complex?
+            return self.qstring()
+        elif not self.is_reasonable():
+            # THANKS:  JSON is a dummy about NaN, inf,
+            #          https://stackoverflow.com/q/1423081/673991#comment52764219_1424034
+            # THANKS:  None to nul, https://docs.python.org/library/json.html#py-to-json-table
+            return None
+        elif self.is_whole():
+            return int(self)
+        else:
+            # TODO:  Ludicrous numbers should become int.
+            return float(self)
+
+
     # Comparison
     # ----------
     def __eq__(self, other):
@@ -1996,10 +2014,10 @@ class Suffix(object):
         """Interpret the payload as the raw bytes of an embedded Number."""
         return Number.from_raw(self.payload)
 
-    class NoSuchType(Exception):
+    class NoSuchType(ValueError):
         """Seek a type that is not there, e.g. Number(1).plus_suffix(0x22).suffix(0x33)"""
 
-    class PayloadError(TypeError):
+    class PayloadError(ValueError):
         """Suffix(payload=unexpected_type)"""
 
     class RawError(ValueError):

@@ -4379,6 +4379,10 @@ class WordInternalTests(WordTests):
         self.assertEqual("0q00_7F", qiki.Word.presentable(qiki.Number.NEGATIVE_INFINITY))
         self.assertEqual("0q", qiki.Word.presentable(qiki.Number.NAN))
 
+    def test_lex(self):
+        self.assertFalse(is_iterable(self.lex))
+        self.assertFalse(is_iterable(self.lex[self.lex]))
+
 
     ################## obsolete or maybe someday #################################
 

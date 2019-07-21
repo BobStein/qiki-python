@@ -7,6 +7,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+
+import json
 # noinspection PyUnresolvedReferences
 import operator
 import pickle
@@ -265,6 +267,22 @@ class NumberBasicTests(NumberTests):
         n = Number('0q83_03E8')
         self.assertEqual('str', type(str(n)).__name__)
         self.assertEqual(n, Number(str(n)))
+
+    def test_json(self):
+        self.assertEqual('0q82_2A', Number(42).to_json())
+
+        class WhatJsonModuleShouldaDone(json.JSONEncoder):
+            def default(self, x):
+                if hasattr(x, 'to_json'):
+                    return x.to_json()
+                else:
+                    return super(WhatJsonModuleShouldaDone, self).default(x)
+
+        self.assertEqual('"0q82_2A"', json.dumps(Number(42), cls=WhatJsonModuleShouldaDone))
+        self.assertEqual(
+            '["a", 2, "0q82_2A"]',
+            json.dumps(['a', 2, Number(42)], cls=WhatJsonModuleShouldaDone)
+        )
 
     def test_unicode(self):
         n = Number('0q83_03E8')
@@ -3418,7 +3436,7 @@ class NumberSuffixTests(NumberTests):
             pass
 
         weird_type = WeirdType()
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             Suffix(0x11, weird_type)
 
     def test_suffix_class(self):
