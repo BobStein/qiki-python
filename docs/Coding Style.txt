@@ -57,7 +57,7 @@ PyCharm defaults to this (Settings | Editor | Code Style | Right margin).
 Limit lines in docstrings and help messages (e.g. argparse description) to 72 characters.  
 This is an end-user limitation, and rightly more conservative than a developer limitation.
 
-Possibly 100 is better.  At least on my portrait-oriented monitors.
+Possibly 100 is better.  At least on my portrait-oriented monitors, where 120 doesn't fit.
 
 
 
@@ -563,9 +563,24 @@ Continuation lines are indented to line up with the stuff after the colon:
         //        in the plain.
 
 
+Three Spaces before comments
+Three Spaces between multi-line lines
+-------------------------------------
+Comments should be uncommon.  Most should have their own line.  
+End-of-line comments should be at least 3 spaces from code.
+Inline comments should be rare.
 
+No:
+    hot(mess) # even hotter
+Yes:
+    cool(breeze)   # is cool
 
+Multi-line lines should be rare, but when they're there, give them some air.
 
+No:
+    f(x); g(y);
+Yes:
+    f(x);   g(y);
 
 
 

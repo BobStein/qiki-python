@@ -546,7 +546,10 @@ class Word(object):
         )
 
     def populate_from_num_txt(self, num, txt):
-        assert isinstance(txt, Text)
+        assert isinstance(txt, Text), "Need Text, not a {t}: `{r}'".format(
+            t=type_name(txt),
+            r=repr(txt)
+        )
         assert isinstance(num, Number)
         self._now_it_exists()
         self._fields = dict(
