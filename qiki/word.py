@@ -1688,7 +1688,7 @@ class LexSentence(Lex):
 
         try:
             old_definition = self[txt]
-        except TypeError:
+        except ValueError:
             '''txt must not be defined yet.'''
         else:
             if old_definition.exists():
@@ -2593,8 +2593,11 @@ class LexMySQL(LexSentence):
     #     return idns
 
     MAX_ITERABLE = 1000
+
+
     class OverflowIterable(ValueError):
         """find_words() can take iterables, but not too big."""
+
 
     # @staticmethod
     def _and_clauses(self, idn, sbj, vrb, obj, txt):
