@@ -368,7 +368,7 @@ class Number(numbers.Complex):
             return "?" + self.hex() + "?"
 
     def to_json(self):
-        return self.qstring()
+        # return self.qstring()
 
         if self.is_suffixed():
             # TODO:  Complex?
@@ -2459,8 +2459,8 @@ assert 'function' == type_name(type_name)
 #     Clearly the 00-part is a penalty for 256**(2 or more)
 #
 # 7F is a fabricated alias for 027DFF representing 0q7D_FF aka -1.
-# 80 is a fabricated alias for 0180 representing 0q80 aka 0.
-# 81 is a fabricated alias for 8201 representing 0q82_01 aka 1.
+# 80 is a fabricated alias for 0180   representing 0q80    aka  0.
+# 81 is a fabricated alias for 8201   representing 0q82_01 aka +1.
 #     These three weirdo exceptions are the only cases when the raw-part doesn't come from Number.raw.
 #     For every other Number, there is a raw-part in its lengthed-export and it's identical to Number.raw.
 #     In particular, the raw length N is 0, not first-raw-byte minus 81.
