@@ -715,9 +715,7 @@ class Word(object):
         assert isinstance(self.txt, Text)
         # if self.exists() or self.idn == Number.NAN:   # EXPERIMENTAL
         if self.exists() or self.idn.is_nan():
-            with max_idn_lock:
-                self.set_idn_if_you_really_have_to(self.lex.max_idn().inc())   # AUTO sorta INCREMENT
-                self.lex.insert_word(self)
+            self.lex.insert_new_word(self)
         else:
             assert isinstance(self.idn, Number)
             self.lex.insert_word(self)
@@ -1524,6 +1522,12 @@ class LexSentence(Lex):
     # TODO:  Why did this start at 1 before?
     # TODO:  Why does this start at 0 now?
 
+    def install_from_scratch(self):
+        raise NotImplementedError()
+
+    def uninstall_to_scratch(self):
+        raise NotImplementedError()
+
     def _install_all_seminal_words(self):
         """
         Insert the five fundamental sentences into the Lex database.
@@ -1655,11 +1659,20 @@ class LexSentence(Lex):
     def max_idn(self):
         raise NotImplementedError()
 
+    def insert_new_word(self, word):
+        if self.is_auto_increment():
+            last_row_id = self.insert_word(word)
+            word.set_idn_if_you_really_have_to(last_row_id)
+        else:
+            with max_idn_lock:
+                word.set_idn_if_you_really_have_to(self.max_idn().inc())   # AUTO sorta INCREMENT
+                self.insert_word(word)
+
+    def is_auto_increment(self):
+        return False
+
     def server_version(self):
         return "(not implemented)"
-
-    def uninstall_to_scratch(self):
-        raise NotImplementedError()
 
     def disconnect(self):
         raise NotImplementedError()
@@ -1837,16 +1850,8 @@ class LexInMemory(LexSentence):
         super(LexInMemory, self).__init__(**kwargs)
         # TODO:  new_lex_memory = LexMemory(old_lex_memory)?
 
-        self.words = []
-        # NOTE:  Assume zero-starting idns
-
-        self._lex = self.word_class(self.IDN_LEX)
-
-        self._install_all_seminal_words()
-        self._lex = self.words[int(self.IDN_LEX)]
-        self._noun = self.words[int(self.IDN_NOUN)]
-        self._verb = self.words[int(self.IDN_VERB)]
-        self._define = self.words[int(self.IDN_DEFINE)]
+        self.words = None
+        self.install_from_scratch()
 
     def insert_word(self, word):
         assert not word.idn.is_nan()
@@ -1857,6 +1862,18 @@ class LexInMemory(LexSentence):
 
     def disconnect(self):
         pass
+
+    def install_from_scratch(self):
+        self.words = []
+        # NOTE:  Assume zero-starting idns
+
+        self._lex = self.word_class(self.IDN_LEX)
+
+        self._install_all_seminal_words()
+        self._lex = self.words[int(self.IDN_LEX)]
+        self._noun = self.words[int(self.IDN_NOUN)]
+        self._verb = self.words[int(self.IDN_VERB)]
+        self._define = self.words[int(self.IDN_DEFINE)]
 
     def uninstall_to_scratch(self):
         del self.words
@@ -2013,6 +2030,12 @@ class LexMySQL(LexSentence):
     """
     # TODO:  Move LexMySQL to lex_mysql.py?
 
+    IDN_TYPE_INT = 'INT(11) AUTO_INCREMENT'
+    IDN_TYPE_BIN = 'VARBINARY(255)'
+
+    def is_auto_increment(self):
+        return 'AUTO_INCREMENT' in self._idn_type
+
     def __init__(self, **kwargs):
         """
         Create or initialize the table, as necessary.
@@ -2029,6 +2052,7 @@ class LexMySQL(LexSentence):
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
         self._connection = None
+        default_idn_type = self.IDN_TYPE_INT
         default_txt_type = 'VARCHAR(10000)'   if self._engine.upper() == 'MEMORY' else   'TEXT'
         # VARCHAR(65536):  ProgrammingError: 1074 (42000): Column length too big for column 'txt'
         #                  (max = 16383); use BLOB or TEXT instead
@@ -2038,6 +2062,7 @@ class LexMySQL(LexSentence):
         #                  TEXT or BLOBs
         # SEE:  VARCHAR versus TEXT, https://stackoverflow.com/a/2023513/673991
         self._txt_type = kwargs.pop('txt_type', default_txt_type)
+        self._idn_type = kwargs.pop('idn_type', default_idn_type)
 
         kwargs_sql = { k: v for k, v in kwargs.items() if k     in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
         kwargs_etc = { k: v for k, v in kwargs.items() if k not in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
@@ -2119,7 +2144,6 @@ class LexMySQL(LexSentence):
             # NOTE:  Prevent ConnectError: OperationalError - 1040 (08004): Too many connections
             self.disconnect()
             raise
-
     APPROVED_MYSQL_CONNECT_ARGUMENTS = {
         'user',
         'password',
@@ -2184,7 +2208,7 @@ class LexMySQL(LexSentence):
                 txt_specs = "CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
             query = """
                 CREATE TABLE IF NOT EXISTS `{table}` (
-                    `idn` VARBINARY(255) NOT NULL,
+                    `idn` {idn_type} NOT NULL,
                     `sbj` VARBINARY(255) NOT NULL,
                     `vrb` VARBINARY(255) NOT NULL,
                     `obj` VARBINARY(255) NOT NULL,
@@ -2197,7 +2221,8 @@ class LexMySQL(LexSentence):
                 ;
             """.format(
                 table=self.table,
-                txt_type=self._txt_type,   # Using this was a hard error:  <type> expected found '{'
+                idn_type=self._idn_type,
+                txt_type=self._txt_type,
                 txt_specs=txt_specs,
                 engine=self._engine,
             )
@@ -2270,10 +2295,13 @@ class LexMySQL(LexSentence):
         # SEE:  http://i.imgur.com/l61ARUX.png
         # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
 
-        self.super_query(
+
+        names = '      idn,      sbj,      vrb,      obj,      num,      txt, whn'
+        values = (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn)
+        last_row_id = self.super_query(
             'INSERT INTO', self.table,
-                   '(         idn,      sbj,      vrb,      obj,      num,      txt, whn) '
-            'VALUES (', (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn), ')')
+                   '(' + names + ') '
+            'VALUES (', values, ')')
         # TODO:  named substitutions with NON-prepared statements??
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
         # THANKS:  About prepared statements, http://stackoverflow.com/a/31979062/673991
@@ -2281,6 +2309,7 @@ class LexMySQL(LexSentence):
         word.whn = whn
         # noinspection PyProtectedMember
         word._now_it_exists()
+        return last_row_id
 
     class Cursor(object):
         def __init__(self, connection):
@@ -2615,6 +2644,7 @@ class LexMySQL(LexSentence):
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             self._execute(cursor, query, parameters)
+            return cursor.lastrowid
 
     def super_select(self, *query_args, **kwargs):
         """

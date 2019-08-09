@@ -46,7 +46,8 @@ except ImportError:
 
         You also need an empty secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
-        Short answer:  that makes 'secure' into a package so we can import 'credentials.py' which is a module.
+        Short answer:  that makes 'secure' into a package so we can import 'credentials.py' 
+        which is a module.
 
         In MySQL you need to create the example_database and the example_user.
         LexMySQL will create the table.
@@ -83,23 +84,52 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 
 
-class LexClasses(object):
-    """We will run WordTests-derived tests using multiple Lex classes."""
-    ALL = [qiki.LexInMemory, qiki.LexMySQL]
-    SQL = [                  qiki.LexMySQL]
 
-    counts = {lex_class.__name__ : 0 for lex_class in ALL}
+
+class TestFlavors(object):
+    """Run each test derived from WordTests using the following variations."""
+    SPECS = [
+        # dict(name="MySQL/int", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_INT),
+        dict(name="MySQL/bin", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_BIN),
+        dict(name="InMemory", lex_class=qiki.LexInMemory),
+    ]
+    NON_CREDENTIAL_SPECS = 'name', 'lex_class'   # SPECS column slice
+    SQL_LEXES = [qiki.LexMySQL]                  # SPECS row slice
+
+    counts = {spec['name'] : 0 for spec in SPECS}
 
     @classmethod
-    def count_test(cls, lex_class):
-        cls.counts[lex_class.__name__] += 1
+    def all_specs(cls):
+        return [s for s in cls.SPECS]
+
+    @classmethod
+    def all_sql_specs(cls):
+        return [s for s in cls.SPECS if s['lex_class'] in cls.SQL_LEXES]
+
+    @classmethod
+    def credentials_from_specs(cls, spec):
+        """
+        Extract credential modifiers from specs.
+
+        I know I know, this should be part of a "Spec" class, along with much else.
+        """
+        return {k: v for k, v in spec.items() if k not in cls.NON_CREDENTIAL_SPECS}
+
+    @classmethod
+    def count_test(cls, spec):
+        cls.counts[spec['name']] += 1
+
+    @classmethod
+    def report(cls):
+        return "\n".join(cls.report_lines())
 
     @classmethod
     def report_lines(cls):
-        for lex_class_name, count in cls.counts.items():
-            yield "{count:5d} tests on {lex_class_name}".format(
-                lex_class_name=lex_class_name,
-                count=count,
+        for spec in cls.SPECS:
+            name = spec['name']
+            yield "{count:5d} tests on {name}".format(
+                name=name,
+                count=cls.counts[name],
             )
 
 
@@ -109,7 +139,7 @@ class TestBaseClass(unittest.TestCase):
 
 # noinspection PyPep8Naming
 def tearDownModule():
-    print("\n".join(LexClasses.report_lines()))
+    print(TestFlavors.report())    # Run once after all tests.
 
 
 # mysql_client_version = subprocess.Popen(
@@ -322,16 +352,18 @@ class LexErrorTests(TestBaseClass):
 # noinspection PyUnresolvedReferences
 class WordTests(TestBaseClass):
 
+    first_setup = True
+
     def __init__(self, *args, **kwargs):
         super(WordTests, self).__init__(*args, **kwargs)
-        self.will_test_all_lexes()
-        self.lex_class = None
+        self.all_flavors()
+        self.flavor_spec = None
 
-    def will_test_all_lexes(self):
-        self.lex_classes = [c for c in LexClasses.ALL]
+    def all_flavors(self):
+        self.flavor_specs = TestFlavors.all_specs()
 
-    def weed_out_non_sql_lexes(self):
-        self.lex_classes = [c for c in self.lex_classes if c in LexClasses.SQL]
+    def only_sql_flavors(self):
+        self.flavor_specs = TestFlavors.all_sql_specs()
 
     def run(self, result=None):
         """
@@ -341,9 +373,9 @@ class WordTests(TestBaseClass):
         
         This may slightly confuse the test framework on the total number of tests being run.
         """
-        for self.lex_class in self.lex_classes:
+        for self.flavor_spec in self.flavor_specs:
             result = super(WordTests, self).run(result)
-            LexClasses.count_test(self.lex_class)
+            TestFlavors.count_test(self.flavor_spec)
         return result
         # THANKS:  Parameterizing tests, https://eli.thegreenplace.net/2011/08/02/python-unit-testing-parametrized-test-cases
 
@@ -353,19 +385,21 @@ class WordTests(TestBaseClass):
             credentials['table'] = 'word_' + uuid.uuid4().hex
             # EXAMPLE:  word_ce09954b2e784cd8811b640079497568
 
-        self.lex = self.lex_class(**credentials)
+        credentials.update(TestFlavors.credentials_from_specs(self.flavor_spec))
+        self.lex = self.flavor_spec['lex_class'](**credentials)
 
         def cleanup_disconnect():
             if not LET_DATABASE_RECORDS_REMAIN:
                 self.lex.uninstall_to_scratch()
                 # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
-                #        in the next test's call to the self.lex_class() constructor.
+                #        in the next flavor's call to its lex constructor in setUp().
             self.lex.disconnect()
 
         self.addCleanup(cleanup_disconnect)
         # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
 
-        if LET_DATABASE_RECORDS_REMAIN:
+        if LET_DATABASE_RECORDS_REMAIN or WordTests.first_setup:
+            WordTests.first_setup = False
             self.lex.uninstall_to_scratch()
             self.lex.install_from_scratch()
             # NOTE:  Delete old table from last test, insert fresh new table for this test.
@@ -961,7 +995,7 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(nonword.txt, u'word that does not exist')
 
     def test_01e_class_names(self):
-        self.assertEqual(self.lex_class.__name__, type_name(self.lex))
+        self.assertEqual(self.flavor_spec['lex_class'].__name__, type_name(self.lex))
         self.assertEqual('WordClassJustForThisLex', type_name(self.lex._lex))
 
 
@@ -3999,7 +4033,7 @@ class WordSuperSelectTest(WordQoolbarSetup):
 
     def __init__(self, *args, **kwargs):
         super(WordSuperSelectTest, self).__init__(*args, **kwargs)
-        self.weed_out_non_sql_lexes()
+        self.only_sql_flavors()
 
     def test_lex_table_not_writable(self):
         with self.assertRaises(AttributeError):
