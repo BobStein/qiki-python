@@ -246,73 +246,8 @@ class Word(object):
         return SubjectedVerb(self, vrb, *args, **kwargs)
         # NOTE:  sbj=self
 
-    # def define(self, obj, txt):
-    #     return self.lex.define(obj, txt, sbj=self)
-    #     # TODO:  Test that sbj=self confers ownership of the word on self (as opposed to lex).
-    #     # TODO:  Test that sbj.define() works as well as lex.define(..., sbj=sbj)
-    #     # TODO:  Should the be in some kind of WordSentence() subclass instead?
-    #     #        Otherwise e.g. word_listing.define() does zombie things
-    #
-    #     # # TODO:  WTF, D.R.Y. violation with LexSentence.define().
-    #     # #        One should use the other or something.
-    #     # """
-    #     # Define a word.  Name it txt.  Its type or class is obj.
-    #     #
-    #     # Example:
-    #     #     agent = lex['agent']
-    #     #     lex.define(agent, 'fred')
-    #     # Or:
-    #     #     lex.define('agent', 'fred')
-    #     #
-    #     # The obj may be identified by its txt, example:
-    #     #     lex.define('agent', 'fred')
-    #     # """
-    #     # if Text.is_valid(obj):   # Meta definition:  s.define('x') is equivalent to s.define(lex['x'])
-    #     #     # obj = self.spawn(obj)
-    #     #     obj = self.lex.read_word(obj)
-    #     # # TODO:  Move the above logic to says()?  Similarly for SubjectedVerb, and its calls to spawn()
-    #     #
-    #     # assert isinstance(obj, Word)
-    #     # assert Text.is_valid(txt), "define() txt cannot be a {}".format(type_name(txt))
-    #     #
-    #     # # How to handle "duplications"
-    #     #
-    #     # # TODO:  Should not this be spawn(sbj=lex, vrb=define, txt)?
-    #     # # Maybe someone else will define a word.
-    #     # # Then everyone who tries to define that word will use that first person's definition.
-    #     # # Anything interesting about the first definer of a word?  Maybe not much.
-    #     # # What's important is consistency.
-    #     # # And anyway, anyone could theoretically imbue the word with their own meaning,
-    #     # # applicable to their uses.
-    #     #
-    #     # # TODO:  Implement define() via says() with a use_earliest option?
-    #     # # Not really, more subtle than that. Selecting uniqueness on txt and not on sbj.
-    #     #
-    #     # # Who cares about num (yet)?  Used to, but now abolished.
-    #     #
-    #     # # So anyway, this attempts to find the earliest definition by anybody of the same word:
-    #     # # possibly_existing_word = self.spawn(txt)
-    #     # possibly_existing_word = self.lex[txt]
-    #     # if possibly_existing_word.exists():
-    #     #     return possibly_existing_word
-    #     # # new_word = self.says(vrb=self.lex[u'define'], obj=obj, txt=txt)
-    #     # new_word = self(vrb=self.lex[u'define'], txt=txt)[obj]
-    #     # return new_word
-
     def said(self, vrb, obj):
         return self(vrb)[obj]
-
-        # assert isinstance(vrb, (Word, Number)), "vrb cannot be a {type}".format(type=type_name(vrb))
-        # assert isinstance(obj, (Word, Number)), "obj cannot be a {type}".format(type=type_name(obj))
-        # existing_word = self.spawn(
-        #     sbj=self,
-        #     vrb=vrb,
-        #     obj=obj
-        # )
-        # existing_word._from_sbj_vrb_obj()
-        # if not existing_word.exists():
-        #     raise self.NotExist
-        # return existing_word
 
     @classmethod
     def txt_num_swap(cls, a1, a2):
@@ -782,11 +717,6 @@ class Word(object):
         if self.exists() or self.idn.is_nan():
             with max_idn_lock:
                 self.set_idn_if_you_really_have_to(self.lex.max_idn().inc())   # AUTO sorta INCREMENT
-                # DONE:  Race condition?  Made max_idn and insert_word part of an atomic transaction.
-                # Or we could have stored latest idn in another table
-                # SEE:  http://stackoverflow.com/questions/3292197/emulate-auto-increment-in-mysql-innodb
-                assert not self.idn.is_nan()
-                assert isinstance(self.idn, Number)
                 self.lex.insert_word(self)
         else:
             assert isinstance(self.idn, Number)
@@ -2154,6 +2084,10 @@ class LexMySQL(LexSentence):
                 self._connection.set_charset_collation(str('latin1'))
             else:
                 self._connection.set_charset_collation(str('utf8'))
+
+            self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+            # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
+            # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
 
             self._lex = self.word_class(self.IDN_LEX)
             try:
