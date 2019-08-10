@@ -370,9 +370,6 @@ class Word(object):
         :type idn: Number
         """
         assert isinstance(idn, Number)
-        # assert not idn.is_suffixed()
-        # self.set_idn_if_you_really_have_to(idn)
-
         self.lex.populate_word_from_idn(self, idn)
         # TODO:  Do something with return value?
         # NOTE:  If this returned True, it already called populate_from_word()
@@ -704,21 +701,24 @@ class Word(object):
 
     def save(self, override_idn=None):
         # TODO:  Move to Lex?  It's only ever called by create_word() anyway...
-        if override_idn is not None:
-            self.set_idn_if_you_really_have_to(override_idn)
-        # assert isinstance(self.idn, (Number, type(None)))   # EXPERIMENTAL
         assert isinstance(self.idn, Number)
         assert isinstance(self.sbj, Word)
         assert isinstance(self.vrb, Word)
         assert isinstance(self.obj, Word), "{obj} is not a Word".format(obj=repr(self.obj))
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
-        # if self.exists() or self.idn == Number.NAN:   # EXPERIMENTAL
-        if self.exists() or self.idn.is_nan():
+        if override_idn is None:
             self.lex.insert_new_word(self)
         else:
-            assert isinstance(self.idn, Number)
+            self.set_idn_if_you_really_have_to(override_idn)
             self.lex.insert_word(self)
+        # if override_idn is not None:
+        #     self.set_idn_if_you_really_have_to(override_idn)
+        # if self.exists() or self.idn.is_nan():
+        #     self.lex.insert_new_word(self)
+        # else:
+        #     assert isinstance(self.idn, Number)
+        #     self.lex.insert_word(self)
 
 
 class SubjectedVerb(object):
@@ -1660,18 +1660,12 @@ class LexSentence(Lex):
         raise NotImplementedError()
 
     def insert_new_word(self, word):
-        if self.is_auto_increment():
-            word.set_idn_if_you_really_have_to(Number.NAN)
-            last_row_id = self.insert_word(word)
-            word.set_idn_if_you_really_have_to(last_row_id)
-        else:
-            with max_idn_lock:
-                word.set_idn_if_you_really_have_to(self.max_idn().inc())   # AUTO sorta INCREMENT
-                self.insert_word(word)
-
-    def is_auto_increment(self):
-        """Can this lex assign its own idns?  If so, insert_word() must return one."""
-        return False
+        with max_idn_lock:
+            next_idn = self.max_idn().inc()   # AUTO sorta INCREMENT
+            word.set_idn_if_you_really_have_to(next_idn)
+            self.insert_word(word)
+            # word.set_idn_if_you_really_have_to(self.max_idn().inc())   # AUTO sorta INCREMENT
+            # self.insert_word(word)
 
     def server_version(self):
         return "(not implemented)"
@@ -1772,6 +1766,7 @@ class LexSentence(Lex):
             if new_word.exists():
                 # noinspection PyProtectedMember
                 new_word._fields['num'] += Number(num_add)
+                new_word.set_idn_if_you_really_have_to(Number.NAN)
             else:
                 # noinspection PyProtectedMember
                 new_word._fields['num'] = Number(num_add)
@@ -1858,7 +1853,12 @@ class LexInMemory(LexSentence):
     def insert_word(self, word):
         assert not word.idn.is_nan()
         word.whn = self.now_number()
+
         self.words.append(word)
+
+        assert int(word.idn) == len(self.words) - 1
+        # NOTE:   Crude expectation word insertion order 0,1,2,...
+
         # noinspection PyProtectedMember
         word._now_it_exists()
 
@@ -2032,15 +2032,6 @@ class LexMySQL(LexSentence):
     """
     # TODO:  Move LexMySQL to lex_mysql.py?
 
-    IDN_TYPE_INT = 'INT(11) AUTO_INCREMENT'
-    IDN_TYPE_BIN = 'VARBINARY(255)'
-
-    def is_auto_increment(self):
-        return 'AUTO_INCREMENT' in self._idn_type
-
-    def is_idn_int(self):
-        return self._idn_type.upper().startswith('INT')
-
     def __init__(self, **kwargs):
         """
         Create or initialize the table, as necessary.
@@ -2057,7 +2048,6 @@ class LexMySQL(LexSentence):
         self._table = kwargs.pop('table')
         self._engine = kwargs.pop('engine', 'InnoDB')
         self._connection = None
-        default_idn_type = self.IDN_TYPE_INT
         default_txt_type = 'VARCHAR(10000)'   if self._engine.upper() == 'MEMORY' else   'TEXT'
         # VARCHAR(65536):  ProgrammingError: 1074 (42000): Column length too big for column 'txt'
         #                  (max = 16383); use BLOB or TEXT instead
@@ -2067,7 +2057,6 @@ class LexMySQL(LexSentence):
         #                  TEXT or BLOBs
         # SEE:  VARCHAR versus TEXT, https://stackoverflow.com/a/2023513/673991
         self._txt_type = kwargs.pop('txt_type', default_txt_type)
-        self._idn_type = kwargs.pop('idn_type', default_idn_type)
 
         kwargs_sql = { k: v for k, v in kwargs.items() if k     in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
         kwargs_etc = { k: v for k, v in kwargs.items() if k not in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
@@ -2218,7 +2207,7 @@ class LexMySQL(LexSentence):
                 txt_specs = "CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
             query = """
                 CREATE TABLE IF NOT EXISTS `{table}` (
-                    `idn` {idn_type} NOT NULL,
+                    `idn` VARBINARY(255) NOT NULL,
                     `sbj` VARBINARY(255) NOT NULL,
                     `vrb` VARBINARY(255) NOT NULL,
                     `obj` VARBINARY(255) NOT NULL,
@@ -2231,7 +2220,6 @@ class LexMySQL(LexSentence):
                 ;
             """.format(
                 table=self.table,
-                idn_type=self._idn_type,
                 txt_type=self._txt_type,
                 txt_specs=txt_specs,
                 engine=self._engine,
@@ -2309,7 +2297,7 @@ class LexMySQL(LexSentence):
 
         if not word.idn.is_nan():
             names += ['idn']
-            values += [self.super_ready_idn(word.idn)]
+            values += [word.idn]
 
         names +=  [    'sbj',    'vrb',    'obj',    'num',    'txt','whn']
         values += [word.sbj, word.vrb, word.obj, word.num, word.txt,  whn ]
@@ -2326,14 +2314,6 @@ class LexMySQL(LexSentence):
         # noinspection PyProtectedMember
         word._now_it_exists()
         return last_row_id
-
-    def super_ready_idn(self, x):
-        """Get an idn ready for super_select().  It needs int if idn_type was IDN_TYPE_INT."""
-        idn = self.idn_ify(x)
-        if self.is_idn_int():
-            return int(idn)
-        else:
-            return idn
 
     class Cursor(object):
         def __init__(self, connection):
@@ -2378,7 +2358,7 @@ class LexMySQL(LexSentence):
     def populate_word_from_idn(self, word, idn):
         rows = self.super_select(
             'SELECT * FROM', self.table,
-            'WHERE idn =', self.super_ready_idn(idn)
+            'WHERE idn =', idn
         )
         return self._populate_from_one_row(word, rows)
 
@@ -2646,7 +2626,7 @@ class LexMySQL(LexSentence):
 
         query_args = []
 
-        query_args += list(clause(idn, 'idn', lambda x: self.super_ready_idn(x)))
+        query_args += list(clause(idn, 'idn', lambda x: self.idn_ify(x)))
         query_args += list(clause(sbj, 'sbj', lambda x: self.idn_ify(x)))
         query_args += list(clause(vrb, 'vrb', lambda x: self.idn_ify(x)))
         query_args += list(clause(obj, 'obj', lambda x: self.idn_ify(x)))
@@ -2705,8 +2685,6 @@ class LexMySQL(LexSentence):
                         value = None
                     elif name.endswith('txt'):   # including jbo_txt
                         value = self.text_from_mysql(field)
-                    elif name.endswith('idn'):   # including jbo_idn
-                        value = self.idn_from_mysql(field)
                     else:
                         value = self.number_from_mysql(field)
                     field_dictionary[name] = value
@@ -2859,12 +2837,6 @@ class LexMySQL(LexSentence):
 
     class TableName(SuperIdentifier):
         """Name of a MySQL table in a super-query"""
-
-    def idn_from_mysql(self, mysql_cell):
-        if self.is_idn_int():
-            return Number(mysql_cell)
-        else:
-            return self.number_from_mysql(mysql_cell)
 
     @classmethod
     def number_from_mysql(cls, mysql_cell):
