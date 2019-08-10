@@ -708,17 +708,10 @@ class Word(object):
         assert isinstance(self.num, Number)
         assert isinstance(self.txt, Text)
         if override_idn is None:
-            self.lex.insert_new_word(self)
+            self.lex.insert_next_word(self)
         else:
             self.set_idn_if_you_really_have_to(override_idn)
             self.lex.insert_word(self)
-        # if override_idn is not None:
-        #     self.set_idn_if_you_really_have_to(override_idn)
-        # if self.exists() or self.idn.is_nan():
-        #     self.lex.insert_new_word(self)
-        # else:
-        #     assert isinstance(self.idn, Number)
-        #     self.lex.insert_word(self)
 
 
 class SubjectedVerb(object):
@@ -1656,16 +1649,17 @@ class LexSentence(Lex):
     def find_words(self, **kwargs):
         raise NotImplementedError()
 
+    def insert_next_word(self, word):
+        with max_idn_lock:
+            word.set_idn_if_you_really_have_to(self.next_idn())
+            self.insert_word(word)
+        # TODO:  Unit test this lock, by initiating many "simultaneous" inserts.
+
+    def next_idn(self):
+        return self.max_idn().inc()   # Crude reinvention of AUTO_INCREMENT
+
     def max_idn(self):
         raise NotImplementedError()
-
-    def insert_new_word(self, word):
-        with max_idn_lock:
-            next_idn = self.max_idn().inc()   # AUTO sorta INCREMENT
-            word.set_idn_if_you_really_have_to(next_idn)
-            self.insert_word(word)
-            # word.set_idn_if_you_really_have_to(self.max_idn().inc())   # AUTO sorta INCREMENT
-            # self.insert_word(word)
 
     def server_version(self):
         return "(not implemented)"
@@ -2889,7 +2883,7 @@ class LexMySQL(LexSentence):
                 #        Either data or a SuperIdentifier or None must intervene.
 
     def max_idn(self):
-        # TODO:  Store max_idn in a singleton table?
+        # TODO:  Store max_idn in a singleton table?  Or a parallel 1-column AUTO_INCREMENT?
         one_row_one_col = list(self.super_select('SELECT MAX(idn) AS max_idn FROM', self.table))
         if len(one_row_one_col) < 1:
             return Number(0)
