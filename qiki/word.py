@@ -2098,14 +2098,14 @@ class LexMySQL(LexSentence):
             else:
                 self._connection.set_charset_collation(str('utf8'))
 
-            self.super_query('SET sql_mode = "NO_AUTO_VALUE_ON_ZERO"')
-            # This allows IDN_LEX to be zero when IDN_TYPE_INT.
-            # THANKS:  Zero inc, https://stackoverflow.com/q/1884387/673991#comment79161589_1884420
-            # THANKS:  Disable zero inc, https://stackoverflow.com/a/16232493/673991
-
             self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
             # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
             # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
+            # TODO:  Would still rather make max_idn() alone do this,
+            #        but "FROM SHARE" was a syntax error.
+            #        Maybe "FOR UPDATE" in the max_idn() SELECT statement,
+            #        plus a commit in super_select() would do the trick?
+            # SEE:  FOR UPDATE, https://dev.mysql.com/doc/refman/5.7/en/select.html
 
             self._lex = self.word_class(self.IDN_LEX)
             try:
@@ -2631,6 +2631,11 @@ class LexMySQL(LexSentence):
         return Text.decode_if_you_must(self.super_select_one('SELECT VERSION()')[0])
 
     def super_select_one(self, *query_args, **kwargs):
+        """
+        Read one row.  Return None if it's not there.
+
+        Unlike super_select() this does not convert the returned row to Number, Text.
+        """
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             self._execute(cursor, query, parameters)
