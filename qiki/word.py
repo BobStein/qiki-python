@@ -1661,6 +1661,7 @@ class LexSentence(Lex):
 
     def insert_new_word(self, word):
         if self.is_auto_increment():
+            word.set_idn_if_you_really_have_to(Number.NAN)
             last_row_id = self.insert_word(word)
             word.set_idn_if_you_really_have_to(last_row_id)
         else:
@@ -1669,6 +1670,7 @@ class LexSentence(Lex):
                 self.insert_word(word)
 
     def is_auto_increment(self):
+        """Can this lex assign its own idns?  If so, insert_word() must return one."""
         return False
 
     def server_version(self):
@@ -2036,6 +2038,9 @@ class LexMySQL(LexSentence):
     def is_auto_increment(self):
         return 'AUTO_INCREMENT' in self._idn_type
 
+    def is_idn_int(self):
+        return self._idn_type.upper().startswith('INT')
+
     def __init__(self, **kwargs):
         """
         Create or initialize the table, as necessary.
@@ -2109,6 +2114,11 @@ class LexMySQL(LexSentence):
                 self._connection.set_charset_collation(str('latin1'))
             else:
                 self._connection.set_charset_collation(str('utf8'))
+
+            self.super_query('SET sql_mode = "NO_AUTO_VALUE_ON_ZERO"')
+            # This allows IDN_LEX to be zero when IDN_TYPE_INT.
+            # THANKS:  Zero inc, https://stackoverflow.com/q/1884387/673991#comment79161589_1884420
+            # THANKS:  Disable zero inc, https://stackoverflow.com/a/16232493/673991
 
             self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
             # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
@@ -2270,7 +2280,6 @@ class LexMySQL(LexSentence):
 
     # noinspection SpellCheckingInspection
     def insert_word(self, word):
-        assert not word.idn.is_nan()
         whn = self.now_number()
         # TODO:  Enforce whn uniqueness?
         # SEE:  https://docs.python.org/2/library/time.html#time.time
@@ -2295,12 +2304,19 @@ class LexMySQL(LexSentence):
         # SEE:  http://i.imgur.com/l61ARUX.png
         # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
 
+        names = []
+        values = []
 
-        names = '      idn,      sbj,      vrb,      obj,      num,      txt, whn'
-        values = (word.idn, word.sbj, word.vrb, word.obj, word.num, word.txt, whn)
+        if not word.idn.is_nan():
+            names += ['idn']
+            values += [self.super_ready_idn(word.idn)]
+
+        names +=  [    'sbj',    'vrb',    'obj',    'num',    'txt','whn']
+        values += [word.sbj, word.vrb, word.obj, word.num, word.txt,  whn ]
+
         last_row_id = self.super_query(
             'INSERT INTO', self.table,
-                   '(' + names + ') '
+            '(' + ','.join(names) + ') ' +
             'VALUES (', values, ')')
         # TODO:  named substitutions with NON-prepared statements??
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
@@ -2310,6 +2326,14 @@ class LexMySQL(LexSentence):
         # noinspection PyProtectedMember
         word._now_it_exists()
         return last_row_id
+
+    def super_ready_idn(self, x):
+        """Get an idn ready for super_select().  It needs int if idn_type was IDN_TYPE_INT."""
+        idn = self.idn_ify(x)
+        if self.is_idn_int():
+            return int(idn)
+        else:
+            return idn
 
     class Cursor(object):
         def __init__(self, connection):
@@ -2352,7 +2376,10 @@ class LexMySQL(LexSentence):
         self._connection.close()
 
     def populate_word_from_idn(self, word, idn):
-        rows = self.super_select('SELECT * FROM', self.table, 'WHERE idn =', idn)
+        rows = self.super_select(
+            'SELECT * FROM', self.table,
+            'WHERE idn =', self.super_ready_idn(idn)
+        )
         return self._populate_from_one_row(word, rows)
 
     def populate_word_from_definition(self, word, define_txt):
@@ -2618,7 +2645,8 @@ class LexMySQL(LexSentence):
                     yield None
 
         query_args = []
-        query_args += list(clause(idn, 'idn', lambda x: self.idn_ify(x)))
+
+        query_args += list(clause(idn, 'idn', lambda x: self.super_ready_idn(x)))
         query_args += list(clause(sbj, 'sbj', lambda x: self.idn_ify(x)))
         query_args += list(clause(vrb, 'vrb', lambda x: self.idn_ify(x)))
         query_args += list(clause(obj, 'obj', lambda x: self.idn_ify(x)))
@@ -2641,22 +2669,29 @@ class LexMySQL(LexSentence):
         """
 
     def super_query(self, *query_args, **kwargs):
+        """
+        Non-SELECT SQL statement:  INSERT, DROP, etc.  Alternate syntax with data.
+
+        Returns last inserted id (as qiki Number) if INSERT and auto_increment.
+        """
         query, parameters = self._super_parse(*query_args, **kwargs)
         with self._cursor() as cursor:
             self._execute(cursor, query, parameters)
-            return cursor.lastrowid
+            return Number(cursor.lastrowid)
 
     def super_select(self, *query_args, **kwargs):
         """
-        SQL statement that generates rows, alternating syntax and data.
+        SQL statement that generates rows.  Alternate syntax with data or symbol.
+
+        Usually SELECT.  Also SHOW.
 
         EXAMPLE:
             rows = super_select('SELECT * FROM ', TableName('Order'), 'WHERE id = ', Number(42))
 
-        :param query_args:  Alternating SQL syntax strings with any of:
-                            Text, SuperIdentifier, Number, Word, None
+        :param query_args:  Alternate SQL syntax string with any of:
+                            Text, SuperIdentifier, Number, Word, None, int
         :param kwargs: - e.g. debug=True
-        :return:
+        :return: - generator yielding row-dictionaries
         """
         debug = kwargs.get('debug', False)
         query, parameters = self._super_parse(*query_args, **kwargs)
@@ -2664,21 +2699,20 @@ class LexMySQL(LexSentence):
             self._execute(cursor, query, parameters)
             for row in cursor:
                 field_dictionary = dict()
-                if debug:
-                    print(end='\t')
+                if debug:  print(end='\t')
                 for field, name in zip(row, cursor.column_names):
                     if field is None:
                         value = None
                     elif name.endswith('txt'):   # including jbo_txt
                         value = self.text_from_mysql(field)
+                    elif name.endswith('idn'):   # including jbo_idn
+                        value = self.idn_from_mysql(field)
                     else:
                         value = self.number_from_mysql(field)
                     field_dictionary[name] = value
-                    if debug:
-                        print(name, repr(value), end='; ')
+                    if debug:  print(name, repr(value), end='; ')
                 yield field_dictionary
-                if debug:
-                    print()
+                if debug:  print()
 
     def _execute(self, cursor, query, parameters=()):
         """
@@ -2696,13 +2730,20 @@ class LexMySQL(LexSentence):
             #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
             #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
             #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+
+            def str_len(x):
+                try:
+                    return str(len(x))
+                except TypeError:
+                    return "-"
+
             raise self.QueryError(
                 str(e) +
                 " on query:\n" +
                 query +
                 ";\n" +
                 "parameter lengths " +
-                ",".join(str(len(p)) for p in parameters)
+                ",".join(str_len(p) for p in parameters)
 
                 # "parameters: " +
                 # ",".join(repr(p) for p in parameters)
@@ -2736,7 +2777,7 @@ class LexMySQL(LexSentence):
                     "Consecutive super_select() arguments should not be strings.  " +
                     "Pass string fields through qiki.Text().  " +
                     "Pass identifiers through SuperIdentifier().  " +
-                    "Or concatenate actual plaintext strings with +, or intersperse a None.\n"
+                    "Or concatenate actual plaintext strings with + or intersperse None.\n"
                     "Argument #{n1}: '{arg1}\n"
                     "Argument #{n2}: '{arg2}".format(
                         n1=index+1,
@@ -2763,6 +2804,9 @@ class LexMySQL(LexSentence):
             elif isinstance(query_arg, Number):
                 query += '?'
                 parameters.append(query_arg.raw)
+            elif isinstance(query_arg, int):
+                query += '?'
+                parameters.append(query_arg)
             elif isinstance(query_arg, Word):
                 query += '?'
                 parameters.append(query_arg.idn.raw)
@@ -2816,6 +2860,12 @@ class LexMySQL(LexSentence):
     class TableName(SuperIdentifier):
         """Name of a MySQL table in a super-query"""
 
+    def idn_from_mysql(self, mysql_cell):
+        if self.is_idn_int():
+            return Number(mysql_cell)
+        else:
+            return self.number_from_mysql(mysql_cell)
+
     @classmethod
     def number_from_mysql(cls, mysql_cell):
         if HORRIBLE_MYSQL_CONNECTOR_WORKAROUND:
@@ -2856,6 +2906,8 @@ class LexMySQL(LexSentence):
                 yield cls.mysql_from_text(sub_arg)
             elif isinstance(sub_arg, Number):
                 yield sub_arg.raw
+            elif isinstance(sub_arg, int):
+                yield sub_arg
             elif isinstance(sub_arg, Word):
                 yield sub_arg.idn.raw
             else:

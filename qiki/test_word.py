@@ -89,9 +89,9 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
 class TestFlavors(object):
     """Run each test derived from WordTests using the following variations."""
     SPECS = [
-        # dict(name="MySQL/int", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_INT),
-        dict(name="MySQL/bin", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_BIN),
-        dict(name="InMemory", lex_class=qiki.LexInMemory),
+        dict(name="MySQL/int", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_INT),
+        # dict(name="MySQL/bin", lex_class=qiki.LexMySQL, idn_type= qiki.LexMySQL.IDN_TYPE_BIN),
+        # dict(name="InMemory", lex_class=qiki.LexInMemory),
     ]
     NON_CREDENTIAL_SPECS = 'name', 'lex_class'   # SPECS column slice
     SQL_LEXES = [qiki.LexMySQL]                  # SPECS row slice
@@ -4045,7 +4045,7 @@ class WordSuperSelectTest(WordQoolbarSetup):
             'SELECT txt FROM',
             self.lex.table,
             'WHERE idn =',
-            qiki.LexSentence.IDN_DEFINE
+            self.lex.super_ready_idn(qiki.LexSentence.IDN_DEFINE)
         )))
 
     def test_super_select_word(self):
@@ -4054,7 +4054,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
             'SELECT txt FROM',
             self.lex.table,
             'WHERE idn =',
-            define_word
+            self.lex.super_ready_idn(define_word)
+            # NOTE:  Sad, so sad, this conversion can't be automagic.
         )))
 
     def test_super_select_txt(self):
@@ -4071,7 +4072,7 @@ class WordSuperSelectTest(WordQoolbarSetup):
             'SELECT txt', None, 'FROM',
             self.lex.table,
             'WHERE', None, 'idn =',
-            qiki.LexSentence.IDN_DEFINE
+            self.lex.super_ready_idn(qiki.LexSentence.IDN_DEFINE)
         )))
 
     def test_super_select_string_concatenate_alternatives(self):
@@ -4127,8 +4128,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
         anna_and_bart = list(self.lex.super_select(
             'SELECT txt FROM', self.lex.table,
             'WHERE idn IN (', [
-                self.anna.idn,
-                self.bart.idn
+                self.lex.super_ready_idn(self.anna.idn),
+                self.lex.super_ready_idn(self.bart.idn)
             ], ')'
         ))
         self.assertEqual([
@@ -4140,8 +4141,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
         anna_and_bart = list(self.lex.super_select(
             'SELECT txt FROM', self.lex.table,
             'WHERE idn IN (', [
-                self.anna,
-                self.bart
+                self.lex.super_ready_idn(self.anna),
+                self.lex.super_ready_idn(self.bart)
             ], ')'
         ))
         self.assertEqual([
@@ -4153,8 +4154,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
         anna_and_bart = list(self.lex.super_select(
             'SELECT txt FROM',self.lex.table,
             'WHERE idn IN (', (
-                self.anna.idn,
-                self.bart.idn
+                self.lex.super_ready_idn(self.anna.idn),
+                self.lex.super_ready_idn(self.bart.idn)
             ), ')'
         ))
         self.assertEqual([
@@ -4166,8 +4167,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
         anna_and_bart = list(self.lex.super_select(
             'SELECT txt FROM', self.lex.table,
             'WHERE idn IN (', (
-                self.anna,
-                self.bart
+                self.lex.super_ready_idn(self.anna),
+                self.lex.super_ready_idn(self.bart)
             ), ')'
         ))
         self.assertEqual([
@@ -4179,8 +4180,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
         anna_and_bart = list(self.lex.super_select(
             'SELECT txt FROM', self.lex.table,
             'WHERE idn IN (', (
-                self.anna,
-                self.bart.idn
+                self.lex.super_ready_idn(self.anna),
+                self.lex.super_ready_idn(self.bart.idn)
             ), ')'
         ))
         self.assertEqual([
@@ -4190,8 +4191,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
 
     def test_super_select_idn_set(self):
         set_of_idns = {
-            self.anna.idn,
-            self.bart.idn
+            self.lex.super_ready_idn(self.anna.idn),
+            self.lex.super_ready_idn(self.bart.idn)
         }
         assert type(set_of_idns) is set
         anna_and_bart = list(self.lex.super_select(
@@ -4205,8 +4206,8 @@ class WordSuperSelectTest(WordQoolbarSetup):
 
     def test_super_select_word_set(self):
         set_of_words = {
-            self.anna,
-            self.bart
+            self.lex.super_ready_idn(self.anna),
+            self.lex.super_ready_idn(self.bart)
         }
         assert type(set_of_words) is set
         anna_and_bart = list(self.lex.super_select(
