@@ -2101,11 +2101,13 @@ class LexMySQL(LexSentence):
             self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
             # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
             # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
+            # SEE:  SET TRANSACTION, https://dev.mysql.com/doc/refman/en/set-transaction.html
+            # SEE:  READ COMMITTED, https://dev.mysql.com/doc/refman/en/innodb-transaction-isolation-levels.html#isolevel_read-committed
             # TODO:  Would still rather make max_idn() alone do this,
             #        but "FROM SHARE" was a syntax error.
             #        Maybe "FOR UPDATE" in the max_idn() SELECT statement,
             #        plus a commit in super_select() would do the trick?
-            # SEE:  FOR UPDATE, https://dev.mysql.com/doc/refman/5.7/en/select.html
+            # SEE:  FOR UPDATE, https://dev.mysql.com/doc/refman/en/select.html
 
             self._lex = self.word_class(self.IDN_LEX)
             try:
