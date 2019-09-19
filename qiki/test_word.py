@@ -3891,11 +3891,6 @@ class WordQoolbarTests(WordQoolbarSetup):
             self.delete.txt
         }, {d['name'] for d in verb_dicts})
 
-    # def test_qoolbar_verbs_old_versus_new_way(self):
-    #     old_method = self.qoolbar.get_verbs_old_method()
-    #     new_method = self.qoolbar.get_verbs_new_method()
-    #     self.assertEqual(old_method, new_method)
-
     def test_qoolbar_verbs_qool_iconify(self):
         """Verbs that are qool and iconified show up in the qoolbar."""
         bleep = self.lex.verb(u'bleep')

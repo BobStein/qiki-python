@@ -1936,7 +1936,6 @@ class LexInMemory(LexSentence):
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
-        # obj_group=False,
         jbo_strictly=False,
         debug=False
     ):
@@ -2422,7 +2421,6 @@ class LexMySQL(LexSentence):
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
-        # obj_group=False,
         jbo_strictly=False,
         debug=False
     ):
@@ -2479,16 +2477,6 @@ class LexMySQL(LexSentence):
         idn_order = 'ASC' if idn_ascending else 'DESC'
         jbo_order = 'ASC' if jbo_ascending else 'DESC'
         query_args = [
-            #     'SELECT '
-            #     'w.obj AS obj, '   # NOTE:  Avoid (something??)
-            #     'w.idn AS idn, '
-            #     'w.sbj AS sbj, '
-            #     'w.vrb AS vrb, '
-            #     'w.num AS num, '
-            #     'w.txt AS txt, '
-            #     'w.whn AS whn',
-            #     None
-            # ] if obj_group else [
             'SELECT '
             'w.idn AS idn, '
             'w.sbj AS sbj, '
@@ -2522,9 +2510,6 @@ class LexMySQL(LexSentence):
 
         query_args += ['WHERE TRUE', None]
         query_args += self._and_clauses(idn, sbj, vrb, obj, txt)
-
-        # if obj_group:
-        #     query_args += ['GROUP BY obj', None]
 
         order_clause = 'ORDER BY w.idn ' + idn_order
         if any(jbo_vrb):
@@ -3130,11 +3115,11 @@ class QoolbarSimple(Qoolbar):
             )
 
     def get_verbs(self, debug=False):
-        qool_idn = self.lex[u'qool'].idn
-        iconify_idn = self.lex[u'iconify'].idn
+        qool_idn = self.lex['qool'].idn
+        iconify_idn = self.lex['iconify'].idn
         qool_verbs = self.lex.find_words(
             vrb='define',
-            # obj=self.lex[u'verb'],   # Ignore whether object is lex[verb] or lex[qool]
+            # obj=self.lex['verb'],    # Ignore whether object is lex[verb] or lex[qool]
                                        # Because qiki playground did [lex](define][qool] = 'like'
                                        # but now we always do        [lex](define][verb] = 'like'
                                        # so we only care if some OTHER word declares it qool.  And nonzero.
@@ -3158,40 +3143,11 @@ class QoolbarSimple(Qoolbar):
                 # NOTE:  We don't usually catch ourselves using the royal we.
                 qool_verb.icon_url = newest_iconify_url
                 verbs.append(qool_verb)
-                # yield is not used here because find_word(jbo_vrb) does not handle
-                # a generator's iterator well.  Can that be done in one pass anyway?
-                # Probably not because of super_select() -- the MySQL version of which
-                # needs to pass a list of its values and know its length anyway.
+                # NOTE:  yield is not used here because find_word(jbo_vrb) does not handle
+                #        a generator's iterator well.  Can that be done in one pass anyway?
+                #        Probably not because of super_select() -- the MySQL version of which
+                #        needs to pass a list of its values and know its length anyway.
         return verbs
-
-    # def get_verbs_old_method(self, debug=False):
-    #     qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)
-    #     verbs = []
-    #     for qoolification in qoolifications:
-    #         qool_verb = qoolification.obj
-    #         icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb, debug=debug)
-    #         try:
-    #             icon = icons[-1]
-    #         except IndexError:
-    #             pass
-    #         else:
-    #             qool_verb.icon_url = icon.txt
-    #             verbs.append(qool_verb)
-    #     return verbs
-
-    # def nums(self, obj):   # TODO:  Obsolete?
-    #     jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
-    #     return_dict = dict()
-    #     for word in jbo:
-    #         icon_entry = return_dict.setdefault(word.vrb, dict())
-    #         icon_entry[word.sbj] = dict(num=word.num)
-    #     return return_dict
-
-# DONE:  Combine connection and table?  We could subclass like so:  Lex(MySQLConnection)
-# DONE:  ...No, make them properties of Lex.  And make all Words refer to a Lex
-# DONE:  ...So combine all three.  Maybe Lex should not subclass Word?
-# DONE:  Or make a class LexMysql(Lex)
-# DONE:  MySQL decouple -- reinvent some db abstraction class?  (Lex)
 
 # TODO:  Do not raise built-in classes, raise subclasses of built-in exceptions
 # TODO:  Word attributes sbj,vrb,obj might be more convenient as Words, not Numbers.
