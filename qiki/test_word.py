@@ -84,8 +84,6 @@ SHOW_UTF8_EXAMPLES = False   # Prints a few unicode test strings in both \u esca
                              # e.g.  "\u262e on earth" in utf8 is E298AE206F6E206561727468
 
 
-
-
 class TestFlavors(object):
     """Run each test derived from WordTests using the following variations."""
     SPECS = [

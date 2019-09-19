@@ -2703,12 +2703,24 @@ class LexMySQL(LexSentence):
             cursor.execute(query, parameters)
         except mysql.connector.Error as e:
             # EXAMPLE:
-            #     ProgrammingError: 1142 (42000): DELETE command denied to user 'qiki_unit_tester'@'localhost'
-            #     for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
+            #     ProgrammingError: 1142 (42000): DELETE command denied to user
+            #     'qiki_unit_tester'@'localhost' for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
             # EXAMPLE:
             #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
-            #     and contains non-aggregated column 'qiki_unit_tested.w.idn' which is not functionally dependent
-            #     on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+            #     and contains non-aggregated column 'qiki_unit_tested.w.idn'
+            #     which is not functionally dependent on columns in GROUP BY clause;
+            #     this is incompatible with sql_mode=only_full_group_by
+            # EXAMPLE:
+            #     QueryError: 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause
+            #     and contains nonaggregated column 'qiki_unit_tested.w.idn'
+            #     which is not functionally dependent on columns in GROUP BY clause;
+            #     this is incompatible with sql_mode=only_full_group_by
+            #     on query:
+            #     SELECT w.obj AS obj, w.idn AS idn, w.sbj AS sbj, w.vrb AS vrb, w.num AS num,
+            #     w.txt AS txt, w.whn AS whn  FROM `word` AS w  WHERE TRUE  AND w.vrb = ?
+            #     GROUP BY obj  ORDER BY w.idn ASC ;
+            #     parameter lengths 2
+            #     parameters = ['\x82\x05']
 
             def str_len(x):
                 try:
