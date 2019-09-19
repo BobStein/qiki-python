@@ -1936,11 +1936,10 @@ class LexInMemory(LexSentence):
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
-        obj_group=False,
+        # obj_group=False,
         jbo_strictly=False,
         debug=False
     ):
-        # TODO:  Implement obj_group here, and test it in unit tests.
         found_words = []
         for word_source in self.words if idn_ascending else reversed(self.words):
             hit = True
@@ -2423,7 +2422,7 @@ class LexMySQL(LexSentence):
         idn_ascending=True,
         jbo_ascending=True,
         jbo_vrb=(),
-        obj_group=False,
+        # obj_group=False,
         jbo_strictly=False,
         debug=False
     ):
@@ -2436,11 +2435,20 @@ class LexMySQL(LexSentence):
         idn,sbj,vrb,obj each restrict the list of returned words.
         Except when they're None or empty, then they don't restrict.
 
+        The "jbo" concept means that, in addition to the words we find,
+        we're also interested in words whose OBJECT is a found word.
+        Get it, "jbo" is "obj" backwards?
+        We call those jbo words objectifiers.
+        the jbo of a word w contains words that objectify w.
+
+        jbo_vrb is a container of verbs to restrict those objectifiers.
+        It contains either words or idns (but not txts).
+        So jbo_vrb=[like] means glom onto found words the words that like them.
+
         jbo_vrb is not restrictive it's elaborative (note 1).
-        'jbo' being 'obj' backwards, it represents a reverse reference.
         If jbo_vrb is a container of verbs, each returned word has a jbo attribute
-        that is a list of choate words whose object is the word.
-        In other words, it gloms onto each word the words that point to it (using approved verbs).
+        that is, a list of choate words whose object is the word.
+        It gloms onto each word the words that point to it (using approved verbs).
         jbo_vrb cannot be a generator's iterator, because super_select()
         will probably need two passes on it anyway.
 
@@ -2448,7 +2456,6 @@ class LexMySQL(LexSentence):
         idn_ascending=False for reverse-chronological.
         The order of jbo words is always chronological.
 
-        obj_group=True to collapse by obj.
         jbo_strictly means only include words that are the objects of jbo_vrb verbs.
 
         If jbo_strictly is True and jbo_vrb contains multiple verbs, then an OR
@@ -2472,16 +2479,16 @@ class LexMySQL(LexSentence):
         idn_order = 'ASC' if idn_ascending else 'DESC'
         jbo_order = 'ASC' if jbo_ascending else 'DESC'
         query_args = [
-            'SELECT '
-            'w.obj AS obj, '   # NOTE:  Avoid 
-            'w.idn AS idn, '
-            'w.sbj AS sbj, '
-            'w.vrb AS vrb, '
-            'w.num AS num, '
-            'w.txt AS txt, '
-            'w.whn AS whn',
-            None
-        ] if obj_group else [
+            #     'SELECT '
+            #     'w.obj AS obj, '   # NOTE:  Avoid (something??)
+            #     'w.idn AS idn, '
+            #     'w.sbj AS sbj, '
+            #     'w.vrb AS vrb, '
+            #     'w.num AS num, '
+            #     'w.txt AS txt, '
+            #     'w.whn AS whn',
+            #     None
+            # ] if obj_group else [
             'SELECT '
             'w.idn AS idn, '
             'w.sbj AS sbj, '
@@ -2516,8 +2523,8 @@ class LexMySQL(LexSentence):
         query_args += ['WHERE TRUE', None]
         query_args += self._and_clauses(idn, sbj, vrb, obj, txt)
 
-        if obj_group:
-            query_args += ['GROUP BY obj', None]
+        # if obj_group:
+        #     query_args += ['GROUP BY obj', None]
 
         order_clause = 'ORDER BY w.idn ' + idn_order
         if any(jbo_vrb):
@@ -2712,7 +2719,7 @@ class LexMySQL(LexSentence):
             #     this is incompatible with sql_mode=only_full_group_by
             # EXAMPLE:
             #     QueryError: 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause
-            #     and contains nonaggregated column 'qiki_unit_tested.w.idn'
+            #     and contains non-aggregated column 'qiki_unit_tested.w.idn'
             #     which is not functionally dependent on columns in GROUP BY clause;
             #     this is incompatible with sql_mode=only_full_group_by
             #     on query:
@@ -2764,6 +2771,7 @@ class LexMySQL(LexSentence):
                     isinstance(arg_next, six.string_types) and
                 not isinstance(arg_next, (Text, self.SuperIdentifier))
             ):
+                # NOTE:  if consecutive strings that aren't Text or SuperIdentifier
                 raise self.SuperSelectStringString(
                     "Consecutive super_select() arguments should not be strings.  " +
                     "Pass string fields through qiki.Text().  " +
@@ -3098,9 +3106,6 @@ class QoolbarSimple(Qoolbar):
             num=16, txt=u'http://tool.qiki.info/icon/thumbsup_16.png'
         )
 
-    def get_verbs(self, debug=False):
-        return self.get_verbs_new_method(debug)
-
     def get_verb_dicts(self, debug=False):
         """
         Generate dictionaries about qoolbar verbs:
@@ -3124,29 +3129,29 @@ class QoolbarSimple(Qoolbar):
                 qool_num=int(verb.qool_num),
             )
 
-    def get_verbs_new_method(self, debug=False):
+    def get_verbs(self, debug=False):
+        qool_idn = self.lex[u'qool'].idn
+        iconify_idn = self.lex[u'iconify'].idn
         qool_verbs = self.lex.find_words(
-            vrb=self.lex[u'define'],
+            vrb='define',
             # obj=self.lex[u'verb'],   # Ignore whether object is lex[verb] or lex[qool]
                                        # Because qiki playground did [lex](define][qool] = 'like'
                                        # but now we always do        [lex](define][verb] = 'like'
                                        # so we only care if some OTHER word declares it qool.  And nonzero.
-            jbo_vrb=(self.lex[u'iconify'], self.lex[u'qool']),
+            jbo_vrb=(qool_idn, iconify_idn),
             jbo_strictly=True,
             debug=debug
         )
         verbs = []
-        qool = self.lex[u'qool']
-        iconify = self.lex[u'iconify']
         for qool_verb in qool_verbs:
             has_qool = False
             newest_iconify_url = None
             qool_verb.qool_num = None
             for aux in qool_verb.jbo:
-                if aux.vrb == qool:
+                if aux.vrb.idn == qool_idn:
                     has_qool = True
                     qool_verb.qool_num = aux.num   # Remember num from newest qool sentence.
-                elif aux.vrb == iconify:
+                elif aux.vrb.idn == iconify_idn:
                     newest_iconify_url = aux.txt
             if has_qool:   # and newest_iconify_url is not None:
                 # NOTE:  We used to insist that qool verbs have an icon.
@@ -3159,20 +3164,20 @@ class QoolbarSimple(Qoolbar):
                 # needs to pass a list of its values and know its length anyway.
         return verbs
 
-    def get_verbs_old_method(self, debug=False):
-        qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)
-        verbs = []
-        for qoolification in qoolifications:
-            qool_verb = qoolification.obj
-            icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb, debug=debug)
-            try:
-                icon = icons[-1]
-            except IndexError:
-                pass
-            else:
-                qool_verb.icon_url = icon.txt
-                verbs.append(qool_verb)
-        return verbs
+    # def get_verbs_old_method(self, debug=False):
+    #     qoolifications = self.lex.find_words(vrb=self.lex[u'qool'], obj_group=True, debug=debug)
+    #     verbs = []
+    #     for qoolification in qoolifications:
+    #         qool_verb = qoolification.obj
+    #         icons = self.lex.find_words(vrb=self.lex[u'iconify'], obj=qool_verb, debug=debug)
+    #         try:
+    #             icon = icons[-1]
+    #         except IndexError:
+    #             pass
+    #         else:
+    #             qool_verb.icon_url = icon.txt
+    #             verbs.append(qool_verb)
+    #     return verbs
 
     # def nums(self, obj):   # TODO:  Obsolete?
     #     jbo = self.lex.find_words(idn=obj, jbo_vrb=self.get_verbs())[0].jbo
