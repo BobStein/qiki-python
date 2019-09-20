@@ -379,10 +379,10 @@ class Number(numbers.Complex):
             # THANKS:  None to nul, https://docs.python.org/library/json.html#py-to-json-table
             return None
         elif self.is_whole():
-            return str(int(self))
+            return int(self)
         else:
             # TODO:  Ludicrous numbers should become int.
-            return str(float(self))
+            return float(self)
 
 
     # Comparison

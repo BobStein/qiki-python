@@ -269,7 +269,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(n, Number(str(n)))
 
     def test_json(self):
-        self.assertEqual('42', Number(42).to_json())
+        self.assertEqual(42, Number(42).to_json())
 
         class WhatJsonModuleShouldaDone(json.JSONEncoder):
             def default(self, x):
@@ -278,10 +278,11 @@ class NumberBasicTests(NumberTests):
                 else:
                     return super(WhatJsonModuleShouldaDone, self).default(x)
 
-        self.assertEqual('"42"', json.dumps(Number(42), cls=WhatJsonModuleShouldaDone))
+        self.assertEqual('42', json.dumps(       42 , cls=WhatJsonModuleShouldaDone))
+        self.assertEqual('42', json.dumps(Number(42), cls=WhatJsonModuleShouldaDone))
         self.assertEqual(
-            '["a", 2, "42"]',
-            json.dumps(['a', 2, Number(42)], cls=WhatJsonModuleShouldaDone)
+            '["a", 2, 42, 42]',
+            json.dumps(['a', 2, 42, Number(42)], cls=WhatJsonModuleShouldaDone)
         )
 
     def test_unicode(self):
