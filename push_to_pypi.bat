@@ -1,6 +1,11 @@
 @echo off
 REM Upload to PyPI
 REM --------------
+REM 1.  push_to_pypi.bat -- Do this first, because it modifies version.py
+REM 2.  github push
+REM 3.  gol (for "live" unslumping.org)
+REM 4.  gof (for fun.unslumping.org, which does /meta/oembed)
+REM
 REM THANKS:  PyPI instructions, https://packaging.python.org/tutorials/packaging-projects/
 REM THANKS:  Batch variable from a file, https://stackoverflow.com/a/2768658/673991
 REM THANKS:  Remove stale egg-info, https://stackoverflow.com/a/26547314/673991
