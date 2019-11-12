@@ -575,7 +575,7 @@ No:
 Yes:
     cool(breeze)   # is cool
 
-Multi-line lines should be rare, but when they're there, give them some air.
+Multi-line lines should be rare.  But when they're there, give them some air.
 
 No:
     f(x); g(y);
@@ -649,9 +649,32 @@ Hmm, here's an exception to the same-object rule:
     Leaning toward #1 in this case.  (In part because you CAN rearrange these lines.)
 
 
+Event handlers should only event handlers
+-----------------------------------------
+So never call an_event_handler() with parens.
 
+Fine:
+    $foo.on('click', foo_click_handler);
+Not so fine:
+    $foo.on('click', a_more_general_function);
+Yes:
+    $foo.on('click', function () { a_more_general_function(); });
 
+This is an example of easing off on other principles:  brevity is sacrificed, and future development is considered.
+The problem this addresses, comes from the sneaky way event handlers have special needs that aren't encapsulated.
+E.g. `this` or window.event or evt.stopPropagation().
+The general concept is that future evolution of a function is perilous if the function has complex expectations.
+Being both an event handler and something else is complex.
+In other words, once an event handler, always an event handler.
 
+Multiple uses of the same event handler is fine, but name it clearly:
+
+Nope:
+    $foo.on('click', foo_click_handler);
+    $bar.on('click', foo_click_handler);
+Yep:
+    $foo.on('click', foobar_ish_click_handler);
+    $bar.on('click', foobar_ish_click_handler);
 
 
 Generic
@@ -664,7 +687,7 @@ Human Readability
 The first priority for code is to function.  
     Machines should work reliably and give humans an easier life.
 The second priority for code is accurate, quick comprehension by human readers.  
-    Do not fool, do not confuse.
+    Do not fool, do not confuse, do not burden.
 
 
 Visual patterns are good
@@ -677,7 +700,7 @@ Yes:
     something()
     something()
 
-More than 3 repetitions may be tedious to count. Probably not as good a visual pattern.
+But more than 3 repetitions and it becomes tedious to count. Probably not a good visual pattern.
 
 
 
@@ -729,7 +752,6 @@ Yes:
         code
     }
 
-    
     
 Creative questions?
 -------------------
@@ -943,6 +965,18 @@ Crime:
 Counterpoint (why you may prefer to repeat yourself in this example):
     This case doesn't have the big D.R.Y. problem for long because a skewed edit would be caught by the assert.
     The benefit of repeating yourself here is comprehensible and trustable code.
+
+
+Don't point guns at feet
+------------------------
+Not even unloaded.
+In line with Extreme Programming (aka Agile?) principles, focus on the task at hand.  Don't anticipate.
+But an exception to that is to avoid setting yourself up for future heartache.
+For example, avoid jQuery .html() because it's one step toward an injection attack.
+    Even if 100% safe today, it can be a setup for future foot-shooting.  
+    Because the other steps that open you up to injection attacks can happen far from the .html() call.
+For example, clear intentions well-expressed are more important than clever shortcuts
+    that could be misunderstood later.  Or discourage future evolution.
 
 
 " ! " not-operator spacing
