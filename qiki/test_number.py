@@ -3841,7 +3841,7 @@ class NumberDictionaryKeyTests(NumberTests):
         self.assertTrue(2 == Number(2))
         self.assertTrue(5 == Number(5))
         # Does this lead to confusion?  Equal things that don't behave the same?  Effing separate but equal??
-        # This violates the statement at https://docs.python.org/2/library/functions.html#hash
+        # This violates the statement at https://docs.python.org/library/functions.html#hash
         # "Numeric values that compare equal have the same hash value
         # (even if they are of different types, as is the case for 1 and 1.0)."
 

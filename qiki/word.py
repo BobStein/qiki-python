@@ -2264,7 +2264,7 @@ class LexMySQL(LexSentence):
     def insert_word(self, word):
         whn = self.now_number()
         # TODO:  Enforce whn uniqueness?
-        # SEE:  https://docs.python.org/2/library/time.html#time.time
+        # SEE:  https://docs.python.org/library/time.html#time.time
         #     "Note that even though the time is always returned as a floating point number,
         #     not all systems provide time with a better precision than 1 second.
         #     While this function normally returns non-decreasing values,
