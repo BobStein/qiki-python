@@ -1664,6 +1664,7 @@ class LexSentence(Lex):
         global max_idn_lock
 
         def droid(step):
+            """Probe droid for debugging the browse storm bugs."""
             # print(
             #     step + " " +
             #     str(word.txt.encode('ascii', 'ignore')).replace(" ", "_") + " " +
@@ -1674,6 +1675,7 @@ class LexSentence(Lex):
             #     self.max_idn().qstring() +
             #     "\n", end=""
             # )
+
 
         LexSentence.outer += 1
         droid("INSERT_A")
