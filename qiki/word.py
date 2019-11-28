@@ -33,9 +33,16 @@ HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 #           Started happening between connector versions 2.2.2 and 8.0.16
 # Workaround:  character encoding latin1 across whole table
 #              qiki.Number fields work because latin1 can never fail to decode
-#              qiki.Text field (txt) fake stores utf8 when it thinks its latin1, yuk
+#              qiki.Text field (txt) fake stores utf8 when it thinks it's latin1, yuk
 
 max_idn_lock = threading.Lock()
+
+
+class NextIdnMethod(object):
+    ASK_DATABASE_EACH_TIME = ""
+    KEEP_TRACK_IN_PYTHON = ""
+
+    DEFAULT = KEEP_TRACK_IN_PYTHON
 
 
 # noinspection PyAttributeOutsideInit
@@ -1494,6 +1501,7 @@ class LexSentence(Lex):
         self._verb = None
         self._define = None
         self._duplicate_definition_callback_functions = []
+        self.next_idn_method = NextIdnMethod.DEFAULT
 
     def duplicate_definition_notify(self, f):
         # XXX:  Sure is a drastic, totalitarian solution.
@@ -1649,11 +1657,40 @@ class LexSentence(Lex):
     def find_words(self, **kwargs):
         raise NotImplementedError()
 
+    outer = 0   # HACK
+    inner = 0   # HACK
+
     def insert_next_word(self, word):
+        global max_idn_lock
+
+        def droid(step):
+            # print(
+            #     step + " " +
+            #     str(word.txt.encode('ascii', 'ignore')).replace(" ", "_") + " " +
+            #     str(LexSentence.inner) + " " +
+            #     str(LexSentence.outer) + " " +
+            #     ("LOCKED " if max_idn_lock.locked() else "unlock ") +
+            #     str(id(max_idn_lock)) + " " +
+            #     self.max_idn().qstring() +
+            #     "\n", end=""
+            # )
+
+        LexSentence.outer += 1
+        droid("INSERT_A")
         with max_idn_lock:
+            LexSentence.inner += 1
+            droid("INSERT_B")
+            self._start_transaction()
             word.set_idn_if_you_really_have_to(self.next_idn())
             self.insert_word(word)
-        # TODO:  Unit test this lock, by initiating many "simultaneous" inserts.
+            droid("INSERT_C")
+            LexSentence.inner -= 1
+        # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
+        droid("INSERT_D")
+        LexSentence.outer -= 1
+
+    def _start_transaction(self):
+        """Whatever needs to happen just before getting the next idn.  Do nothing by default."""
 
     def next_idn(self):
         return self.max_idn().inc()   # Crude reinvention of AUTO_INCREMENT
@@ -2293,8 +2330,8 @@ class LexMySQL(LexSentence):
             names += ['idn']
             values += [word.idn]
 
-        names +=  [    'sbj',    'vrb',    'obj',    'num',    'txt','whn']
-        values += [word.sbj, word.vrb, word.obj, word.num, word.txt,  whn ]
+        names +=  [    'sbj',    'vrb',    'obj',    'num',    'txt', 'whn']
+        values += [word.sbj, word.vrb, word.obj, word.num, word.txt,   whn ]
 
         last_row_id = self.super_query(
             'INSERT INTO', self.table,
@@ -2308,6 +2345,50 @@ class LexMySQL(LexSentence):
         # noinspection PyProtectedMember
         word._now_it_exists()
         return last_row_id
+
+    # outer = 0   # HACK
+    # inner = 0   # HACK
+    #
+    # def insert_next_word(self, word):
+    #     global max_idn_lock
+    #
+    #     def droid(step):
+    #         print(
+    #             step + " " +
+    #             str(word.txt.encode('ascii', 'ignore')).replace(" ", "_") + " " +
+    #             str(LexMySQL.inner) + " " +
+    #             str(LexMySQL.outer) + " " +
+    #             ("LOCKED " if max_idn_lock.locked() else "unlock ") +
+    #             str(id(max_idn_lock)) + " " +
+    #             self.max_idn().qstring() +
+    #             "\n", end=""
+    #         )
+    #
+    #     LexMySQL.outer += 1
+    #     droid("INSERT_A")
+    #     with max_idn_lock:
+    #         LexMySQL.inner += 1
+    #         droid("INSERT_B")
+    #         # self._connection.commit()
+    #         # self._connection.start_transaction()
+    #         word.set_idn_if_you_really_have_to(self.next_idn())
+    #         self.insert_word(word)
+    #         droid("INSERT_C")
+    #         LexMySQL.inner -= 1
+    #     # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
+    #     droid("INSERT_D")
+    #     LexMySQL.outer -= 1
+
+    def _start_transaction(self):
+        """
+        Akin to MySQL START TRANSACTION.
+
+        Ironically, start a new transaction by ending the (apparently auto-started) old one.
+
+        This prevents the following exception when multi-threaded requests generate new words:
+            mysql.connector.errors.ProgrammingError: Transaction already in progress
+        """
+        self._connection.commit()
 
     class Cursor(object):
         def __init__(self, connection):
@@ -2713,6 +2794,11 @@ class LexMySQL(LexSentence):
             #     GROUP BY obj  ORDER BY w.idn ASC ;
             #     parameter lengths 2
             #     parameters = ['\x82\x05']
+            # EXAMPLE:
+            #     qiki.word.LexMySQL.QueryError: 1062 (23000): Duplicate entry '\x83\x08\xB2'
+            #     for key 'PRIMARY' on query: INSERT INTO `word_local`
+            #     (idn,sbj,vrb,obj,num,txt,whn) VALUES ( ?,?,?,?,?,?,? ) ;
+            #     parameter lengths 3,8,3,3,2,9,8
 
             def str_len(x):
                 try:

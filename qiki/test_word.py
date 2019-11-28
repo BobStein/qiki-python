@@ -328,10 +328,10 @@ class LexErrorTests(TestBaseClass):
         max_start = lex1.max_idn()
 
         lex1.define(lex1.noun(), u'borg')
-        self.assertEqual(max_start+1, lex1.max_idn())
+        self.assertEqual(max_start + 1, lex1.max_idn())
 
         lex2 = qiki.LexMySQL(**secure.credentials.for_unit_testing_database)
-        self.assertEqual(max_start+1, lex2.max_idn())
+        self.assertEqual(max_start + 1, lex2.max_idn())
 
         # lex2.uninstall_to_scratch()   # Why does this cause infinite hang?
         lex2.disconnect()
