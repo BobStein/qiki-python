@@ -1531,7 +1531,7 @@ class LexSentence(Lex):
 
     def _install_all_seminal_words(self):
         """
-        Insert the five fundamental sentences into the Lex database.
+        Insert the five fundamental sentences into the Lex database.  (Unless already there.)
         Each sentence uses verbs and nouns defined in some of the other seminal sentences.
 
         The five seminal sentences:
@@ -1663,6 +1663,7 @@ class LexSentence(Lex):
     def insert_next_word(self, word):
         global max_idn_lock
 
+        # noinspection PyUnusedLocal
         def droid(step):
             """Probe droid for debugging the browse storm bugs."""
             # print(
@@ -1683,13 +1684,24 @@ class LexSentence(Lex):
             LexSentence.inner += 1
             droid("INSERT_B")
             self._start_transaction()
-            word.set_idn_if_you_really_have_to(self.next_idn())
+            
+            idn_of_new_word = self.next_idn()
+            self._critical_moment_1()
+            word.set_idn_if_you_really_have_to(idn_of_new_word)
+            self._critical_moment_2()
             self.insert_word(word)
+            
             droid("INSERT_C")
             LexSentence.inner -= 1
         # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
         droid("INSERT_D")
         LexSentence.outer -= 1
+        
+    def _critical_moment_1(self):
+        """For testing, hold up this step to raise a duplicate IDN error."""
+
+    def _critical_moment_2(self):
+        """For testing, hold up this step to raise a duplicate IDN error."""
 
     def _start_transaction(self):
         """Whatever needs to happen just before getting the next idn.  Do nothing by default."""
@@ -1875,6 +1887,7 @@ def native_num(num):
 
 
 class LexInMemory(LexSentence):
+    """In-memory lex.  Always start empty."""
 
     def __init__(self, **kwargs):
         super(LexInMemory, self).__init__(**kwargs)

@@ -11,6 +11,7 @@ import calendar
 import inspect
 import re
 import sys
+import threading
 import time
 import unicodedata
 import unittest
@@ -91,8 +92,8 @@ class TestFlavors(object):
         dict(name="LexMySQL/Memory", lex_class=qiki.LexMySQL, engine='MEMORY'),
         dict(name="LexInMemory",     lex_class=qiki.LexInMemory),
     ]
-    NON_CREDENTIAL_SPECS = 'name', 'lex_class'   # SPECS column slice
-    SQL_LEXES = [qiki.LexMySQL]                  # SPECS row slice
+    NON_CREDENTIAL_SPECS = 'name', 'lex_class'   # SPECS column names
+    SQL_LEXES = [qiki.LexMySQL]                  # SPECS row subset (of lex_class column values)
 
     counts = {spec['name'] : 0 for spec in SPECS}
 
@@ -168,7 +169,8 @@ def version_report():
     #            ignores the end= parameter
     #            never outputs a newline, unless it's explicit in the string
     # EXAMPLE:  MySQL Client version mysql  Ver 14.14 Distrib 5.7.24, for Win64 (x86_64)
-    # NOTE:  Do we care what mysql --version says?  Is the python connector the real client?
+    # NOTE:  Maybe we don't care what mysql --version says.
+    #        Isn't the python connector the "real" "client" we're running here?
 
     credentials = secure.credentials.for_unit_testing_database.copy()
     lex = qiki.LexMySQL(**credentials)
@@ -179,11 +181,7 @@ def version_report():
     # EXAMPLE:  MySQL Server version 5.7.24
 
 
-class Aardvark001VersionReport(TestBaseClass):
-
-    # noinspection PyMethodMayBeStatic
-    def test_version_report(self):
-        version_report()
+version_report()
 
 
 class SafeNameTests(TestBaseClass):
@@ -377,14 +375,18 @@ class WordTests(TestBaseClass):
         return result
         # THANKS:  Parameterizing tests, https://eli.thegreenplace.net/2011/08/02/python-unit-testing-parametrized-test-cases
 
+    def lex_class(self):
+        return self.flavor_spec['lex_class']
+
     def setUp(self):
+        super(WordTests, self).setUp()
         credentials = secure.credentials.for_unit_testing_database.copy()
         if RANDOMIZE_DATABASE_TABLE:
             credentials['table'] = 'word_' + uuid.uuid4().hex
             # EXAMPLE:  word_ce09954b2e784cd8811b640079497568
 
         credentials.update(TestFlavors.credentials_from_specs(self.flavor_spec))
-        self.lex = self.flavor_spec['lex_class'](**credentials)
+        self.lex = self.lex_class()(**credentials)
 
         def cleanup_disconnect():
             if not LET_DATABASE_RECORDS_REMAIN:
@@ -993,7 +995,7 @@ class Word0011FirstTests(WordTests):
         self.assertEqual(nonword.txt, u'word that does not exist')
 
     def test_01e_class_names(self):
-        self.assertEqual(self.flavor_spec['lex_class'].__name__, type_name(self.lex))
+        self.assertEqual(self.lex_class().__name__, type_name(self.lex))
         self.assertEqual('WordClassJustForThisLex', type_name(self.lex._lex))
 
 
@@ -3578,6 +3580,157 @@ class Word0070FindTests(WordTests):
             set((self.fred, self.dirk, self.berry)),
             set(self.lex.find_words(txt=(u'fred', u'dirk', u'berry')))
         )
+
+
+class Word0080Threading(TestBaseClass):
+    threading_credentials = secure.credentials.for_unit_testing_database.copy()
+    threading_credentials['table'] += '_threading'
+
+    class HobbledLexClass(qiki.LexMySQL):
+
+        # noinspection PyMethodMayBeStatic
+        def _critical_moment_1(self):
+            time.sleep(1)
+
+        # noinspection PyMethodMayBeStatic
+        def _critical_moment_2(self):
+            time.sleep(1)
+
+    def test_thread_bit(self):
+
+        def lex_connect():
+            return self.HobbledLexClass(**self.threading_credentials)
+
+        main_lex = lex_connect()
+        is_virgin = main_lex.max_idn() == main_lex.IDN_MAX_FIXED
+        assert is_virgin, main_lex.max_idn().qstring()
+
+        try:
+            class ThreadCreatesNoun(threading.Thread):
+                def __init__(self,  txt):
+                    super(ThreadCreatesNoun, self).__init__()
+                    self.txt = txt
+                    self.word = None
+
+                def run(self):
+                    thread_lex = lex_connect()
+                    self.word = thread_lex.noun(self.txt)
+                    thread_lex.disconnect()
+
+            thread_tea = ThreadCreatesNoun('tea')
+            thread_coffee = ThreadCreatesNoun('coffee')
+
+            pre_max = main_lex.max_idn()
+
+            thread_tea.start()
+            thread_coffee.start()
+
+            thread_tea.join()
+            thread_coffee.join()
+
+            self.assertEqual(pre_max + 1, thread_tea.word.idn)
+            self.assertEqual(pre_max + 2, thread_coffee.word.idn)
+
+        finally:
+            main_lex.uninstall_to_scratch()
+            main_lex.disconnect()
+
+
+class Word0083Threading(WordTests):
+
+    def lex_class(self):
+        this_lex_class = super(Word0083Threading, self).lex_class()
+
+        # noinspection PyPep8Naming
+        class hobbled_lex_class(this_lex_class):
+
+            # noinspection PyMethodMayBeStatic
+            def _critical_moment_1(self):
+                time.sleep(1)
+
+            # noinspection PyMethodMayBeStatic
+            def _critical_moment_2(self):
+                time.sleep(1)
+
+        return hobbled_lex_class
+
+    def test_thread_bit(self):
+        local_lex = self.lex
+
+        class ThreadCreatesNoun(threading.Thread):
+            def __init__(self,  txt):
+                super(ThreadCreatesNoun, self).__init__()
+                self.txt = txt
+                self.word = None
+
+            def run(self):
+                self.word = local_lex.noun(self.txt)
+
+        thread_tea = ThreadCreatesNoun('tea')
+        thread_coffee = ThreadCreatesNoun('coffee')
+
+        pre_max = self.lex.max_idn()
+
+        thread_tea.start()
+        thread_tea.join()
+
+        thread_coffee.start()
+        thread_coffee.join()
+
+        self.assertEqual(thread_tea.word.idn, pre_max + 1)
+        self.assertEqual(thread_coffee.word.idn, pre_max + 2)
+
+
+class Word0082Threading(WordTests):
+
+    def lex_class(self):
+        this_lex_class = super(Word0082Threading, self).lex_class()
+
+        # noinspection PyPep8Naming
+        class hobbled_lex_class(this_lex_class):
+
+            # noinspection PyMethodMayBeStatic
+            def _critical_moment_1(self):
+                # time.sleep(1)
+                pass
+
+            # noinspection PyMethodMayBeStatic
+            def _critical_moment_2(self):
+                # time.sleep(1)
+                pass
+
+        return hobbled_lex_class
+
+    def test_thread_bit(self):
+
+        def thread_1():
+            return self.lex.noun('tea')
+
+        def thread_2():
+            return self.lex.noun('coffee')
+
+        pre_max = self.lex.max_idn()
+        tea = thread_1()
+        coffee = thread_2()
+        self.assertEqual(tea.idn, pre_max + 1)
+        self.assertEqual(coffee.idn, pre_max + 2)
+
+
+class Word0081Threading(WordTests):
+
+    def test_thread_bit(self):
+
+        def thread_1():
+            return self.lex.noun('tea')
+
+        def thread_2():
+            return self.lex.noun('coffee')
+
+        pre_max = self.lex.max_idn()
+        tea = thread_1()
+        coffee = thread_2()
+        self.assertEqual(tea.idn, pre_max + 1)
+        self.assertEqual(coffee.idn, pre_max + 2)
 
 
 class WordQoolbarSetup(WordTests):
