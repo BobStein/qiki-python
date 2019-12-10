@@ -35,7 +35,7 @@ HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 #              qiki.Number fields work because latin1 can never fail to decode
 #              qiki.Text field (txt) fake stores utf8 when it thinks it's latin1, yuk
 
-max_idn_lock = threading.Lock()
+# max_idn_lock = threading.Lock()
 
 
 class NextIdnMethod(object):
@@ -1660,8 +1660,31 @@ class LexSentence(Lex):
     outer = 0   # HACK
     inner = 0   # HACK
 
+    _global_lock = threading.Lock()
+
+    def _lock_next_word(self):
+        """
+        Make the auto-increment simulation thread-safe.
+
+        Derived class may override the class variable _global_lock,
+        by mimicking the above line exactly,
+        so that it referees among all instances of that class,
+        (but only that class, not among sibling class instances)
+        e.g. to keep thread-specific instances of that class from racing one another.
+
+        Or the derived class may override the instance method _lock_next_word(),
+        so that each instance of that class has its own lock.
+        This might make sense if a single instance could be shared by multiple threads.
+        Wouldn't work with LexMySQL because apparently one mysql.connector.connect()
+        object cannot be shared by multiple threads.
+
+        By default all instances of all derived classes use the singleton LexSentence._global_lock
+        (Only applies to instances running on the same host of course.)
+        """
+        return self._global_lock
+
     def insert_next_word(self, word):
-        global max_idn_lock
+        # global max_idn_lock
 
         # noinspection PyUnusedLocal
         def droid(step):
@@ -1680,7 +1703,7 @@ class LexSentence(Lex):
 
         LexSentence.outer += 1
         droid("INSERT_A")
-        with max_idn_lock:
+        with self._lock_next_word():
             LexSentence.inner += 1
             droid("INSERT_B")
             self._start_transaction()

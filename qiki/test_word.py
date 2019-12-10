@@ -61,7 +61,7 @@ except ImportError:
                 ON `example_database`.* 
                 TO 'example_user'@'localhost';
             
-    \n""")
+    \n""", end="")
     sys.exit(1)
 
 
@@ -3582,155 +3582,542 @@ class Word0070FindTests(WordTests):
         )
 
 
-class Word0080Threading(TestBaseClass):
-    threading_credentials = secure.credentials.for_unit_testing_database.copy()
-    threading_credentials['table'] += '_threading'
+class Cop(object):
+    """
+    Control thread progress.
 
-    class HobbledLexClass(qiki.LexMySQL):
+    Create a stopping point in one thread that the main thread can make go at a strategic time.
+    """
+    def __init__(self, description):
+        """The lock starts off acquired."""
+        super(Cop, self).__init__()
+        self.description = description
+        self.lock = threading.Lock()
+        self.lock.acquire()
+        self.is_stopped = False   # Are we stuck at the .stop() point?
+        self.did_go = False   # Was .go() ever called?  Whether or not .stop() has been called.
+        self.timeout = 1.0   # Default 1-second timeout.
+        self._all_cops.append(self)
+
+    _all_cops = []
+
+    def stop(self):
+        """A thread stops as soon as it calls this."""
+        self.is_stopped = True
+        self.lock.acquire()
+        self.is_stopped = False
+        self.lock.release()
+
+    def go(self):
+        """Another thread (usually the main thread) un-stops the stopped thread."""
+        self.lock.release()
+        self.did_go = True
+
+
+    class DidntStop(Exception):
+        """.await_stop() timed out"""
+
+    def await_stop(self, context):
+        """Wait for a thread to get to its stopping point."""
+        t_start = time.time()
+        while True:
+            time.sleep(0.0)
+            t_elapsed = time.time() - t_start
+            if t_elapsed > self.timeout:
+                print("{context} {description}, never happened, {elapsed:.3f} sec timeout".format(
+                    context=context,
+                    description=self.description,
+                    elapsed=t_elapsed,
+                ))
+                raise self.DidntStop
+            if self.is_stopped:
+                print("{context} {description} after {elapsed:.3f} seconds".format(
+                    context=context,
+                    description=self.description,
+                    elapsed=t_elapsed,
+                ))
+                return True
+
+    @classmethod
+    def let_go_all(cls):
+        """Make all stopping points go.  Release all Cop instance locks."""
+        for cop in cls._all_cops:
+            if not cop.did_go:
+                cop.go()
+
+
+class Word0079Cop(TestBaseClass):
+    def test_cop(self):
+        """
+        Verify Cop controls a thread.
+
+        EXAMPLE:
+            test_cop step 1. 0.000
+            test_cop step 2. 0.100
+            test_cop step 3. 0.200
+            test_cop step 4. 0.300
+            test_cop step 5. 0.400
+        """
+        t_start = time.time()
+        steps = []
+
+        def step(number):
+            steps.append(number)
+            print("test_cop step {number}. {delta:.3f}\n".format(
+                number=number,
+                delta=time.time() - t_start
+            ), end="")
+
+        class Traffic(threading.Thread):
+            def __init__(self, this_cop):
+                super(Traffic, self).__init__()
+                self.cop = this_cop
+
+            def run(self):
+                step(2)
+                self.cop.stop()   # Thread stops here, until main thread calls .go()
+                step(4)
+
+        cop = Cop("trial run")
+        traffic = Traffic(cop)
+        step(1)
+        time.sleep(0.1)
+        traffic.start()   # step 2
+        time.sleep(0.1)
+        step(3)
+        time.sleep(0.1)
+        cop.go()          # step 4
+        time.sleep(0.1)
+        step(5)
+        self.assertEqual([1,2,3,4,5], steps)
+
+
+def wait(seconds):
+    print("Wait {:.1f} seconds.".format(seconds))
+
+
+# noinspection PyPep8Naming
+class Word0080Threading(TestBaseClass):
+
+    class LexManipulated(qiki.LexMySQL):
+        """A lex we can dissect word creation."""
+        _credentials = secure.credentials.for_unit_testing_database.copy()
+        _credentials['table'] += '_threading'
+
+        def __init__(self, do_lock, do_start):
+            super(Word0080Threading.LexManipulated, self).__init__(**self._credentials)
+            # THANKS:  Nested class super(), https://stackoverflow.com/a/1825470/673991
+            self.do_lock = do_lock
+            self.do_start = do_start
+            self.cop1 = Cop("ready to lock")
+            self.cop2 = Cop("ready to start transaction")
+            self.cop3 = Cop("idn has been assigned")
+
+        class _NotALock(object):
+            def __enter__(self):
+                pass
+            def __exit__(self, _, __, ___):
+                pass
+
+        def _lock_next_word(self):
+            self.cop1.stop()
+            if self.do_lock:
+                return super(Word0080Threading.LexManipulated, self)._lock_next_word()
+            else:
+                return self._NotALock()
+
+        def _start_transaction(self):
+            self.cop2.stop()
+            if self.do_start:
+                super(Word0080Threading.LexManipulated, self)._start_transaction()
+            else:
+                print("Start transaction SHOULD happen, but it won't")
 
         # noinspection PyMethodMayBeStatic
         def _critical_moment_1(self):
-            time.sleep(1)
+            self.cop3.stop()
 
-        # noinspection PyMethodMayBeStatic
-        def _critical_moment_2(self):
-            time.sleep(1)
+        # # noinspection PyMethodMayBeStatic
+        # def _critical_moment_2(self):
+        #     time.sleep(1)
 
-    def test_thread_bit(self):
+    class ThreadCreatesNoun(threading.Thread):
+        def __init__(self, txt, do_lock, do_start):
+            super(Word0080Threading.ThreadCreatesNoun, self).__init__()
+            self.txt = txt
+            self.do_lock = do_lock
+            self.do_start = do_start
+            self.word = None
+            self.thread_lex = None
+            self.did_crash = False
 
-        def lex_connect():
-            return self.HobbledLexClass(**self.threading_credentials)
+        def run(self):
+            self.thread_lex = Word0080Threading.LexManipulated(
+                do_lock=self.do_lock,
+                do_start=self.do_start
+            )
+            try:
+                self.word = self.thread_lex.noun(self.txt)
+            except self.thread_lex.QueryError:
+                print("Crash on the {txt} thread!".format(
+                    txt=self.txt,
+                    # NOTE:  Unfortunately the duplicate idn is not accessible here to brag about.
+                ))
+                self.did_crash = True
+            else:
+                print("Successful insert on the {txt} thread, idn = {idn}".format(
+                    txt=self.txt,
+                    idn=int(self.word.idn),
+                ))
+            finally:
+                self.thread_lex.disconnect()
+                self.thread_lex = None
 
-        main_lex = lex_connect()
-        is_virgin = main_lex.max_idn() == main_lex.IDN_MAX_FIXED
-        assert is_virgin, main_lex.max_idn().qstring()
+        def await_connect(self):
+            t_start = time.time()
+            while self.thread_lex is None:
+                '''Better hope run() starts and then pauses.'''
+            t_end = time.time()
+            print("Connection for {txt} thread took {delta:.3f} seconds.\n".format(
+                txt=self.txt,
+                delta=t_end - t_start,
+            ), end="")
+
+    def test_01_simultaneous_insert(self):
+        print("\nDouble-insert expected to work")
+        self.simultaneous_insert(do_lock=True, do_start=True)
+
+    def test_02_simultaneous_insert_broken_lock(self):
+        print("\nLock broken, expect double-insert to crash")
+        self.simultaneous_insert(do_lock=False, do_start=True)
+
+    def test_03_simultaneous_insert_broken_start_transaction(self):
+        print("\nStart transaction broken, expect double-insert to crash")
+        self.simultaneous_insert(do_lock=True, do_start=False)
+
+    def simultaneous_insert(self, do_lock, do_start):
+        """
+        Verify whether lock works when creating two new words "simultaneously."
+
+        Even though the tea thread started first, coffee should get the first idn,
+        because it was allowed to lock first.
+        """
+        # def relinquish():
+        #     time.sleep(0.01)
+        #     # THANKS:  Windows needs 1ms, Linux may be fine with 0ms,
+        #     #          https://stackoverflow.com/q/787803/673991#comment86139443_790246
+
+        main_lex = Word0080Threading.LexManipulated(do_lock=True, do_start=True)
+        main_lex.uninstall_to_scratch()
+        main_lex.install_from_scratch()
+        is_lex_starting_out_empty = main_lex.max_idn() == main_lex.IDN_MAX_FIXED
+        assert is_lex_starting_out_empty, "Unexpected " + main_lex.max_idn().qstring()
+
+        max_idn_beforehand = main_lex.max_idn()
+        thread_tea    = self.ThreadCreatesNoun('tea',    do_lock=do_lock, do_start=do_start)
+        thread_coffee = self.ThreadCreatesNoun('coffee', do_lock=do_lock, do_start=do_start)
+
+        def step_1_start_both_threads_but_stop_before_either_locks():
+            thread_tea.start()
+            thread_tea.await_connect()
+            thread_tea.thread_lex.cop1.await_stop("tea")
+            wait(0.1)
+            thread_coffee.start()
+            thread_coffee.await_connect()
+            thread_coffee.thread_lex.cop1.await_stop("coffee")
+
+        def step_2_let_the_coffee_thread_acquire_the_lock():
+            thread_coffee.thread_lex.cop1.go()
+            thread_coffee.thread_lex.cop2.await_stop("coffee")
+
+        def step_3_let_the_tea_thread_block_on_the_lock():
+            thread_tea.thread_lex.cop1.go()
+            if do_lock:
+                wait(0.1)
+                self.assertFalse(thread_tea.thread_lex.cop2.is_stopped)
+                # NOTE:  So the tea thread is NOT stuck at cop2.stop().
+                #        This means the tea thread has not called ._start_transaction() yet.
+                #        Therefore it must be hung up on its with self._lock_next_word()
+                #        As it should be, because the coffee thread is doing the locking.
+            else:
+                thread_tea.thread_lex.cop2.await_stop("tea")
+                self.assertTrue(thread_tea.thread_lex.cop2.is_stopped)
+                # NOTE:  Because locking is deliberately broken,
+                #        the tea thread proceeded to cop2, where it called ._start_transaction()
+                #        though the transaction hasn't actually started yet.
+
+        def step_4_let_the_coffee_thread_inch_ahead_to_where_its_got_max_idn():
+            thread_coffee.thread_lex.cop2.go()
+            thread_coffee.thread_lex.cop3.await_stop("coffee")
+
+        def step_5_tea_thread_should_be_locked():
+            wait(0.1)
+            if do_lock:
+                self.assertFalse(thread_tea.thread_lex.cop2.is_stopped)
+            else:
+                self.assertTrue(thread_tea.thread_lex.cop2.is_stopped)
+                thread_tea.thread_lex.cop2.go()
+                thread_tea.thread_lex.cop3.await_stop("tea")
+                # NOTE:  With locking broken, the tea thread goes all the way
+                #        to where it gets an idn assigned.
+                #        That's the same point where we've held up the coffee thread.
+                #        So they should get the same idn.
+                #        And whichever creates its word second will crash.
+
+        def step_6_let_the_coffee_thread_complete_its_new_word():
+            thread_coffee.thread_lex.cop3.go()
+            thread_coffee.join()
+            self.assertFalse(thread_coffee.did_crash)
+
+        def step_7_now_tea_thread_should_proceed_to_just_before_start_transaction():
+            if do_lock:
+                thread_tea.thread_lex.cop2.await_stop("tea")
+                self.assertTrue(thread_tea.thread_lex.cop2.is_stopped)
+            else:
+                self.assertTrue(thread_tea.thread_lex.cop3.is_stopped)
+                # NOTE:  Except if locks are deliberately broken,
+                #        it has already gone past _start_transaction(),
+                #        and moved on to where it's gotten an idn assigned.
+
+        def step_8_let_the_tea_thread_complete_its_new_word_too():
+            if do_lock:
+                # NOTE:  Because locks are working, the tea thread will just now be getting its idn.
+                self.assertTrue(thread_tea.thread_lex.cop2.is_stopped)
+                thread_tea.thread_lex.cop2.go()
+                thread_tea.thread_lex.cop3.await_stop("tea")
+                thread_tea.thread_lex.cop3.go()
+                thread_tea.join()                          # tea word successfully created
+                self.assertFalse(thread_tea.did_crash)
+            else:
+                # NOTE:  Locks were deliberately broken.
+                #        So an unrestrained tea thread has already gotten its idn assigned,
+                #        which is a fatal duplicate of the idn assigned to the coffee word.
+                thread_tea.thread_lex.cop3.go()
+                thread_tea.join()                          # crash creating tea word, duplicate idn
+                self.assertTrue(thread_tea.did_crash)
+            # FIXME:  if not do_start it should have crashed
 
         try:
-            class ThreadCreatesNoun(threading.Thread):
-                def __init__(self,  txt):
-                    super(ThreadCreatesNoun, self).__init__()
-                    self.txt = txt
-                    self.word = None
+            step_1_start_both_threads_but_stop_before_either_locks()
+            step_2_let_the_coffee_thread_acquire_the_lock()
+            step_3_let_the_tea_thread_block_on_the_lock()
+            step_4_let_the_coffee_thread_inch_ahead_to_where_its_got_max_idn()
+            step_5_tea_thread_should_be_locked()
+            step_6_let_the_coffee_thread_complete_its_new_word()
+            step_7_now_tea_thread_should_proceed_to_just_before_start_transaction()
+            step_8_let_the_tea_thread_complete_its_new_word_too()
+        except Cop.DidntStop as e:
+            self.fail("Testing is broke, timed out: " + str(e))
+        else:
+            if do_lock:
+                print(
+                    "Simultaneous insert worked,",
+                    thread_coffee.word.txt, "idn =", int(thread_coffee.word.idn),
+                    thread_tea.word.txt,    "idn =", int(thread_tea.word.idn),
+                )
 
-                def run(self):
-                    thread_lex = lex_connect()
-                    self.word = thread_lex.noun(self.txt)
-                    thread_lex.disconnect()
-
-            thread_tea = ThreadCreatesNoun('tea')
-            thread_coffee = ThreadCreatesNoun('coffee')
-
-            pre_max = main_lex.max_idn()
-
-            thread_tea.start()
-            thread_coffee.start()
-
+                self.assertEqual(thread_coffee.word.idn, max_idn_beforehand + 1)
+                self.assertEqual(thread_tea.word.idn,    max_idn_beforehand + 2)
+                self.assertEqual(max_idn_beforehand + 2, main_lex.max_idn())
+            else:
+                print(
+                    "Simultaneous insert broke,",
+                    thread_coffee.txt, "idn =", int(thread_coffee.word.idn),
+                    thread_tea.txt, "word is", repr(thread_tea.word),
+                )
+                self.assertIsNone(thread_tea.word)
+                self.assertEqual(thread_coffee.word.idn, max_idn_beforehand + 1)
+                self.assertEqual(max_idn_beforehand + 1, main_lex.max_idn())
+        finally:
+            Cop.let_go_all()
             thread_tea.join()
             thread_coffee.join()
-
-            self.assertEqual(pre_max + 1, thread_tea.word.idn)
-            self.assertEqual(pre_max + 2, thread_coffee.word.idn)
-
-        finally:
             main_lex.uninstall_to_scratch()
             main_lex.disconnect()
 
 
-class Word0083Threading(WordTests):
-
-    def lex_class(self):
-        this_lex_class = super(Word0083Threading, self).lex_class()
-
-        # noinspection PyPep8Naming
-        class hobbled_lex_class(this_lex_class):
-
-            # noinspection PyMethodMayBeStatic
-            def _critical_moment_1(self):
-                time.sleep(1)
-
-            # noinspection PyMethodMayBeStatic
-            def _critical_moment_2(self):
-                time.sleep(1)
-
-        return hobbled_lex_class
-
-    def test_thread_bit(self):
-        local_lex = self.lex
-
-        class ThreadCreatesNoun(threading.Thread):
-            def __init__(self,  txt):
-                super(ThreadCreatesNoun, self).__init__()
-                self.txt = txt
-                self.word = None
-
-            def run(self):
-                self.word = local_lex.noun(self.txt)
-
-        thread_tea = ThreadCreatesNoun('tea')
-        thread_coffee = ThreadCreatesNoun('coffee')
-
-        pre_max = self.lex.max_idn()
-
-        thread_tea.start()
-        thread_tea.join()
-
-        thread_coffee.start()
-        thread_coffee.join()
-
-        self.assertEqual(thread_tea.word.idn, pre_max + 1)
-        self.assertEqual(thread_coffee.word.idn, pre_max + 2)
-
-
-class Word0082Threading(WordTests):
-
-    def lex_class(self):
-        this_lex_class = super(Word0082Threading, self).lex_class()
-
-        # noinspection PyPep8Naming
-        class hobbled_lex_class(this_lex_class):
-
-            # noinspection PyMethodMayBeStatic
-            def _critical_moment_1(self):
-                # time.sleep(1)
-                pass
-
-            # noinspection PyMethodMayBeStatic
-            def _critical_moment_2(self):
-                # time.sleep(1)
-                pass
-
-        return hobbled_lex_class
-
-    def test_thread_bit(self):
-
-        def thread_1():
-            return self.lex.noun('tea')
-
-        def thread_2():
-            return self.lex.noun('coffee')
-
-        pre_max = self.lex.max_idn()
-        tea = thread_1()
-        coffee = thread_2()
-        self.assertEqual(tea.idn, pre_max + 1)
-        self.assertEqual(coffee.idn, pre_max + 2)
-
-
-class Word0081Threading(WordTests):
-
-    def test_thread_bit(self):
-
-        def thread_1():
-            return self.lex.noun('tea')
-
-        def thread_2():
-            return self.lex.noun('coffee')
-
-        pre_max = self.lex.max_idn()
-        tea = thread_1()
-        coffee = thread_2()
-        self.assertEqual(tea.idn, pre_max + 1)
-        self.assertEqual(coffee.idn, pre_max + 2)
+# class Word0085Threading(TestBaseClass):
+#
+#     def test_lock_controlling_execution(self):
+#
+#         t_start = time.time()
+#
+#         def say(step):
+#             print("test_lock {step}. {delta:.3f}\n".format(step=step, delta=time.time() - t_start), end="")
+#
+#         class ThreadWaits(threading.Thread):
+#             def __init__(self):
+#                 super(ThreadWaits, self).__init__()
+#                 self.lock = threading.Lock()
+#
+#             def run(self):   # waiting for the main-line to call start
+#                 say(2)
+#                 self.lock.acquire()   # held up waiting for the main-line to call release
+#                 say(4)
+#                 self.lock.release()   # (no effect)
+#                 time.sleep(0.1)   # hold up the main-line join
+#
+#         waiter = ThreadWaits()
+#         waiter.lock.acquire()
+#         say(1)
+#         time.sleep(0.1)
+#         waiter.start()   # 2 <-- thread
+#         time.sleep(0.1)   # hold up the thread acquire
+#         say(3)
+#         waiter.lock.release()   # 4 <-- thread
+#         waiter.join()   # waiting for the thread run() to return
+#         say(5)
+#
+#
+# class Word0084Threading(TestBaseClass):
+#     threading_credentials = secure.credentials.for_unit_testing_database.copy()
+#     threading_credentials['table'] += '_threading'
+#
+#     class HobbledLexClass(qiki.LexMySQL):
+#
+#         # noinspection PyMethodMayBeStatic
+#         def _critical_moment_1(self):
+#             time.sleep(1)
+#
+#         # noinspection PyMethodMayBeStatic
+#         def _critical_moment_2(self):
+#             time.sleep(1)
+#
+#     def test_thread_bit(self):
+#
+#         def lex_connect():
+#             return self.HobbledLexClass(**self.threading_credentials)
+#
+#         main_lex = lex_connect()
+#         is_virgin = main_lex.max_idn() == main_lex.IDN_MAX_FIXED
+#         assert is_virgin, main_lex.max_idn().qstring()
+#
+#         try:
+#             class ThreadCreatesNoun(threading.Thread):
+#                 def __init__(self,  txt):
+#                     super(ThreadCreatesNoun, self).__init__()
+#                     self.txt = txt
+#                     self.word = None
+#
+#                 def run(self):
+#                     thread_lex = lex_connect()
+#                     self.word = thread_lex.noun(self.txt)
+#                     thread_lex.disconnect()
+#
+#             thread_tea = ThreadCreatesNoun('tea')
+#             thread_coffee = ThreadCreatesNoun('coffee')
+#
+#             pre_max = main_lex.max_idn()
+#
+#             thread_tea.start()
+#             thread_coffee.start()
+#
+#             thread_tea.join()
+#             thread_coffee.join()
+#
+#             self.assertEqual(pre_max + 1, thread_tea.word.idn)
+#             self.assertEqual(pre_max + 2, thread_coffee.word.idn)
+#
+#         finally:
+#             main_lex.uninstall_to_scratch()
+#             main_lex.disconnect()
+#
+#
+# class Word0083Threading(WordTests):
+#
+#     def lex_class(self):
+#         this_lex_class = super(Word0083Threading, self).lex_class()
+#
+#         # noinspection PyPep8Naming
+#         class hobbled_lex_class(this_lex_class):
+#
+#             # noinspection PyMethodMayBeStatic
+#             def _critical_moment_1(self):
+#                 time.sleep(1)
+#
+#             # noinspection PyMethodMayBeStatic
+#             def _critical_moment_2(self):
+#                 time.sleep(1)
+#
+#         return hobbled_lex_class
+#
+#     def test_thread_bit(self):
+#         local_lex = self.lex
+#
+#         class ThreadCreatesNoun(threading.Thread):
+#             def __init__(self,  txt):
+#                 super(ThreadCreatesNoun, self).__init__()
+#                 self.txt = txt
+#                 self.word = None
+#
+#             def run(self):
+#                 self.word = local_lex.noun(self.txt)
+#
+#         thread_tea = ThreadCreatesNoun('tea')
+#         thread_coffee = ThreadCreatesNoun('coffee')
+#
+#         pre_max = self.lex.max_idn()
+#
+#         thread_tea.start()
+#         thread_tea.join()
+#
+#         thread_coffee.start()
+#         thread_coffee.join()
+#
+#         self.assertEqual(thread_tea.word.idn, pre_max + 1)
+#         self.assertEqual(thread_coffee.word.idn, pre_max + 2)
+#
+#
+# class Word0082Threading(WordTests):
+#
+#     def lex_class(self):
+#         this_lex_class = super(Word0082Threading, self).lex_class()
+#
+#         # noinspection PyPep8Naming
+#         class hobbled_lex_class(this_lex_class):
+#
+#             # noinspection PyMethodMayBeStatic
+#             def _critical_moment_1(self):
+#                 # time.sleep(1)
+#                 pass
+#
+#             # noinspection PyMethodMayBeStatic
+#             def _critical_moment_2(self):
+#                 # time.sleep(1)
+#                 pass
+#
+#         return hobbled_lex_class
+#
+#     def test_thread_bit(self):
+#
+#         def thread_1():
+#             return self.lex.noun('tea')
+#
+#         def thread_2():
+#             return self.lex.noun('coffee')
+#
+#         pre_max = self.lex.max_idn()
+#         tea = thread_1()
+#         coffee = thread_2()
+#         self.assertEqual(tea.idn, pre_max + 1)
+#         self.assertEqual(coffee.idn, pre_max + 2)
+#
+#
+# class Word0081Threading(WordTests):
+#
+#     def test_thread_bit(self):
+#
+#         def thread_1():
+#             return self.lex.noun('tea')
+#
+#         def thread_2():
+#             return self.lex.noun('coffee')
+#
+#         pre_max = self.lex.max_idn()
+#         tea = thread_1()
+#         coffee = thread_2()
+#         self.assertEqual(tea.idn, pre_max + 1)
+#         self.assertEqual(coffee.idn, pre_max + 2)
 
 
 class WordQoolbarSetup(WordTests):
@@ -4671,7 +5058,6 @@ class WordInternalTests(WordTests):
     #     anna_likes_bart = anna.like(bart, "He's just so dreamy.", qiki.Number(10))
     #     anna_likes_chet = anna.like(chet, "He's alright I guess.", qiki.Number(9))
     #     print("anna likes two boys", anna_likes_bart.num, anna_likes_chet.num)
-
 
 
 def py23(if2, if3_or_greater):
