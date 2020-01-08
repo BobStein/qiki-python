@@ -38,13 +38,6 @@ HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 # max_idn_lock = threading.Lock()
 
 
-class NextIdnMethod(object):
-    ASK_DATABASE_EACH_TIME = ""
-    KEEP_TRACK_IN_PYTHON = ""
-
-    DEFAULT = KEEP_TRACK_IN_PYTHON
-
-
 # noinspection PyAttributeOutsideInit
 class Word(object):
     """
@@ -1501,7 +1494,6 @@ class LexSentence(Lex):
         self._verb = None
         self._define = None
         self._duplicate_definition_callback_functions = []
-        self.next_idn_method = NextIdnMethod.DEFAULT
 
     def duplicate_definition_notify(self, f):
         # XXX:  Sure is a drastic, totalitarian solution.
@@ -1688,37 +1680,47 @@ class LexSentence(Lex):
 
         # noinspection PyUnusedLocal
         def droid(step):
-            """Probe droid for debugging the browse storm bugs."""
+            """
+            Probe droid for debugging the browse storm bugs.
+
+            EXAMPLE:
+                INSERT_A b'shrubbery' 0 1 unlock 54423720 0q82_04
+                INSERT_B b'shrubbery' 1 1 LOCKED 54423720 0q82_04
+                INSERT_C b'shrubbery' 1 1 LOCKED 54423720 0q82_05
+                INSERT_D b'shrubbery' 0 1 unlock 54423720 0q82_05
+            """
             # print(
             #     step + " " +
             #     str(word.txt.encode('ascii', 'ignore')).replace(" ", "_") + " " +
             #     str(LexSentence.inner) + " " +
             #     str(LexSentence.outer) + " " +
-            #     ("LOCKED " if max_idn_lock.locked() else "unlock ") +
-            #     str(id(max_idn_lock)) + " " +
+            #     ("LOCKED " if self._global_lock.locked() else "unlock ") +
+            #     str(id(self._global_lock)) + " " +
             #     self.max_idn().qstring() +
             #     "\n", end=""
             # )
 
+        try:
+            LexSentence.outer += 1
+            droid("INSERT_A")
+            with self._lock_next_word():   # test_word.Word0080Threading.LexManipulated.cop1
+                try:
+                    LexSentence.inner += 1
+                    droid("INSERT_B")
+                    self._start_transaction()   # test_word.Word0080Threading.LexManipulated.cop2
 
-        LexSentence.outer += 1
-        droid("INSERT_A")
-        with self._lock_next_word():
-            LexSentence.inner += 1
-            droid("INSERT_B")
-            self._start_transaction()
-            
-            idn_of_new_word = self.next_idn()
-            self._critical_moment_1()
-            word.set_idn_if_you_really_have_to(idn_of_new_word)
-            self._critical_moment_2()
-            self.insert_word(word)
-            
-            droid("INSERT_C")
-            LexSentence.inner -= 1
-        # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
-        droid("INSERT_D")
-        LexSentence.outer -= 1
+                    idn_of_new_word = self.next_idn()
+                    self._critical_moment_1()   # test_word.Word0080Threading.LexManipulated.cop3
+                    word.set_idn_if_you_really_have_to(idn_of_new_word)
+                    self._critical_moment_2()
+                    self.insert_word(word)
+                finally:
+                    droid("INSERT_C")
+                    LexSentence.inner -= 1
+            # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
+        finally:
+            droid("INSERT_D")
+            LexSentence.outer -= 1
         
     def _critical_moment_1(self):
         """For testing, hold up this step to raise a duplicate IDN error."""
@@ -2171,16 +2173,17 @@ class LexMySQL(LexSentence):
             else:
                 self._connection.set_charset_collation(str('utf8'))
 
-            self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
-            # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
-            # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
-            # SEE:  SET TRANSACTION, https://dev.mysql.com/doc/refman/en/set-transaction.html
-            # SEE:  READ COMMITTED, https://dev.mysql.com/doc/refman/en/innodb-transaction-isolation-levels.html#isolevel_read-committed
-            # TODO:  Would still rather make max_idn() alone do this,
-            #        but "FROM SHARE" was a syntax error.
-            #        Maybe "FOR UPDATE" in the max_idn() SELECT statement,
-            #        plus a commit in super_select() would do the trick?
-            # SEE:  FOR UPDATE, https://dev.mysql.com/doc/refman/en/select.html
+            # self.super_query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+            # # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
+            # # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
+            # # SEE:  SET TRANSACTION, https://dev.mysql.com/doc/refman/en/set-transaction.html
+            # # SEE:  READ COMMITTED, https://dev.mysql.com/doc/refman/en/innodb-transaction-isolation-levels.html#isolevel_read-committed
+            # # DONE:  Would still rather make max_idn() alone do this,
+            # #        but "FROM SHARE" was a syntax error.
+            # #        Maybe "FOR UPDATE" in the max_idn() SELECT statement,
+            # #        plus a commit in super_select() would do the trick?
+            # #        (Or maybe in insert_next_word())
+            # # SEE:  FOR UPDATE, https://dev.mysql.com/doc/refman/en/select.html
 
             self._lex = self.word_class(self.IDN_LEX)
             try:
@@ -2384,39 +2387,6 @@ class LexMySQL(LexSentence):
         word._now_it_exists()
         return last_row_id
 
-    # outer = 0   # HACK
-    # inner = 0   # HACK
-    #
-    # def insert_next_word(self, word):
-    #     global max_idn_lock
-    #
-    #     def droid(step):
-    #         print(
-    #             step + " " +
-    #             str(word.txt.encode('ascii', 'ignore')).replace(" ", "_") + " " +
-    #             str(LexMySQL.inner) + " " +
-    #             str(LexMySQL.outer) + " " +
-    #             ("LOCKED " if max_idn_lock.locked() else "unlock ") +
-    #             str(id(max_idn_lock)) + " " +
-    #             self.max_idn().qstring() +
-    #             "\n", end=""
-    #         )
-    #
-    #     LexMySQL.outer += 1
-    #     droid("INSERT_A")
-    #     with max_idn_lock:
-    #         LexMySQL.inner += 1
-    #         droid("INSERT_B")
-    #         # self._connection.commit()
-    #         # self._connection.start_transaction()
-    #         word.set_idn_if_you_really_have_to(self.next_idn())
-    #         self.insert_word(word)
-    #         droid("INSERT_C")
-    #         LexMySQL.inner -= 1
-    #     # TODO:  Unit test this lock, with "simultaneous" inserts on multiple threads.
-    #     droid("INSERT_D")
-    #     LexMySQL.outer -= 1
-
     def _start_transaction(self):
         """
         Akin to MySQL START TRANSACTION.
@@ -2427,6 +2397,8 @@ class LexMySQL(LexSentence):
             mysql.connector.errors.ProgrammingError: Transaction already in progress
         """
         self._connection.commit()
+        # NOTE:  self._connection.start_transaction() generates:
+        #        ProgrammingError: Transaction already in progress
 
     class Cursor(object):
         def __init__(self, connection):

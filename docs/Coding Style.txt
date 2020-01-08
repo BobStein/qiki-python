@@ -1129,7 +1129,7 @@ But I haven't worked with them much.
 
 
 
-Brevity is Good; Clarity is Greater (BG;CG)
+Brevity is Good; Clarity is Greater (bg;CG)
 ===========================================
 
 
@@ -1141,6 +1141,19 @@ Yes:
     import os
     import sys
 
+No:
+    a[i++] = x;
+Yes:
+    a[i] = x;
+    i++;
+
+(Thanks, https://stackoverflow.com/a/971442/673991)
+
+No:
+    var a,b=2;
+Yes:
+    var a;
+    var b=2;
     
     
 Line Bites
@@ -1217,7 +1230,7 @@ Punctuation symbols may actually be more verbose, in terms of recognition cost.
 
 Anyway, there could be a high cost for misreading {} for () or []. 
 It's unfortunate the symbols differ by just a few pixels.
-A benevolent developer will only use curly braces when they could not be misunderstood.
+A benevolent developer will only use curly braces where they could not be misunderstood.
 
 Fine:
     d = {'This': 'is more obviously a dictionary.'}
@@ -1228,9 +1241,27 @@ Will you still be coding then?  Some of us will.  Be kind.
 
 Also there's the baked-in confusion that {0} is a set but {} is a dict.
 Not to mention () and [] are empty containers, but [0] is a list and (0) is a plain, uncontained zero.
-So this is a little silly, though it sure is unambiguous:  
+So this is a little silly, but it sure is unambiguous:  
 
     t = tuple((1,2,3))
+
+Fine:  (redundant typing)
+    t = tuple((1,2,3))
+    d = dict({'a':1, 'b':2})
+    l = list([1,2,3])
+    s = set({1,2,3})
+Meh:  (tuple initializers)
+    d = dict((('a',1), ('b',2)))
+    l = list((1,2,3))
+    s = set((1,2,3))
+Okay:  (native symbols)
+    d = {'a':1, 'b':2}
+    l = [1,2,3]
+    s = {1,2,3}
+No:  (misleading typing)
+    t = tuple([1,2,3])
+    d = dict([['a',1], ['b',2]])
+    s = set([1,2,3])
 
 
 
