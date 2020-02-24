@@ -392,7 +392,7 @@ class Number(numbers.Complex):
         # TODO:  Make more efficient.
         #        Maybe normalize on construction or computation.
         #        Maybe from_qstring() with a non-normalized contents will just suffer from
-        #        "appearing" nonequal.
+        #        "appearing" not equal.
         try:
             self_ready = self._op_ready(self)
             other_ready = self._op_ready(other)
