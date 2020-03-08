@@ -677,6 +677,12 @@ Yep:
     $bar.on('click', foobar_ish_click_handler);
 
 
+
+
+
+
+
+
 Generic
 #######
 Principles that could apply to most languages.
@@ -752,7 +758,27 @@ Yes:
         code
     }
 
+
+
+Comprehensibility trumps Brevity
+---------------------------------
+Okay:
+                    var error_message = oembed.error;
+                    if (cont.media_domain !== 'no_domain') {
+                        error_message += " for '" + cont.media_domain + "'";
+                    }
+Better:
+                    var error_message;
+                    if (cont.media_domain === 'no_domain') {
+                        error_message = oembed.error;
+                    } else {
+                        error_message = oembed.error + " for '" + cont.media_domain + "'";
+                    }
+
+The second way is less brief but faster to comprehend.  This is also an example of deliberate code redundancy (the `error_message = oembed.error` assignment) to make visual patterns.
+
     
+
 Creative questions?
 -------------------
 
