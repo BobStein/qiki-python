@@ -2991,7 +2991,8 @@ class LexMySQL(LexSentence):
                 #        Either data or a SuperIdentifier or None must intervene.
 
     def max_idn(self):
-        # TODO:  Store max_idn in a singleton table?  Or a parallel 1-column AUTO_INCREMENT?
+        # TODO:  Store max_idn in a singleton table?
+        #        Or a parallel 1-column AUTO_INCREMENT?
         one_row_one_col = list(self.super_select('SELECT MAX(idn) AS max_idn FROM', self.table))
         if len(one_row_one_col) < 1:
             return Number(0)
