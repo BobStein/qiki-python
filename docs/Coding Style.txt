@@ -708,6 +708,9 @@ Yes:
 
 But more than 3 repetitions and it becomes tedious to count. Probably not a good visual pattern.
 
+This might be similar to "code formatting for emphasis," apparently decried by Ry- 
+https://stackoverflow.com/users/707111/ry
+"If you don’t use code formatting for emphasis, we can probably be friends."
 
 
 Avoid Double Negatives
