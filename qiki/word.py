@@ -948,13 +948,6 @@ class Lex(object):
     """
 
     def __init__(self, meta_word=None, word_class=None, **_):
-        """
-
-        :param meta_word:
-        :type meta_word Word:
-        :param word_class:
-        :param _:
-        """
         super(Lex, self).__init__()
         # NOTE:  Blow off unused kwargs here, which might be sql credentials.
         #        Guess we do this here so sql credentials could contain word_class=Something.

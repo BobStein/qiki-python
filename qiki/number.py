@@ -2088,7 +2088,7 @@ bytes_from_hex.Error = BytesFromHexError
 def hex_from_bytes(string_of_8_bit_bytes):
     """Encode an 8-bit binary (base-256) string into a hexadecimal string."""
     assert isinstance(string_of_8_bit_bytes, six.binary_type)
-    return binascii.hexlify(string_of_8_bit_bytes).upper().decode()
+    return binascii.hexlify(string_of_8_bit_bytes).decode().upper()
 assert 'BEEF' == hex_from_bytes(b'\xBE\xEF')
 
 
