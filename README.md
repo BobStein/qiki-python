@@ -51,7 +51,8 @@ for getting better at group decisions.
 ## how
 
 I think the gizmos can help us out.
-Start by storing our thinking out of the silos.
+Start by storing our thinking 
+outside the big tech silos.
 Then anybody can begin looking for patterns.
 And turning the gizmos loose looking for patterns.
 And looking for meaning.
