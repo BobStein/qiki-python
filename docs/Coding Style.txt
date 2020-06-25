@@ -780,6 +780,23 @@ Better:
 
 The second way is less brief but faster to comprehend.  This is also an example of deliberate code redundancy (the `error_message = oembed.error` assignment) to make visual patterns.
 
+
+Okay:    dom_object = $jquery_object[0];
+Better:  dom_object = $jquery_object.get(0);
+Best:    dom_object = dom_from_$($jquery_object);
+
+The first way is visually obscure.  An important conversion should stand out more.  
+I realize one could say the same about array dereferencing, 
+an array is importantly different from an array element!
+I would counter that a container of apples has the same smell as an apple.
+But a jQuery object smells different than a DOM object.  
+That's a more momentous conversion.  It should glare.
+Though I concede that to some people, a jQuery object and a DOM object should not smell differently,
+because they are abstractions for the same manifestations, 
+at least in this case that abstraction is one HTML element.
+But they're made by two different teams (JavaScript for browsers team, and jQuery team).
+And if anything has a smell (not necessarily in a bad sense, haha PUIBIKIAW) it is a team.
+
     
 
 Creative questions?
