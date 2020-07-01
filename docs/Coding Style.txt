@@ -815,12 +815,29 @@ Yes:
 Conversion function name should use "from" not "to"
 ---------------------------------------------------
 No:
+    mm = inch2mm(inches)
     mm = inches_to_mm(inches)
 
 Yes:
     mm = mm_from_inches(inches)
 
-    See how the mm's are close together and the inches are close together.
+    See how the 'mm's are close together and the 'inches' are close together.
+
+Nah:
+    mm = mm4inch(inches)
+
+    No, because "millimeters for inches" could be misunderstood as the opposite of "millimeters from inches".
+    Concede "four" sounds a teensy bit like "from".
+    Concede "4" looks a teensy bit like an arrow pointing left.
+
+Eesh:
+    mm = mm_inch(inches)
+
+    I suppose if brevity had unusual benefits, and the convention were well learned.
+
+Maybe but no:
+    mm = mm_fm_inches(inches)
+
 
 
 Code >>> Documentation ('>>>' means 'is way better than')
