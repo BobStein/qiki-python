@@ -2126,7 +2126,7 @@ class LexMySQL(LexSentence):
         super(LexMySQL, self).__init__(**kwargs_etc)
 
         def do_connect():
-            self._connection = mysql.connector.connect(**kwargs_sql)
+            return mysql.connector.connect(**kwargs_sql)
 
         def do_connect_with_and_without_use_pure():
             """
@@ -2141,17 +2141,17 @@ class LexMySQL(LexSentence):
             #          https://stackoverflow.com/a/50535647/673991
 
             try:
-                do_connect()
+                return do_connect()
             except AttributeError as attribute_error:
                 if str(attribute_error) == "Unsupported argument 'use_pure'":
                     del kwargs_sql['use_pure']
-                    do_connect()
+                    return do_connect()
                 else:
                     print("Unknown Attribute Error:", str(attribute_error))
                     raise
 
         try:
-            do_connect_with_and_without_use_pure()
+            self._connection = do_connect_with_and_without_use_pure()
         except mysql.connector.Error as exception:
             raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
             # EXAMPLE:  (mysqld is down)
