@@ -761,6 +761,15 @@ Yes:
         code
     }
 
+Counterpoint:  Double negatives can be good.
+
+    Here is a double negative:
+        idn_mismatch = false;
+    It could mean either:
+        idns match, or
+        the idns aren't known, or
+        the idns aren't expected to match
+    
 
 
 Comprehensibility trumps Brevity
