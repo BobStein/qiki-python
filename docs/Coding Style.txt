@@ -849,6 +849,41 @@ at least in this case that abstraction is one HTML element.
 But they're made by two different teams (JavaScript for browsers team, and jQuery team).
 And if anything has a smell (not necessarily in a bad sense, haha PUIBIKIAW) it is a team.
 
+
+Some use of fall-through is brief but misunderstanding-prone.  
+
+Okay:
+    if a:
+        return x
+    return None
+
+A little better:
+
+    if a:
+        return x
+    else:
+        return None
+
+Okay:
+    if a:
+        if b:
+            yes()
+        else:
+            no()
+            return x
+    return None           # this statement is loaded with too much responsibility
+
+A lot better:
+    if a:
+        if b:
+            yes()
+            return None   # explicit is better
+        else:
+            no()
+            return x
+    else:
+        return None       # explicit is better
+
     
 
 Creative questions?
