@@ -649,8 +649,8 @@ Hmm, here's an exception to the same-object rule:
     Leaning toward #1 in this case.  (In part because you CAN rearrange these lines.)
 
 
-Event handlers should only event handlers
------------------------------------------
+Event handlers should only be event handlers
+--------------------------------------------
 So never call an_event_handler() with parens.
 
 Fine:
@@ -677,9 +677,52 @@ Yep:
     $bar.on('click', foobar_ish_click_handler);
 
 
+that = this
+-----------
+The `this` keyword should only appear in the first line of its function.
 
+Yes:
+    function click_handler() {
+        var element = this;
+        var $div = $(element).closest('div');
+        :
 
+Yes:
+    Classy.prototype.method = function () {
+        var that = this;
+        that.other_method(that.property);
+        :
 
+Yes:
+    property: { get: function () {return this.private_property;}}
+
+When `this` appears throughout a method, it looks too dangerously much like `this` inside a function expression. A function expression looks like an innocent clause (if, for, while, etc.) but `this` means something different. 
+
+Bug:
+    handler: function () {
+        this.count = 0;
+        $('div').each(function () {
+            this.count++;
+        });
+    }
+
+Fix:
+    handler: function () {
+        var that = this;
+        that.count = 0;
+        $('div').each(function () {
+            that.count++;
+        });
+    }
+
+SEE:  `that` is the new `this`,  https://alistapart.com/article/getoutbindingsituations/#snippet26
+
+I used to make an exception with constructors.  Two hours I'll never get back.
+
+I almost thought I needed to make an exception with a // noinspection directive, 
+that it needed to be the first line, above `that = this`.
+but it was only to hide a warning that `that` was assigned but never used.  
+So I just deleted the `that` assignment.
 
 
 
@@ -1060,7 +1103,7 @@ No:
 Yes:
     if ( ! is_valid)
 
-It looks horrible to me too, but missing this operator is worse.  Because it changes everything.
+I cringe too, but missing this operator is worse.  Because it changes everything.
 
 Also if someday it were followed consistently (e.g. warning when not done) 
 then it would be easier to search for, with " ! ".
