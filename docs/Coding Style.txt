@@ -534,6 +534,7 @@ Mnemonics I have used from the standard list:
     SEE (instead of SOURCE or REF or REFERENCE)
     THANKS (instead of CREDIT)
     NOTHANKS (seemed helpful but was wrong or misleading)
+    THANKS 30% (30% helpful, 70% hindrance)
     TODO
     TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
     XXX
@@ -1469,3 +1470,23 @@ Interdependencies should be near
 Ad hoc variables should be declared as close as possible to where they're used.
 OOP can be a bureaucracy where many functions do little but call another function, in another file.
 MVC is another kind of referential hell.
+
+
+
+English Coding Style
+====================
+Less
+    first person
+    adverb
+    contraction
+    plural
+    words
+        Notice if I hadn't made "words" plural it would have been very hard to understand.
+            Notice I've shamelessly violated all five of the above rules in that sentence.
+                That one too.
+    idiom
+
+More
+    humor
+    originality
+
