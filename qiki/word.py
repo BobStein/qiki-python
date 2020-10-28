@@ -577,6 +577,8 @@ class Word(object):
         if self.num != 1:
             d['num'] = self.num
 
+        # FALSE WARNING:  Unresolved attribute reference 'jbo' for class 'Word'
+        # noinspection PyUnresolvedReferences
         if hasattr(self, 'jbo') and len(self.jbo) > 0:
             d['jbo'] = self.jbo
 

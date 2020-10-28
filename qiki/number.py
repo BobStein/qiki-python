@@ -1616,17 +1616,18 @@ assert Number.NAN.raw == Number.RAW_NAN
 # ---------
 def sets_exclusive(*sets):
     """Are these sets mutually exclusive?  Is every member unique?"""
-    for i in range(len(sets)):
-        for j in range(i):
-            if sets[i].intersection(sets[j]):
+    for each_index in range(len(sets)):
+        for each_preceding_index in range(each_index):
+            members_in_both = sets[each_index].intersection(sets[each_preceding_index])
+            if len(members_in_both) > 0:
                 return False
     return True
-assert False is sets_exclusive({1,2,3}, {3,4,5})
-assert True is sets_exclusive({1,2,3}, {4,5,6})
+assert  True is sets_exclusive({1,2,3}, {4,5,6}, {7, 8, 9})
+assert False is sets_exclusive({1,2,3}, {4,5,6}, {6, 7, 8})
 
 
 def union_of_distinct_sets(*sets):
-    """Return the union of these sets.  Assert there are no overlapping members."""
+    """Return the union of these sets.  There must be no overlapping members."""
     assert sets_exclusive(*sets), "Sets not mutually exclusive:  %s" % repr(sets)
     return set.union(*sets)
 assert {1,2,3,4,5,6} == union_of_distinct_sets({1,2,3}, {4,5,6})
@@ -2566,7 +2567,7 @@ assert 'function' == type_name(type_name)
 #         or maybe not, pickling has more to do with making a byte stream,
 #         and anyway it doesn't seem that pickled data knows its length
 #     packetized
-#     Think of a tardigrade, dessicated.  And reconstituted back to life.
+#     Think of a tardigrade, desiccated.  And reconstituted back to life.
 #         but this is not condensing, in fact it is expanding.
 #         really it is more like a packetized number
 #     pickled?  That term is taken, but something analogous...
@@ -2667,7 +2668,7 @@ assert 'function' == type_name(type_name)
 
 ##### (end of lengthed-export talk)
 
-# TODO:  Move a lot of these TODO's to github issues.  And give them qiki interactivity there.
+# TODO:  Move a lot of these TODOs to github issues.  And give them qiki interactivity there!
 #
 # TODO:  Are Numbers immutable after __init__() is done or not?
 #        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
