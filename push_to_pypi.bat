@@ -1,7 +1,7 @@
 @echo off
 REM Upload to PyPI
 REM --------------
-REM 1.  push_to_pypi.bat -- Do this first, because it modifies version.py
+REM 1.  push_to_pypi.bat -- Do this BEFORE github push, because it modifies version.py
 REM 2.  github push
 REM 3.  gol (for "live" unslumping.org)
 REM 4.  gof (for fun.unslumping.org, which handles /meta/oembed/ hits)
