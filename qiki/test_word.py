@@ -65,19 +65,24 @@ except ImportError:
     sys.exit(1)
 
 
+LET_DATABASE_RECORDS_REMAIN = False
+# NOTE:  False = Each run deletes its table
+#        True = Each run leaves its table behind, for human examination
+#               If RANDOMIZE_DATABASE_TABLE = True
+#                   then HUNDREDS of tables remain, after running all tests
+#               If RANDOMIZE_DATABASE_TABLE = False
+#                   then only table 'word' remains -- and I GUESS it contains the results of
+#                   whatever test HAPPENED to run last.  So this is mainly useful when
+#                   running individual tests.
+#        Either way, each test starts with an empty, virgin lex.
 
-LET_DATABASE_RECORDS_REMAIN = False   # False = Each run deletes its table
-                                      # True = Each run leaves its table behind, for human examination
-                                      #        If RANDOMIZE_DATABASE_TABLE = True then HUNDREDS of tables remain
-                                      #                                           after running all tests
-                                      #        If RANDOMIZE_DATABASE_TABLE = False then only table 'word' remains
-
-RANDOMIZE_DATABASE_TABLE = False   # False = table name e.g. 'word'
-                                   #         See secure.credentials.for_unit_testing_database.table
-                                   # True = support concurrent test runs (e.g. Word2.7 and Word3.7).
-                                   #        Table name e.g. word_ce09954b2e784cd8811b640079497568
-                                   # CAUTION:  if LET_DATABASE_RECORDS_REMAIN is also True, then
-                                   #           HUNDREDS of tables will accumulate after each full test run.
+RANDOMIZE_DATABASE_TABLE = False
+# NOTE:  False = table name e.g. 'word'
+#                See secure.credentials.for_unit_testing_database.table for actual table name.
+#        True = this supports concurrent test runs (e.g. Word2.7 and Word3.9).
+#               Table name e.g. word_ce09954b2e784cd8811b640079497568
+# CAUTION:  if LET_DATABASE_RECORDS_REMAIN is also True, then
+#           HUNDREDS of tables will accumulate after each full test run.
 
 TEST_ASTRAL_PLANE = True   # Test txt with Unicode characters on an astral-plane (beyond the base 64K)
 
@@ -133,7 +138,7 @@ class TestFlavors(object):
 
 
 class TestBaseClass(unittest.TestCase):
-    pass
+    """Base class for all qiki.Word tests."""
 
 
 # noinspection PyPep8Naming
@@ -173,21 +178,30 @@ def version_report():
     #        Isn't the python connector the "real" "client" we're running here?
 
     credentials = secure.credentials.for_unit_testing_database.copy()
-    lex = qiki.LexMySQL(**credentials)
-    server_version = lex.server_version()
-    lex.uninstall_to_scratch()
-    lex.disconnect()
-    print("MySQL Server version", server_version)
-    # EXAMPLE:  MySQL Server version 5.7.24
+    try:
+        lex = qiki.LexMySQL(**credentials)
+    except qiki.LexMySQL.ConnectError:
+        print("(cannot determine MySQL server version)")
+    else:
+        server_version = lex.server_version()
+
+        # lex.uninstall_to_scratch()
+        # TODO:  Wasn't uninstall_to_scratch() rather brutish if all we did was server_version()?
+
+        lex.disconnect()
+        print("MySQL Server version", server_version)
+        # EXAMPLE:  MySQL Server version 5.7.24
 
 
 version_report()
 
 
 class SafeNameTests(TestBaseClass):
-    # For some reason, PyCharm got stupid about which secure.credentials were active when unit testing,
-    # while a project was loaded with another secure.credentials.  Hence the following noinspection.
-    # The correct package imports when run however.
+    """Test LexMySQL naming of tables and engines."""
+
+    # NOTE:  For some reason, PyCharm got stupid about which secure.credentials were active when
+    #        unit testing, while a project was loaded with another secure.credentials.  Hence the
+    #        following noinspection.  The correct package imports when run however.
     # noinspection PyUnresolvedReferences
 
     def test_table_name_at_creation_good(self):
@@ -347,6 +361,7 @@ class LexErrorTests(TestBaseClass):
 
 # noinspection PyUnresolvedReferences
 class WordTests(TestBaseClass):
+    """Base class for qiki.Word tests that use a standard, empty self.lex.  Has no tests itself."""
 
     first_setup = True
 
@@ -369,11 +384,47 @@ class WordTests(TestBaseClass):
         
         This may slightly confuse the test framework on the total number of tests being run.
         """
-        for self.flavor_spec in self.flavor_specs:
-            result = super(WordTests, self).run(result)
-            TestFlavors.count_test(self.flavor_spec)
-        return result
         # THANKS:  Parameterizing tests, https://eli.thegreenplace.net/2011/08/02/python-unit-testing-parametrized-test-cases
+        #          In classes derived from WordTests, tests are parameterized by self.flavor_specs.
+
+        break_flavor_loop = False
+        for self.flavor_spec in self.flavor_specs:
+            if break_flavor_loop:
+                break
+
+            try:
+                result = super(WordTests, self).run(result)
+            except self.AbortAllTests as e:
+                # NOTE:  Take #1 handling AbortAllTests.
+                if result is not None:
+
+                    result.stop()
+                    # THANKS:  result.stop() in run() aborts all tests,
+                    #          https://stackoverflow.com/a/59955861/673991
+
+                    print("Aborting tests:", str(e))
+                else:
+                    print("Unable to abort tests?", str(e))
+                break_flavor_loop = True
+            else:
+                if WordTests.AbortAllTests.has_ever_been_instantiated:
+                    # NOTE:  Take #2 handling AbortAllTests.
+                    #        May be necessary because take #1 relies on an undocumented
+                    #        nuance of the test framework, that it handles all exceptions
+                    #        but KeyboardInterrupt.
+
+                    print("Aborting tests, take two.")
+                    if result is not None:
+                        result.stop()
+                    break_flavor_loop = True
+                else:
+                    TestFlavors.count_test(self.flavor_spec)
+
+            # TODO:  Encapsulate this take one / take two ugliness in
+            #        AbortAllTests, along with the related ugliness of relying on
+            #        KeyboardInterrupt special re-raising.
+
+        return result
 
     def lex_class(self):
         return self.flavor_spec['lex_class']
@@ -386,23 +437,57 @@ class WordTests(TestBaseClass):
             # EXAMPLE:  word_ce09954b2e784cd8811b640079497568
 
         credentials.update(TestFlavors.credentials_from_specs(self.flavor_spec))
-        self.lex = self.lex_class()(**credentials)
+        try:
+            self.lex = self.lex_class()(**credentials)
+        except qiki.LexMySQL.ConnectError as e:
 
-        def cleanup_disconnect():
-            if not LET_DATABASE_RECORDS_REMAIN:
+            print("MySQL down?")
+            # NOTE:  Twice weird how this SOMETIMES appears BELOW the print()s
+            #        from processing AbortAllTests.
+
+            raise self.AbortAllTests("CANNOT CONNECT MYSQL: " + str(e))
+
+            # self.fail("CANNOT CONNECT MYSQL: " + str(e))
+            # NO THANKS:  Only aborts THIS test, not ALL tests, https://stackoverflow.com/a/7779760/673991
+        else:
+            def cleanup_disconnect():
+                if not LET_DATABASE_RECORDS_REMAIN:
+                    self.lex.uninstall_to_scratch()
+                    # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
+                    #        in the next flavor's call to its lex constructor in setUp().
+                self.lex.disconnect()
+
+            self.addCleanup(cleanup_disconnect)
+            # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
+
+            if LET_DATABASE_RECORDS_REMAIN or WordTests.first_setup:
+                WordTests.first_setup = False
                 self.lex.uninstall_to_scratch()
-                # NOTE:  The corresponding self.lex.install_from_scratch() happens automagically
-                #        in the next flavor's call to its lex constructor in setUp().
-            self.lex.disconnect()
+                self.lex.install_from_scratch()
+                # NOTE:  Delete old table from last test, insert fresh new table for this test.
 
-        self.addCleanup(cleanup_disconnect)
-        # THANKS:  addCleanup vs tearDown, https://stackoverflow.com/q/37534021/673991
+    class AbortAllTests(KeyboardInterrupt):
+        """No reason to run any other tests if this happens."""
 
-        if LET_DATABASE_RECORDS_REMAIN or WordTests.first_setup:
-            WordTests.first_setup = False
-            self.lex.uninstall_to_scratch()
-            self.lex.install_from_scratch()
-            # NOTE:  Delete old table from last test, insert fresh new table for this test.
+        # THANKS:  KeyboardInterrupt bubbles, https://stackoverflow.com/a/45518359/673991
+        #          This is a dirty bit of insider knowledge to take advantage of,
+        #          but it makes error handling slightly better.
+        #          TestCase.run() calls unittest/case.py _Outcome.testPartExecutor()
+        #          That function intercepts and re-raises KeyboardInterrupt,
+        #          but it intercepts all other exceptions without re-raising them.
+        #          At least it behaves that way in 2020.  Hence the fallback on sentinel
+        #          variable has_ever_been_raised.
+
+        has_ever_been_instantiated = False
+
+        def __init__(self, *args, **kwargs):
+
+            WordTests.AbortAllTests.has_ever_been_instantiated = True
+            # CAUTION:  Cannot set class variables via self.
+
+            # FALSE WARNING:  Unexpected argument -- wtf is wrong with **kwargs??
+            # noinspection PyArgumentList
+            super(WordTests.AbortAllTests, self).__init__(*args, **kwargs)
 
     def lex_report(self):
 

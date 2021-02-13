@@ -501,68 +501,6 @@ import sections
 ---------------
 PEP8 identifies 3 sections for imports:  standard, pypi, local.  Single blank lines between each section. The middle pypi section should be further broken down, because many times it includes lots of related imports.  And sometimes it needs logic or verbose comments on all the difficulties.
 
-    
-Codetags (PEP 0350)
---------
-
-Codetags should go on the line *after* the code they are tagging.
-This location resembles putting the codetag comment on the same line as the code,
-while complying with the rule "It should not share a line with code."
-
-    y = f(x)
-    # NOTE:  This code functions.
-
-Exceptions should be clear, e.g. a codetag ending in a colon ":" applies to lines that follow.
-
-    # NOTE:  Sequence records correctly:
-    print("Record sequence", ", ".join(records.keys()))
-
-A codetag should span exactly one line.  Indented continuation lines may elaborate.
-
-    # NOTE:  This is a summary.
-    #        More lines may
-    #        elaborate.
-
-No <> fields.
-
-Mnemonics I have used from the standard list:
-    CAUTION (instead of CAVEAT or WARNING or DANGER or PANIC or HYSTERIA)
-    DONE
-    FIXME
-    HACK
-    NOTE (instead of N.B.)
-    SEE (instead of SOURCE or REF or REFERENCE)
-    THANKS (instead of CREDIT)
-    NOTHANKS (seemed helpful but was wrong or misleading)
-    THANKS 30% (30% helpful, 70% hindrance)
-    TODO
-    TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
-    XXX
-    
-Additional mnemonics:
-    DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
-        blank lines before and after 
-        counterarguments separated by a blank line
-    EXAMPLE (output, error message, etc.)
-    KUDOS (stronger THANKS)
-    REPORTED (noted for posterity, bug report, Q&A submitted by author)
-
-Variations
-    THANKS:  (maybe)  Some article on stack overflow I do not dare upvote until I know if it works. 
-             Because of dumb policy on tactical-down-voting, https://meta.stackexchange.com/a/18046/209317
-
-Possibilities:
-    ASSUMPTION  (NOTE is probably good enough.  Even better:  assert.)
-
-    
-Continuation lines are indented to line up with the stuff after the colon:
-    No:
-        // NOTE:  The rain in Spain falls mainly
-        // in the plain.
-    Yes:
-        // NOTE:  The rain in Spain falls mainly
-        //        in the plain.
-
 
 Three Spaces before comments
 Three Spaces between multi-line lines
@@ -727,6 +665,9 @@ So I just deleted the `that` assignment.
 
 
 
+
+
+
 Generic
 #######
 Principles that could apply to most languages.
@@ -735,9 +676,11 @@ Principles that could apply to most languages.
 Human Readability
 =================
 The first priority for code is to function.  
-    Machines should work reliably and give humans an easier life.
+    Machines should work reliably and give human users an easier life.
 The second priority for code is accurate, quick comprehension by human readers.  
     Do not fool, do not confuse, do not burden.
+    Surprises are usually bad, SEE:  https://en.wikipedia.org/wiki/Principle_of_least_astonishment
+
 
 
 Visual patterns are good
@@ -756,10 +699,39 @@ This might be similar to "code formatting for emphasis," apparently decried by R
 https://stackoverflow.com/users/707111/ry
 "If you don’t use code formatting for emphasis, we can probably be friends."
 
+Okay:
+            $popup_screen.css({
+                top:0, right:0, bottom:0, left:0,
+                'z-index':0,
+                'background-color':'rgba(0,0,0,0.33)'
+            });
+
+Better:
+            $popup_screen.css({top:0, right:0, bottom:0, left:0});
+            $popup_screen.css({'z-index':0});
+            $popup_screen.css({'background-color':'rgba(0,0,0,0.33)'});
+
+            // Each line is atomic. 
+            // I believe this code is comprehended quicker,
+            // because its obvious repetitiveness creates a visual pattern 
+            // which reduces cognitive load.
+
+
+
+Competing consistency
+---------------------
+Not sure on this:
+    top:0, zIndex:0          -- consistent JavaScript, not quoting property names
+    top:0, 'z-index':0       -- consistent CSS with JavaScript property naming   <== ended up doing this
+    'top':0, 'z-index':0     -- consistent both ways, but quote clutter
+
+
 
 Avoid Double Negatives
 ----------------------
 Do not nest negativity.  Limit human readers to one level of negativity per line of code.
+Similarly in English:  This would be the only sentence that deserved to use a double negative. But hey, it didn't need to either.
+
 
 No:
     is_invalid = error()
@@ -1472,6 +1444,75 @@ OOP can be a bureaucracy where many functions do little but call another functio
 MVC is another kind of referential hell.
 
 
+    
+Codetags (PEP 0350, but I use them in all code)
+--------
+
+Codetags should go on the line *after* the code they are tagging.
+This location resembles putting the codetag comment on the same line as the code,
+while complying with the rule "It should not share a line with code."
+
+    y = f(x)
+    # NOTE:  This code functions.
+
+Exceptions should be clear, e.g. a codetag ending in a colon ":" applies to lines that follow.
+
+    # NOTE:  Sequence records correctly:
+    print("Record sequence", ", ".join(records.keys()))
+
+A codetag should span exactly one line.  Indented continuation lines may elaborate.
+
+    # NOTE:  This is a summary.
+    #        More lines may
+    #        elaborate.
+
+No <> fields.
+
+Mnemonics I have used from the standard list:
+    CAUTION (instead of CAVEAT or WARNING or DANGER or PANIC or HYSTERIA)
+    DONE
+    FIXME
+    HACK
+    NOTE (instead of N.B.)
+    SEE (instead of SOURCE or REF or REFERENCE)
+    THANKS (instead of CREDIT)
+    NOTHANKS (seemed helpful but was wrong or misleading)
+    THANKS 30% (30% helpful, 70% hindrance)
+    TODO
+    TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
+    XXX
+    
+Additional mnemonics:
+    DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
+        blank lines before and after 
+        counterarguments separated by a blank line
+    EXAMPLE (output, error message, etc.)
+    KUDOS (stronger THANKS)
+    REPORTED (noted for posterity, bug report, Q&A submitted by author)
+    FALSE WARNING (show text of a warning message, just before the noinspection directive to disable it)
+        A response to the unending torrent of PyCharm false alarms.
+    STUCK WARNING
+        A warning that cannot be disabled.
+        A response to the insidious new PyCharm twist where they don't deign to LET you disable some warning of theirs.
+
+
+Variations
+    THANKS:  (maybe)  Some article on stack overflow I do not dare upvote until I know if it works. 
+             Because of dumb policy on tactical-down-voting, https://meta.stackexchange.com/a/18046/209317
+
+Possibilities:
+    ASSUMPTION  (NOTE is probably good enough.  Even better:  assert.)
+
+    
+Continuation lines are indented to line up with the stuff after the colon:
+    No:
+        // NOTE:  The rain in Spain falls mainly
+        // in the plain.
+    Yes:
+        // NOTE:  The rain in Spain falls mainly
+        //        in the plain.
+
+
 
 English Coding Style
 ====================
@@ -1485,8 +1526,12 @@ Less
             Notice I've shamelessly violated all five of the above rules in that sentence.
                 That one too.
     idiom
+    confusion
+    contempt
 
 More
+    incitement
     humor
-    originality
 
+
+(Not advocating less pretense or more authenticity. Legislating morality or something.)
