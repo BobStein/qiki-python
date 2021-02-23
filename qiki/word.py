@@ -169,6 +169,8 @@ class Word(object):
         This is a bigger question than being choate.
         Choate is more a concept of what we know about the word so far.
         Exist is more a concept of what the world manifests about the word.
+        The concepts are independent.
+        A choate word can be nonexistent just before a .save()
         """
         # TODO:  What about Listing words?
         self._choate()

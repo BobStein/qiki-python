@@ -4,14 +4,18 @@ C O D I N G   S T Y L E
 
 
 
+##################
 Shortest Manifesto
 ##################
+
 Shorten the time from reading to understanding.
 
 
 
+###############
 Short Manifesto
 ###############
+
 Brevity is good, clarity is better.
 Names are important.
 Visual patterns are good.
@@ -20,9 +24,9 @@ Speakable English sentences are good.
 
 
 
+###############
 PEP8 Amendments
 ###############
-
 
 Use whitespace to reveal meaningful patterns
 --------------------------------------------
@@ -536,9 +540,10 @@ Yes:
 
 
 
-
+###########################
 JavaScript Coding Standards
 ###########################
+
 READ:  http://javascript.crockford.com/code.html
 
 $variable names for jQuery objects begin with a dollar sign.  
@@ -668,9 +673,22 @@ So I just deleted the `that` assignment.
 
 
 
+
+
+
+
+
+
+
+
+
+
+#######
 Generic
 #######
+
 Principles that could apply to most languages.
+
 
 
 Human Readability
@@ -1241,6 +1259,20 @@ Also yes:
         y = but_y_could_be_none or Y_DEFAULT
         do_stuff(y)
 
+
+Single-letter names
+-------------------
+Good in tightly coupled code.  Bad when scope spans more than a few lines.
+
+Good in Python comprehensions:
+
+    names = [ sanitize(n) for n in names_unsanitary ]
+
+Good in the first few lines of a loop, where meaning is clear:
+
+    for t in transactions:
+        if t.id() == identifier:
+            return t
 
 
 UUIDs should be rarely seen and never pasted
