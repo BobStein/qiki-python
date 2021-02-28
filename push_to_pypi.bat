@@ -9,6 +9,9 @@ REM
 REM THANKS:  PyPI instructions, https://packaging.python.org/tutorials/packaging-projects/
 REM THANKS:  Batch variable from a file, https://stackoverflow.com/a/2768658/673991
 REM THANKS:  Remove stale egg-info, https://stackoverflow.com/a/26547314/673991
+REM SEE:  "py" Python Launcher, https://docs.python.org/3/using/windows.html
+REM        - Customize installation   <-- when running the Python installer .exe for Windows
+REM        - py launcher              <-- check this optional feature
 
 rm -f dist/qiki-*
 rm -rf qiki.egg-info

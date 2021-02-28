@@ -9,6 +9,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
+# FALSE WARNING:  Unused import statement 'import operator'
 # noinspection PyUnresolvedReferences
 import operator
 # import pickle

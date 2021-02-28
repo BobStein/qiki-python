@@ -41,17 +41,17 @@ except ImportError:
                 password='example_password',
                 database='example_database',
                 table=   'word',
-                engine=   'MEMORY',        # About 2x faster unit testing.
-                txt_type= 'VARCHAR(255)',  # Because MEMORY doesn't support TEXT.
+                engine=  'MEMORY',        # About 2x faster unit testing.
+                txt_type='VARCHAR(255)',  # Because MEMORY doesn't support TEXT.
             )
 
-        You also need an empty secure/__init__.py
+        You also need to create an empty (0 bytes) file named secure/__init__.py
         Why?  See http://stackoverflow.com/questions/10863268/how-is-an-empty-init-py-file-correct
-        Short answer:  that makes 'secure' into a package so we can import 'credentials.py' 
+        Short answer:  that makes 'secure' into a package so we can import from it 'credentials.py' 
         which is a module.
 
-        In MySQL you need to create the example_database and the example_user.
-        LexMySQL will create the table.
+        In MySQL you will need to create the example_database and the example_user.
+        LexMySQL will create the table.  Example MySQL commands to do all that:
                 
             CREATE DATABASE `example_database`;
             CREATE USER 'example_user'@'localhost';
