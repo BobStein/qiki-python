@@ -636,7 +636,7 @@ class Number(numbers.Complex):
         Don't check self.imag == self.ZERO because that may try to subtract a suffix that isn't there.
 
         Check all imaginary suffixes. If any nonzero, leave them all alone.
-        This might one day help support quaternary numbers that have three imaginary suffixes.
+        This might one day help support quaternions that have three imaginary suffixes.
         """
         imaginaries = [suffix.number for suffix in self.suffixes if suffix.type_ == Suffix.Type.IMAGINARY]
         all_imaginaries_zero = all(imaginary == self.ZERO for imaginary in imaginaries)
@@ -1924,6 +1924,10 @@ class Suffix(object):
     # SEE:  https://math.stackexchange.com/q/1916870/60679
     #       what is the relation between quaternions and imaginary numbers?
     #       In particular, Jean Marie's comment "there is no canonical embedding of C in H"
+    # TODO:  Support other hyper-complex numbers.
+    #        Bicomplex numbers are pairs of complex numbers, e.g. (1+2j,3+4j)
+    #        Tessarines are 4-tuple mutants resembling quaternions but where ij == k, jj == +1, etc.
+    #        Supposedly they are isomorphic to bicomplex numbers.
 
     def __init__(self, type_=None, payload=None):
         """Suffix constructor.  Given its one-byte type and multi-byte payload.  Both optional."""
