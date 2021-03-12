@@ -382,6 +382,9 @@ class Number(numbers.Complex):
             return int(self)
         else:
             # TODO:  Ludicrous numbers should become int.
+            # NOTE:  Infinitesimal numbers should not become zero passively, right?
+            #        Maybe instead make a Number.approximate() function that turns them to zero.
+            #        Although 0.0 == float(Number.POSITIVE.INFINITESIMAL) does it already.
             return float(self)
 
 
@@ -2675,7 +2678,7 @@ assert 'function' == type_name(type_name)
 # TODO:  Move a lot of these TODOs to github issues.  And give them qiki interactivity there!
 
 # TODO:  Are Numbers immutable after __init__() is done or not?
-#        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
+#        If they are, then several of the type(self)(self) calls and their ilk may be unnecessary.
 #        They kind of have to be immutable, because strings and integers are ffs.
 #        But that means no Number().addSuffix() <-- already fixed, replaced with plus_suffix()
 #        which sounds SLIGHTLY less like something that could mutate in place.

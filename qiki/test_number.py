@@ -270,21 +270,39 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(n, Number(str(n)))
 
     def test_json(self):
-        self.assertEqual(42, Number(42).to_json())
 
-        class WhatJsonModuleShouldaDone(json.JSONEncoder):
+        class BetterJson(json.JSONEncoder):
             def default(self, x):
-                if hasattr(x, 'to_json'):
+                try:
                     return x.to_json()
-                else:
-                    return super(WhatJsonModuleShouldaDone, self).default(x)
+                except AttributeError:
+                    return super(BetterJson, self).default(x)
+                # if hasattr(x, 'to_json'):
+                #     return x.to_json()
+                # else:
+                #     return super(BetterJson, self).default(x)
 
-        self.assertEqual('42', json.dumps(       42 , cls=WhatJsonModuleShouldaDone))
-        self.assertEqual('42', json.dumps(Number(42), cls=WhatJsonModuleShouldaDone))
+        self.assertEqual('42', json.dumps(       42 , cls=BetterJson))
+        self.assertEqual('42', json.dumps(Number(42), cls=BetterJson))
+        self.assertEqual( 42,             Number(42).to_json())
+
+        self.assertEqual('4.2', json.dumps(       4.2 , cls=BetterJson))
+        self.assertEqual('4.2', json.dumps(Number(4.2), cls=BetterJson))
+        self.assertEqual( 4.2,             Number(4.2).to_json())
+
+        self.assertEqual( '0q82_11__8222_690300',             Number(17+34j).qstring())
+        self.assertEqual('"0q82_11__8222_690300"', json.dumps(Number(17+34j), cls=BetterJson))
+        self.assertEqual( '0q82_11__8222_690300',            Number(17+34j).to_json())
+
         self.assertEqual(
             '["a", 2, 42, 42]',
-            json.dumps(['a', 2, 42, Number(42)], cls=WhatJsonModuleShouldaDone)
+            json.dumps(['a', 2, 42, Number(42)], cls=BetterJson)
         )
+
+        self.assertEqual('null', json.dumps(None))
+        self.assertEqual('null', json.dumps(Number.NAN, cls=BetterJson))
+        self.assertEqual('null', json.dumps(Number.POSITIVE_INFINITY, cls=BetterJson))
+        self.assertEqual('null', json.dumps(Number.POSITIVE_INFINITESIMAL, cls=BetterJson))
 
     def test_unicode(self):
         n = Number('0q83_03E8')
@@ -526,14 +544,21 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(float('-inf'), Number.NEGATIVE_INFINITY)
 
     def test_infinitesimal_float(self):
-        self.assertNotEqual(0, Number.POSITIVE_INFINITESIMAL)
-        self.assertNotEqual(0, Number.NEGATIVE_INFINITESIMAL)
+        self.assertNotEqual(0.0, Number.POSITIVE_INFINITESIMAL)
+        self.assertNotEqual(0.0, Number.NEGATIVE_INFINITESIMAL)
 
-        self.assertEqual(0, float(Number.POSITIVE_INFINITESIMAL))
-        self.assertEqual(0, float(Number.NEGATIVE_INFINITESIMAL))
+        self.assertEqual(0.0, float(Number.POSITIVE_INFINITESIMAL))
+        self.assertEqual(0.0, float(Number.NEGATIVE_INFINITESIMAL))
 
         self.assertFloatSame(+0.0, float(Number.POSITIVE_INFINITESIMAL))
         self.assertFloatSame(-0.0, float(Number.NEGATIVE_INFINITESIMAL))
+
+    def test_infinitesimal_int(self):
+        self.assertNotEqual(0, Number.POSITIVE_INFINITESIMAL)
+        self.assertNotEqual(0, Number.NEGATIVE_INFINITESIMAL)
+
+        self.assertEqual(0, int(Number.POSITIVE_INFINITESIMAL))
+        self.assertEqual(0, int(Number.NEGATIVE_INFINITESIMAL))
 
     def test_qantissa_max_qigits(self):
         qstring =     '0q82_112233445566778899AABBCCDDEEFF'

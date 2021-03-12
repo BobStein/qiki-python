@@ -9,6 +9,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import calendar
 import inspect
+import json
 import re
 import sys
 import threading
@@ -1127,6 +1128,43 @@ class Word0011FirstTests(WordTests):
         # noinspection SpellCheckingInspection
         self.assertEqual("Word(idn=5,sbj=lex,vrb=define,obj=noun,num=1,txt='frog')", "{:isvont}".format(word))
         six.assertRegex(self, "{:w}".format(word), r"^Word\(whn=\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d\)$")
+
+
+    def test_02e_json(self):
+
+        class BetterJson(json.JSONEncoder):
+            def default(self, x):
+                try:
+                    return x.to_json()
+                except AttributeError:
+                    return super(BetterJson, self).default(x)
+                # if hasattr(x, 'to_json'):
+                #     return x.to_json()
+                # else:
+                #     return super(BetterJson, self).default(x)
+
+        cod = self.lex.noun('cod')
+        cod_word_dictionary = dict(
+            idn=cod.idn,   # EXAMPLE:  5
+            sbj=self.lex.IDN_LEX,
+            vrb=self.lex.IDN_DEFINE,
+            obj=self.lex.IDN_NOUN,
+            whn=cod.whn,   # EXAMPLE:  1615592035.738819
+            txt='cod',
+        )
+        self.assertDictEqual(
+            cod_word_dictionary,
+            cod.to_json()
+        )
+        self.assertEqual(
+            json.dumps(cod_word_dictionary, cls=BetterJson),
+            json.dumps(cod, cls=BetterJson)
+        )
+        # EXAMPLE:   (This won't work because the whn changes.)
+        #     self.assertEqual(
+        #         '{"idn": 5, "sbj": 0, "vrb": 1, "obj": 2, "whn": 1615592908.500739, "txt": "cod"}',
+        #         json.dumps(cod, cls=BetterJson)
+        #     )
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.LexSentence.IDN_MAX_FIXED, self.lex.max_idn())
