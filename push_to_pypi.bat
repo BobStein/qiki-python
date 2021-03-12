@@ -12,17 +12,22 @@ REM THANKS:  Remove stale egg-info, https://stackoverflow.com/a/26547314/673991
 REM SEE:  "py" Python Launcher, https://docs.python.org/3/using/windows.html
 REM        - Customize installation   <-- when running the Python installer .exe for Windows
 REM        - py launcher              <-- check this optional feature
+REM THANKS:  error: invalid command 'bdist_wheel'
+REM          https://stackoverflow.com/a/44862371/673991
+REM          Solution:  pip install wheel
+REM          Also had to update py version codes.
+REM          Also had to pip install twine
 
 rm -f dist/qiki-*
 rm -rf qiki.egg-info
-py -3.7 version_update_now.py || goto bad
-py -3.7 setup.py sdist bdist_wheel || goto bad
+py -3.8 version_update_now.py || goto bad
+py -3.8 setup.py sdist bdist_wheel || goto bad
 
 setlocal
 set /p REPO=<secure\pypi.repo.txt
 set /p USER=<secure\pypi.user.txt
 set /p PASS=<secure\pypi.pass.txt
-@py -3.7 -m twine upload --repository-url %REPO% -u %USER% -p %PASS% dist/* || goto bad
+@py -3.8 -m twine upload --repository-url %REPO% -u %USER% -p %PASS% dist/* || goto bad
 endlocal
 
 echo SUCCESS

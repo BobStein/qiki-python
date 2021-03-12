@@ -2240,12 +2240,46 @@ class LexMySQL(LexSentence):
               https://softwareengineering.stackexchange.com/a/200529/56713
         """
 
+
+        # FALSE WARNING:  PEP 8: E722 do not use bare 'except'
+        # SEE:  PyBroadException cannot be disabled:
+        #       https://youtrack.jetbrains.com/issue/PY-40315
+        #       https://youtrack.jetbrains.com/issue/PY-28079
         # noinspection PyBroadException
         try:
-            name_error = NameError
-        except Exception:
-            '''Severe inability to close'''
-            # EXAMPLE:  NameError: name 'NameError' is not defined
+            try:
+                name_error = NameError
+            except Exception as e:
+                '''Severe inability to close'''
+                # EXAMPLE:
+                #     NameError: name 'NameError' is not defined
+                # EXAMPLE:   (six of these in quick succession with no time-stamps in the error log)
+                #     Exception ignored in: <object repr() failed>
+                #     Traceback (most recent call last):
+                #       File "/usr/local/lib/python3.6/dist-packages/qiki/word.py", line 2263, in __del__
+                #       File "/usr/local/lib/python3.6/dist-packages/qiki/word.py", line 2244, in disconnect
+                #     NameError: name 'Exception' is not defined
+                # NOTE:
+                #     Line 2244 is the "try:" line above.
+                #     So I guess it couldn't parse the whole set of try-except clauses
+                #     Maybe this only happens on server shutdown.  The six sets of the above example
+                #     were immediately followed by a startup message:
+                #         [Wed Mar 10 16:06:57.143487 2021] [wsgi:error] [pid 10214]
+                #         [remote 67.255.7.88:55827] Fliki 2021.0310.1606.57 - git c6507a96cc -
+                #         Python 3.6.9.final.0 - Flask 1.0.3 - qiki 0.0.1.2020.1028.1735.25
+
+                print("Severe inability to close", str(e))
+                # TODO:  Print something here?
+                #     I have a vague recollection that it's doomed, that it
+                #     will just cause an example on print or str not being defined or something.
+
+                # raise
+                name_error = None
+                # NOTE:  Not re-raising here because that way the outer bare except will catch
+                #        only the uber broken scenario when `Exception` itself is not defined.
+        except:
+            # NOTE:
+            print("Egregious inability to close")
             raise
         else:
             try:
