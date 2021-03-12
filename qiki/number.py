@@ -2673,7 +2673,7 @@ assert 'function' == type_name(type_name)
 ##### (end of lengthed-export talk)
 
 # TODO:  Move a lot of these TODOs to github issues.  And give them qiki interactivity there!
-#
+
 # TODO:  Are Numbers immutable after __init__() is done or not?
 #        If they are, than several of the type(self)(self) calls and their ilk may be unnecessary.
 #        They kind of have to be immutable, because strings and integers are ffs.
