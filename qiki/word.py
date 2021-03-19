@@ -564,7 +564,8 @@ class Word(object):
             maybe_txt=(", " + repr(self.txt))             if self.txt != u'' else "",
         )
 
-    def to_json(self):
+    def to_dict(self):
+        """Expose all 7 properties of a word as a dict."""
         d = dict(
             idn=self.idn,
             sbj=self.sbj.idn,
@@ -584,6 +585,16 @@ class Word(object):
         if hasattr(self, 'jbo') and len(self.jbo) > 0:
             d['jbo'] = self.jbo
 
+        return d
+
+    def to_json(self):
+        """
+        A little help converting words to JSON.
+
+        SEE:  The test with the BetterJson class in test_word.py
+        """
+        d = self.to_dict()
+        del d['whn']   # TODO:  Do we want whn fields in JSON or not?!?
         return d
 
     @staticmethod
@@ -2277,10 +2288,27 @@ class LexMySQL(LexSentence):
                 name_error = None
                 # NOTE:  Not re-raising here because that way the outer bare except will catch
                 #        only the uber broken scenario when `Exception` itself is not defined.
-        except:
-            # NOTE:
-            print("Egregious inability to close")
+        except object as e:
+            # NOTE: To get here, Exception must be undefined.
+            print("Egregious inability to close, and know what an object is", e)
             raise
+        except:
+            # NOTE: To get here, Exception must be undefined, and the exception is not an object.
+            print("Egregious inability to close AT ALL")
+            raise
+            # EXAMPLE:
+            #     Exception ignored in: <function LexMySQL.__del__ at 0x7f7e584e1310>
+            #     Traceback (most recent call last):
+            #       File "/usr/local/lib/python3.8/dist-packages/qiki/word.py", line 2299, in __del__
+            #       File "/usr/local/lib/python3.8/dist-packages/qiki/word.py", line 2282, in disconnect
+            #     NameError: name 'print' is not defined
+            #     Exception ignored in: <function BaseMySQLSocket.__del__ at 0x7f7e584c1dc0>
+            #     Traceback (most recent call last):
+            #       File "/usr/local/lib/python3.8/dist-packages/mysql/connector/network.py", line 149, in __del__
+            #       File "/usr/local/lib/python3.8/dist-packages/mysql/connector/network.py", line 137, in shutdown
+            #     NameError: name 'AttributeError' is not defined
+            # In other words, `print` was undefined here.  (Line 2282 was the above print() line.)
+            # And something tripped up in the MySQL connector code trying to intercept __del__() too.
         else:
             try:
                 need_to_close = hasattr(self, '_connection') and self._connection is not None

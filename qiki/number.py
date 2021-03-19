@@ -1456,6 +1456,7 @@ class Number(numbers.Complex):
             sought_type=sought_type
         ))
 
+    # noinspection SpellCheckingInspection
     @property
     def unsuffixed(self):
         """Get the Number minus all suffixes."""
@@ -1477,6 +1478,13 @@ class Number(numbers.Complex):
         #            stem   <=== (if Suffix changes to leaf)
         #            trunk  (also if Suffix changes to leaf)
         #            pit
+        #            tigo (esperanto word for stem)
+        #                ((except there's a tigoenergy.com, solar and stuff))
+        #            kofro (esperanto word for trunk, but as in chest, not tree trunk)
+        #            radiko (esperanto for root)
+        #            radish
+        #               hmm, like radix which is latin for root,
+        #               but that conventionally means something different, aka base
         #        Maybe "suffix" is vacuous and misunderstandable too.  Need a new name for that.
         #        suffix alternatives:
         #            pod
@@ -1511,6 +1519,18 @@ class Number(numbers.Complex):
         #            leaf    <===   (leading to "leafless" number) (ala tree leaf, table leaf)
         #            branch
         #            arm
+        #            folio (esperanto for leaf, Latin is folium)
+        #            bai (Lao for leaf)
+        #            blat (Luxembourgish for leaf)
+        #        root/suffix alternatives:
+        #            rot/blad (swedish and norwegian for root/leaf) (blad also means blade)
+        #            rod/blad (danish)
+        #            rot/lauf (icelandic) (lauf also means run)
+        #            wurzel/blatt (german) (stamm means stem)
+        #            wortel/blad (dutch)
+        #            juur/leht (estonian)
+        #            hak/bai (lao)
+        #            blat/vortsl (yiddish)
 
         index_unsuffixed_end = len(self.raw)
         for index_unsuffixed_end in self._suffix_indexes_backwards():

@@ -1129,20 +1129,8 @@ class Word0011FirstTests(WordTests):
         self.assertEqual("Word(idn=5,sbj=lex,vrb=define,obj=noun,num=1,txt='frog')", "{:isvont}".format(word))
         six.assertRegex(self, "{:w}".format(word), r"^Word\(whn=\d\d\d\d.\d\d\d\d.\d\d\d\d.\d\d\)$")
 
-
-    def test_02e_json(self):
-
-        class BetterJson(json.JSONEncoder):
-            def default(self, x):
-                try:
-                    return x.to_json()
-                except AttributeError:
-                    return super(BetterJson, self).default(x)
-                # if hasattr(x, 'to_json'):
-                #     return x.to_json()
-                # else:
-                #     return super(BetterJson, self).default(x)
-
+    def test_02e_to_dict(self):
+        """Word.to_dict() converts a word to a 7-tuple dictionary."""
         cod = self.lex.noun('cod')
         cod_word_dictionary = dict(
             idn=cod.idn,   # EXAMPLE:  5
@@ -1152,19 +1140,53 @@ class Word0011FirstTests(WordTests):
             whn=cod.whn,   # EXAMPLE:  1615592035.738819
             txt='cod',
         )
-        self.assertDictEqual(
-            cod_word_dictionary,
-            cod.to_json()
-        )
-        self.assertEqual(
-            json.dumps(cod_word_dictionary, cls=BetterJson),
-            json.dumps(cod, cls=BetterJson)
-        )
+        self.assertDictEqual(cod_word_dictionary, cod.to_dict())
+
         # EXAMPLE:   (This won't work because the whn changes.)
         #     self.assertEqual(
         #         '{"idn": 5, "sbj": 0, "vrb": 1, "obj": 2, "whn": 1615592908.500739, "txt": "cod"}',
-        #         json.dumps(cod, cls=BetterJson)
+        #         json.dumps(cod.to_dict())
         #     )
+
+    def test_02f_to_json(self):
+        """Word.to_json() is like .to_dict() but for customized json.dumps() conversion."""
+        cod = self.lex.noun('cod')
+        cod_word_dictionary_for_json = dict(
+            idn=cod.idn,   # EXAMPLE:  5
+            sbj=self.lex.IDN_LEX,
+            vrb=self.lex.IDN_DEFINE,
+            obj=self.lex.IDN_NOUN,
+            txt='cod',
+            # NOTE:  whn is missing
+        )
+        self.assertDictEqual(cod_word_dictionary_for_json, cod.to_json())
+
+        class BetterJson(json.JSONEncoder):
+            def default(self, x):
+                try:
+                    return x.to_json()
+                except AttributeError:
+                    return super(BetterJson, self).default(x)
+
+        self.assertEqual(
+            json.dumps(cod_word_dictionary_for_json, cls=BetterJson),
+            json.dumps(cod, cls=BetterJson)
+        )
+        self.assertEqual(
+            '{"idn": 5, "sbj": 0, "vrb": 1, "obj": 2, "txt": "cod"}',
+            json.dumps(cod, cls=BetterJson)
+        )
+
+        # NOTE:  This statement:
+        #            json.dumps(cod)
+        #        raises this exception:
+        #            TypeError: Object of type WordClassJustForThisLex is not JSON serializable
+        #        This statement:
+        #            json.dumps(cod_word_dictionary_for_json)
+        #        raises this exception:
+        #            TypeError: Object of type Number is not JSON serializable
+        #        The BetterJson class solves both of these problems because
+        #        qiki.Number and qiki.Word classes have .to_json() methods.
 
     def test_03a_max_idn_fixed(self):
         self.assertEqual(qiki.LexSentence.IDN_MAX_FIXED, self.lex.max_idn())
