@@ -695,7 +695,8 @@ class WordDemoTests(WordTests):
         # NOTE:  Are these more Pythonic?
         #            s.v(o)
         #            s.v(o, n, t)
-        #            lex.s.v(o, n, t)
+        #            lex.s.v(o, n, t)?
+        #            lex[s].v(o, n, t)
 
     def test_read_md(self):
         """Example code in README.md"""

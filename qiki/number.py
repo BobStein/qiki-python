@@ -1531,6 +1531,21 @@ class Number(numbers.Complex):
         #            juur/leht (estonian)
         #            hak/bai (lao)
         #            blat/vortsl (yiddish)
+        #            radish/lettuce
+        #            rad/fol (shortened versions of Latin and Esperanto)
+        # Criteria for naming:
+        #     (10) unique in technology (e.g. `root` and `tag` are too common)
+        #     (2) pronouncable by English speaker
+        #     (2) no need to spell it out
+        #     (2) memorable
+        #     (1) brief
+        #     (1) bland or abstract
+        #     (1) English word, so PyCharm won't flag it
+        #     (1) initial-letter distinct: word-parts i,s,v,o,n,t,w
+        #     (0.5) informal (not stuffy)
+        #     (0.5) obvious plural
+        #     (0.5) distinct from word-parts, because it's so different
+        #     (0.1) funny
 
         index_unsuffixed_end = len(self.raw)
         for index_unsuffixed_end in self._suffix_indexes_backwards():
