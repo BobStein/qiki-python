@@ -107,8 +107,8 @@ class Zone(object):
     TRANSFINITE_NEG     = b'\x00'
     NAN                 = b''
 
-    name_from_code = None
-    descending_codes = None
+    name_from_code = None   # {b'\xFF\x80': 'TRANSFINITE', b'\xFF': 'LUDICROUS_LARGE', ... }
+    descending_codes = None   # [b'\xFF\x80', b'\xFF', b'\x82', b'\x81', b'\x80\x80', ..., b'' ]
 
     @classmethod
     def internal_setup(cls):
@@ -143,7 +143,7 @@ class Number(numbers.Complex):
                             (338-bit version of pi, about 100 decimal digits)
                    googol - 0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7C
                             AAB24308A82E8F10 (exactly 10^100)
-        negative infinity - 0q00_7F (aleph-zero)
+        negative infinity - 0q00_7F (negative omega, the first transfinite negative ordinal)
             infinitesimal - 0q807F (epsilon)
                         i - 0q80__8201_690300 (the imaginary number)
 
@@ -1522,17 +1522,29 @@ class Number(numbers.Complex):
         #            folio (esperanto for leaf, Latin is folium)
         #            bai (Lao for leaf)
         #            blat (Luxembourgish for leaf)
-        #        root/suffix alternatives:
+        #        root/leaf (aka root/suffix) alternatives:
         #            rot/blad (swedish and norwegian for root/leaf) (blad also means blade)
         #            rod/blad (danish)
         #            rot/lauf (icelandic) (lauf also means run)
         #            wurzel/blatt (german) (stamm means stem)
         #            wortel/blad (dutch)
         #            juur/leht (estonian)
+        #            sakne/lapu (latvian)
+        #            saknis/lapelis (lithuanian)
         #            hak/bai (lao)
         #            blat/vortsl (yiddish)
         #            radish/lettuce
-        #            rad/fol (shortened versions of Latin and Esperanto)
+        #            rad/fol (shortened versions of Latin and Esperanto for root/leaf)
+        #            leups/wrdha (leaf/root in proto-Indo-European, the shorter versions anyway)
+        #            raiz/hoja (spanish)
+        #            koren/list (russian, macedonian)
+        #            Gen/yezi (chinese)
+        #            mzizi/jani (swahili)
+        #            rut/aku (telugu)
+        #            erroa/hostoa (basque) nope, those don't have any confusing associations
+        #            riza/fyllo (greek)
+        #        Then what's the better word for the PAYLOAD of the suffix??
+        #            the thing other than the "type" and the length, and the packing 00-byte
         # Criteria for naming:
         #     (10) unique in technology (e.g. `root` and `tag` are too common)
         #     (2) pronouncable by English speaker
@@ -1602,11 +1614,11 @@ class Number(numbers.Complex):
                     # NOTE:  The length indicates a payload that extends beyond the start of the raw byte string.
                 yield index_end
 
-    # Constants
+    # Constants named for convenience
     # ---------
-    NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, or Nullificationalized.
-    ZERO = None
-    POSITIVE_INFINITY = None        # Aleph-zero
+    NAN = None   # NAN stands for Not-a-number, Ass-is-out-of-range, Nullificationalized.
+    ZERO = None   # No ambiguity here, none, zip zed zilch.
+    POSITIVE_INFINITY = None        # Omega.  No wait Aleph-zero and (or/xor) or Omega.
     POSITIVE_INFINITESIMAL = None   # Epsilon-zero
     NEGATIVE_INFINITESIMAL = None
     NEGATIVE_INFINITY = None
@@ -2393,6 +2405,7 @@ assert 'function' == type_name(type_name)
 # TODO:  Other infinities:
 #     Omega
 #     Omega + N
+#     Aleph-zero
 #     Aleph-one
 #     Complex Infinity
 #     Inaccessible Cardinal
