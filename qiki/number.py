@@ -1960,8 +1960,9 @@ class Suffix(object):
         #        Its scope is only going to grow.  Seems wrong buried here somehow.
         # TODO:  Formally define valid payload contents for each type (Number(s), utf8 string, etc.)
         #        or range of types, at least one of which is extensible or something.
-        LISTING   = 0x1D   # 'ID' in 1337
-        IMAGINARY = 0x69   # 'i' in ASCII (three 0x69 suffixes for i,j,k quaternions, etc.?)
+        # TODO:  OMG Suffix.Type should be a Lex.
+        LISTING   = 0x1D   # 'ID' in 1337, payload
+        IMAGINARY = 0x69   # 'i' in ASCII, payload is qiki.Number for imaginary part
         TEST      = 0x7E   # for unit testing, payload can be anything
 
     # TODO:  math.stackexchange question:  are quaternions a superset of complex numbers?  Does i===i?

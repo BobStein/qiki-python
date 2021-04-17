@@ -1140,7 +1140,7 @@ class Listing(Lex):
 
     For example, a database record with integer id.
     A suffixed word refers to both the storage and the record.  They each have an idn.
-    A composite idn contains both:  Number(idn_storage, Suffix(Suffix.Type.LISTING, idn_record))
+    A composite idn contains both:  Number(idn_storage, Suffix(SUFFIX_TYPE, idn_record))
 
     idn_storage is the idn of a Word in the system Lex, corresponding to the listing.
     idn_record doesn't mean anything to qiki, just to the storage system.
@@ -1151,7 +1151,7 @@ class Listing(Lex):
 
     def __init__(self, meta_word, word_class=None, **kwargs):
         """
-        self.index - The index is an integer or Number that's opaque to qiki.
+        self.index - The index is an integer, possibly sequential, but otherwise opaque to qiki.
                      It is unique to whatever is represented by the ListingSubclass instance.
                      (So two ListingSubclass instances with the same index can be said to be equal.
                      Just as two words with the same idns are equal.  Which in fact they also are.)
@@ -1159,7 +1159,7 @@ class Listing(Lex):
         self.idn - The identifier is a suffixed number:
                    unsuffixed part - meta_idn for the ListingSubclass,
                                      the idn of the meta_word that defined the ListingSubclass
-                   suffix type - Type.LISTING
+                   suffix type - e.g. Suffix.Type.LISTING
                    suffix payload - the index
         """
 
@@ -1176,7 +1176,6 @@ class Listing(Lex):
                                                             # that's self-referentially nuts
         self.listing_dictionary[meta_word.idn] = self
         self.meta_word = meta_word
-        self.suffix_type = Suffix.Type.LISTING
 
     def lookup(self, index):
         raise NotImplementedError("Subclass must def lookup(index): return txt, num ")
@@ -1210,7 +1209,7 @@ class Listing(Lex):
         First we look up which class this idn is for.
         That's determined by the unsuffixed (root) part of the idn.
         This class will be a subclass of Listing.
-        Second we call that class's lookup on the suffix (payload) part of the idn.
+        Second we call that class's lookup on the index(suffix payload of the idn).
         """
 
         meta_idn, index = cls.split_compound_idn(idn)
@@ -1244,7 +1243,7 @@ class WordListed(Word):
     """Base class of all Listing words."""
     @property
     def index(self):
-        return self.idn.suffix(Suffix.Type.LISTING).number
+        return self.idn.suffix(Listing.SUFFIX_TYPE).number
 
 
 class ListingLimbo(Lex):

@@ -1170,12 +1170,12 @@ class Word0011FirstTests(WordTests):
                     return super(BetterJson, self).default(x)
 
         self.assertEqual(
-            json.dumps(cod_word_dictionary_for_json, cls=BetterJson),
-            json.dumps(cod, cls=BetterJson)
+            json.dumps(cod_word_dictionary_for_json, cls=BetterJson, sort_keys=True),
+            json.dumps(cod,                          cls=BetterJson, sort_keys=True)
         )
         self.assertEqual(
-            '{"idn": 5, "sbj": 0, "vrb": 1, "obj": 2, "txt": "cod"}',
-            json.dumps(cod, cls=BetterJson)
+            '{"idn": 5, "obj": 2, "sbj": 0, "txt": "cod", "vrb": 1}',
+            json.dumps(cod, cls=BetterJson, sort_keys=True)
         )
 
         # NOTE:  This statement:
