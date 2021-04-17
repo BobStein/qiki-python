@@ -951,8 +951,11 @@ class Lex(object):
     """
     Collection of Numbered Words.
 
-    idn is the qiki Number that identifies the word.
-    The words are instantiations of a subclass of qiki Word.
+    Each Lex instance has a subclass of qiki.Word.
+    Each word in that lex is an instance of that subclass.
+    Each word has an idn, a qiki.Number that identifies it.
+
+    TODO:  WTF does the following mean?  Recast.
 
     meta_idn is the number that identifies the Lex collection itself, in some parent Lex.
     Meta and mesa are opposites, up and down the hierarchy of lexes.
