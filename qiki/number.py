@@ -254,6 +254,12 @@ class Number(numbers.Complex):
             #        args_list be a single-level list of Suffix() instances?
             #        So you have a list of Suffix() instances, s, you call Number(_, *s).
             # THANKS:  Flattening list, http://stackoverflow.com/a/952952/673991
+            # TODO:  Remove this suffix flattening feature?
+            #        It may provide an advantage I can't remember.
+            #        It may constrain an innovation I can't think of (nesting?).
+            #        It may obfuscate more than it empowers.
+            #        Number(42, Suffix(a,b), Suffix(c,d))
+            #        Number(42, (Suffix(a,b), Suffix(c,d)))
             if isinstance(suffix, Suffix):
                 self.raw = self.plus_suffix(suffix).raw
             else:
@@ -974,7 +980,7 @@ class Number(numbers.Complex):
         A "qigit" is a qiki Number byte, or base-256 digit.
         Number(float) defaults to 8 qigits, for lossless representation of a Python float.
         IEEE 754 double precision has a 53-bit significand (52 bits stored + 1 implied).
-        SEE:  http://en.wikipedia.org/wiki/Double-precision_floating-point_format
+        SEE:  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
         Why are 8 qigits needed to store 53 bits, not 7?
         That is because the most significant qigit may not store a full 8 bits, it may store as few as 1.
         So 8 qigits can store 57-64 bits, the minimum needed to store 53.
@@ -1454,6 +1460,8 @@ class Number(numbers.Complex):
         )
         if self.is_nan():
             # TODO:  Is this really so horrible?  A suffixed NAN?  e.g. 0q__7F0100
+            #        One drawback to this prohibition:  a word.num being NAN would prevent
+            #        the word being encapsulated in a number, with word.vrb, etc. suffixes.
             raise Suffix.RawError("Number.NAN may not be suffixed.")
         if isinstance(suffix_or_type, Suffix):
             the_suffix = suffix_or_type
@@ -1622,9 +1630,9 @@ class Number(numbers.Complex):
 
     def _suffix_indexes_backwards(self):
         """
-        Find the starting indexes of all the suffixes.  Last first, that is right-to-left.
+        Generate the index (byte-offset within raw) of each suffix.  Last first, that is right-to-left.
 
-        Returns an iterator of values each in range(len(self.raw)).
+        Each iterator value is within range(len(self.raw)).
         Suffix indexes are yielded in REVERSE ORDER
         because we have to parse the terminators and lengths from the right end.
         """
@@ -1675,8 +1683,8 @@ def flatten(things, destination_list=None):
     """
     Flatten a nested container into a list.
 
-    THANKS:  List nested irregularly, http://stackoverflow.com/q/2158395/673991
-    THANKS:  List nested exactly 2 levels, http://stackoverflow.com/a/40252152/673991
+    THANKS:  List nested irregularly, https://stackoverflow.com/q/2158395/673991
+    THANKS:  List nested exactly 2 levels, https://stackoverflow.com/a/40252152/673991
     """
     # TODO:  Unit test.  Or get rid of it?  Or use it in word.LexMySQL._super_parse()?
     # TODO:  Make a version with no recursion and full yield pass-through.
@@ -2310,8 +2318,8 @@ def pack_big_integer_via_hex(num, num_bytes):
         ),
         num_bytes
     )
-assert b'\x00\xAA' == pack_big_integer_via_hex(170,2)
-assert b'\xFF\x56' == pack_big_integer_via_hex(-170,2)
+assert b'\x00\xAA' == pack_big_integer_via_hex(170, 2)
+assert b'\xFF\x56' == pack_big_integer_via_hex(-170, 2)
 
 
 def unpack_big_integer_by_struct(binary_string):
@@ -2352,7 +2360,7 @@ def type_name(x):
     """
     Describe (very briefly) what type of object this is.
 
-    THANKS:  http://stackoverflow.com/a/5008854/673991
+    THANKS:  https://stackoverflow.com/a/5008854/673991
     """
     the_type_name = type(x).__name__
     if the_type_name == 'instance':
@@ -2589,10 +2597,11 @@ assert 'function' == type_name(type_name)
 # ---------------------------------------
 # Byte0
 # -----
-# FF - Count consecutive starting FF bytes, that's how many bytes follow that encoding the (big-endian) length.
-#      That many bytes after both of those is raw.  e.g. FFFF0100(and then a 256-byte raw)
+# FF - Count consecutive starting FF bytes. The same number of bytes following that contain the length. Big endian.
+#      The length of bytes come next. They are raw.  e.g. FFFF0100(and then a 256-byte raw)
 # C0-FE - open for expansion (63 values)
-# 82-BF - positive integers +2 to +2**496-1.  Length (not including Byte0) is Byte0-81.  Entire export identical to raw.
+# 82-BF - positive integers +2 to +2**496-1.  Length (not including Byte0) is Byte0 minus 81.
+# This entire export is identical to raw.
 # 81 - +1
 # 80 -  0
 # 7F - -1
@@ -2609,7 +2618,7 @@ assert 'function' == type_name(type_name)
 # Unsuffixed -1 - 7F
 # Otherwise, if the raw length is 0-63 bytes - encode as length (one byte) + raw
 # All other cases - Compute Np = log(base 256)(raw length) rounded up, or 0 if length is 0.
-#                   Export is:  Np FF bytes + length (big endian) + raw
+#                   Export is:  Np FF bytes + length (in Np bytes, big endian) + raw
 #
 # BTW 2**496 ~~ 2e149
 #
@@ -2702,11 +2711,13 @@ assert 'function' == type_name(type_name)
 #     and Suffix.type would correspond to Word.vrb
 #     and Suffix.payload                  Word.obj
 #     and Suffix.user/definer             Word.sbj
+#     One concern:  A word's num could never be Number.NAN because a NAN should never be suffixed.
 #
 # Freaky thought:  What if a word and a number were the same thing!?!
 #
 # I keep trying to unify everything else.
 # A regular "number" could be a word with a value and no sbj,vrb,obj?
+#
 
 # NOTE:  The lengthed export is only lengthed from the "left". It cannot be interpreted from the "right".
 # That is, if the byte stream is coming in reverse order for some reason,
@@ -2719,7 +2730,7 @@ assert 'function' == type_name(type_name)
 # Whoa!  If we had right-lengthed export in the suffix then most suffixes
 # could contain two numbers (besides the zero-tag), type and payload. No need for a length-part!
 # I could store these suffix number raw bytes effing backwards!
-# All of this crap leads to the idea that Number should store separately:
+# All of this crap leads to the idea that a Number instance should store separately:
 #     ludicrous-preamble (e.g. FF00FFFF...)
 #     qex (itself could store an exponent, but .raw could be the bytes)
 #     qan

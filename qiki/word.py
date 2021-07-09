@@ -241,18 +241,23 @@ class Word(object):
 
     def __call__(self, vrb, *args, **kwargs):
         """
-        Part way to the square-bracket sentence.
+        Part of the brackety syntax for reading or creating a word in a LexSentenc.
 
-        This is the result of the curried expression:
+            lex[s](v)[o] = n,t
+
+        This method returns the result of this expression:
 
             lex[s](v)
 
-        Which is just before the [o] part.
+        an instance of SubjectVerb.  That instance remembers the sbj and the vrb.
+
+        The next part of implementing the brackety syntax is SubectVerb.__getitem__() for reading a word
+        and SubjectVerb.__setitem__() for creating a word.  Those methods implement the [o] part.
         """
         if isinstance(vrb, six.binary_type):
             raise TypeError("Verb name must be unicode, not " + repr(vrb))
-        return SubjectedVerb(self, vrb, *args, **kwargs)
-        # NOTE:  sbj=self
+        sbj = self
+        return SubjectedVerb(sbj, vrb, *args, **kwargs)
 
     def said(self, vrb, obj):
         return self(vrb)[obj]
@@ -701,13 +706,22 @@ class Word(object):
 class SubjectedVerb(object):
     # TODO:  Move this to inside Word?  Or LexSentence!??
     """
-    This is the currying intermediary, the "x" in x = s(v) and x[o].  Thus allowing:  s(v)[o].
+    Intermediary in the brackety syntax lex[s](v)[o].  An instance of this class is the lex[s](v) part.
 
-    So this is the Python-object that is "returned" when you "call" a subject and pass it a verb.
-    In that function call, which is actually the constructor for this class,
-    other parameters (besides the verb) can be passed in the form of args and kwargs to modify the instance.
-    Those modifiers are txt and num in flexible order.  Oh wait are they?
-    Maybe they're just num_add and use_already.
+    For example, the word getter expression w = lex[s](v)[o] breaks down into x = lex[s](o); w = x[o].
+    x is a SubjectVerb instance that remembers subject and verb.
+    This instance is the Python-object that is "returned" when you "call" a subject and pass it a verb.
+    So that call is a factory for this class.  Besides tne verb, that call can pass txt and num in flexible order.
+
+    The methods of this class implement the remainder of the brackety syntax:  the [o] part.
+    Getting or setting that part leads to Lex.read_word() or Lex.create_word().
+
+    There is one exception to that neat correspondence.  The lex[s](v,n,t)[o] variation on the brackety syntax.
+    That looks like a getter to Python, but performs like a setter.
+
+        w = lex[s](v)[o]       SubjectVerb.__getitem__()      Lex.read_word()
+        w = lex[s](v,n,t)[o]   SubjectVerb.__getitem__()      Lex.create_word()
+        lex[s](v)[o] = n,t     SubjectVerb.__setitem__()      Lex.create_word()
     """
     def __init__(self, sbj, vrb, *args, **kwargs):
         self._subjected = sbj
@@ -719,7 +733,7 @@ class SubjectedVerb(object):
         """
         Square-bracket sentence insert (the C in CRUD).
 
-        This is the result of the curried expression:
+        Finish handling the expression:
 
             lex[s](v)[o] = n,t
 
