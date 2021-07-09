@@ -1,7 +1,6 @@
 """
-Qiki Numbers
+A qiki Number is an integer, floating point, complex, and more, seamlessly represented.
 
-Integers, floating point, complex, and more, are seamlessly represented.
 Features:
  - arbitrary precision
  - arbitrary range
@@ -26,40 +25,46 @@ import six
 
 class Zone(object):
     """
-    Zones of qiki Numbers
+    A Zone represents a contiguous range of qiki Number values.
 
-    Each qiki Number is in one of 14 distinct zones.  This class enumerates the zones.
+    Each valid qiki Number is in exactly one zone.
+    (A few invalid values are between zones.)
+    There are 14 zones.  This class enumerates the zones.
 
     Also, it encapsulates some utilities, e.g. Zone.name_from_code[Zone.NAN] == 'NAN'
 
     Zone Code
     ---------
-    Raw, internal binary strings represent the "code" of each zone.
-    Each member of Zone has a value that is the zone code.  It is either:
+    Each member of the Zone class has a value that is the zone code.
+    A zone code is a raw binary string,
+    of the same type as the raw internal binary string of a qiki Number.
+    A zone code is either:
         minimum value for the zone
-        between the values of the zone and the one below it
-    Each code is less than or equal to all raw values of numbers in the zone it represents.
-    and greater than all *valid* raw values in the numbers in the zones below.
-    (So actually, some zone codes are valid raw values for numbers in that zone,
-    others are among the inter-zone values.  More on this below.)
-    For example, the valid raw string for 1 is b'x82\x01' which is the minimum valid value for
-    the positive zone.  But Zone.POSITIVE is less than that, b'x82'.
-    Anything between b'x82' and b'x82\x01' will be interpreted as 1 by any Number Consumer (NumberCon).
+        between the values of its zone and the one below it
+    Each code is less than or equal to all raw values of numbers in the zone it represents
+    and greater than all values in the zones below.
+    (So some zone codes are valid raw values for numbers in that zone,
+    others are among the invalid inter-zone values.  More on this below.)
+    For example, the raw binary string for 1 is b'x82\x01' which is the minimum valid value for
+    the positive zone.  But Zone.POSITIVE is less than that, it is b'x82'.
+    Anything between b'x82' and b'x82\x01' will be interpreted as 1 by a Number Consumer (NumberCon).
     But any Number Producer (NumberPro) that generates a 1 should generate the raw string b'x82\x01'.
 
     Between versus Minimum
     ----------------------
-    A minor, hair-splitting point.
-    Most zone codes are the raw byte string for the minimum Number in their zone.
-    Zone.FRACTIONAL_NEG is one exception.  It is the *between* value, b'\x7E\x00'
-    That is never a legal raw value for a number because it ends in a 00 that is not part of a suffix.
+    A minor, hair-splitting point, but it explains why some zone codes are between zones.
+    Most zone codes are the raw byte string same as the minimum Number in their zone.
+    Zone.FRACTIONAL_NEG is one exception.  Its code is b'\x7E\x00'.
+    That binary string is not valid for a number's binary string.
+    That is never a valid raw value for a number because it ends in a 00,
+    and ending in a 00 is used to indicate a suffix.
     The actual minimum value for this zone cannot be represented in finite storage,
-    because that would be a hypothetical infinite byte string
+    because that would be a hypothetical infinite byte string.  Conceptually the minimum would be
     b'\x7E\x00\x00\x00 ... infinite number of \x00s ... followed by something other than \x00'
     Representing a surreal -0.99999999999...infinitely many 9s, but still greater than -1.
-    So instead we use the illegal, inter-zone b'\x7E\x00' which is *between* legal raw values.
-    And all legal raw values in Zone FRACTIONAL_NEG are above it.
-    And all legal raw values in Zone NEGATIVE are below it.
+    So instead we use the invalid, inter-zone b'\x7E\x00' which is *between* valid raw values.
+    And all valid raw values in Zone FRACTIONAL_NEG are above it.
+    And all valid raw values in Zone NEGATIVE are below it.
 
     The "between" zone codes are:
         INFINITESIMAL
@@ -67,9 +72,9 @@ class Zone(object):
         FRACTIONAL_NEG
         TRANSFINITE_NEG
 
-    So are there or are not there inter-zone Numbers?
-    In other words, are the zones comprehensive?
-    Hopefully no.  Even illegal and invalid values should normalize to valid values.
+    So are there or are not there inter-zone Numbers?  No.
+    In other words, are the zones comprehensive? Yes.
+    Invalid values should normalize to valid values.
 
     Zone class properties
     ---------------------
@@ -80,16 +85,16 @@ class Zone(object):
     """
     # TODO:  Make these caching functions?  Zone.name_from_code() and Zone.descending_codes().
 
-    # TODO:  Move the part of this docstring on illegal values and plateau values somewhere else?
+    # TODO:  Move the part of this docstring on invalid values and plateau values somewhere else?
     # To Number class FFS?  To the Raw class!  No, it means different things in Number and Suffix.
     # Or we could make classes Raw and RawForNumber and RawForSuffix?  Bah!  Forget that.
     # This talk belongs in class Number docstring.
     # TODO:  Rename invalid values to plateau values?
     # TODO:  Or rename Plateau Codes or Code Plateaus, or Raw Plateau?
     # since every qstring at a plateau represents the same VALUE.
-    # TODO:  Test that invalid and illegal values normalize to valid values.
+    # TODO:  Test that invalid values normalize to valid values.
     # Or should illegal values just crash?  I mean come on, 0q80_00 is just insane.
-    # TODO:  Formally define all invalid and illegal raw-strings.
+    # TODO:  Formally define all invalid raw-strings.
     # TODO:  Remove redundancies in this docstring.
 
     TRANSFINITE         = b'\xFF\x80'
@@ -125,41 +130,51 @@ assert Zone.descending_codes[13] == Zone.NAN
 
 class Number(numbers.Complex):
     """
-    Integers, floating point, complex numbers and more.
+    Integers, floating point numbers, complex numbers, and more.
 
-    Some familiar numbers:
-        +2 == Number('0q82_02')
-        +1 == Number('0q82_01')
-        +0 == Number('0q80')
-        -1 == Number('0q7D_FF')
-        -2 == Number('0q7D_FE')
-      -2.5 == Number('0q7D_FD80')
+    A qiki Number is internally represented by a binary string of 8-bit bytes, called its raw value.
+        Example:  b'\x82\x01' is the raw value for the number 1.
+    A qstring is a text representation of a qiki Number.
+        Example:  '0q82_01' is the qstring for the number 1.
+    A qstring contains the hexadecimal digits of the raw value.
+        Examples:
+            +2 == Number('0q82_02')
+            +1 == Number('0q82_01')
+            +0 == Number('0q80')
+            -1 == Number('0q7D_FF')
+            -2 == Number('0q7D_FE')
+          -2.5 == Number('0q7D_FD80')
 
-    Some exotic numbers:
+    More examples:
                        pi - 0q82_03243F6A8885A3
-                            (53-bit IEEE double precision version of pi)
+                            (a 53-bit IEEE double precision version of pi)
                        pi - 0q82_03243F6A8885A308D313198A2E03707344A409382229
                             9F31D0082EFA98EC4E6C89452821E638D01377BE54
-                            (338-bit version of pi, about 100 decimal digits)
+                            (a 338-bit version of pi, about 100 decimal digits)
                    googol - 0qAB_1249AD2594C37CEB0B2784C4CE0BF38ACE408E211A7C
                             AAB24308A82E8F10 (exactly 10^100)
-        negative infinity - 0q00_7F (negative omega, the first transfinite negative ordinal)
-            infinitesimal - 0q807F (epsilon)
-                        i - 0q80__8201_690300 (the imaginary number)
+        negative infinity - 0q00_7F   (negative omega, the first transfinite negative ordinal)
+            infinitesimal - 0q807F   (epsilon)
+                        i - 0q80__8201_690300   (the imaginary number)
 
-    0q-what?
+    0q-what?  Let's review.
 
-    As every Python integer has a hexadecimal representation (42 == 0x2A), every qiki
-    Number has a qstring representation.  This shows its guts.  A qiki Number stores a
-    string of bytes and its qstring is those bytes in hexadecimal, plus a few underscores.
-    The underscores are decoration for human readers, to break up the hex into parts (into qex, qan,
-    and suffixes, described below), but the underscores are part of the guts.
+    Every Python integer has a hexadecimal representation (42 == 0x2A).
+    Similarly, every qiki Number has a qstring representation.  This shows its guts.
+    A qiki Number stores a string of bytes, called its raw value.
+    The qstring has those bytes in hexadecimal.
+    Underscores are decoration for human readers, to break up the hex into parts.
+    The parts are called qex, qan, and suffixes.  More on those later.
+    Underscores do not affect the raw value.
 
-        assert Number(1) === Number('0q82_01')
+        assert Number(1) == Number('0q82_01')
+        assert '0q82_01' == Number(1).qstring()
 
-    The qiki Number one is internally represented as two bytes b'\x82\x01'.  82 is the qex,
-    like an exponent. 01 is the qan, like a mantissa.
+    The qiki Number one is internally represented as two bytes b'\x82\x01'.
+    82 is the qex, kind of like an exponent.
+    01 is the qan, like a mantissa.
     """
+
     # __slots__ = ('_raw',        )   # slightly less memory    \ pick
     __slots__ = ('_raw', '_zone')   # slightly faster         / one
 
@@ -167,11 +182,21 @@ class Number(numbers.Complex):
         """
         Number constructor.
 
-        content - int, float, '0q'-string, 'numeric'-string, complex, another Number, or None
-        qigits - number of bytes to put in the qan, this value is used in _raw_from_float()
-        normalize=True - collapse equal values e.g. 0q82 becomes 0q82_01.  See _normalize_all()
+        content - the type can be:
+            int               10**100
+            float             3.14
+            qstring          '0q82_01'
+            numeric string   '1'
+            complex number   1j2
+            another Number   Number(42)
+            None             None
+        qigits - number of bytes to put in the qan
+                 see _raw_from_float()
+                 see QIGITS_PRECISION_DEFAULT
+        normalize=True - collapse equal values e.g. 0q82 becomes 0q82_01
+                         see _normalize_all()
 
-        See _from_float() for more about floating point and Number.
+        See _from_float() for more about floating point values.
         """
 
         args_list = list(args)
@@ -215,9 +240,9 @@ class Number(numbers.Complex):
         elif isinstance(content, complex):
             self._from_complex(content)
         elif content is None:
+            if len(args_list) > 0:
+                raise self.ConstructorSuffixError("Don't suffix Number.NAN")
             self.raw = self.RAW_NAN
-            assert len(args_list) == 0
-            # NOTE:  Avoid suffixing NAN.
         else:
             raise self.ConstructorTypeError("{outer}({inner}) is not supported".format(
                 outer=type_name(self),
@@ -225,6 +250,9 @@ class Number(numbers.Complex):
             ))
 
         for suffix in flatten(args_list):
+            # TODO:  Isn't calling flatten() silly overkill?  Why not just insist
+            #        args_list be a single-level list of Suffix() instances?
+            #        So you have a list of Suffix() instances, s, you call Number(_, *s).
             # THANKS:  Flattening list, http://stackoverflow.com/a/952952/673991
             if isinstance(suffix, Suffix):
                 self.raw = self.plus_suffix(suffix).raw
@@ -235,20 +263,19 @@ class Number(numbers.Complex):
         if normalize:
             self._normalize_all()
 
-    def _from_another_number(self, another_number):
+    def _from_another_number(self, another_number_instance):
         """
         Copy Constructor
 
-        Number can represent any numeric type, including itself.  So sensible things
-        happen like:
+        So sensible things happen:
 
             assert Number(1) == Number(Number(1))
 
-        And it could convert between subclasses:
+        It could convert between subclasses:
 
             x = SomeSubclassOfNumber(DifferentSubclassOfNumber())
         """
-        self.raw = another_number.raw
+        self.raw = another_number_instance.raw
 
     class ConstructorTypeError(TypeError):
         """e.g. Number(object) or Number(content=[])"""
@@ -257,7 +284,7 @@ class Number(numbers.Complex):
         """e.g. Number('alpha string') or Number.from_raw(0) or Number.from_qstring('0x80')"""
 
     class ConstructorSuffixError(TypeError):
-        """e.g. Number(1, object)"""
+        """e.g. Number(1, object), Number(None, 1)"""
 
     # Raw internal format
     # -------------------
@@ -285,7 +312,7 @@ class Number(numbers.Complex):
     # Storage (e.g. a database) may opt for brevity (0q82).
     # So all 8-bit binary strings have at most one interpretation as the raw part of a Number.
     # And some are redundant, e.g. assert Number('0q82') == Number('0q82_01')
-    # And some are illegal, e.g. 0q00
+    # And some are invalid, e.g. 0q00
     # The qex and qan may be followed by suffixes.
     # Two underscores conventionally precede each suffix.
     # See the Number.Suffix class for underscore conventions within a suffix.
@@ -323,11 +350,12 @@ class Number(numbers.Complex):
     @property
     def raw(self):
         """
-        Internal byte-string representation of the Number.
+        Get the internal byte-string representation of the Number.
 
-        assert '\x82\x01' == Number(1).raw
+            assert '\x82\x01' == Number(1).raw
 
-        Implemented as a property so that Number._zone (if there's a slot for it) can be computed in tandem.
+        Implemented as a property so that self._zone (if there's a slot to store it)
+        can be computed in sync with the raw value.
         """
         return self._raw
 
@@ -482,11 +510,11 @@ class Number(numbers.Complex):
     #     Oh wow, a regular expression might be devised to take care of normalization.
     #     A very binary-intensive and bytearray-using regular expression.
     #     Let us call these "raw plateaus".
-    #     Each raw plateau has a canonical raw value, and a multitude of illegal raw values.
+    #     Each raw plateau has a canonical raw value, and a multitude of invalid raw values.
     #     All values at a raw plateau should be "equal".
     #     This approach would vindicate making raw a @property
     # Option three:  give up on Number('0q82') == Number('0q82_01')
-    # Option four: exceptions when any raw strings fall within the "illegal" part of a plateau.
+    # Option four: exceptions when any raw strings fall within the "invalid" part of a plateau.
     # By the way, zero has no plateau, only 0q80 with no suffix is zero.  (except empty suffix?)
     # TODO:  What about numbers embedded in suffixes, should these be equal?
     #            0q80__82_7F0200
@@ -502,7 +530,7 @@ class Number(numbers.Complex):
         """e.g. Number(1+2j) < Number(1+3j)"""
 
     def _comparable(self, other):
-        """Make sure both operands are comparable (e.g. not unknown type, not complex) before comparison."""
+        """ Make sure operands can be compared.  Otherwise ConstructorTypeError. """
         if self.is_complex():
             raise self.CompareError("Complex values are unordered.")
             # TODO:  Should this exception be "Unordered" instead?
@@ -653,7 +681,7 @@ class Number(numbers.Complex):
         E.g.  0q82 becomes 0q82_01 for +1.
         E.g.  0q7E01 becomes 0q7E00_FF for -1/256.
         """
-        if self.zone in ZoneSet.MAYBE_PLATEAU:
+        if self.zone in ZoneSet.REASONABLY_NONZERO:
             unsuffixed = self.unsuffixed
             suffixes = self.suffixes
             raw_qex = unsuffixed.qex_raw()
@@ -746,12 +774,8 @@ class Number(numbers.Complex):
             #        and say transfinite numbers are NOT whole.
             #        So n.is_whole() is more like asking
             #        whether int(n) can represent the number.
-            # raise self.WholeError("Cannot determine wholeness of " + repr(self))   # e.g. Number.POSITIVE_INFINITY
 
     is_integer = is_whole
-
-    # class WholeError(OverflowError):
-    #     """When it's nonsense to ask if a number is whole, e.g. Number.POSITIVE_INFINITY.is_whole()"""
 
     def is_nan(self):
         """Is this NAN?"""
@@ -793,11 +817,11 @@ class Number(numbers.Complex):
 
     def conjugate(self):
         """Complex conjugate.  a + bj --> a - bj"""
-        return_value = self.real
         imag = self.imag
-        if imag != self.ZERO:
-            return_value = return_value.plus_suffix(Suffix.Type.IMAGINARY, (-imag))
-        return return_value
+        if imag == self.ZERO:
+            return self.real
+        else:
+            return self.real.plus_suffix(Suffix.Type.IMAGINARY, (-imag))
 
     # "from" conversions:  Number <-- other type
     # ------------------------------------------
@@ -877,7 +901,7 @@ class Number(numbers.Complex):
             )
 
     def _from_qstring(self, s):
-        """Fill in raw from a qstring."""
+        """Fill in raw from a qstring.  Nonsensical q"""
         s_without_0q = s[2:]
         digits = s_without_0q.replace('_', '')
         if len(digits) % 2 != 0:
@@ -972,7 +996,7 @@ class Number(numbers.Complex):
 
     @classmethod
     def _raw_unreasonable_float(cls, x):
-        """Handle a float too big to handle."""
+        """Handle a float that is too big to handle."""
         if x == float('+inf'):
             return cls.RAW_INFINITY
         elif x == float('-inf'):
@@ -1232,17 +1256,24 @@ class Number(numbers.Complex):
         Zone.FRACTIONAL:     2,
         Zone.FRACTIONAL_NEG: 2,
         Zone.NEGATIVE:       1,
-    }   # TODO:  ludicrous numbers will have a qan too (offset 2^N)
+    }   # TODO:  ludicrous numbers will have a qan too (offset 4,8,16,...)
 
     def base_256_exponent(self):
         """
-        The base-256 exponent, when you interpret the qan in the range [0...0.99609375)
-                                      oh wait, it's actually more like [0.00390625...1)
+        The base-256 exponent, when you interpret the qan in the range [0...1)
 
-         2 for [    256...65536)
-         1 for [      1...256)
-         0 for [  1/256...1)
-        -1 for [1/65536...1/256)
+        (The range of values for the qan is actually [0.00390625...1).
+        The qan never represents a number smaller than 1/256.0.
+        Just like the mantissa of an IEEE floating point number never represents
+        a number smaller than 0.5.)
+
+        So this function returns
+            2 for a number in the range [    256...65536)
+            1 for                       [      1...256)
+            0 for                       [  1/256...1)
+           -1 for                       [1/65536...1/256)
+
+        Raise QexValueError for 0 or unreasonable numbers.
         """
         try:
             decoder = self._qex_decoder[self.zone]
@@ -1261,16 +1292,18 @@ class Number(numbers.Complex):
     class QexValueError(ValueError):
         """There is no qex for some zones, e.g. Number.ZERO.base_256_exponent()"""
 
-    # The following dictionary reveals this conversion in its lambdas:
+    # _qex_decoder contains zone-specific converter functions.
+    # Each lambda function in the following dictionary performs this conversion:
+    #
     #     base 256 exponent <-- qex
     #
-    # Contrast _from_float().
-    _qex_decoder = {   # qex-decoder, converting to a base-256-exponent from the internal qex format
+    # Contrast _from_float() which has lambdas that convert the other way.
+    _qex_decoder = {
         Zone.POSITIVE:       lambda self:         six.indexbytes(self.raw, 0) - 0x81,
         Zone.FRACTIONAL:     lambda self:         six.indexbytes(self.raw, 1) - 0xFF,
         Zone.FRACTIONAL_NEG: lambda self:  0x00 - six.indexbytes(self.raw, 1),
         Zone.NEGATIVE:       lambda self:  0x7E - six.indexbytes(self.raw, 0),
-    }   # TODO: ludicrous numbers
+    }   # TODO:  ludicrous numbers will encode the exponents differently.
 
     def hex(self):
         """Like the printable qstring() but simpler (no 0q prefix, no underscores).
@@ -1281,9 +1314,9 @@ class Number(numbers.Complex):
 
     def x_apostrophe_hex(self):
         """
-        Encode raw for MySQL:  x'8201'
+        Encode raw value into a string that MySQL understands:  x'8201'
 
-        assert u"x'8201'" == Number(1).x_apostrophe_hex()
+        assert "x'8201'" == Number(1).x_apostrophe_hex()
         """
         return "x'" + self.hex() + "'"
 
@@ -1291,13 +1324,15 @@ class Number(numbers.Complex):
         """
         Hexadecimal literal for the entire raw string as a big integer.
 
+        (But NOT the integer the number represents.)
+
         Based on C,C++,Java,JavaScript,etc. syntax.
         """
         return "0x" + self.hex()
 
     def ditto_backslash_hex(self):
         """
-        Encode raw for C or Python:  "\x82\x01"
+        Encode raw value into a string that C or Python understands:  "\x82\x01"
 
         assert r'"\x82\x01"' == Number(1).ditto_backslash_hex()
         """
@@ -1373,17 +1408,19 @@ class Number(numbers.Complex):
                     return                      Zone.NAN
 
     # TODO:  Alternative suffix syntax
-    # n.suffixes() === n.parse_suffixes()[1:]
-    # n.root === n.parse_suffixes()[0]
-    # n.add(Suffix(...))        === n = n.plus_suffix(...)
-    # n.suffixes += Suffix(...) === n = n.plus_suffix(...)
-    # n          += Suffix(...) === n = n.plus_suffix(...)
-    # n.remove(Suffix(...))     === n = n.minus_suffix(...)
-    # n.suffixes -= Suffix(...) === n = n.minus_suffix(...)
-    # n          -= Suffix(...) === n = n.minus_suffix(...)
-    # Number(n, *[suffix for suffix in n.suffixes() if suffix.type != t]) === n.minus_suffix(t)
-    # s = n.suffixes(); s.remove(t); m = Number(n.root, s) ; m = n.minus_suffix(t)
-    # n - Suffix(t) === n.minus_suffix(t)
+    #                     n.suffixes() === n.parse_suffixes()[1:]
+    #                           n.root === n.parse_suffixes()[0]
+    #        n.add(Suffix(...))        === n = n.plus_suffix(...)
+    #        n.suffixes += Suffix(...) === n = n.plus_suffix(...)
+    #        n          += Suffix(...) === n = n.plus_suffix(...)
+    #        n.remove(Suffix(...))     === n = n.minus_suffix(...)
+    #        n.suffixes -= Suffix(...) === n = n.minus_suffix(...)
+    #        n          -= Suffix(...) === n = n.minus_suffix(...)
+    #        Number(n, *[suffix for suffix in n.suffixes() if suffix.type != t])
+    #                                  === n.minus_suffix(t)
+    #        s = n.suffixes(); s.remove(t); m = Number(n.root, s)
+    #                                  === m = n.minus_suffix(t)
+    #                    n - Suffix(t) === n.minus_suffix(t)
 
     def is_suffixed(self):
         """Does this Number have any suffixes?"""
@@ -1393,7 +1430,7 @@ class Number(numbers.Complex):
         except IndexError:
             '''Well it has no bytes at all.  So no.'''
             return False
-        # TODO:  is_suffixed(type)?
+        # TODO:  is_suffixed(self, type)?
 
     def plus_suffix(self, suffix_or_type=None, payload=None):
         """
@@ -1429,7 +1466,7 @@ class Number(numbers.Complex):
     def minus_suffix(self, old_type=None):
         """
         Make a version of a number without any suffixes of the given type.
-        This does NOT mutate self.
+        This does not mutate self.  Returns a new Number instance.
         """
         # TODO:  A way to remove just ONE suffix of the given type?
         #        minus_suffix(t) for one, minus_suffixes(t) for all?
@@ -1662,7 +1699,7 @@ Number.internal_setup()
 assert Number.NAN.raw == Number.RAW_NAN
 
 
-# Set Logic
+# Set Logic (for testing ZoneSet instances)
 # ---------
 def sets_exclusive(*sets):
     """Are these sets mutually exclusive?  Is every member unique?"""
@@ -1706,7 +1743,7 @@ class ZoneSet(object):
         Zone.NAN,
     }
 
-    # The most basic way to group the zones:  REASONABLE, LUDICROUS, NONFINITE
+    # The basic way to group the zones:  REASONABLE, LUDICROUS, NONFINITE
     REASONABLE = {
         Zone.POSITIVE,
         Zone.FRACTIONAL,
@@ -1836,8 +1873,6 @@ class ZoneSet(object):
         Zone.TRANSFINITE_NEG,
     }
 
-    MAYBE_PLATEAU = REASONABLY_NONZERO
-
     NAN = {
         Zone.NAN
     }
@@ -1900,12 +1935,12 @@ assert b'A' == byte(65)
 class Suffix(object):
     # SEE:  Alternative names for Suffix at Number.unsuffixed()
     """
-    A Number can have suffixes.  Suffixed numbers include, complex, alternate ID spaces, etc.
+    A Number can have suffixes.  E.g. complex numbers.  E.g. alternate ID spaces.
 
     Format of a nonempty suffix (uppercase letters represent hexadecimal digits):
         PP...PP _ TT LL 00
     where:
-        PP...PP - 0-byte to 250-byte payload
+        PP...PP - 1-byte to 250-byte payload (Never 0-byte -- suffixing NAN is not allowed)
          _ - underscore is a conventional qstring delimiter between payload and type-length-zero
         TT - type code of the suffix, 0x00 to 0xFF or absent
         LL - length, number of bytes, including the type and payload, 0x00 to 0xFA
@@ -2721,6 +2756,9 @@ assert 'function' == type_name(type_name)
 # to the end of a binary file.
 # Then another process might want to scan that file -- and here's the crucial part --
 # either earliest-first or latest-first.
+# Though latest-first might not be so useful if one couldn't interpret earlier words.
+# So, a THIRD way to scan is from any byte position, thereby iteratively zooming in on
+# some SPECIFIC word by index.
 
 ##### (end of lengthed-export talk)
 

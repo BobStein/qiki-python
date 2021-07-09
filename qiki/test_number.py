@@ -237,6 +237,7 @@ class NumberBasicTests(NumberTests):
                 Number(b'0q82_01')
 
     def test_unsupported_type(self):
+        """Number(BadType()) should raise TypeError, and its message should contain 'BadType'."""
         class SomeType(object):
             pass
         some_type = SomeType()
@@ -250,7 +251,6 @@ class NumberBasicTests(NumberTests):
         except Number.ConstructorTypeError as e:
             self.assertIn('SomeType', str(e))
 
-
     def test_hex(self):
         n = Number('0q82')
         self.assertEqual('82', n.hex())
@@ -260,7 +260,9 @@ class NumberBasicTests(NumberTests):
         Test that str(Number) outputs a string, and it can reconstitute the value.
 
         Don't test what str() outputs -- it's some human-readable string version of the Number.
-        This test only makes sure that plowing that string back into Number() leads to the same value.
+        (Today it's the qstring '0q83_03E8'. Tomorrow it might be the integer '1000'.)
+        This test only makes sure that plowing that string back into Number()
+        leads to the same value.
 
         NOTE:  Throughout these unit tests, str(n) is avoided in favor of n.qstring().
         That way e.g. str(Number(1)) is free to be '0q82_01' or '1'.
@@ -277,10 +279,6 @@ class NumberBasicTests(NumberTests):
                     return x.to_json()
                 except AttributeError:
                     return super(BetterJson, self).default(x)
-                # if hasattr(x, 'to_json'):
-                #     return x.to_json()
-                # else:
-                #     return super(BetterJson, self).default(x)
 
         self.assertEqual('42', json.dumps(       42 , cls=BetterJson))
         self.assertEqual('42', json.dumps(Number(42), cls=BetterJson))
@@ -295,7 +293,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual( '0q82_11__8222_690300',            Number(17+34j).to_json())
 
         self.assertEqual(
-            '["a", 2, 42, 42]',
+                      '["a", 2, 42, 42]',
             json.dumps(['a', 2, 42, Number(42)], cls=BetterJson)
         )
 
@@ -304,7 +302,7 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('null', json.dumps(Number.POSITIVE_INFINITY, cls=BetterJson))
         self.assertEqual('null', json.dumps(Number.POSITIVE_INFINITESIMAL, cls=BetterJson))
 
-    def test_unicode(self):
+    def test_unicode_conversion(self):
         n = Number('0q83_03E8')
         if six.PY2:
             # noinspection PyCompatibility,PyUnresolvedReferences
@@ -318,13 +316,13 @@ class NumberBasicTests(NumberTests):
 
     def test_unicode_output(self):
         n = Number('0q83_03E8')
-        self.assertEqual(u"0q83_03E8", six.text_type(n))
+        self.assertEqual('0q83_03E8', six.text_type(n))
         self.assertIsInstance(six.text_type(n), six.text_type)
 
     def test_unicode_input(self):
-        n = Number(u'0q83_03E8')
-        self.assertEqual("0q83_03E8", n.qstring())
-        self.assertEqual(u"0q83_03E8", six.text_type(n))
+        n = Number('0q83_03E8')
+        self.assertEqual('0q83_03E8', n.qstring())
+        self.assertEqual('0q83_03E8', six.text_type(n))
 
     def test_isinstance(self):
         n = Number(1)
@@ -346,15 +344,15 @@ class NumberBasicTests(NumberTests):
         self.assertEqual('0q82_01C0', Number('0q82_01C0').qstring())
 
     def test_qstring_underscore_out(self):
-        self.assertEqual('0q807F', Number('0q807F').qstring())
-        self.assertEqual('0q7F81', Number('0q7F81').qstring())
+        self.assertEqual('0q807F',    Number('0q807F').qstring())
+        self.assertEqual('0q7F81',    Number('0q7F81').qstring())
         self.assertEqual('0q7E00_80', Number('0q7E0080').qstring())
         self.assertEqual('0q81FF_80', Number('0q81FF80').qstring())
         self.assertEqual('0q82_01C0', Number('0q8201C0').qstring())
-        self.assertEqual('0q82_02', Number('0q8202').qstring())
-        self.assertEqual('0q82', Number('0q82').qstring())
-        self.assertEqual('0q80', Number('0q80').qstring())
-        self.assertEqual('0q', Number('0q').qstring())
+        self.assertEqual('0q82_02',   Number('0q8202').qstring())
+        self.assertEqual('0q82',      Number('0q82').qstring())
+        self.assertEqual('0q80',      Number('0q80').qstring())
+        self.assertEqual('0q',        Number('0q').qstring())
 
     def test_invalid_qstring(self):
         """Invalid Number contents still have a value."""
@@ -394,9 +392,6 @@ class NumberBasicTests(NumberTests):
     def test_to_mysql(self):
         self.assertEqual("x'822A'", Number('0q82_2A').mysql_string())
 
-    def test_to_c(self):
-        self.assertEqual(r'"\x82\x2A"', Number('0q82_2A').c_string())
-
     # TODO:  test from_mysql and to_mysql using SELECT and @-variables
     #         -- maybe in test_word.py because it already has a db connection.
 
@@ -407,6 +402,9 @@ class NumberBasicTests(NumberTests):
     # sqlite or DB2: x'822A'
     # postgre: E'\x82\x2A'
     # c or java or javascript: "\x82\x2A"
+
+    def test_to_c(self):
+        self.assertEqual(r'"\x82\x2A"', Number('0q82_2A').c_string())
 
     def test_repr(self):
         n =               Number('0q83_03E8')
@@ -419,34 +417,32 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(0, int(Number.ZERO))
         self.assertEqual(0.0, float(Number.ZERO))
 
-    def test_nan(self):
+    def test_nan_properties(self):
         self.assertEqual('0q', Number.NAN.qstring())
         self.assertEqual(b'', Number.NAN.raw)
         self.assertEqual('', Number.NAN.hex())
         self.assertEqual('nan', str(float(Number.NAN)))
         self.assertFloatSame(float('nan'), float(Number.NAN))
 
-    def test_nan_default(self):
+    def test_nan_is_the_default_value(self):
         self.assertEqual('0q', Number().qstring())
 
     def test_nan_equality(self):
         # TODO:  Is this right?  Number.NAN comparisons behave like any other number, not like float('nan')?
         # SEE:  float('nan') comparisons all False, https://stackoverflow.com/q/1565164/673991
         # TODO:  Any comparisons with NAN should raise Number.CompareError("...is_nan() instead...").
-        nan = Number.NAN
-        self.assertEqual(nan, Number.NAN)
-        self.assertEqual(nan, Number(None))
-        self.assertEqual(nan, Number('0q'))
-        self.assertEqual(nan, Number(float('nan')))
-        self.assertEqual(nan, float('nan'))
+        self.assertEqual(Number.NAN, Number.NAN)
+        self.assertEqual(Number.NAN, Number(None))
+        self.assertEqual(Number.NAN, Number('0q'))
+        self.assertEqual(Number.NAN, Number(float('nan')))
+        self.assertEqual(Number.NAN, float('nan'))
 
     def test_nan_inequality(self):
-        nan = Number.NAN
-        self.assertNotEqual(nan, Number(0))
-        self.assertNotEqual(nan, 0)
-        self.assertNotEqual(nan, float('inf'))
+        self.assertNotEqual(Number.NAN, Number(0))
+        self.assertNotEqual(Number.NAN, 0)
+        self.assertNotEqual(Number.NAN, float('inf'))
 
-    def test_nan_result(self):
+    def test_nan_from_math(self):
         """SEE:  https://en.wikipedia.org/wiki/NaN#Operations_generating_NaN"""
         self.assertEqual(Number.NAN, Number.NAN + Number.NAN)
         self.assertEqual(Number.NAN, Number.NAN + Number(0))
@@ -476,18 +472,19 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY / Number.POSITIVE_INFINITY)
         self.assertEqual(Number.NAN, Number.NEGATIVE_INFINITY / Number.NEGATIVE_INFINITY)
 
-    def test_infinite_result(self):
+    def test_infinity_from_add_subtract(self):
         self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY + Number.POSITIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY + Number.NEGATIVE_INFINITY)
         self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY - Number.NEGATIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY - Number.POSITIVE_INFINITY)
 
+    def test_infinity_from_multiply(self):
         self.assertEqual(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY * Number.POSITIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY * Number.NEGATIVE_INFINITY)
         self.assertEqual(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.POSITIVE_INFINITY)
         self.assertEqual(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY * Number.NEGATIVE_INFINITY)
 
-    def test_zero_result(self):
+    def test_zero_from_divide_by_infinity(self):
         self.assertEqual(Number(0), Number(1) / Number.POSITIVE_INFINITY)
         self.assertEqual(Number(0), Number(1.5) / Number.POSITIVE_INFINITY)
         self.assertEqual(Number(0), Number(-1.5) / Number.POSITIVE_INFINITY)
@@ -495,19 +492,37 @@ class NumberBasicTests(NumberTests):
         self.assertEqual(Number(0), Number(1.5) / Number.NEGATIVE_INFINITY)
         self.assertEqual(Number(0), Number(1) / Number.NEGATIVE_INFINITY)
 
-    def test_one_result(self):
+    def test_controversial_math(self):
         """
-        A different school of thought is that the following computations should result in NAN.
+        Controversial computations:  0**0, 1**infinity, infinity**0
 
-        Here's why e.g. 0**0 is not so cut and dry:
+        These computations on qiki Numbers all result in 1 -- the same as IEEE floating point
+        A different school of thought is that they should result in NAN.
+        You can use limits to justify almost any value for these computations.
+
+        Here's why 0**0 is not so cut and dry:
         The limit of x**0 as x approaches 0 from the positive is 1
         The limit of x**0 as x approaches 0 from the negative is -1
         The limit of 0**x as x approaches 0 from the positive is 0
         The limit of 0**x as x approaches 0 from the negative is division by zero, infinity maybe
+
+        Here's why 1**infinity is not so cut and dry:
+        The limit of 1**x as x approches infinity is 1
+        The limit of x**infinity as x approches 1 from the positive is infinity
+        The limit of x**infinity as x approches 1 from the negative is 0
+        (For negative infinity the limits are 1, 0, positive infinity)
+
+        Here's why infinity**0 is not so cut and dry:
+        The limit of x**0 as x approaches infinity is 1
+        The limit of infinity**x as x approaches 0 from the positive is infinity
+        The limit of infinity**x as x approaches 0 from the negative is 0
+        (For negative infinity the limits are -1, negative infinity, 0)
         """
         self.assertEqual(Number(1), Number(0) ** Number(0))
         self.assertEqual(Number(1), Number(1) ** Number.POSITIVE_INFINITY)
+        self.assertEqual(Number(1), Number(1) ** Number.NEGATIVE_INFINITY)
         self.assertEqual(Number(1), Number.POSITIVE_INFINITY ** Number(0))
+        self.assertEqual(Number(1), Number.NEGATIVE_INFINITY ** Number(0))
 
     def test_ludicrous_boundary(self):
         big_reasonable = Number(2**999-1)
@@ -526,9 +541,9 @@ class NumberBasicTests(NumberTests):
         with self.assertRaises(ZeroDivisionError):
             _ = Number(0) / Number(0)
         with self.assertRaises(ZeroDivisionError):
-            _ = Number(1) / Number(0)
+            _ = Number(1) / Number(0)   # white box:  uses integer math
         with self.assertRaises(ZeroDivisionError):
-            _ = Number(1.5) / Number(0)
+            _ = Number(1.5) / Number(0)   # white box:  uses floating math
         with self.assertRaises(ZeroDivisionError):
             _ = Number(-0.0) / Number(0)
         with self.assertRaises(ZeroDivisionError):
@@ -3547,12 +3562,13 @@ class NumberSuffixTests(NumberTests):
         self.assertEqual(nbytes_original, len(n.raw))
 
     def test_malformed_suffix(self):
-        """Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions."""
+        """
+        Nonsense suffixes (or illicit trailing 00-bytes) should raise ValueError exceptions.
 
-        # TODO:  Should these raise exceptions in the *constructor*?
-        #        At least now these don't raise RawError:  n.qstring(), float(n), int(n)
+        Some raise exceptions in the constructor.  Others in the suffix method calls.
+        """
 
-        def bad_to_parse(n, message_fragment):
+        def bad_to_parse(s, message_fragment):
             # print("Well", n.qstring(), float(n))
             # EXAMPLE:
             #     Well 0q00!? -inf
@@ -3564,29 +3580,29 @@ class NumberSuffixTests(NumberTests):
             #     Well 0q82_01000400!? 1.00006103516
             #     Well 0q82_01000300!? 1.00004577637
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                list(n._suffix_indexes_backwards())
+                list(Number(s)._suffix_indexes_backwards())
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                _ = n.suffixes
+                _ = Number(s).suffixes
             with self.assertRaisesRegex(Suffix.RawError, message_fragment):
-                _ = n.unsuffixed
+                _ = Number(s).unsuffixed
 
-        def good_to_parse(n):
-            list(n._suffix_indexes_backwards())
-            _ = n.suffixes
-            _ = n.unsuffixed
+        def good_to_parse(s):
+            list(Number(s)._suffix_indexes_backwards())
+            _ = Number(s).suffixes
+            _ = Number(s).unsuffixed
 
-        bad_to_parse(Number('0q00'), "length underflow")   # Where's the length byte?
-        bad_to_parse(Number('0q__0000'), "NAN")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__220100'), "NAN")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q__334455220400'), "NAN")   # Can't suffix Number.NAN
-        bad_to_parse(Number('0q82_01__9900'), "payload overflow")     # Suffix length "underflow"
-        bad_to_parse(Number('0q82_01__000500'), "payload overflow")
-        bad_to_parse(Number('0q82_01__000400'), "payload overflow")   # Suffix underflows one byte off the left edge.
-        bad_to_parse(Number('0q82_01__000300'), "NAN")   # Looks like a suffixed Number.NAN.
+        bad_to_parse('0q00', "length underflow")   # Where's the length byte?
+        bad_to_parse('0q__0000', "NAN")   # Can't suffix Number.NAN
+        bad_to_parse('0q__220100', "NAN")   # Can't suffix Number.NAN
+        bad_to_parse('0q__334455220400', "NAN")   # Can't suffix Number.NAN
+        bad_to_parse('0q82_01__9900', "payload overflow")     # Suffix length "underflow"
+        bad_to_parse('0q82_01__000500', "payload overflow")
+        bad_to_parse('0q82_01__000400', "payload overflow")   # Suffix underflows one byte off the left edge.
+        bad_to_parse('0q82_01__000300', "NAN")   # Looks like a suffixed Number.NAN.
 
-        good_to_parse(Number('0q82_01__000200'))   # Actually parsed as 0q82__01000200
-        good_to_parse(Number('0q82_01__000100'))
-        good_to_parse(Number('0q82_01__0000'))
+        good_to_parse('0q82_01__000200')   # Actually parsed as 0q82__01000200
+        good_to_parse('0q82_01__000100')
+        good_to_parse('0q82_01__0000')
 
     def test_suffix_payload_too_long(self):
         self.assertEqual('11'*249 + '_08FA00', Suffix(8, b'\x11' * 249).qstring())
@@ -3837,6 +3853,16 @@ class NumberSuffixTests(NumberTests):
         n3 = Number(0x33, Suffix(Suffix.Type.TEST, n2))
         self.assertEqual('0q82_33__821182227E0300_7E0800', n3.qstring())
         #                      oo    cc  ii                       <-- the outer, core, and inner qans.
+
+    def test_constructor_suffix_nan(self):
+        """Number constructor is not allowed to suffix NAN."""
+        with self.assertRaises(Number.ConstructorSuffixError):
+            Number(Number.NAN, Suffix.Type.TEST)
+
+    def test_constructor_suffix_None(self):
+        """Number constructor is not allowed to suffix NAN."""
+        with self.assertRaises(Number.ConstructorSuffixError):
+            Number(None, Suffix.Type.TEST)
 
 
 # noinspection SpellCheckingInspection

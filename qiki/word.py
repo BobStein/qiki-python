@@ -12,7 +12,6 @@ import re
 import threading
 import time
 
-# noinspection PyPackageRequirements
 import mysql.connector
 import six
 
@@ -133,6 +132,13 @@ class Word(object):
 
         It also makes it possible to work with a list of words
         in a way that's almost as resource-efficient as a list of idns.
+
+        There is a private property to determine if a word is inchoate:
+
+            if word._is_inchoate:
+                do something on inchoate word
+            else:
+                do something on choate word
         """
         # CAUTION:  But Word(content=None) is a choate word, because it populates self._fields.
         #           Listing relies on all this so it may need to be refactored.
@@ -147,7 +153,7 @@ class Word(object):
         Transform an inchoate word into a not-inchoate word.
 
         That is, from a mere container of an idn to a fleshed-out word
-        with num and txt (and if not a Listing, sbj, vrb, obj).
+        with num and txt whatever other properties it has.
         This in preparation to use one of its properties, sbj, vrb, obj, txt, num, whn.
         """
         if self._is_inchoate:
@@ -323,42 +329,6 @@ class Word(object):
         # (The chicken/egg problem is resolved by the first Word being instantiated
         # via the derived class Lex (e.g. LexMySQL).)
 
-        #     else:
-        #         return listing_class.word_from_idn(args[0].idn)
-        # else:
-        #     kwargs['lex'] = self.lex
-        #     return Word(*args, **kwargs)
-        #
-        # if len(args) >= 1 and isinstance(args[0], Number):
-        #     idn = args[0]
-        #     if idn.is_suffixed():
-        #         try:
-        #             listing_class = Listing.class_from_listing_idn(idn)
-        #             # TODO:  Instead, listed_instance = Listing.word_from_idn(idn)
-        #         except Listing.NotAListing:   # as e:
-        #             return ListingNotInstalled(idn)
-        #             # raise self.NotAWord("Listing identifier {q} exception: {e}".format(
-        #             #     q=idn.qstring(),
-        #             #     e=str(e)
-        #             # ))
-        #         else:
-        #             assert issubclass(listing_class, Listing), repr(listing_class)
-        #             return listing_class.word_from_idn(idn)
-        #             # _, hack_index = Listing.split_compound_idn(idn)
-        #             # return listing_class(hack_index)
-        #         # pieces = idn.parse_suffixes()
-        #         # assert len(pieces) == 1 or isinstance(pieces[1], Suffix)
-        #         # if len(pieces) == 2 and pieces[1].
-        #
-        # assert hasattr(self, 'lex')
-        # # Otherwise hasattr(): attribute name must be string
-        # assert isinstance(self.lex, Lex)
-        # kwargs['lex'] = self.lex
-        # return Word(*args, **kwargs)
-        # # NOTE:  This should be the only call to the (base) Word constructor.  Enforce?  Refactor somehow?
-        # # (The chicken/egg problem is resolved by the first Word being instantiated
-        # # via the derived class Lex (e.g. LexMySQL).)
-
     class NotAVerb(Exception):
         pass
 
@@ -505,7 +475,6 @@ class Word(object):
             return False
         if self.obj == word:
             return True
-        # parent = self.spawn(self.obj)
         parent = self.lex[self.obj]
         if parent.idn == self.idn:
             return False
@@ -2291,7 +2260,11 @@ class LexMySQL(LexSentence):
                 # NOTE:  Not re-raising here because that way the outer bare except will catch
                 #        only the uber broken scenario when `Exception` itself is not defined.
         except object as e:
-            # NOTE: To get here, Exception must be undefined.
+            # NOTE: To get here, Exception has to be undefined.
+            # EXAMPLE:  (Not sure where it went, because nothing printed.)
+            #           (7 of these 2021.0618.0600)
+            #           (got TO this clause, but not INTO this clause)
+            #     NameError: name 'object' is not defined
             print("Egregious inability to close, and know what an object is", e)
             raise
         except:
