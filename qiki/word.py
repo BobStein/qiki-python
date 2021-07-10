@@ -251,8 +251,9 @@ class Word(object):
 
         an instance of SubjectVerb.  That instance remembers the sbj and the vrb.
 
-        The next part of implementing the brackety syntax is SubectVerb.__getitem__() for reading a word
-        and SubjectVerb.__setitem__() for creating a word.  Those methods implement the [o] part.
+        The next part of implementing the brackety syntax is SubjectVerb.__getitem__()
+        for reading a word and SubjectVerb.__setitem__() for creating a word.
+        Those methods implement the [o] part.
         """
         if isinstance(vrb, six.binary_type):
             raise TypeError("Verb name must be unicode, not " + repr(vrb))
@@ -934,17 +935,26 @@ class Lex(object):
     """
     Collection of Numbered Words.
 
-    Each Lex instance has a subclass of qiki.Word.
-    Each word in that lex is an instance of that subclass.
-    Each word has an idn, a qiki.Number that identifies it.
+    A Lex instance conceptually contains many Word instances.
+    Each word is identified by a Number:  word.idn
+    Each Lex instance is associated with a unique subclass of Word.
+    Each word in the lex is an instance of the subclass.
 
-    TODO:  WTF does the following mean?  Recast.
+    meta_word is part of a relationship between a parent and child lex.
+    A parent lex contains a word that represents a child lex.
+    That is the child's meta_word.  It is passed to the constructor of the child lex.
+    Then the idn of that meta_word is called the meta_idn.
+    The meta_idn is all the parent lex needs to refer to the child lex.
 
-    meta_idn is the number that identifies the Lex collection itself, in some parent Lex.
     Meta and mesa are opposites, up and down the hierarchy of lexes.
     (this is not an inheritance hierarchy)
     This hierarchy was invented so a Listing can reconstruct the suffixed idn
     needed in the LexSentence words that REFER to Listing words.
+
+    SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
+    Each lex keeps an in-memory dictionary of its child lexes:  lex.mesa_lexes.
+    It is keyed by the idn of the meta_word for each child lex.
+    Each value of this dictionary is the child lex instance object.
 
     """
 
@@ -963,7 +973,6 @@ class Lex(object):
         self.word_class.lex = self
         self.meta_word = meta_word
         self.mesa_lexes = dict()
-        # SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
         root_lexes = self.root_lex.mesa_lexes
         if meta_word in root_lexes:
             raise self.LexMetaError(
@@ -1022,7 +1031,7 @@ class Lex(object):
                 # NOTE:  This kind of self-reference should never happen.  Avoid infinite loop anyway.
                 raise RuntimeError("{} meta_word refers to itself".format(type_name(self)))
             else:
-                return self.meta_word.lex.root_lex
+                return self.meta_word.lex.root_lex   # recursion!
 
     def word_from_word_or_number(self, x):
         return self.root_lex[x]
@@ -1057,12 +1066,8 @@ class Lex(object):
                     ))
                     new_word.set_idn_if_you_really_have_to(idn)
                     return new_word
-                    # raise Lex.NotFound("{q} is not a Listing idn: {e}".format(
-                    #     q=idn.qstring(),
-                    #     e=type_name(ke) + " - " + str(ke),
-                    # ))
 
-            return lex.read_word(index)
+            return lex.read_word(index)   # parent read delegating to child read
         else:
             return self.word_class(idn)
 
@@ -1073,9 +1078,11 @@ class Lex(object):
 
     def idn_ify(self, x):
         """
-        Helper for functions that take either idn or word.
+        Convert to idn.
 
-        Or for a LexSentence, return its idn for itself!
+        Helper for functions that can take either an idn or a word or other things.
+
+        Or for a LexSentence instance, return its idn for itself!
 
         CAUTION:  This will of course NOT be the idn that OTHER lexes use
                   to refer to this lex.
@@ -1118,18 +1125,16 @@ class Lex(object):
 
 
 class Listing(Lex):
-    # TODO:  Listing(ProtoWord) -- derived from an abstract base class?
-    # TODO:  Or maybe Listing(Lex) or Lookup(Lex)
-
     """
     Listing was born of the need for a qiki Word to refer to data stored somewhere by index.
 
-    For example, a database record with integer id.
-    A suffixed word refers to both the storage and the record.  They each have an idn.
-    A composite idn contains both:  Number(idn_storage, Suffix(SUFFIX_TYPE, idn_record))
+    For example, a record in a database with an integer id column.
+    A suffixed qiki Number refers to both the database and the record.  They each have an idn.
+    A composite idn contains both:  Number(idn_database, Suffix(T, idn_record))
 
-    idn_storage is the idn of a Word in the system Lex, corresponding to the listing.
-    idn_record doesn't mean anything to qiki, just to the storage system.
+    idn_database is the idn of a Word in a Lex to represent the particular listing itself.
+    idn_record means something to the database.  (It is NOT an idn in the Lex.)
+    T is Listing.SUFFIX_TYPE, the special qiki.Suffix type allocated for Listing.
     """
     listing_dictionary = dict()   # Table of Listing instances, indexed by meta_word.idn
 
