@@ -75,9 +75,9 @@ class Word(object):
         elif content is None:               # Word(sbj=s, vrb=v, obj=o, num=n, txt=t)
             # TODO:  If this is only used via spawn(), then move this code there somehow?
             self._fields = dict(
-                sbj=None if sbj is None else self.lex.word_from_word_or_number(sbj),
-                vrb=None if vrb is None else self.lex.word_from_word_or_number(vrb),
-                obj=None if obj is None else self.lex.word_from_word_or_number(obj),
+                sbj=None if sbj is None else self.lex.read_word(sbj),
+                vrb=None if vrb is None else self.lex.read_word(vrb),
+                obj=None if obj is None else self.lex.read_word(obj),
                 num=num,
                 txt=None if txt is None else Text(txt),
                 whn=None,
@@ -951,13 +951,12 @@ class Lex(object):
     This hierarchy was invented so a Listing can reconstruct the suffixed idn
     needed in the LexSentence words that REFER to Listing words.
 
+    Each lex keeps track of its child lexes in a dictionary:  lex.mesa_lexes.
+        key - meta_idn, the identifier that represents the child lex
+        value - child lex instance object
     SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
-    Each lex keeps an in-memory dictionary of its child lexes:  lex.mesa_lexes.
-    It is keyed by the idn of the meta_word for each child lex.
-    Each value of this dictionary is the child lex instance object.
-
     """
-
+    # TODO:  Rename meta, mesa -> parent, child?  Much less confusing.
     def __init__(self, meta_word=None, word_class=None, **_):
         super(Lex, self).__init__()
         # NOTE:  Blow off unused kwargs here, which might be sql credentials.
@@ -1001,11 +1000,11 @@ class Lex(object):
 
     def __getitem__(self, item):
         """
-        Square-bracket Word instantiation.
+        Square-bracket syntax Word factory.
 
-        This gets called when you do any of these
+        This gets called when you do either of these
             lex[idn]
-            lex[word]  (for copy construction)
+            lex[word]  (a copy constructor)
         """
         return self.read_word(item)
 
@@ -1023,18 +1022,16 @@ class Lex(object):
             return self
         else:
             # noinspection PyProtectedMember
-            is_potential_infinite_loop = (
+            is_meta_word_from_the_same_lex = (
                 self.meta_word.lex           is self or
                 self.meta_word.lex._root_lex is self._root_lex
             )
-            if is_potential_infinite_loop:
-                # NOTE:  This kind of self-reference should never happen.  Avoid infinite loop anyway.
-                raise RuntimeError("{} meta_word refers to itself".format(type_name(self)))
+            if is_meta_word_from_the_same_lex:
+                # NOTE:  This kind of self-reference should never happen.
+                #        Avoid infinite loop anyway.
+                raise RuntimeError("{} lex's meta_word refers to itself".format(type_name(self)))
             else:
                 return self.meta_word.lex.root_lex   # recursion!
-
-    def word_from_word_or_number(self, x):
-        return self.root_lex[x]
 
     def read_word(self, idn_or_word_or_none):
         if idn_or_word_or_none is None:
@@ -1045,6 +1042,7 @@ class Lex(object):
 
         if idn is None:
             return self.word_class(idn_or_word_or_none)
+            # NOTE:  May never happen, idn_ify() returning None is a freakish outcome.
 
         if idn.is_suffixed():
             try:
@@ -1060,14 +1058,21 @@ class Lex(object):
                 try:
                     lex = self.root_lex.mesa_lexes[meta_idn]
                 except KeyError as ke:
-                    new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
-                        q=idn.qstring(),
-                        e=type_name(ke) + " - " + str(ke),
-                    ))
-                    new_word.set_idn_if_you_really_have_to(idn)
-                    return new_word
-
-            return lex.read_word(index)   # parent read delegating to child read
+                    raise Lex.NotFound(
+                        "Can't find the Listing's parent Lex {meta_idn}, {index}".format(
+                            meta_idn=meta_idn,
+                            index=index,
+                        )
+                    )
+                    # NOTE:  Why the following craziness?  Some weirdo special situation?
+                    #       new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
+                    #           q=idn.qstring(),
+                    #           e=type_name(ke) + " - " + str(ke),
+                    #       ))
+                    #       new_word.set_idn_if_you_really_have_to(idn)
+                    #       return new_word
+                else:
+                    return lex.read_word(index)   # parent read delegating to child read
         else:
             return self.word_class(idn)
 
@@ -1254,7 +1259,7 @@ class ListingLimbo(Lex):
     #     return False
 
 
-limbo_listing = ListingLimbo()
+# limbo_listing = ListingLimbo()
 
 
 class Pythonic:
