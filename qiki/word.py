@@ -241,7 +241,7 @@ class Word(object):
 
     def __call__(self, vrb, *args, **kwargs):
         """
-        Part of the brackety syntax for reading or creating a word in a LexSentenc.
+        Part of the brackety syntax for reading or creating a word in a LexSentence.
 
             lex[s](v)[o] = n,t
 
@@ -324,16 +324,14 @@ class Word(object):
                 raise self.NotAWord("Do not know how to spawn this suffixed idn " + idn.qstring())
 
         assert hasattr(self, 'lex')
-        # XXX:  Why did PY2 need this to be a b'lex'?!  And why does it not now??
-        # Otherwise hasattr(): attribute name must be string
         assert isinstance(self.lex, Lex)
-        # kwargs['lex'] = self.lex
         return type(self)(*args, **kwargs)
         # NOTE:  This should be the only call to the Word constructor.
-        # (Except of course from derived class constructors that call their super().)
-        # Enforce?  Refactor somehow?
-        # (The chicken/egg problem is resolved by the first Word being instantiated
-        # via the derived class Lex (e.g. LexMySQL).)
+        #        Because users should use a Lex instance as a Word factory.
+        #        (Except of course from Word subclass constructors that call their super().)
+        #        Enforce?  Refactor somehow?
+        #        (The chicken/egg problem is resolved by the first Word being instantiated
+        #        via the derived class Lex (e.g. LexMySQL).)
 
     class NotAVerb(Exception):
         pass
@@ -421,7 +419,6 @@ class Word(object):
 
         Useful for words as dictionary keys.
         """
-        # return self.spawn(self.idn)
         return self.lex[self.idn]
 
     def populate_from_word(self, word):
@@ -445,7 +442,9 @@ class Word(object):
         assert isinstance(row[prefix + 'txt'], Text)
         assert isinstance(row[prefix + 'whn'], Number)
         self.set_idn_if_you_really_have_to(row[prefix + 'idn'])
-        self._now_it_exists()   # Must come before spawn(sbj) for lex's sake.
+        self._now_it_exists()
+        # NOTE:  Is this comment on the _now_it_exists() call obsolete?
+        #        Must come before spawn(sbj) for lex's sake.
         self._fields = dict(
             sbj=self.lex[row[prefix + 'sbj']],
             vrb=self.lex[row[prefix + 'vrb']],
@@ -535,8 +534,8 @@ class Word(object):
             vrb=str(self.vrb),
             obj=str(self.obj),
             # TODO:  Would str(x) cause infinite recursion?  Not if str() does not call description()
-            maybe_num=(", " + self.presentable(self.num)) if self.num != 1   else "",
-            maybe_txt=(", " + repr(self.txt))             if self.txt != u'' else "",
+            maybe_num=(", " + self.presentable(self.num)) if self.num != 1  else "",
+            maybe_txt=(", " + repr(self.txt))             if self.txt != '' else "",
         )
 
     def to_dict(self):
@@ -740,7 +739,6 @@ class SubjectedVerb(object):
 
         Specifically, the assignment combined with the right-most square-bracket operator.
         """
-        # objected = self._subjected.spawn(key)
         objected = self._subjected.lex.root_lex[key]
 
         txt, num = self.extract_txt_num(value, dict())
@@ -933,7 +931,7 @@ class SubjectedVerb(object):
 
 class Lex(object):
     """
-    Collection of Numbered Words.
+    Collection of Number-identified Words.
 
     A Lex instance conceptually contains many Word instances.
     Each word is identified by a Number:  word.idn
@@ -945,18 +943,22 @@ class Lex(object):
     That is the child's meta_word.  It is passed to the constructor of the child lex.
     Then the idn of that meta_word is called the meta_idn.
     The meta_idn is all the parent lex needs to refer to the child lex.
+    The parent lex uses the meta_idn to refer to the child lex.
+    The parent lex uses a suffixed Number to identify a word in the child lex.
+        The root of that number is the meta_idn
+        The payload of the suffix is an idn for a word in the child lex
 
     Meta and mesa are opposites, up and down the hierarchy of lexes.
     (this is not an inheritance hierarchy)
     This hierarchy was invented so a Listing can reconstruct the suffixed idn
     needed in the LexSentence words that REFER to Listing words.
 
-    Each lex keeps track of its child lexes in a dictionary:  lex.mesa_lexes.
+    Each lex instance keeps track of its child lexes in a dictionary:  lex.mesa_lexes.
         key - meta_idn, the identifier that represents the child lex
-        value - child lex instance object
+        value - child lex instance
     SEE:  mesa, opposite of meta, https://english.stackexchange.com/a/22805/18673
     """
-    # TODO:  Rename meta, mesa -> parent, child?  Much less confusing.
+    # TODO:  Rename meta -> parent, mesa -> child?  Less confusing?
     def __init__(self, meta_word=None, word_class=None, **_):
         super(Lex, self).__init__()
         # NOTE:  Blow off unused kwargs here, which might be sql credentials.
@@ -967,8 +969,9 @@ class Lex(object):
             class WordClassJustForThisLex(Word):
                 pass
 
-            word_class = WordClassJustForThisLex
-        self.word_class = word_class
+            self.word_class = WordClassJustForThisLex
+        else:
+            self.word_class = word_class
         self.word_class.lex = self
         self.meta_word = meta_word
         self.mesa_lexes = dict()
@@ -1057,7 +1060,7 @@ class Lex(object):
             else:
                 try:
                     lex = self.root_lex.mesa_lexes[meta_idn]
-                except KeyError as ke:
+                except KeyError:   # as ke:
                     raise Lex.NotFound(
                         "Can't find the Listing's parent Lex {meta_idn}, {index}".format(
                             meta_idn=meta_idn,
@@ -1065,12 +1068,12 @@ class Lex(object):
                         )
                     )
                     # NOTE:  Why the following craziness?  Some weirdo special situation?
-                    #       new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
-                    #           q=idn.qstring(),
-                    #           e=type_name(ke) + " - " + str(ke),
-                    #       ))
-                    #       new_word.set_idn_if_you_really_have_to(idn)
-                    #       return new_word
+                    #        new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
+                    #            q=idn.qstring(),
+                    #            e=type_name(ke) + " - " + str(ke),
+                    #        ))
+                    #        new_word.set_idn_if_you_really_have_to(idn)
+                    #        return new_word
                 else:
                     return lex.read_word(index)   # parent read delegating to child read
         else:
@@ -1078,7 +1081,7 @@ class Lex(object):
 
     def populate_word_from_idn(self, word, idn):
         # TODO:  Be consistent with this method, either return true/false and USE it.
-        #        Or raise exceptions and
+        #        Or raise exception ... (I was going to say something else here.)
         raise NotImplementedError()
 
     def idn_ify(self, x):
@@ -1549,23 +1552,23 @@ class LexSentence(Lex):
         __crazy_idea_define_lex_first__ = True
         # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word.IDN_LEX
         if __crazy_idea_define_lex_first__:
-            #                                                           forward,reflexive references
-            seminal_word(self.IDN_LEX,    self.IDN_AGENT, u'lex')     # 2,1    0,+1,+4
-            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 1,1   -1, 0,+2
-            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 0,1   -2,-1, 0
-            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  u'verb')    # 0,0   -3,-2,-1
-            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  u'agent')   # 0,0   -4,-3,-2
-                                                                        # ---
-                                                                        # 3,3
+            #                                                          forward,reflexive references
+            seminal_word(self.IDN_LEX,    self.IDN_AGENT, 'lex')     # 2,1    0,+1,+4
+            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  'define')  # 1,1   -1, 0,+2
+            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  'noun')    # 0,1   -2,-1, 0
+            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  'verb')    # 0,0   -3,-2,-1
+            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  'agent')   # 0,0   -4,-3,-2
+                                                                     # ---
+                                                                     # 3,3
         else:
-            #                                                           forward,reflexive references
-            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  u'define')  # 2,1   +4, 0,+2
-            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  u'noun')    # 1,1   +3,-1, 0
-            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  u'verb')    # 1,0   +2,-2,-1
-            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  u'agent')   # 1,0   +1,-3,-2
-            seminal_word(self.IDN_LEX,    self.IDN_AGENT, u'lex')     # 0,1    0,-4,-1
-                                                                        # ---
-                                                                        # 5,3
+            #                                                          forward,reflexive references
+            seminal_word(self.IDN_DEFINE, self.IDN_VERB,  'define')  # 2,1   +4, 0,+2
+            seminal_word(self.IDN_NOUN,   self.IDN_NOUN,  'noun')    # 1,1   +3,-1, 0
+            seminal_word(self.IDN_VERB,   self.IDN_NOUN,  'verb')    # 1,0   +2,-2,-1
+            seminal_word(self.IDN_AGENT,  self.IDN_NOUN,  'agent')   # 1,0   +1,-3,-2
+            seminal_word(self.IDN_LEX,    self.IDN_AGENT, 'lex')     # 0,1    0,-4,-1
+                                                                     # ---
+                                                                     # 5,3
 
     def _install_one_seminal_word(self, _idn, _obj, _txt):
         self.create_word(
@@ -1687,10 +1690,10 @@ class LexSentence(Lex):
             Probe droid for debugging the browse storm bugs.
 
             EXAMPLE:
-                INSERT_A b'shrubbery' 0 1 unlock 54423720 0q82_04
-                INSERT_B b'shrubbery' 1 1 LOCKED 54423720 0q82_04
-                INSERT_C b'shrubbery' 1 1 LOCKED 54423720 0q82_05
-                INSERT_D b'shrubbery' 0 1 unlock 54423720 0q82_05
+                INSERT_A 'shrubbery' 0 1 unlock 54423720 0q82_04
+                INSERT_B 'shrubbery' 1 1 LOCKED 54423720 0q82_04
+                INSERT_C 'shrubbery' 1 1 LOCKED 54423720 0q82_05
+                INSERT_D 'shrubbery' 0 1 unlock 54423720 0q82_05
             """
             # print(
             #     step + " " +
@@ -1798,9 +1801,9 @@ class LexSentence(Lex):
         # TODO:  Disallow num,txt positionally, unlike Word.says()
 
         # TODO:  Allow sbj=lex
-        assert isinstance(sbj, (Word, Number, type(u''))), "sbj cannot be a {type}".format(type=type_name(sbj))
-        assert isinstance(vrb, (Word, Number, type(u''))), "vrb cannot be a {type}".format(type=type_name(vrb))
-        assert isinstance(obj, (Word, Number, type(u''))), "obj cannot be a {type}".format(type=type_name(obj))
+        assert isinstance(sbj, (Word, Number, type(''))), "sbj cannot be a {type}".format(type=type_name(sbj))
+        assert isinstance(vrb, (Word, Number, type(''))), "vrb cannot be a {type}".format(type=type_name(vrb))
+        assert isinstance(obj, (Word, Number, type(''))), "obj cannot be a {type}".format(type=type_name(obj))
 
         # if isinstance(txt, numbers.Number) or Text.is_valid(num):
         #     # TODO:  Why `or` not `and`?
@@ -1812,7 +1815,7 @@ class LexSentence(Lex):
             ))
 
         num = num if num is not None else 1
-        txt = txt if txt is not None else u''
+        txt = txt if txt is not None else ''
 
         if not Number.is_number(num):
             # TODO:  Allow q-strings for num.  I.e. raise this exception on Number(num) error.
@@ -1956,15 +1959,17 @@ class LexInMemory(LexSentence):
 
     def populate_word_from_idn(self, word, idn):
         try:
-            word_source = self.words[int(idn)]
-        except (
-            IndexError,   # e.g. (what?)
-            ValueError    # e.g. Word(NAN) - ValueError: Not-A-Number cannot be represented by integers.
-        ):
+            integer_identifier = int(idn)
+        except ValueError:   # e.g. Word(Number.NAN)
             return False
-        else:
+        if 0 <= integer_identifier < len(self.words):
+            # NOTE:  We cannot trust self.words[-1] to raise an exception,
+            #        so we screen out-of-range identifiers the unpythonic way.
+            word_source = self.words[integer_identifier]
             word.populate_from_word(word_source)
             return True
+        else:
+            return False
 
     def populate_word_from_definition(self, word, define_txt):
         """Flesh out a word by its txt.  sbj=lex, vrb=define only."""
@@ -2292,7 +2297,8 @@ class LexMySQL(LexSentence):
             print("Egregious inability to close, and know what an object is", e)
             raise
         except:
-            # NOTE: To get here, Exception must be undefined, and the exception is not an object.
+            # NOTE:  To get here, the Exception class must be undefined,
+            #        and the exception is not an object.
             print("Egregious inability to close AT ALL")
             raise
             # EXAMPLE:
@@ -2616,11 +2622,11 @@ class LexMySQL(LexSentence):
             jbo_vrb = (jbo_vrb,)
         if jbo_vrb is None:
             jbo_vrb = ()
-        assert isinstance(idn, (Number, Word, type(None)))            or is_iterable(idn)
-        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)   # TODO: Allow LexSentence?
-        assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
-        assert isinstance(obj, (Number, Word, type(None), type(u''))) or is_iterable(obj)
-        assert isinstance(txt, (Text,         type(None), type(u''))) or is_iterable(txt)
+        assert isinstance(idn, (Number, Word, type(None)))           or is_iterable(idn)
+        assert isinstance(sbj, (Number, Word, type(None), type(''))) or is_iterable(sbj)   # TODO: Allow LexSentence?
+        assert isinstance(vrb, (Number, Word, type(None), type(''))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None), type(''))) or is_iterable(obj)
+        assert isinstance(txt, (Text,         type(None), type(''))) or is_iterable(txt)
         assert isinstance(jbo_vrb, (list, tuple, set)), "jbo_vrb is a " + type_name(jbo_vrb)
         assert hasattr(jbo_vrb, '__iter__')
         idn_order = 'ASC' if idn_ascending else 'DESC'
@@ -2711,11 +2717,11 @@ class LexMySQL(LexSentence):
 
     # @staticmethod
     def _and_clauses(self, idn, sbj, vrb, obj, txt):
-        assert isinstance(idn, (Number, Word, type(None),          )) or is_iterable(idn)
-        assert isinstance(sbj, (Number, Word, type(None), type(u''))) or is_iterable(sbj)
-        assert isinstance(vrb, (Number, Word, type(None), type(u''))) or is_iterable(vrb)
-        assert isinstance(obj, (Number, Word, type(None), type(u''))) or is_iterable(obj)
-        assert isinstance(txt, (Text,         type(None), type(u''))) or is_iterable(txt)
+        assert isinstance(idn, (Number, Word, type(None),         )) or is_iterable(idn)
+        assert isinstance(sbj, (Number, Word, type(None), type(''))) or is_iterable(sbj)
+        assert isinstance(vrb, (Number, Word, type(None), type(''))) or is_iterable(vrb)
+        assert isinstance(obj, (Number, Word, type(None), type(''))) or is_iterable(obj)
+        assert isinstance(txt, (Text,         type(None), type(''))) or is_iterable(txt)
 
         def clause(value_or_values, name, conversion_function):
             """
@@ -3086,7 +3092,7 @@ def is_iterable(x):
     This implementation is better than either of:
         return hasattr(x, '__getitem__')
         return hasattr(x, '__iter__')
-    SEE:  http://stackoverflow.com/a/36154791/673991
+    SEE:  https://stackoverflow.com/a/36154791/673991
     SEE:  is_iterable_not_string(), https://stackoverflow.com/q/1055360/673991
 
     CAUTION:  This will likely break a generator's iterator.
@@ -3179,7 +3185,7 @@ class Text(six.text_type):   # always Unicode
         How evil is this?  What's the better way?
 
         Was once used by Word.__getattr__() on its name argument, when lex.word_name was a thing.
-        (Now we do lex[u'word_name'] instead.)
+        (Now we do lex['word_name'] instead.)
         """
         # TODO:  Better to if six.PY2 ... else six.PY3?
         # and call the method from_str()
@@ -3205,7 +3211,7 @@ class Text(six.text_type):   # always Unicode
 
     @staticmethod
     def is_valid(x):
-        return isinstance(x, type(u''))
+        return isinstance(x, type(''))
 
 
 class Qoolbar(object):
@@ -3221,10 +3227,10 @@ class QoolbarSimple(Qoolbar):
         # TODO:  Cache get_verbs().
 
     def say_initial_verbs(self):
-        qool = self.lex.verb(u'qool')
-        iconify = self.lex.verb(u'iconify')
+        qool = self.lex.verb('qool')
+        iconify = self.lex.verb('iconify')
 
-        delete = self.lex.verb(u'delete')
+        delete = self.lex.verb('delete')
         self.lex.create_word(
             sbj=self.lex['lex'], vrb=qool, obj=delete,
             use_already=True
@@ -3232,10 +3238,10 @@ class QoolbarSimple(Qoolbar):
         self.lex.create_word(
             sbj=self.lex['lex'], vrb=iconify, obj=delete,
             use_already=True,
-            num=16, txt=u'http://tool.qiki.info/icon/delete_16.png'
+            num=16, txt='https://tool.qiki.info/icon/delete_16.png'
         )
 
-        like = self.lex.verb(u'like')
+        like = self.lex.verb('like')
         self.lex.create_word(
             sbj=self.lex['lex'], vrb=qool, obj=like,
             use_already=True
@@ -3243,7 +3249,7 @@ class QoolbarSimple(Qoolbar):
         self.lex.create_word(
             sbj=self.lex['lex'], vrb=iconify, obj=like,
             use_already=True,
-            num=16, txt=u'http://tool.qiki.info/icon/thumbsup_16.png'
+            num=16, txt='https://tool.qiki.info/icon/thumbsup_16.png'
         )
 
     def get_verb_dicts(self, debug=False):
