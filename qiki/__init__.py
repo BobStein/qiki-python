@@ -23,6 +23,12 @@ Usage example:
     lex = LexMySQL(**credentials)
 """
 
+# TODO:  How to import qiki and use qiki.Lex(), or from qiki.number import * and use Number,
+#        without ALSO loading qiki.Lex etc.
+#        Problem is qiki.Word imports mysql
+#        Likely solution:  import qiki, import qiki.LexMySQL will be needed.
+
+
 from .number import Number
 from .number import Suffix
 from .word import Word
