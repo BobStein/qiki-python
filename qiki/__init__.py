@@ -27,7 +27,7 @@ Usage example:
 #        without ALSO loading qiki.Lex etc.
 #        Problem is qiki.Word imports mysql
 #        Likely solution:  import qiki, import qiki.LexMySQL will be needed.
-
+# SEE:  import sub module only, https://stackoverflow.com/q/21298833/673991
 
 from .number import Number
 from .number import Suffix
