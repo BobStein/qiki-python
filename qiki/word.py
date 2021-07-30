@@ -3137,7 +3137,9 @@ def is_iterable(x):
     try:
         iter(x)
     except TypeError as e:
-        assert e.__class__ is TypeError   # A subclass of TypeError raised by comparison operators?  No thanks.
+        assert e.__class__ is TypeError
+        # NOTE:  A subclass of TypeError raised by comparison operators?  No thanks.
+        #        For some reason I once thought it acceptable to crash and burn if that happens.
         return False
     else:
         return True

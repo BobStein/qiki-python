@@ -2365,6 +2365,8 @@ def type_name(x):
     the_type_name = type(x).__name__
     if the_type_name == 'instance':
         the_type_name = x.__class__.__name__
+        # NOTE:  Possibly this is only different in Python 2 instances not derived from object.
+        #        That is, type(x) is not the same as x.__class__
     return the_type_name
 assert 'int' == type_name(3)
 assert 'list' == type_name([])

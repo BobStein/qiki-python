@@ -4266,8 +4266,8 @@ class NumberUtilitiesTests(NumberTests):
 
         class SomeOtherClass(object):
             pass
-        # noinspection PyPep8Naming
 
+        # noinspection PyPep8Naming
         class instance(object):
             __class__ = SomeOtherClass
 
