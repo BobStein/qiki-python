@@ -1,6 +1,7 @@
 @echo off
 REM Upload to PyPI
 REM --------------
+REM 0.  pip install wheel twine
 REM 1.  push_to_pypi.bat -- Do this BEFORE github push, because it modifies version.py
 REM 2.  github push
 REM 3.  gol (for "live" unslumping.org)
@@ -18,8 +19,9 @@ REM          Solution:  pip install wheel
 REM          Also had to update py version codes.
 REM          Also had to pip install twine
 
-rm -f dist/qiki-*
-rm -rf qiki.egg-info
+rmdir /s /q build
+rmdir /s /q dist
+rmdir /s /q qiki.egg-info
 py -3.8 version_update_now.py || goto bad
 py -3.8 setup.py sdist bdist_wheel || goto bad
 
