@@ -1639,7 +1639,8 @@ class LexSentence(Lex):
                             function(
                                 txt,
                                 "Trying to define a {obj} called '{txt}', "
-                                "but there are already {count} definitions for '{txt}': {word}".format(
+                                "but there are already {count} definitions for '{txt}': "
+                                "{word}".format(
                                     obj=str(obj),
                                     count=len(duplicate_words),
                                     txt=txt,
@@ -2170,7 +2171,7 @@ class LexMySQL(LexSentence):
         except mysql.connector.Error as exception:
             raise self.ConnectError(exception.__class__.__name__ + " - " + str(exception))
             # EXAMPLE:  (mysqld is down)
-            #     InterfaceError - 2003: Can't connect to MySQL server on 'localhost:33073'
+            #     InterfaceError - 2003: Can't connect to MySQL server on 'localhost:3306'
             #     (10061 No connection could be made because the target machine actively refused it)
             # EXAMPLE:  (maybe wrong password)
             #     ProgrammingError

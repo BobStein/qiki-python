@@ -18,6 +18,8 @@ REM          https://stackoverflow.com/a/44862371/673991
 REM          Solution:  pip install wheel
 REM          Also had to update py version codes.
 REM          Also had to pip install twine
+REM NOTE:  The wheel and twine modules are not included in requirements.txt because those modules
+REM        are only required here, to upload qiki-python, not to download and use it.
 
 rmdir /s /q build
 rmdir /s /q dist

@@ -330,7 +330,7 @@ class LexErrorTests(TestBaseClass):
             # EXAMPLE:   (appears every time running tests Word3.4, Word3.5, Word3.6)
             #        ResourceWarning: unclosed <socket.socket fd=524, family=AddressFamily.AF_INET,
             #        type=SocketKind.SOCK_STREAM, proto=6, laddr=('127.0.0.1', 59546),
-            #        raddr=('127.0.0.1', 33073)>
+            #        raddr=('127.0.0.1', 3306)>
             # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
             #        sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=3>
             # EXAMPLE:  (intermittently appears below "OK" after all tests pass)
