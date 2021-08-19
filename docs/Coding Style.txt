@@ -47,7 +47,12 @@ long_variable = long_function_name(3)
 
 
 Rationale:  visual patterns enhance understanding.
-
+Specifically rejecting these warnings:
+    PEP8: E202 whitespace before ')'
+    PEP8: E222
+    PEP8: E231 missing whitespace after ','
+    PEP8: E251
+    PEP8: E305
 
 
 

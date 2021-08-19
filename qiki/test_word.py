@@ -3730,6 +3730,7 @@ class Word0070FindTests(WordTests):
         with self.assertRaises(qiki.Lex.NotFound):
             self.lex.find_last(obj=self.curry)
 
+    # noinspection PySetFunctionToLiteral
     def test_find_by_name(self):
         with self.assertNewWords(3):
             w1 = self.lex[self.fred](self.munch, num=11)[self.apple]
