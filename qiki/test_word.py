@@ -3782,7 +3782,6 @@ class Cop(object):
         self.lock.release()
         self.did_go = True
 
-
     class DidntStop(Exception):
         """.await_stop() timed out"""
 
@@ -3882,8 +3881,10 @@ class Word0080Threading(TestBaseClass):
             self.cop3 = Cop("idn has been assigned")
 
         class _NotALock(object):
+
             def __enter__(self):
                 pass
+
             def __exit__(self, _, __, ___):
                 pass
 
@@ -4475,14 +4476,20 @@ class WordQoolbarTests(WordQoolbarSetup):
 
     def test_jbo_two_verbs(self):
         """jbo_vrb specifying multiple words and/or idns"""
-        deleted_and_qooled = self.lex.find_words(jbo_vrb=[self.delete, self.qool.idn], jbo_strictly=True)
+        deleted_and_qooled = self.lex.find_words(
+            jbo_vrb=[self.delete, self.qool.idn],
+            jbo_strictly=True
+        )
         self.assertEqual({
             'delete',
             'like',
             'zigzags',
         }, {thing.txt for thing in deleted_and_qooled})
 
-        deleted_and_qooled = self.lex.find_words(jbo_vrb=[self.delete.idn, self.like], jbo_strictly=True)
+        deleted_and_qooled = self.lex.find_words(
+            jbo_vrb=[self.delete.idn, self.like],
+            jbo_strictly=True
+        )
         self.assertEqual({
             'youtube',
             'zigzags',
@@ -4634,8 +4641,9 @@ class WordQoolbarTests(WordQoolbarSetup):
         """
         Test for the find_words() jbo lex bug.
 
-        find_words() returns a list of words.  The jbo_vrb parameter makes each of those words contain
-        a jbo property, a list of words whose object is each found word.
+        find_words() returns a list of words.
+        The jbo_vrb parameter makes each of those words contain a jbo property,
+        a list of words whose object is each found word.
         This tests for a bug where the self.lex singleton object gets a jbo stuck on it
         as a side effect.
         """
@@ -4643,13 +4651,27 @@ class WordQoolbarTests(WordQoolbarSetup):
         self.bart(self.like)[self.lex._lex] = -1,"not really at all"
         # print("Lex members", self.lex.__dict__)
         # EXAMPLE:
-        #     Lex members {'lex': Word('lex'), '_idn': Number('0q80'), 'words': [Word('lex'), Word('define'),
-        #     Word('noun'), Word('verb'), Word('agent'), Word('qool'), Word('iconify'), Word('delete'), Word(8),
-        #     Word(9), Word('like'), Word(11), Word(12), Word('anna'), Word('bart'), Word('youtube'),
-        #     Word('zigzags'), Word(17), Word(18), Word(19), Word(20), Word(21), Word(22)], '_exists': True,
-        #     '_fields': {'sbj': Word('lex'), 'vrb': Word('define'), 'obj': Word('agent'),
-        #     'num': Number('0q82_01'), 'txt': 'lex', 'whn': Number('0q85_5B494F5CFC3758')},
-        #     '_noun': Word('noun'), '_verb': Word('verb')}
+        #     Lex members {
+        #         'lex': Word('lex'),
+        #         '_idn': Number('0q80'),
+        #         'words': [
+        #             Word('lex'), Word('define'), Word('noun'), Word('verb'), Word('agent'),
+        #             Word('qool'), Word('iconify'), Word('delete'), Word(8), Word(9), Word('like'),
+        #             Word(11), Word(12), Word('anna'), Word('bart'), Word('youtube'),
+        #             Word('zigzags'), Word(17), Word(18), Word(19), Word(20), Word(21), Word(22)
+        #         ],
+        #         '_exists': True,
+        #         '_fields': {
+        #             'sbj': Word('lex'),
+        #             'vrb': Word('define'),
+        #             'obj': Word('agent'),
+        #             'num': Number('0q82_01'),
+        #             'txt': 'lex',
+        #             'whn': Number('0q85_5B494F5CFC3758')
+        #         },
+        #         '_noun': Word('noun'),
+        #         '_verb': Word('verb')
+        #     }
         self.assertFalse(hasattr(self.lex, 'jbo'))
         lex_words = self.lex.find_words(idn=self.lex._lex, jbo_vrb=[self.like])
         self.assertEqual(
@@ -4667,7 +4689,11 @@ class WordQoolbarTests(WordQoolbarSetup):
         lex_found = lexes_found[0]
         self.assertEqual(self.lex._lex.idn, lex_found.idn)
         self.assertEqual(self.lex._lex, lex_found)
-        self.assertIsNot(self.lex._lex, lex_found, "Whoa, lex returned by find_words() is a singleton.")
+        self.assertIsNot(
+            self.lex._lex,
+            lex_found,
+            "Whoa, lex returned by find_words() should not be a singleton."
+        )
 
 
 class WordSuperSelectTest(WordQoolbarSetup):
@@ -4872,7 +4898,11 @@ class WordSuperSelectTest(WordQoolbarSetup):
                     'AND qool.vrb =', self.like,
             'ORDER BY w.idn, qool.idn ASC',
             debug=False
-            # Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL ORDER BY w.idn, qool.idn ASC
+            # EXAMPLE:  Query SELECT w.idn AS idn, qool.idn AS qool_idn, qool.num AS qool_num
+            #           FROM `word_e3cda38fc1db4005a21808aec5d11cdf` AS w
+            #           LEFT JOIN `word_e3cda38fc1db4005a21808aec5d11cdf` AS qool
+            #           ON qool.obj = w.idn AND qool.vrb = ? WHERE qool.idn IS NOT NULL
+            #           ORDER BY w.idn, qool.idn ASC
             # 	idn Number('0q82_0D'); qool_idn Number('0q82_0F'); qool_num Number('0q82_01');
             # 	idn Number('0q82_0D'); qool_idn Number('0q82_10'); qool_num Number('0q82_0A');
             # 	idn Number('0q82_0E'); qool_idn Number('0q82_11'); qool_num Number('0q82_02');
@@ -5025,7 +5055,10 @@ class WordInternalTests(WordTests):
 
         self.assertTrue(is_iterable(IteratorByNext([1,2,3])))
 
-        self.assertEqual(py23(b'instance', 'IteratorByNext'), type(IteratorByNext([1,2,3])).__name__)
+        self.assertEqual(
+            py23(b'instance', 'IteratorByNext'),
+            type(IteratorByNext([1,2,3])).__name__
+        )
 
     def test_is_iterable_by_getitem(self):
         # THANKS:  Iterative object, http://stackoverflow.com/a/7542261/673991
@@ -5042,7 +5075,10 @@ class WordInternalTests(WordTests):
 
         self.assertTrue(is_iterable(IteratorByGetItem([1,2,3])))
 
-        self.assertEqual(py23(b'instance', 'IteratorByGetItem'), type(IteratorByGetItem([1,2,3])).__name__)
+        self.assertEqual(
+            py23(b'instance', 'IteratorByGetItem'),
+            type(IteratorByGetItem([1,2,3])).__name__
+        )
 
     def test_word_presentable(self):
         self.assertEqual("42", qiki.Word.presentable(qiki.Number(42)))

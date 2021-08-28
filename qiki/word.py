@@ -24,8 +24,8 @@ from qiki.number import type_name
 
 HORRIBLE_MYSQL_CONNECTOR_WORKAROUND = True
 # SEE:  https://stackoverflow.com/q/52759667/673991#comment99030618_55150960
-# SEE:  https://stackoverflow.com/questions/49958723/cant-insert-blob-image-using-python-via-stored-procedure-mysql
-# SEE:  https://stackoverflow.com/questions/51657097/how-can-i-retrieve-binary-data-using-mysql-python-connector
+# SEE:  https://stackoverflow.com/questions/49958723/cant-insert-blob-image-using-python-via-stored-procedure-mysql   # noqa
+# SEE:  https://stackoverflow.com/questions/51657097/how-can-i-retrieve-binary-data-using-mysql-python-connector   # noqa
 # Problem:  VARBINARY fields are decoded as if their contents were text
 #           'utf8' codec can't decode ... invalid start byte
 #           0q80 == lex.idn, and '\x80' can never be a valid utf8 string
@@ -241,7 +241,7 @@ class Word(object):
 
     def __call__(self, vrb, *args, **kwargs):
         """
-        Part of the brackety syntax for reading or creating a word in a LexSentence.
+        Part of the bracket syntax for reading or creating a word in a LexSentence.
 
             lex[s](v)[o] = n,t
 
@@ -251,7 +251,7 @@ class Word(object):
 
         an instance of SubjectVerb.  That instance remembers the sbj and the vrb.
 
-        The next part of implementing the brackety syntax is SubjectVerb.__getitem__()
+        The next part of implementing the bracket syntax is SubjectVerb.__getitem__()
         for reading a word and SubjectVerb.__setitem__() for creating a word.
         Those methods implement the [o] part.
         """
@@ -315,8 +315,6 @@ class Word(object):
         else:
             try:
                 return Listing.word_from_idn(idn)
-            # except Listing.NotAListingRightNow:
-            #     return ListingNotInstalled(idn)   # args[0] is a listing, but its class was not installed
             except Listing.NotAListing:
                 pass                              # args[0] is not a listing word
 
@@ -533,7 +531,8 @@ class Word(object):
             sbj=str(self.sbj),
             vrb=str(self.vrb),
             obj=str(self.obj),
-            # TODO:  Would str(x) cause infinite recursion?  Not if str() does not call description()
+            # TODO:  Would str(x) cause infinite recursion?
+            #        Not if str() does not call description()
             maybe_num=(", " + self.presentable(self.num)) if self.num != 1  else "",
             maybe_txt=(", " + repr(self.txt))             if self.txt != '' else "",
         )
@@ -605,7 +604,8 @@ class Word(object):
                 raise ValueError("'{}' unknown in .format(word)".format(c))
 
     def __repr__(self):
-        # THANKS:  repr() conventions, https://codingkilledthecat.wordpress.com/2012/06/03/please-dont-abuse-repr/
+        # THANKS:  repr() conventions,
+        #          https://codingkilledthecat.wordpress.com/2012/06/03/please-dont-abuse-repr/
         if self.exists():
             if self.is_defined() and self.txt:
 
@@ -645,9 +645,11 @@ class Word(object):
                 idn_repr = repr(self.idn)
             except ValueError:
                 if self.txt:
-                    return "Word(nonexistent {})".format(repr(self.txt))   # TODO:  unit test
+                    return "Word(nonexistent {})".format(repr(self.txt))
+                    # TODO:  unit test
                 else:
-                    return "Word(in a corrupt state)"   # can't show idn nor txt  TODO: unit test this?
+                    return "Word(in a corrupt state)"   # can't show idn nor txt
+                    # TODO: unit test this?
             else:
                 return "Word(unidentified {})".format(idn_repr)
 
@@ -680,11 +682,12 @@ class Word(object):
     @property
     def idn(self):
         try:
-            return Number(self._idn)   # Copy constructor so e.g. w.idn.suffix(n) will not modify w.idn.
-                                   # TODO:  but then what about w.sbj.add_suffix(n), etc.?
-                                   #        (But there's no more add_suffix, only new-number-generating plus_suffix)
-                                   # So this passing through Number() is a bad idea.
-                                   # Plus this makes x.idn a different object from x._idn, burdening debug.
+            return Number(self._idn)
+            # Copy constructor so e.g. w.idn.suffix(n) will not modify w.idn.
+            # TODO:  but then what about w.sbj.add_suffix(n), etc.?
+            #        (But there's no more add_suffix, only new-number-generating plus_suffix)
+            # So this passing through Number() is a bad idea.
+            # Plus this makes x.idn a different object from x._idn, burdening debug.
         except AttributeError:
             return Number.NAN
 
@@ -706,17 +709,21 @@ class Word(object):
 class SubjectedVerb(object):
     # TODO:  Move this to inside Word?  Or LexSentence!??
     """
-    Intermediary in the brackety syntax lex[s](v)[o].  An instance of this class is the lex[s](v) part.
+    Intermediary in the bracket syntax lex[s](v)[o].
+    An instance of this class is the lex[s](v) part.
 
-    For example, the word getter expression w = lex[s](v)[o] breaks down into x = lex[s](o); w = x[o].
+    For example, the word getter expression w = lex[s](v)[o] breaks down into
+        x = lex[s](o); w = x[o].
     x is a SubjectVerb instance that remembers subject and verb.
-    This instance is the Python-object that is "returned" when you "call" a subject and pass it a verb.
-    So that call is a factory for this class.  Besides tne verb, that call can pass txt and num in flexible order.
+    This instance is the Python-object that is "returned" when you "call" a subject
+    and pass it a verb.  So that call is a factory for this class.
+    Besides tne verb, that call can pass txt and num in flexible order.
 
-    The methods of this class implement the remainder of the brackety syntax:  the [o] part.
+    The methods of this class implement the remainder of the bracket syntax:  the [o] part.
     Getting or setting that part leads to Lex.read_word() or Lex.create_word().
 
-    There is one exception to that neat correspondence.  The lex[s](v,n,t)[o] variation on the brackety syntax.
+    There is one exception to that neat correspondence.
+    The lex[s](v,n,t)[o] variation on the bracket syntax.
     That looks like a getter to Python, but performs like a setter.
 
         w = lex[s](v)[o]       SubjectVerb.__getitem__()      Lex.read_word()
@@ -742,43 +749,6 @@ class SubjectedVerb(object):
         objected = self._subjected.lex.root_lex[key]
 
         txt, num = self.extract_txt_num(value, dict())
-
-        # num_and_or_txt = value
-        # if isinstance(num_and_or_txt, numbers.Number):
-        #     # TODO:  instead Number.is_number()?  But it shouldn't accept q-strings!  Or '3'!
-        #     num = num_and_or_txt
-        #     txt = u""
-        # elif Text.is_valid(num_and_or_txt):
-        #     # TODO:  rename Text.is_text()?
-        #     txt = num_and_or_txt
-        #     num = Number(1)
-        # else:
-        #     num = Number(1)
-        #     txt = Text(u"")
-        #     num_count = 0
-        #     txt_count = 0
-        #     if is_iterable(num_and_or_txt):
-        #         for num_or_txt in num_and_or_txt:
-        #             if isinstance(num_or_txt, numbers.Number):
-        #                 num = num_or_txt
-        #                 num_count += 1
-        #             elif Text.is_valid(num_or_txt):
-        #                 txt = num_or_txt
-        #                 txt_count += 1
-        #             else:
-        #                 raise self._subjected.SentenceArgs("Expecting num or txt, got " + repr(num_or_txt))
-        #     else:
-        #         raise self._subjected.SentenceArgs("Expecting num and/or txt, got " + repr(num_and_or_txt))
-        #     if num_count > 1:
-        #         raise self._subjected.SentenceArgs("Expecting 1 number not {n}: {arg}".format(
-        #             n=num_count,
-        #             arg=repr(num_and_or_txt)
-        #         ))
-        #     if txt_count > 1:
-        #         raise self._subjected.SentenceArgs("Expecting 1 text not {n}: {arg}".format(
-        #             n=txt_count,
-        #             arg=repr(num_and_or_txt)
-        #         ))
 
         self._subjected.lex.root_lex.create_word(
             sbj=self._subjected,
@@ -1067,13 +1037,6 @@ class Lex(object):
                             index=index,
                         )
                     )
-                    # NOTE:  Why the following craziness?  Some weirdo special situation?
-                    #        new_word = limbo_listing.word_class(u"{q} is not a Listing idn: {e}".format(
-                    #            q=idn.qstring(),
-                    #            e=type_name(ke) + " - " + str(ke),
-                    #        ))
-                    #        new_word.set_idn_if_you_really_have_to(idn)
-                    #        return new_word
                 else:
                     return lex.read_word(index)   # parent read delegating to child read
         else:
@@ -1154,7 +1117,8 @@ class Listing(Lex):
                      It is unique to whatever is represented by the ListingSubclass instance.
                      (So two ListingSubclass instances with the same index can be said to be equal.
                      Just as two words with the same idns are equal.  Which in fact they also are.)
-                     This index is passed to the ListingSubclass constructor, and to it's lookup() method.
+                     This index is passed to the ListingSubclass constructor,
+                     and to it's lookup() method.
         self.idn - The identifier is a suffixed number:
                    unsuffixed part - meta_idn for the ListingSubclass,
                                      the idn of the meta_word that defined the ListingSubclass
@@ -1171,8 +1135,8 @@ class Listing(Lex):
 
         super(Listing, self).__init__(meta_word=meta_word, word_class=word_class, **kwargs)
         assert isinstance(meta_word, Word)
-        assert not isinstance(meta_word, self.word_class)   # meta_word is NOT a listing word,
-                                                            # that's self-referentially nuts
+        assert not isinstance(meta_word, self.word_class)
+        # NOTE:  meta_word must NOT be a listing word, that's self-referentially nuts.
         self.listing_dictionary[meta_word.idn] = self
         self.meta_word = meta_word
 
@@ -1440,14 +1404,15 @@ class TimeLex(Lex):
         #        For example,
         #            t = TimeLex()
         #            now_word = t.now_word()
-        #        and                                     v--- These fields represent time:  idn == num == whn
+        #        and                                       .-- ALL these fields in a now_word
+        #                                                  v   represent time:  idn == num == whn
         #            how_old_is_word_w = t[w]('differ')[now_word]
         #                                  ^--- in word w, only the whn field has a time
-        #        in case w.num represents a time, you can:
+        #        in case w.num represents a time too, you can:
         #            t[w.num]('differ')[now_word]
         return True
 
-    # TODO:  TimeLex()[t1:t2] could be a time interval shorthand??  D'oh!
+    # TODO:  TimeLex()[t1:t2] could be a time interval shorthand!
 
 
 class LexSentence(Lex):
@@ -1550,7 +1515,8 @@ class LexSentence(Lex):
             assert word.exists()
 
         __crazy_idea_define_lex_first__ = True
-        # TODO:  Haha, the order of idns is defined by the constants.  Rearrange them, e.g. Word.IDN_LEX
+        # TODO:  Haha, the order of idns is defined by the constants.
+        #        Rearrange them, e.g. Word.IDN_LEX
         if __crazy_idea_define_lex_first__:
             #                                                          forward,reflexive references
             seminal_word(self.IDN_LEX,    self.IDN_AGENT, 'lex')     # 2,1    0,+1,+4
@@ -1802,33 +1768,39 @@ class LexSentence(Lex):
         # TODO:  Disallow num,txt positionally, unlike Word.says()
 
         # TODO:  Allow sbj=lex
-        assert isinstance(sbj, (Word, Number, type(''))), "sbj cannot be a {type}".format(type=type_name(sbj))
-        assert isinstance(vrb, (Word, Number, type(''))), "vrb cannot be a {type}".format(type=type_name(vrb))
-        assert isinstance(obj, (Word, Number, type(''))), "obj cannot be a {type}".format(type=type_name(obj))
+        assert isinstance(sbj, (Word, Number, type(''))), "sbj cannot be a " + type_name(sbj)
+        assert isinstance(vrb, (Word, Number, type(''))), "vrb cannot be a " + type_name(vrb)
+        assert isinstance(obj, (Word, Number, type(''))), "obj cannot be a " + type_name(obj)
 
         # if isinstance(txt, numbers.Number) or Text.is_valid(num):
         #     # TODO:  Why `or` not `and`?
         #     (txt, num) = (num, txt)
 
         if num is not None and num_add is not None:
-            raise self.CreateWordError("{self_type}.create_word() cannot specify both num and num_add.".format(
-                self_type=type_name(self),
-            ))
+            raise self.CreateWordError(
+                "{self_type}.create_word() cannot specify both num and num_add.".format(
+                    self_type=type_name(self),
+                )
+            )
 
         num = num if num is not None else 1
         txt = txt if txt is not None else ''
 
         if not Number.is_number(num):
             # TODO:  Allow q-strings for num.  I.e. raise this exception on Number(num) error.
-            raise self.CreateWordError("Wrong type for {self_type}.create_word(num={num_type})".format(
-                self_type=type_name(self),
-                num_type=type_name(num),
-            ))
+            raise self.CreateWordError(
+                "Wrong type for {self_type}.create_word(num={num_type})".format(
+                    self_type=type_name(self),
+                    num_type=type_name(num),
+                )
+            )
         if not Text.is_valid(txt):
-            raise self.CreateWordError("Wrong type for {self_type}.create_word(txt={txt_type})".format(
-                self_type=type_name(self),
-                txt_type=type_name(txt),
-            ))
+            raise self.CreateWordError(
+                "Wrong type for {self_type}.create_word(txt={txt_type})".format(
+                    self_type=type_name(self),
+                    txt_type=type_name(txt),
+                )
+            )
 
         new_word = self.word_class(
             sbj=sbj,
@@ -1869,7 +1841,14 @@ class LexSentence(Lex):
                 #        That is, where new_word is an old word.
                 # NOTE:  It only happens when the old_word is the NEWEST of its kind (s,v,o)
                 #        This was a problem with multiple explanations on a word.
-                self.populate_word_from_sbj_vrb_obj_num_txt(new_word, sbj, vrb, obj, Number(num), txt)
+                self.populate_word_from_sbj_vrb_obj_num_txt(
+                    new_word,
+                    sbj,
+                    vrb,
+                    obj,
+                    Number(num),
+                    txt
+                )
                 assert new_word.idn == old_word.idn, "Race condition {old} to {new}".format(
                     old=old_word.idn.qstring(),
                     new=new_word.idn.qstring()
@@ -2136,13 +2115,17 @@ class LexMySQL(LexSentence):
         # SEE:  VARCHAR versus TEXT, https://stackoverflow.com/a/2023513/673991
         self._txt_type = kwargs.pop('txt_type', default_txt_type)
 
-        kwargs_sql = { k: v for k, v in kwargs.items() if k     in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
-        kwargs_etc = { k: v for k, v in kwargs.items() if k not in self.APPROVED_MYSQL_CONNECT_ARGUMENTS }
+        kwargs_for_sql_connect = {
+            k: v for k, v in kwargs.items() if k     in self.RECOGNIZED_MYSQL_CONNECT_ARGUMENTS
+        }
+        kwargs_for_something_else = {
+            k: v for k, v in kwargs.items() if k not in self.RECOGNIZED_MYSQL_CONNECT_ARGUMENTS
+        }
 
-        super(LexMySQL, self).__init__(**kwargs_etc)
+        super(LexMySQL, self).__init__(**kwargs_for_something_else)
 
         def do_connect():
-            return mysql.connector.connect(**kwargs_sql)
+            return mysql.connector.connect(**kwargs_for_sql_connect)
 
         def do_connect_with_and_without_use_pure():
             """
@@ -2152,7 +2135,7 @@ class LexMySQL(LexSentence):
             MySQL Python Connector version 2.2.2b1 doesn't support use_pure.
             """
 
-            kwargs_sql['use_pure'] = True
+            kwargs_for_sql_connect['use_pure'] = True
             # THANKS:  Disable CEXT because it doesn't support prepared statements
             #          https://stackoverflow.com/a/50535647/673991
 
@@ -2160,7 +2143,7 @@ class LexMySQL(LexSentence):
                 return do_connect()
             except AttributeError as attribute_error:
                 if str(attribute_error) == "Unsupported argument 'use_pure'":
-                    del kwargs_sql['use_pure']
+                    del kwargs_for_sql_connect['use_pure']
                     return do_connect()
                 else:
                     print("Unknown Attribute Error:", str(attribute_error))
@@ -2186,7 +2169,8 @@ class LexMySQL(LexSentence):
             # # NOTE:  Required for max_idn() to keep up with latest insertions (created words).
             # # THANKS:  Isolation level, https://stackoverflow.com/a/17589234/673991
             # # SEE:  SET TRANSACTION, https://dev.mysql.com/doc/refman/en/set-transaction.html
-            # # SEE:  READ COMMITTED, https://dev.mysql.com/doc/refman/en/innodb-transaction-isolation-levels.html#isolevel_read-committed
+            # # SEE:  READ COMMITTED,
+            #         https://dev.mysql.com/doc/refman/en/innodb-transaction-isolation-levels.html#isolevel_read-committed
             # # DONE:  Would still rather make max_idn() alone do this,
             # #        but "FROM SHARE" was a syntax error.
             # #        Maybe "FOR UPDATE" in the max_idn() SELECT statement,
@@ -2198,15 +2182,16 @@ class LexMySQL(LexSentence):
             try:
                 # noinspection PyProtectedMember
                 self._lex._choate()   # Get the word out of this Lex that represents the Lex itself.
-            except self.QueryError as exception:   # was mysql.connector.ProgrammingError as exception:
+            except self.QueryError as exception:
                 exception_message = str(exception)
                 if re.search(r"Table .* doesn't exist", exception_message):
                     # TODO:  Better detection of automatic table creation opportunity.
                     self.install_from_scratch()
                     # TODO:  Do not super() twice -- cuz it's not D.R.Y.
                     # TODO:  Do not install in unit tests if we're about to uninstall.
-                    super(LexMySQL, self).__init__(**kwargs_etc)
-                    self._lex = self.word_class(self.IDN_LEX)   # because base constructor sets it to None
+                    super(LexMySQL, self).__init__(**kwargs_for_something_else)
+                    self._lex = self.word_class(self.IDN_LEX)
+                    # NOTE:  because base constructor sets it to None
                 else:
                     raise self.ConnectError(str(exception))
 
@@ -2220,11 +2205,12 @@ class LexMySQL(LexSentence):
             assert self._connection.is_connected()
 
         except BaseException:
-            # SEE:  Exception vs BaseException vs bare except, https://stackoverflow.com/a/7161517/673991
+            # SEE:  Exception vs BaseException vs bare except,
+            #       https://stackoverflow.com/a/7161517/673991
             # NOTE:  Prevent ConnectError: OperationalError - 1040 (08004): Too many connections
             self.disconnect()
             raise
-    APPROVED_MYSQL_CONNECT_ARGUMENTS = {
+    RECOGNIZED_MYSQL_CONNECT_ARGUMENTS = {
         'user',
         'password',
         'database',
@@ -2252,7 +2238,6 @@ class LexMySQL(LexSentence):
               https://softwareengineering.stackexchange.com/a/200529/56713
         """
 
-
         # FALSE WARNING:  PEP 8: E722 do not use bare 'except'
         # SEE:  PyBroadException cannot be disabled:
         #       https://youtrack.jetbrains.com/issue/PY-40315
@@ -2268,8 +2253,8 @@ class LexMySQL(LexSentence):
                 # EXAMPLE:   (six of these in quick succession with no time-stamps in the error log)
                 #     Exception ignored in: <object repr() failed>
                 #     Traceback (most recent call last):
-                #       File "/usr/local/lib/python3.6/dist-packages/qiki/word.py", line 2263, in __del__
-                #       File "/usr/local/lib/python3.6/dist-packages/qiki/word.py", line 2244, in disconnect
+                #       File "/usr/.../dist-packages/qiki/word.py", line 2263, in __del__
+                #       File "/usr/.../dist-packages/qiki/word.py", line 2244, in disconnect
                 #     NameError: name 'Exception' is not defined
                 # NOTE:
                 #     Line 2244 is the "try:" line above.
@@ -2297,7 +2282,7 @@ class LexMySQL(LexSentence):
             #     NameError: name 'object' is not defined
             print("Egregious inability to close, and know what an object is", e)
             raise
-        except:
+        except:   # noqa
             # NOTE:  To get here, the Exception class must be undefined,
             #        and the exception is not an object.
             print("Egregious inability to close AT ALL")
@@ -2305,16 +2290,17 @@ class LexMySQL(LexSentence):
             # EXAMPLE:
             #     Exception ignored in: <function LexMySQL.__del__ at 0x7f7e584e1310>
             #     Traceback (most recent call last):
-            #       File "/usr/local/lib/python3.8/dist-packages/qiki/word.py", line 2299, in __del__
-            #       File "/usr/local/lib/python3.8/dist-packages/qiki/word.py", line 2282, in disconnect
+            #       File "/usr/.../dist-packages/qiki/word.py", line 2299, in __del__
+            #       File "/usr/.../dist-packages/qiki/word.py", line 2282, in disconnect
             #     NameError: name 'print' is not defined
             #     Exception ignored in: <function BaseMySQLSocket.__del__ at 0x7f7e584c1dc0>
             #     Traceback (most recent call last):
-            #       File "/usr/local/lib/python3.8/dist-packages/mysql/connector/network.py", line 149, in __del__
-            #       File "/usr/local/lib/python3.8/dist-packages/mysql/connector/network.py", line 137, in shutdown
+            #       File "/usr/.../dist-packages/mysql/connector/network.py", line 149, in __del__
+            #       File "/usr/.../dist-packages/mysql/connector/network.py", line 137, in shutdown
             #     NameError: name 'AttributeError' is not defined
             # In other words, `print` was undefined here.  (Line 2282 was the above print() line.)
-            # And something tripped up in the MySQL connector code trying to intercept __del__() too.
+            # And something tripped up in the MySQL connector code trying to intercept
+            # __del__() too.
         else:
             try:
                 need_to_close = hasattr(self, '_connection') and self._connection is not None
@@ -2333,7 +2319,11 @@ class LexMySQL(LexSentence):
         self.disconnect()
 
     def install_from_scratch(self):
-        """Create database table and insert words.  Or do nothing if table and/or words already exist."""
+        """
+        Create database table and insert words.
+
+        Or do nothing if table and/or words already exist.
+        """
         if not re.match(self._ENGINE_NAME_VALIDITY, self._engine):
             raise self.IllegalEngineName("Not a valid table name: " + repr(self._engine))
 
@@ -2424,7 +2414,8 @@ class LexMySQL(LexSentence):
         #                 <reference> expected, unexpected end of file
         #     '(', <reference>, GROUP, HAVING, UNION, WHERE or '{' expected, got '{'
         # Then a work-around is to disable SQL inspection:
-        #     Settings | Editor | Language Injections | (uncheck) python: "SQL select/delete/insert/update/create"
+        #     Settings | Editor | Language Injections |
+        #     (uncheck) python: "SQL select/delete/insert/update/create"
         # Sadly the SQL syntax highlighting is lost.
         # SEE:  http://i.imgur.com/l61ARUX.png
         # SEE:  PyCharm bug report, https://youtrack.jetbrains.com/issue/PY-18367
@@ -2444,8 +2435,9 @@ class LexMySQL(LexSentence):
             '(' + ','.join(names) + ') ' +
             'VALUES (', values, ')')
         # TODO:  named substitutions with NON-prepared statements??
-        # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+        # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html # noqa
         # THANKS:  About prepared statements, http://stackoverflow.com/a/31979062/673991
+        # THANKS:  Long comment without warning, https://stackoverflow.com/a/25034769/673991
         self._connection.commit()
         word.whn = whn
         # noinspection PyProtectedMember
@@ -2519,7 +2511,8 @@ class LexMySQL(LexSentence):
             'WHERE sbj =', self.IDN_LEX,
             'AND vrb =', self.IDN_DEFINE,
             'AND txt =', Text(define_txt),
-            'ORDER BY `idn` ASC LIMIT 1'   # select the EARLIEST definition, so it's the most universal.
+            'ORDER BY `idn` ASC LIMIT 1'
+            # NOTE:  select the EARLIEST definition, so it's the most universal.
         )
         return self._populate_from_one_row(word, rows)
 
@@ -2564,7 +2557,7 @@ class LexMySQL(LexSentence):
                 return False   # oops, more than 1 row (it is reachable, with python -O)
 
     # TODO:  Study JOIN with LIMIT 1 in 2 SELECTS, http://stackoverflow.com/a/28853456/673991
-    # Maybe also http://stackoverflow.com/questions/11885394/mysql-join-with-limit-1/11885521#11885521
+    #        Maybe also https://stackoverflow.com/a/11885521/673991
 
     def find_words(
         self,
@@ -2580,7 +2573,8 @@ class LexMySQL(LexSentence):
         jbo_strictly=False,
         debug=False
     ):
-        # TODO:  Lex.find()  It should return inchoate words.  Best of both find_words and find_idns.
+        # TODO:  Lex.find()  It should return inchoate words.
+        #        Best of both find_words and find_idns.
         """
         Select words by subject, verb, and/or object.
 
@@ -2624,7 +2618,7 @@ class LexMySQL(LexSentence):
         if jbo_vrb is None:
             jbo_vrb = ()
         assert isinstance(idn, (Number, Word, type(None)))           or is_iterable(idn)
-        assert isinstance(sbj, (Number, Word, type(None), type(''))) or is_iterable(sbj)   # TODO: Allow LexSentence?
+        assert isinstance(sbj, (Number, Word, type(None), type(''))) or is_iterable(sbj)
         assert isinstance(vrb, (Number, Word, type(None), type(''))) or is_iterable(vrb)
         assert isinstance(obj, (Number, Word, type(None), type(''))) or is_iterable(obj)
         assert isinstance(txt, (Text,         type(None), type(''))) or is_iterable(txt)
@@ -2711,10 +2705,8 @@ class LexMySQL(LexSentence):
 
     MAX_ITERABLE = 1000
 
-
     class OverflowIterable(ValueError):
         """find_words() can take iterables, but not too big."""
-
 
     # @staticmethod
     def _and_clauses(self, idn, sbj, vrb, obj, txt):
@@ -2749,10 +2741,12 @@ class LexMySQL(LexSentence):
                 for x in almost_values:
                     values.append(conversion_function(x))
                     if len(values) > self.MAX_ITERABLE:
-                        raise self.OverflowIterable("find_words({name} = contains more than {max} things)".format(
-                            name=name,
-                            max=self.MAX_ITERABLE,
-                        ))
+                        raise self.OverflowIterable(
+                            "find_words({name} = contains more than {max} things)".format(
+                                name=name,
+                                max=self.MAX_ITERABLE,
+                            )
+                        )
 
                 if len(values) < 1:
                     '''part=[] and part=None mean no restriction'''
@@ -2854,7 +2848,8 @@ class LexMySQL(LexSentence):
             #     ProgrammingError: 1142 (42000): DELETE command denied to user
             #     'qiki_unit_tester'@'localhost' for table 'word_3f054d67009e44cebu4dd5c1ff605faf'
             # EXAMPLE:
-            #     ProgrammingError: 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause
+            #     ProgrammingError: 1055 (42000):
+            #     Expression #1 of SELECT list is not in GROUP BY clause
             #     and contains non-aggregated column 'qiki_unit_tested.w.idn'
             #     which is not functionally dependent on columns in GROUP BY clause;
             #     this is incompatible with sql_mode=only_full_group_by
@@ -2933,18 +2928,20 @@ class LexMySQL(LexSentence):
                 )
                 # TODO:  Report all the query_args types in this error message.
                 # TODO:  Or maybe this clunky for-loop can all just go away...
-                # Main purpose was to detect mistakes like this:
-                #     super_select('SELECT * in word WHERE txt=', 'define')
-                # Which could be an SQL injection bug.
-                # But that would break anyway (unless searching for .e.g 'txt').
-                # And I'm getting tired of all the Nones to separate strings that are not parameters.
+                #        Main purpose was to detect mistakes like this:
+                #            super_select('SELECT * in word WHERE txt=', 'define')
+                #        Which could be an SQL injection bug.
+                #        But that would break anyway (unless searching for .e.g 'txt').
+                #        And I'm getting tired of all the Nones to separate strings
+                #        that are not parameters.
         for index_zero_based, query_arg in enumerate(query_args):
             if isinstance(query_arg, Text):
                 query += '?'
                 parameters.append(self.mysql_from_text(query_arg))
             elif isinstance(query_arg, self.SuperIdentifier):
                 query += '`' + six.text_type(query_arg) + '`'
-            elif isinstance(query_arg, six.string_types):   # Must come after Text and Lex.SuperIdentifier tests.
+            elif isinstance(query_arg, six.string_types):
+                # NOTE:  Must come after Text and Lex.SuperIdentifier tests.
                 query += query_arg
             elif isinstance(query_arg, Number):
                 query += '?'
@@ -2981,7 +2978,8 @@ class LexMySQL(LexSentence):
                 '''
             else:
                 raise self.SuperSelectTypeError(
-                    "super_select() argument {index_one_based} of {n} type {type} is not supported.".format(
+                    "super_select() argument {index_one_based} of {n} type {type} "
+                    "is not supported.".format(
                         index_one_based=index_zero_based+1,
                         n=len(query_args),
                         type=type_name(query_arg)
@@ -3101,13 +3099,7 @@ def is_iterable(x):
 
     """
     # XXX:  Fix is_iterable(b'')  (false in Python 2, true in Python 3)
-    # try:
-    #     0 in x
-    # except TypeError as e:
-    #     assert e.__class__ is TypeError   # A subclass of TypeError raised by comparison operators?  No thanks.
-    #     return False
-    # else:
-    #     return True
+    #       Would like it to be false in all cases.
 
     # THANKS:  https://stackoverflow.com/a/36230057/673991
     # if (
@@ -3126,7 +3118,7 @@ def is_iterable(x):
     #        But then define is_container() := is_iterable and not is_string()
     #        Or, fuck it, maybe just test things for whatever ELSE is expected and as a last resort
     #        use it in a for-statement and recurse if it doesn't raise a TypeError
-    #        Or call this is_recursable()?
+    #        Or call this is_recursion_indicated()?
 
     # THANKS:  rule-out-string then duck-type, https://stackoverflow.com/a/1835259/673991
     if isinstance(x, six.string_types):
@@ -3167,7 +3159,8 @@ class Text(six.text_type):   # always Unicode
     To get the utf8 out:
         t.utf8()
     """
-    # THANKS:  Modifying a unicode/str on construction with __new__, http://stackoverflow.com/a/7255782/673991
+    # THANKS:  Modifying a unicode/str on construction with __new__,
+    #          http://stackoverflow.com/a/7255782/673991
     def __new__(cls, the_string):
         if cls.is_valid(the_string):
             # NOTE:  Unexpected Argument warning started PyCharm 2018.2
@@ -3286,7 +3279,8 @@ class QoolbarSimple(Qoolbar):
             # obj=self.lex['verb'],    # Ignore whether object is lex[verb] or lex[qool]
                                        # Because qiki playground did [lex](define][qool] = 'like'
                                        # but now we always do        [lex](define][verb] = 'like'
-                                       # so we only care if some OTHER word declares it qool.  And nonzero.
+                                       # so we only care if some OTHER word declares it qool.
+                                       # And nonzero.
             jbo_vrb=(qool_idn, iconify_idn),
             jbo_strictly=True,
             debug=debug
@@ -3334,7 +3328,8 @@ class QoolbarSimple(Qoolbar):
 
 # TODO:  w=lex(idn) etc. should start out as a phantom Word,
 # which does, not read the database until or unless needed, e.g. w.sbj is used.
-# That way when w.sbj is used, its members can become phantom Words themselves instead of mere Numbers
+# That way when w.sbj is used, its members can become phantom Words themselves
+# instead of mere Numbers
 # until and unless they are used, e.g. w.sbj.sbj
 # There should be __init_shallow() for Word(idn) and __init_deep() for everything else.
 # And __init_deep() is called when a shallow/phantom word is used for any other purpose.
@@ -3356,7 +3351,8 @@ class QoolbarSimple(Qoolbar):
         # could inform the is_a() hierarchy bubbling
 
 # TODO:  word.jbo a "soft" property that refers to the set of words whose object is word.
-# Or w.jbo(vrb=qool_verbs) could filter that set down to the words whose verbs were in the iterator qool_verbs
+# Or w.jbo(vrb=qool_verbs) could filter that set down to the words
+# whose verbs were in the iterator qool_verbs
 # Maybe it should always be a method.
 # Similarly word.jbs.
     # The set of words whose subject is word.

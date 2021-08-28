@@ -16,10 +16,10 @@ Shorten the time from reading to understanding.
 Short Manifesto
 ###############
 
-Brevity is good, clarity is better.
+Brief is good, clear is better.
 Names are important.
 Visual patterns are good.
-Interdependencies should be near.
+Dependents should be near.
 Speakable English sentences are good.
 
 
@@ -48,11 +48,22 @@ long_variable = long_function_name(3)
 
 Rationale:  visual patterns enhance understanding.
 Specifically rejecting these warnings:
-    PEP8: E202 whitespace before ')'
-    PEP8: E222
-    PEP8: E231 missing whitespace after ','
-    PEP8: E251
-    PEP8: E305
+    PEP 8: E114 indentation is not a multiple of four (comment)
+    PEP 8: E116 unexpected indentation (comment)
+    PEP 8: E131 continuation line unaligned for hanging indent
+    PEP 8: E201 whitespace after '('
+    PEP 8: E202 whitespace before ')'
+    PEP 8: E203 whitespace before ','
+    PEP 8: E211 whitespace before '('
+    PEP 8: E221 multiple spaces before operator
+    PEP 8: E222
+    PEP 8: E231 missing whitespace after ','
+    PEP 8: E251
+    PEP 8: E271 multiple spaces after keyword
+    PEP 8: E272 multiple spaces before keyword
+    PEP 8: E305
+    PEP 8: E701 multiple statements on one line (colon)
+    PEP 8: E702 multiple statements on one line (semicolon)
 
 
 
@@ -811,8 +822,8 @@ Counterpoint:  Double negatives can be good.
     
 
 
-Comprehensibility trumps Brevity
----------------------------------
+Comprehensible trumps Brief
+---------------------------
 Okay:
                     var error_message = oembed.error;
                     if (cont.media_domain !== 'no_domain') {
@@ -1216,8 +1227,8 @@ SEE:  Singular table names, https://stackoverflow.com/a/5841297/673991
       Plural table names, https://stackoverflow.com/a/3254185/673991
     
 
-        
-English is better than abbreviations
+
+English is better than abbreviations (Eng mo bettah brev)
 ------------------------------------
 From PEP8, "Identifiers ... SHOULD use English words wherever feasible."
 
@@ -1289,8 +1300,9 @@ But I haven't worked with them much.
 
 
 
-Brevity is Good; Clarity is Greater (bg;CG)
-===========================================
+
+Brief is Good; Clear is Better (bg;CB)
+======================================
 
 
 One Line, One Idea
@@ -1423,6 +1435,26 @@ No:  (misleading typing)
     d = dict([['a',1], ['b',2]])
     s = set([1,2,3])
 
+Root words
+----------
+
+Root words are a little better than suffixed words...
+    good:
+        "brevity"
+    better:
+        "brief"
+...as long as clarity and grammar are not sacrificed.
+    no, not so good grammar:
+        "It is okay to sacrifice brief for easier reading.
+    yes, less bad grammar:
+        "It is okay to sacrifice brevity for easier reading.
+    no, clumsy to read:
+        "It is okay to not be brief if it makes reading easier."
+
+
+
+Miscellaneous
+=============
 
 
 One Space Two Space, Red Space Blue Space
