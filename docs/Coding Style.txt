@@ -823,7 +823,27 @@ Counterpoint:  Double negatives can be good.
 
 
 Comprehensible trumps Brief
----------------------------
+===========================
+
+The Cost Of Clever Brevity
+--------------------------
+Okay:    dom_object = $jquery_object[0];
+Better:  dom_object = $jquery_object.get(0);
+Best:    dom_object = dom_from_$($jquery_object);
+
+The first way is visually obscure.  An important conversion should stand out more.
+I realize one could say the same about array dereferencing,
+an array is importantly different from an array element!
+I would counter that a container of apples has the same smell as an apple.
+But a jQuery object smells different than a DOM object.
+That's a more momentous conversion.  It should glare.
+Though I concede that to some people, a jQuery object and a DOM object should not smell differently,
+because they are abstractions for the same manifestations,
+at least in this case that abstraction is one HTML element.
+But they're made by two different teams (JavaScript for browsers team, and jQuery team).
+And if anything has a smell (not necessarily in a bad sense, haha PUIBIKIAW) it is a team.
+
+
 Okay:
                     var error_message = oembed.error;
                     if (cont.media_domain !== 'no_domain') {
@@ -837,26 +857,12 @@ Better:
                         error_message = oembed.error + " for '" + cont.media_domain + "'";
                     }
 
-The second way is less brief but faster to comprehend.  This is also an example of deliberate code redundancy (the `error_message = oembed.error` assignment) to make visual patterns.
+The second way is less brief but faster to comprehend.  This is also an example of deliberate code
+redundancy (the `error_message = oembed.error` assignment) to make visual patterns.  More examples
+of tactical redundancy coming up.
 
-
-Okay:    dom_object = $jquery_object[0];
-Better:  dom_object = $jquery_object.get(0);
-Best:    dom_object = dom_from_$($jquery_object);
-
-The first way is visually obscure.  An important conversion should stand out more.  
-I realize one could say the same about array dereferencing, 
-an array is importantly different from an array element!
-I would counter that a container of apples has the same smell as an apple.
-But a jQuery object smells different than a DOM object.  
-That's a more momentous conversion.  It should glare.
-Though I concede that to some people, a jQuery object and a DOM object should not smell differently,
-because they are abstractions for the same manifestations, 
-at least in this case that abstraction is one HTML element.
-But they're made by two different teams (JavaScript for browsers team, and jQuery team).
-And if anything has a smell (not necessarily in a bad sense, haha PUIBIKIAW) it is a team.
-
-
+The Cost Of Fall-Through Brevity
+--------------------------------
 Some use of fall-through is brief but misunderstanding-prone.  
 
 Okay:
@@ -891,16 +897,31 @@ A lot better:
     else:
         return None       # explicit is better
 
-    
 
-Creative questions?
--------------------
+The Cost Of Asymmetric Brevity
+------------------------------
+Okay:
+    var foo = null;
+    if (good) {
+        foo = something_good();
+    }
+Better:
+    var foo;
+    if (good) {
+        foo = something_good();
+    } else {
+        foo = null;
+    }
+    // The symmetry of the assignments reflects this fork in possibilities better.
 
+
+The Cost Of Brief Lines by A Not-So-Brief Expression
+----------------------------------------------------
 Meh:
-    if not this or not that or not the_other_thing:
+    if not a or not b or not c:
         do_something()
 Yes:
-    if this and that and the_other_thing:
+    if a and b and c:
         '''Do nothing in this special case.  Sacrifice brevity for easier reading.'''
     else:
         do_something()
@@ -935,7 +956,8 @@ Maybe but no:
 
 
 Code >>> Documentation ('>>>' means 'is way better than')
-----------------------
+======================
+
 Subprinciples:
     assert as documentation
     Extract Variable
@@ -996,11 +1018,12 @@ No:
 Yes:
     explain_why_we_call_g_first = g(x)
     y = f(explain_why_we_call_g_first)
-    
-Clarify misleading code, commenting as a last resort
-----------------------------------------------------
 
-For example, the CSS cursor property values.
+
+Clarify misleading code, comment as a last resort
+-------------------------------------------------
+
+For example, the cruel values of the CSS cursor property.
 
     cursor: pointer;   /* pointing finger */
     cursor: default;   /* arrow */
@@ -1015,6 +1038,9 @@ Note how a little homage can be given to the misleading name, echoing it so as t
     cursor: pointer;   /* pointing finger */
     class_itself = class_function.__self__
 
+
+English In Code
+===============
 
 Conversational
 --------------

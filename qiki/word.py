@@ -2238,11 +2238,6 @@ class LexMySQL(LexSentence):
               https://softwareengineering.stackexchange.com/a/200529/56713
         """
 
-        # FALSE WARNING:  PEP 8: E722 do not use bare 'except'
-        # SEE:  PyBroadException cannot be disabled:
-        #       https://youtrack.jetbrains.com/issue/PY-40315
-        #       https://youtrack.jetbrains.com/issue/PY-28079
-        # noinspection PyBroadException
         try:
             try:
                 name_error = NameError
@@ -2283,6 +2278,10 @@ class LexMySQL(LexSentence):
             print("Egregious inability to close, and know what an object is", e)
             raise
         except:   # noqa
+            # FALSE WARNING:  PEP 8: E722 do not use bare 'except'
+            # SEE:  PyBroadException cannot be disabled:
+            #       https://youtrack.jetbrains.com/issue/PY-40315
+            #       https://youtrack.jetbrains.com/issue/PY-28079
             # NOTE:  To get here, the Exception class must be undefined,
             #        and the exception is not an object.
             print("Egregious inability to close AT ALL")
@@ -2438,6 +2437,7 @@ class LexMySQL(LexSentence):
         # THANKS:  https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html # noqa
         # THANKS:  About prepared statements, http://stackoverflow.com/a/31979062/673991
         # THANKS:  Long comment without warning, https://stackoverflow.com/a/25034769/673991
+        # THANKS:  Etymology of #noqa, https://stackoverflow.com/a/57116704/673991
         self._connection.commit()
         word.whn = whn
         # noinspection PyProtectedMember
