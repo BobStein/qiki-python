@@ -915,8 +915,24 @@ Better:
     // The symmetry of the assignments reflects this fork in possibilities better.
 
 
-The Cost Of Brief Lines by A Not-So-Brief Expression
-----------------------------------------------------
+Fewer characters versus fewer visual patterns
+---------------------------------------------
+Okay -- clever and compact:
+    histogram[thing] = histogram.get(thing, 0) + 1
+Better -- quicker to comprehend:
+    if thing in histogram:
+        histogram[thing] += 1
+    else:
+        histogram[thing] = 1
+Scandalously simple:
+    try:
+        histogram[thing] += 1
+    except KeyError:
+        histogram[thing] = 1
+
+
+Fewer lines is not so great if lines are tedious
+------------------------------------------------
 Meh:
     if not a or not b or not c:
         do_something()
@@ -1540,64 +1556,67 @@ MVC is another kind of referential hell.
 
 
     
-Codetags (PEP 0350, but I use them in all code)
+Codetags
 --------
 
-Codetags should go on the line *after* the code they are tagging.
-This location resembles putting the codetag comment on the same line as the code,
+My use of Codetags derives from PEP 350.  Even though that's a Python standard, and even though it
+was rejected in 2005, I use a version of it for all languages.
+
+Codetags should usually go on the line *after* the code they are tagging.
+This location is the closest to putting the codetag comment on the same line as the code
+(because a newline intervenes, instead of just spaces)
 while complying with the rule "It should not share a line with code."
 
     y = f(x)
     # NOTE:  This code functions.
 
-Exceptions should be clear, e.g. a codetag ending in a colon ":" applies to lines that follow.
+Exceptions to this next-line policy should be clear, e.g. a codetag description ending in a
+colon ":" would apply to lines that follow.
 
     # NOTE:  Sequence records correctly:
     print("Record sequence", ", ".join(records.keys()))
 
-A codetag should span exactly one line.  Indented continuation lines may elaborate.
-
-    # NOTE:  This is a summary.
-    #        More lines may
-    #        elaborate.
+Indented continuation lines may elaborate.
 
 No <> fields.
 
 Mnemonics I have used from the standard list:
     CAUTION (instead of CAVEAT or WARNING or DANGER or PANIC or HYSTERIA)
-    DONE
+    DONE (sometimes a TODO becomes DONE before deleting it)
     FIXME
     HACK
     NOTE (instead of N.B.)
-    SEE (instead of SOURCE or REF or REFERENCE)
+    SEE (instead of SOURCE or REF or REFERENCE) (this may also be a watered-down THANKS)
     THANKS (instead of CREDIT)
-    NOTHANKS (seemed helpful but was wrong or misleading)
+    NO THANKS (seemed helpful but was wrong or misleading or just didn't work for me)
     THANKS 30% (30% helpful, 70% hindrance)
     TODO
     TODO ... that ends in a question mark?  (THINK?  CONSIDER?  Either change code or change thinking.)
     XXX
     
 Additional mnemonics:
-    DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
-        blank lines before and after 
-        counterarguments separated by a blank line
     EXAMPLE (output, error message, etc.)
     KUDOS (stronger THANKS)
-    REPORTED (noted for posterity, bug report, Q&A submitted by author)
-    FALSE WARNING (show text of a warning message, just before the noinspection directive to disable it)
-        A response to the unending torrent of PyCharm false alarms.
-    STUCK WARNING
-        A warning that cannot be disabled.
-        A response to the insidious new PyCharm twist where they don't deign to LET you disable some warning of theirs.
+    FALSE WARNING (show text of a warning message, just before the #noinspection directive to
+        disable it)  This in response to the unending torrent of PyCharm false alarms.
 
+On the wane:  (I thought I would use these but didn't turn out to.)
+    DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
+        blank lines before and after
+        counterarguments separated by a blank line
+    REPORTED (noted for posterity, bug report, Q&A submitted by author)
+    STUCK WARNING
+        A warning that cannot be disabled.  Try # noqa, it works on nearly everything!
+        A response to ever-more-persnickety PyCharm, where they don't deign to LET you disable some
+        warning of theirs.  Or the # noinspection syntax is incapable or broken.
 
 Variations
     THANKS:  (maybe)  Some article on stack overflow I do not dare upvote until I know if it works. 
-             Because of dumb policy on tactical-down-voting, https://meta.stackexchange.com/a/18046/209317
+             Because of the dumb Stack Overflow policy on dealing with tactical-down-voting,
+             https://meta.stackexchange.com/a/18046/209317
 
 Possibilities:
     ASSUMPTION  (NOTE is probably good enough.  Even better:  assert.)
-
     
 Continuation lines are indented to line up with the stuff after the colon:
     No:
@@ -1626,7 +1645,7 @@ Less
 
 More
     incitement
-    humor
+    humor (groaning is a legitimate reaction to humor)
 
 
 (Not advocating less pretense or more authenticity. Legislating morality or something.)

@@ -1547,6 +1547,7 @@ class Number(numbers.Complex):
         #            addendum
         #            amendment
         #            supplemental
+        #            supplementary
         #            additive
         #            extra
         #            add-on
