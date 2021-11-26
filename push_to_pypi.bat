@@ -1,7 +1,7 @@
-REM @echo off
+@echo off
 REM Upload to PyPI
 REM --------------
-REM 0.  Run as admin:  pip install wheel twine
+REM 0.  pip install wheel twine
 REM 1.  push_to_pypi.bat -- Do this BEFORE github push, because it modifies version.py
 REM 2.  github push
 REM 3.  gol (for "live" unslumping.org)
@@ -15,29 +15,42 @@ REM        - Customize installation   <-- when running the Python installer .exe
 REM        - py launcher              <-- check this optional feature
 REM THANKS:  error: invalid command 'bdist_wheel'
 REM          https://stackoverflow.com/a/44862371/673991
-REM          Solution:  pip install wheel
-REM                     Also had to update py version codes.
-REM                     Also had to pip install twine
-REM          Solution:  change py -3.8 below to py -3.9
-REM                     and to install wheel and twine as admin (after uninstalling them as normal)
+REM          Solution:  pip install wheel twine
+REM          Solution:  change py -3.8 to py -3.9
+REM          Solution:  install wheel and twine as admin (after uninstalling them as normal)
+REM                     (I know, I should use virtual environments, but I don't.)
 REM NOTE:  The wheel and twine modules are not included in requirements.txt because those modules
 REM        are only required here, to upload qiki-python, not to download and use it.
+
+setlocal
+set PY_VER=py -3.9
+
+%PY_VER% -m pip show pip > nul 2> nul
+if errorlevel 1 echo install pip (%PY_VER%)
+if errorlevel 1 goto bad
+
+%PY_VER% -m pip show wheel > nul 2> nul
+if errorlevel 1 echo pip install wheel (%PY_VER%)
+if errorlevel 1 goto bad
+
+%PY_VER% -m pip show twine > nul 2> nul
+if errorlevel 1 echo pip install twine (%PY_VER%)
+if errorlevel 1 goto bad
 
 rmdir /s /q build
 rmdir /s /q dist
 rmdir /s /q qiki.egg-info
-py -3.9 version_update_now.py || goto bad
-py -3.9 setup.py sdist bdist_wheel || goto bad
+%PY_VER% version_update_now.py || goto bad
+%PY_VER% setup.py sdist bdist_wheel || goto bad
 
-setlocal
 set /p REPO=<secure\pypi.repo.txt
 set /p USER=<secure\pypi.user.txt
 set /p PASS=<secure\pypi.pass.txt
-@py -3.9 -m twine upload --repository-url %REPO% -u %USER% -p %PASS% dist/* || goto bad
-endlocal
+%PY_VER% -m twine upload --repository-url %REPO% -u %USER% -p %PASS% dist/* || goto bad
 
 echo SUCCESS
 goto fin
 :bad
 echo FAILURE
 :fin
+endlocal
