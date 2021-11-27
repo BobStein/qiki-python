@@ -12,4 +12,5 @@ dist/
 # Less whining
 .idea/
 .cache/
-*.py[oc]
+*.pyo
+*.pyc

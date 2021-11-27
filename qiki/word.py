@@ -3277,8 +3277,8 @@ class QoolbarSimple(Qoolbar):
         qool_verbs = self.lex.find_words(
             vrb='define',
             # obj=self.lex['verb'],    # Ignore whether object is lex[verb] or lex[qool]
-                                       # Because qiki playground did [lex](define][qool] = 'like'
-                                       # but now we always do        [lex](define][verb] = 'like'
+                                       # Because qiki playground did [lex](define)[qool] = 'like'
+                                       # but now we always do        [lex](define)[verb] = 'like'
                                        # so we only care if some OTHER word declares it qool.
                                        # And nonzero.
             jbo_vrb=(qool_idn, iconify_idn),
