@@ -641,6 +641,14 @@ that = this
 -----------
 The `this` keyword should only appear in the first line of its function.
 
+    Except in a JavaScript ES6 derived class constructor,
+    where `this` should only appear on the first line after super().
+    That's because `this` has no value until super() is called.
+
+    (The exception does not apply to other derived methods,
+    because `this` is available before super() is called.
+    So it should only appear in the first line of those methods.)
+
 Yes:
     function click_handler() {
         var element = this;
