@@ -22,11 +22,15 @@ class Nit:
     """
     @property
     def bytes(self):
-        raise NotImplementedError(f"{type(self).__name__} should implement a bytes property")
+        raise NotImplementedError("{class_name} should implement a bytes property".format(
+            class_name=type(self).__name__)
+        )
 
     @property
     def nits(self):
-        raise NotImplementedError(f"{type(self).__name__} should implement a nits property")
+        raise NotImplementedError("{class_name} should implement a nits property".format(
+            class_name=type(self).__name__)
+        )
 
     @staticmethod
     def is_nat(x):
@@ -67,20 +71,28 @@ class N(Nit):
             self._bytes = _bytes
         elif isinstance(_bytes, list):
             self.__init__(*_bytes, *args)   # unwrap the list -- recursively
+            # NOTE:  So N([1,2,3]) is the same as N(1,2,3)
+            #        Cute huh?  Wish I could remember the cute reason to do this...
         elif isinstance(_bytes, N):
             # NOTE:  The main purpose of this copy constructor is so all the args
             #        can be passed through this constructor (which is a recursion of course).
             #        This gives the option:  arguments for the nits can be either
             #        N instances or things suitable for passing to the N constructor.
-            #        So N(1,2,3) is the same as N(1,N(2),N(3))
+            #        So N(1,2,3) is shorthand for N(1,N(2),N(3))
+            #        In other words, sub-nits are always themselves nits, but if they have no
+            #        sub-sub-nits, then N() expressions can be abbreviated to just the content of
+            #        the bytes.
             self._bytes = _bytes.bytes
             self._native_type = _bytes._native_type
             self._nits += _bytes._nits
         elif isinstance(_bytes, Nit):
             # NOTE:  The purpose of THIS copy constructor is to catch the Nit subclasses that
-            #        are not a subclass of N.
+            #        are not a subclass of N.  (That is, kin but not descendents.)
             self._bytes = _bytes.bytes
-            self._native_type = type(_bytes)   # though little hope of ever restoring it
+            self._native_type = type(_bytes)
+            # NOTE:  This original type will not be reconstituted by native_bytes.  So if it has
+            #        a custom .to_json() method that will not be called when something that contains
+            #        it is converted to JSON by json_encode().
             self._nits += _bytes.nits
         else:
             raise TypeError("Cannot N({bytes_type}):  {bytes_value}".format(
@@ -294,7 +306,9 @@ class Lex(Nit):
 
     @property
     def nits(self):
-        raise NotImplementedError(f"{type(self).__name__} should implement nits")
+        raise NotImplementedError("{class_name} should implement nits".format(
+            class_name=type(self).__name__)
+        )
 
 
 class LexMemory(Lex):

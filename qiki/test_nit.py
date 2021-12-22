@@ -746,8 +746,15 @@ class NClassTests(unittest.TestCase):
 
     def test_n_method(self):
         self.assertEqual("N(42)", repr(N(42)))
-        self.assertEqual("N(42, N(42))", repr(N(42, N(42))))
-        self.assertEqual("N(42, N(42))", repr(N(42).N(42)))
+
+        self.assertEqual("N(42, N(99))", repr(N(42, 99)))      # 2-level
+        self.assertEqual("N(42, N(99))", repr(N(42, N(99))))   # 2-level
+        self.assertEqual("N(42, N(99))", repr(N(42).N(99)))    # 2-level
+
+        self.assertEqual("N(42, N(99), N(98), N(97))", repr(N(42, 99, 98, 97)))      # 2-level
+        self.assertEqual("N(42, N(99, N(98), N(97)))", repr(N(42, N(99, 98, 97))))   # 3-level
+        self.assertEqual("N(42, N(99, N(98), N(97)))", repr(N(42).N(99, 98, 97)))    # 3-level
+
         self.assertEqual("N(1, N(2), N(3), N(4), N(5), N(6))", repr(N(1,2,3,4,5,6)))
         self.assertEqual("N(1, N(2), N(3), N(4, N(5), N(6)))", repr(N(1,2,3,N(4,5,6))))
         self.assertEqual("N(1, N(2), N(3), N(4, N(5), N(6)))", repr(N(1,2,3).N(4,5,6)))
@@ -827,17 +834,21 @@ class NClassTests(unittest.TestCase):
     def test_list_input(self):
         self.assertEqual(N(1,2,3),                N([1,2,3]))
         self.assertEqual("N(1, N(2), N(3))", repr(N([1,2,3])))
+        self.assertEqual("N(1, N(2), N(3))", repr( N(1,2,3)))
 
         self.assertEqual(N("forty", "two"),           N(["forty", "two"]))
         self.assertEqual("N('forty', N('two'))", repr(N(["forty", "two"])))
+        self.assertEqual("N('forty', N('two'))", repr( N("forty", "two")))
 
     def test_list_input_nested(self):
         self.assertEqual(N(1,2,3,[4,5,6]),                          N([1,2,3,[4,5,6]]))
         self.assertEqual("N(1, N(2), N(3), N(4, N(5), N(6)))", repr(N([1,2,3,[4,5,6]])))
+        self.assertEqual("N(1, N(2), N(3), N(4, N(5), N(6)))", repr( N(1,2,3,[4,5,6])))
 
     def test_list_empty(self):
         self.assertEqual(N(),        N([]))
         self.assertEqual("N()", repr(N([])))
+        self.assertEqual("N()", repr( N()))
 
     def test_native_bytes(self):
         self.assertEqual(42, N(42).native_bytes())
