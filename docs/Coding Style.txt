@@ -871,7 +871,8 @@ of tactical redundancy coming up.
 
 The Cost Of Fall-Through Brevity
 --------------------------------
-Some use of fall-through is brief but misunderstanding-prone.  
+Some use of fall-through is brief but misunderstanding-prone.
+Not rotten, but invites future rot.
 
 Okay:
     if a:
@@ -904,6 +905,8 @@ A lot better:
             return x
     else:
         return None       # explicit is better
+
+
 
 
 The Cost Of Asymmetric Brevity
