@@ -68,16 +68,14 @@ Specifically rejecting these warnings:
 
 
 
-120 Wide
+100 Wide
 --------
 
-Limit all lines to 119 characters, whether code or comments.  
-PyCharm defaults to this (Settings | Editor | Code Style | Right margin).
+Limit lines to 100 characters, whether code, comments, or docstrings.
+PyCharm defaults to 120 (Settings | Editor | Code Style | Hard wrap at).
 
-Limit lines in docstrings and help messages (e.g. argparse description) to 72 characters.  
+Limit command-line help message lines to 72 characters.
 This is an end-user limitation, and rightly more conservative than a developer limitation.
-
-Possibly 100 is better.  At least on my portrait-oriented monitors, where 120 doesn't fit.
 
 
 
@@ -161,7 +159,7 @@ assertEquals(expected_value, computed_value)
 Yes:
     assert expected_return == f(x, y)
 No:
-    assert f(x, y)) == expected_return
+    assert f(x, y) == expected_return
 
 Rationale:  This is the order of use in the wild, so that mental model should be reinforced:
 
@@ -247,7 +245,7 @@ Strings with functional consequences should use 'single quotes'.  The only human
 
     serial_port.write('ATDT555-1212')
     
-Double quoted strings can be changed without breaking the code.
+Double-quoted strings can be changed without breaking the code.
 
 """docstrings"""
 '''other multi-line comments'''   <-- Does that fit the pattern or buck it?  
@@ -347,7 +345,7 @@ Weird-behaving code should be weird-looking
     Slice Colon -- room to breathe
     ------------------------------
     Exactly one space (even if shared) before and after each slice colon.
-    There should be a spece whether or not the slice parameter is omitted.  In other words, 
+    There should be a space whether or not the slice parameter is omitted.  In other words,
     cancel the exception in PEP8 that reads "when a slice parameter is omitted, 
     the space is omitted")
 
