@@ -1504,6 +1504,30 @@ Root words are a little better than suffixed words...
 
 
 
+English Coding Style
+====================
+Less
+    first person
+    adverb
+    contraction
+    plural
+    words
+        Notice if I hadn't made "words" plural it would have been very hard to understand.
+            Notice I've shamelessly violated all five of the above rules in that sentence.
+                That one too.
+    idiom
+    confusion
+    contempt
+
+More
+    incitement
+    humor (groaning is a legitimate reaction to humor)
+
+
+(Not advocating less pretense or more authenticity. Not into legislating morality.)
+
+
+
 Miscellaneous
 =============
 
@@ -1637,24 +1661,14 @@ Continuation lines are indented to line up with the stuff after the colon:
 
 
 
-English Coding Style
-====================
-Less
-    first person
-    adverb
-    contraction
-    plural
-    words
-        Notice if I hadn't made "words" plural it would have been very hard to understand.
-            Notice I've shamelessly violated all five of the above rules in that sentence.
-                That one too.
-    idiom
-    confusion
-    contempt
+Misleading Features - Never Use Them
+====================================
 
-More
-    incitement
-    humor (groaning is a legitimate reaction to humor)
+jQuery $x.next(selector)
+------------------------
+This flavor of .next() is misleading.  It could reasonably be interpreted as finding the next
+sibling that matches the selector.  But it actually does something much less useful.  It takes the
+lone next sibling, and then filters that with the selector.  So it either returns the sibling, or
+an empty jQuery object.  $x.next() or $().  So I advocate never using it.
 
 
-(Not advocating less pretense or more authenticity. Legislating morality or something.)
