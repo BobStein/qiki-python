@@ -356,6 +356,30 @@ Weird-behaving code should be weird-looking
         ham[1:9], ham[1:9:3], ham[:9:3], ham[1::3], ham[1:9:], ham[::2]
 
 
+    Unpacking Asterisk - room to breath
+    -----------------------------------
+    The asterisk is the most versatile punctuation, and thus the most burden on cognitive load.
+    Uncommon plus powerful equals weird, so make it stand out.
+
+    Asteriskism
+    -----------
+    Digression, asterisk meanings in Python:
+        x*y         multiplier * multiplicand
+        [0]*6       collection * duplicator
+        2**3        base ** exponent
+        from package_or_module import *
+        *args       function parameter declaration, list of unnamed operands
+        *args       function call, unpacking unnamed operands (also list literal)
+        **kwargs    function parameter declaration, dict of named operands
+        **kwargs    function call, unpacking named operands (also dict literal)
+        r'.*'       regular expression repetition operator
+
+    No:
+        all_digits = set().union(*digits)
+    Yes:
+        all_digits = set().union( * digits)
+
+
 
     Tuple assignment -- use parentheses
     -----------------------------------
@@ -371,8 +395,11 @@ Weird-behaving code should be weird-looking
         
     Supports search for tuple-assignment:  ") :"
     
-    Rebuttal:  We don't do this for return because that generates 
+    Rebuttal:  Maybe don't do this for return statements, because that generates
     a weak warning in PyCharm about redundant parens.
+    Rebuttal rebuttal:  Many other conventions here cause weak warnings too.
+    Rebuttle**3:  I'm easier with disabling whitespace warnings than I am this paren warning.
+    Mostly because I often make the mistake of using parens in an if-statement or assert.
     
     yes:
         return key, value
@@ -1043,6 +1070,36 @@ No:
 Yes:
     explain_why_we_call_g_first = g(x)
     y = f(explain_why_we_call_g_first)
+
+
+Counterpoint:
+    Sometimes explaining yourself makes you HARDER to understand
+
+        meh:
+            unique_symbols = set(t)
+            duplicate_symbols = (str(e) * t.count(e)   for e in unique_symbols   if t.count(e) > 1)
+            duplicates_string = " ".join(duplicate_symbols)
+
+        better:
+            duplicates = " ".join(str(e) * t.count(e)   for e in set(t)   if t.count(e) > 1)
+
+    In this example I decided the names of my variables didn't add much, and it was
+    better to just let the code speak for itself.  There is a gotcha in the `for e in set(t)`
+    part where `for e in t` would have produced duplicates of the duplicates.
+    Code fluency has many benefits.  One of them is using the powers and forms of a language
+    to explain yourself in ways a fluent reader will grasp.
+    The subtlety of converting a series to a set to remove duplicates should be within easy
+    reach of the mind of a fluent reader.
+
+    There are other details that are not explained with variable names in either code,
+    For example using string * number to represent a triple-4 with "444".
+    There are troubles with explicitly using the word "duplicate" because there are actually three
+    different kinds of duplication here:
+        - The possible occurrence of multiple elements of the iterator t with the same value
+        - The multiple times they would be reported if the for-loop iterated over t instead of set(t)
+        - The multiple characters used in reporting on duplicates ("55" means double-5)
+
+
 
 
 Clarify misleading code, comment as a last resort
