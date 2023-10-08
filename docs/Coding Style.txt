@@ -965,6 +965,9 @@ Scandalously simple:
         histogram[thing] += 1
     except KeyError:
         histogram[thing] = 1
+Scandalous:  (I just can't do this.)
+    try:              histogram[thing] += 1
+    except KeyError:  histogram[thing] = 1
 
 
 Fewer lines is not so great if lines are tedious
@@ -1689,6 +1692,7 @@ Additional mnemonics:
     KUDOS (stronger THANKS)
     FALSE WARNING (show text of a warning message, just before the #noinspection directive to
         disable it)  This in response to the unending torrent of PyCharm false alarms.
+    KNOWN WARNING (Warning is correct, I know it's a violation, I'm coding it anyway for some reason.)
 
 On the wane:  (I thought I would use these but didn't turn out to.)
     DEBATE (Like multiple TODO's with a question-mark, except they're mutually exclusive.)
