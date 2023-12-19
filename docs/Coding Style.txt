@@ -1262,6 +1262,20 @@ Also if someday it were followed consistently (e.g. warning when not done)
 then it would be easier to search for, with " ! ".
 
 
+" * " unpack-operator spacing
+-----------------------------
+In addition to the reasoning for the not-operator spacing rule, this operator is freaky.
+It's freaky because asterisk has many other uses, and this is rare usage and a conceptually
+complex one.  Like the not-operator, this operator can often be omitted without a syntax error
+and so requires more human effort to find and fix.  So it should be more in-your-face for humans.
+
+variables = (1,2,3)
+No:
+    f(*variables)
+Yes:
+    f( * variables)
+
+
 Simple
 ======
 Avoid:
