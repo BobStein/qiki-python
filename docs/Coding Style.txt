@@ -1419,7 +1419,7 @@ Good in the first few lines of a loop, where meaning is clear:
 UUIDs should be rarely seen and never pasted
 --------------------------------------------
 I noticed once when I was cutting and pasting UUIDs that it felt wrong. 
-Turned out it was.  When I eventually used them it their handling was automted.
+Turned out it was.  When I eventually used them their handling was automated.
 I could see them in ultra-internal contexts, but I never had to cut and paste them.
 But I haven't worked with them much.
 
