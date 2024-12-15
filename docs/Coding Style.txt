@@ -72,10 +72,12 @@ Specifically rejecting these warnings:
 --------
 
 Limit lines to 100 characters, whether code, comments, or docstrings.
-PyCharm defaults to 120 (Settings | Editor | Code Style | Hard wrap at).
+PyCharm defaults to 120 (Settings | Editor | Code Style | Hard wrap at 100 columns).
 
 Limit command-line help message lines to 72 characters.
 This is an end-user limitation, and rightly more conservative than a developer limitation.
+
+Counterpoint:  Never split URLs, unless you don't want them to work for some good reason.
 
 
 
@@ -85,7 +87,11 @@ Function parameters
 
 Enclosed things (e.g. function parameters) should either be: 
     *  all on one line; or 
-    *  one per line, indented at the same level.  (The lines with the brackets should be outdented.)
+    *  one per line (or one taking up multiple lines), indented at the same level.
+Mo enclosures in the indented internals.
+The lines with the brackets should be outdented.
+Yes this wastes vertical space, with lines consisting only of close brackets.
+But stuff after the close-brackets may be okay.
 
 Yes:
 
@@ -120,20 +126,20 @@ No:
     y = f(
         x1,
         x2,
-        x3)
+        x3)         # should be two lines
 
-    y = f(x1,
+    y = f(x1,         # should be two lines
           x2,
           x3
     )
 
     y = f(
-        x1, x2,
+        x1, x2,         # should be two lines
         long_variable
     )
 
-    y = f(x1, x2, x3, x_running_out_of_line_width,
-          long_variable)
+    y = f(x1, x2, x3, x_running_out_of_line_width,   # one line or seven,
+          long_variable)                             # make up your mind
     
 Goes for function call or definition, and members of a literal tuple, list, dict, or set.
 
@@ -154,7 +160,7 @@ Counterpoint:
 
 Answer-then-Question
 --------------------
-assertEquals(expected_value, computed_value)
+assertEqual(expected_value, computed_value)
 
 Yes:
     assert expected_return == f(x, y)
@@ -165,7 +171,11 @@ Rationale:  This is the order of use in the wild, so that mental model should be
 
     actual_return = f(x, y)
 
-Counterpoint:  if variable_name == literal_value   # (The difference is, variable_name is not being computed here.)
+Counterpoint:  if variable_name == literal_value
+The difference is, variable_name is not being computed here.
+
+SEE:  My own answer re assertEqual(), https://stackoverflow.com/a/53603565/673991
+      "An ulterior purpose of assertEqual() is to demo code for human readers."
 
 
 
@@ -192,7 +202,7 @@ Counterpoint:
         example:  from django.http import HttpResponse
     package name is more ephemeral than the object name
         example:  from bs4 import BeautifulSoup
-    packages that hide their influence for noble reasons
+    packages that hide their influence for honorable reasons
         example:  from __future__ import print_function
 
 
@@ -236,9 +246,10 @@ Double Quotes for Humans, Single Quotes for Machines
 Use "double quotes" for strings that are to be seen by humans.  
 
     print("All is well.")
-    raise("This should never have happened.")
+    raise SomeException("This should never have happened.")
 
-Strings with functional consequences should use 'single quotes'.  The only humans likely to see them are programmers.
+Strings with any kind of functional consequences should use 'single quotes'.
+(Unsure if it matters whether the only humans likely to see them are programmers.)
 
     if __name__ == '__main__':
         main(port='COM3')
@@ -253,16 +264,21 @@ Double-quoted strings can be changed without breaking the code.
 
 
 
-.format() over %
+.format() over % (f"strings" are probably better still)
 ----------------
 
-.format() is better than %.  The syntax and options are harder to remember, but if you tell people that's because
-they're too old, they should complain less.  If that doesn't do it, suggest their first programming language must 
-have been Fortran.
+.format() is better than %.
+f"strings" are probably better than both of them.
+(The "probably" is evidence I was using Python 2.7 way past expiry.
+Also that I'm not 100% sure I will never need to run Python 2.7 code again.)
+The syntax and options of .format() and f"strings" are harder to remember than %,
+but if you tell people that's because they're too old, they should complain less.
+If that doesn't do it, suggest the their first programming language must
+have been Fortran.  (not-so-innocent whistle emoji)
 
 
-.format() without numbers
--------------------------
+.format() naming and numbering (this issue mercifully goes away with f"strings")
+------------------------------
 A single unnamed argument is okay.
 
     "The parrot is {}.".format("resting")
@@ -281,7 +297,7 @@ dict() over {} (unsure about this one)
 --------------
 
 Okay:   {'key': 'value'}
-Better: dict(key='value')
+Better: dict(key='value')       # less cognitive syntactical clutter maybe?
 
 Okay:
     { 
@@ -295,9 +311,11 @@ Better:
     )
 
 
-Obviously there's a tradeoff in clutter.  Another advantage of dict() is the syntax highlighting of the key names. But the curly-syntax is more versatile.
+Obviously there's a tradeoff in clutter.
+Another advantage of dict() is the syntax highlighting of the key names.
+But the curly-syntax is more versatile.
 
-Counter-arguments:
+Counterpoints:
     You cannot do:
 
         dict(class='value')
@@ -1583,7 +1601,7 @@ English Coding Style
 Less
     first person
     adverb
-    contraction
+    contraction     ("do not" is better than "don't" for non-English speakers, I'm guessing, dunno)
     plural
     words
         Notice if I hadn't made "words" plural it would have been very hard to understand.
@@ -1594,11 +1612,16 @@ Less
     contempt
 
 More
-    incitement
-    humor (groaning is a legitimate reaction to humor)
+    incitement    (wtf was I thinking when I wrote this)
+    humor
+        groaning is a legitimate reaction to humor
+        dad jokes are funny twice
+        offensive is bad, unfunny is worse, wait no it's not, it depends
 
 
-(Not advocating less pretense or more authenticity. Not into legislating morality.)
+(Not advocating less pretense or more authenticity. Not into legislating morality.
+No wait, the issue is those come and go over time and other things (understandability)
+are more important.)
 
 
 
@@ -1627,7 +1650,8 @@ Code comment
 
 Code comments should say what the code does, as if the code itself were speaking.
 Almost in the first person, but omit the subject.
-Even though code is not written in a spoken language, you want to be fluent enough that it still "speaks" to you.
+Even though code is not written in a spoken language,
+you want to be fluent enough that it still "speaks" to you.
 Comments should NOT resemble a human-writer talking to a human reader *about* the code.
 It should resemble the computer voicing what it's doing and why, as it's executing the code.
 (My interpretation of the intent of PEP 257.)
@@ -1642,16 +1666,28 @@ Commit comment
     Better:
         -m "Added support for utf8mb4"
 
-Commit comments are about a happening that was decidedly NOT automated.  (Today anyway!)
-It should be in the developer's voice, not the code's.
+On the other hand, commit comments are about a happening that was decidedly NOT automated.
+(Today anyway!)
+And they describe past actions.
+They should be in the developer's voice, not the code's.
 
 
 
-Units conversions should be isolated
-------------------------------------
+Unit conversions should be isolated and conspicuous
+---------------------------------------------------
 Many sad stories result from unit confusion. 
-Unit conversions should stand out on their own line. 
-Variables should be named with units.
+Unit conversion should stand out on their own line.
+Variables should be named with units in code that deals in multiple units.
+Or the whole units issue should be encapsulated and objectificated.
+
+Bad:
+    temp = temp * 5/9 + 32
+Better:
+    temp_fahrenheit = temp_celsius * 5/9 + 32
+Better still:
+    temp_fahrenheit = fahrenheit_from_celsius(temp_celsius)
+Even better:
+    assert math.isclose(temp.fahrenheit() * 5/9 + 32, temp.celsius())
 
 
 
@@ -1667,7 +1703,7 @@ Codetags
 --------
 
 My use of Codetags derives from PEP 350.  Even though that's a Python standard, and even though it
-was rejected in 2005, I use a version of it for all languages.
+was rejected in 2005, I use a version of it for all languages.  (And some er text files.)
 
 Codetags should usually go on the line *after* the code they are tagging.
 This location is the closest to putting the codetag comment on the same line as the code
