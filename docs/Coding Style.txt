@@ -381,7 +381,7 @@ Weird-behaving code should be weird-looking
 
     Asteriskism
     -----------
-    Digression, asterisk meanings in Python:
+    Now for a slight digression, asterisk has many meanings in Python (even more in C):
         x*y         multiplier * multiplicand
         [0]*6       collection * duplicator
         2**3        base ** exponent
@@ -1048,7 +1048,7 @@ Soon, English will fade blurry for them and code will pop out.
 There is an added benefit to assert-based over comment-based documentation.
 Not only does assert document in the lingua locale, it packs the added punch of automated confirmation.
 
-These benefits are worth a little syntactic vinegar, e.g. for demonstrating a Python @staticmethod:
+These benefits may be worth a little syntactic vinegar, e.g. demonstrating a Python @staticmethod:
 
     Class C
         @staticmethod
@@ -1065,10 +1065,13 @@ But it is still better than nothing.
 Thanks to Ben from Melbourne for sleuthing this funky ".__func__" technique.
 See http://stackoverflow.com/a/12718272/673991
 
-This only helps with static methods.  No assert can immediately follow the definition a class method or a regular method.
-For example, this does not work immediately after the definition of a class function pack_integer (and still inside the class):
+This only helps with static methods.
+No assert can immediately follow the definition of a class method or a regular method.
+For example, this does not work immediately after the definition of a class function pack_integer
+(and still inside the class definition):
      assert b'\x00\xFF' == pack_integer.__self__.pack_integer.__func__(255, 2)
-The function has no __self__ member there.  Outside and after the class definition, it does and it's set to the class itself.
+The function has no __self__ member there.
+Outside and after the class definition, it does and it's set to the class itself.
 
 
 Extract Variable
@@ -1076,7 +1079,8 @@ Introduce Explaining Variable
 -----------------------------
 http://refactoring.com/catalog/extractVariable.html
 http://c2.com/cgi/wiki?IntroduceExplainingVariable
-"Put the result of the expression, or parts of the expression, in a temporary variable with a name that explains the purpose."
+"Put the result of the expression, or parts of the expression, in a temporary variable
+with a name that explains the purpose."
 
 No:
     fish(cut_bait())
@@ -1111,6 +1115,7 @@ Counterpoint:
     to explain yourself in ways a fluent reader will grasp.
     The subtlety of converting a series to a set to remove duplicates should be within easy
     reach of the mind of a fluent reader.
+    Especially when the name of the destination variable `duplicates` hints at it.
 
     There are other details that are not explained with variable names in either code,
     For example using string * number to represent a triple-4 with "444".
@@ -1134,12 +1139,15 @@ For example, the cruel values of the CSS cursor property.
     cursor: move;   /* 4-directional arrows */
     cursor: wait;   /* hourglass */
     
-For example, a Python class method's __self__attribute:
+For example, a Python class method's __self__ attribute:
     class_itself = class_function.__self__
     
-Note how a little homage can be given to the misleading name, echoing it so as to reveal the tenuous connection to its meaning.
+Note how the name you invent can give a little homage to the misleading name,
+echoing it so as to reveal the tenuous connection to its meaning.
     cursor: pointer;   /* pointing finger */
     class_itself = class_function.__self__
+
+
 
 
 English In Code
@@ -1147,7 +1155,8 @@ English In Code
 
 Conversational
 --------------
-Comments and documentation should use complete, grammatical, English sentences that one human might actually speak to another.
+Comments and documentation should use complete, grammatical, English sentences
+that one human might actually speak out loud to another.
 
 
 Contractions and Apostrophes
@@ -1160,15 +1169,16 @@ Avoid contractions.
         cannot
 
 Reason 1, a little help for non-native English speakers.
-Reason 2, apostrophes (single-quote marks) in comments or message strings thwart searches and sometimes cause bugs.
+Reason 2, apostrophes (single-quote marks) in comments or message strings thwart searches
+and sometimes cause bugs.
 Apostrophes are worthwhile when avoidance would be silly (two's complement, Pascal's Triangle).
-Luckily the contraction "it's" is easy to replace with "it is".  And the possessive "its" has no apostrophe.
+Luckily the contraction "it's" is easy to replace with "it is".
+And the possessive "its" has no apostrophe.
 
 
 Idioms
 ------
 Bias against idioms, to help non-native English speakers.  These can be especially tedious to translate.
-
 
 
 Unambiguous Wording
@@ -1234,7 +1244,8 @@ Where hyperlinks are in comments forgo punctuation.  Put whitespace before and a
 D.R.Y. (Don't Repeat Yourself) Counterpoint
 -------------------------------------------
 Rationale:
-    The big value of D.R.Y. is avoiding bugs when someday only one part of a repeated feature gets edited.
+    The big value of D.R.Y. is avoiding bugs when someday only one part of a repeated feature
+    gets edited.
     The tiny value of D.R.Y. is less typing.
 
 Example:
@@ -1249,25 +1260,29 @@ Crime:
     '/var/etc/' is repeated.  It must be maintained in two places.
     
 Counterpoint (why you may prefer to repeat yourself in this example):
-    This case doesn't have the big D.R.Y. problem for long because a skewed edit would be caught by the assert.
+    This case doesn't have the big D.R.Y. problem for long
+    because a skewed edit would be caught by the assert.
     The benefit of repeating yourself here is comprehensible and trustable code.
 
 
 Don't point guns at feet
 ------------------------
 Not even unloaded.
-In line with Extreme Programming (aka Agile?) principles, focus on the task at hand.  Don't anticipate.
+In line with Extreme Programming (aka Agile?) principles, focus on the task at hand.
+Don't anticipate.
 But an exception to that is to avoid setting yourself up for future heartache.
 For example, avoid jQuery .html() because it's one step toward an injection attack.
     Even if 100% safe today, it can be a setup for future foot-shooting.  
-    Because the other steps that open you up to injection attacks can happen far from the .html() call.
+    Particularly because the other steps that actually open you up to injection attacks
+    can happen far from the .html() call.
 For example, clear intentions well-expressed are more important than clever shortcuts
     that could be misunderstood later.  Or discourage future evolution.
 
 
 " ! " not-operator spacing
 --------------------------
-JavaScript and C unary 'not' operator should have a space on both sides, so it doesn't get visually lost.
+JavaScript and C unary 'not' operator should have a space on both sides,
+so it doesn't get visually lost.
 
 No:
     if (!is_valid)
@@ -1277,7 +1292,18 @@ Yes:
 I cringe too, but missing this operator is worse.  Because it changes everything.
 
 Also if someday it were followed consistently (e.g. warning when not done) 
-then it would be easier to search for, with " ! ".
+then it would be a little easier to search for, with " ! ".
+
+
+" : " in Python list slicing
+----------------------------
+No:
+    every_other = a[::2]
+    last_three = a[-3:]
+Yes:
+    every_other = a[ : : 2]
+    last_three = a[-3 : ]
+
 
 
 " * " unpack-operator spacing
