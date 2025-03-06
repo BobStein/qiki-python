@@ -148,6 +148,12 @@ https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style
 
 SEE:  multiline statements in Python, http://stackoverflow.com/a/4172465/673991
 
+Justifications:
+    less confusion which parameter is which, for unnamed parameters
+    names line up, for named parameters
+    quicker to see which named parameters are there, which ones are missing
+    less likely to miss a buried comma, especially when changing the code
+
 Counterpoint:
     lots_of_little_things = [
          2,   3,   5,   7,  11,  13,  17,  19, 
