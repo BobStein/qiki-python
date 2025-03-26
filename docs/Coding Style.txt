@@ -88,10 +88,11 @@ Function parameters
 Enclosed things (e.g. function parameters) should either be: 
     *  all on one line; or 
     *  one per line (or one taking up multiple lines), indented at the same level.
-Mo enclosures in the indented internals.
-The lines with the brackets should be outdented.
-Yes this wastes vertical space, with lines consisting only of close brackets.
-But stuff after the close-brackets may be okay.
+No enclosure symbols (parens, braces, brackets) in the indented parts.
+    i.e. the lines with enclosure symbols should be outdented.
+    Yes this wastes vertical space,
+    with some lines consisting only of close brackets.
+Stuff after the close-brackets, or before the open-brackets, may be okay.
 
 Yes:
 
